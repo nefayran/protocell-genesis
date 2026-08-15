@@ -1,0 +1,14 @@
+{
+  "source": "Cooke & Deserno 2005, arXiv:cond-mat/0509218",
+  "rank": "A",
+  "units": "sigma=1, epsilon=1, m=1, tau=1",
+  "sigma": 1.0,
+  "epsilon": 1.0,
+  "beadSizes": { "head_head": 0.95, "head_tail": 0.95, "tail_tail": 1.0 },
+  "fene": { "k": 30.0, "rInf": 1.5 },
+  "bend": { "k": 10.0, "r0": 4.0 },
+  "attraction": { "wc": 1.6 },
+  "thermostat": { "gamma": 1.0, "kT": 1.1 },
+  "integrator": { "dt": 0.01 },
+  "kTRange": [0.6, 1.1]
+}

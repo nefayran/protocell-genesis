@@ -3,16 +3,26 @@ export interface Gpu {
   adapterInfo: { vendor: string; architecture: string }
 }
 
+let gpuPromise: Promise<Gpu> | undefined
+
 export async function getGpu(): Promise<Gpu> {
-  if (!navigator.gpu) throw new Error('navigator.gpu отсутствует')
-  const adapter = await navigator.gpu.requestAdapter()
-  if (!adapter) throw new Error('адаптер WebGPU не выдан')
-  const device = await adapter.requestDevice()
-  const info = adapter.info ?? ({} as GPUAdapterInfo)
-  return {
-    device,
-    adapterInfo: { vendor: info.vendor ?? '', architecture: info.architecture ?? '' },
-  }
+  // Memoize at module level: all callers share one device.
+  // Concurrent calls return the same in-flight promise to avoid racing two requestDevice() calls.
+  if (gpuPromise) return gpuPromise
+
+  gpuPromise = (async () => {
+    if (!navigator.gpu) throw new Error('navigator.gpu отсутствует')
+    const adapter = await navigator.gpu.requestAdapter()
+    if (!adapter) throw new Error('адаптер WebGPU не выдан')
+    const device = await adapter.requestDevice()
+    const info = adapter.info ?? ({} as GPUAdapterInfo)
+    return {
+      device,
+      adapterInfo: { vendor: info.vendor ?? '', architecture: info.architecture ?? '' },
+    }
+  })()
+
+  return gpuPromise
 }
 
 export async function readBack(device: GPUDevice, src: GPUBuffer, bytes: number): Promise<Float32Array> {
