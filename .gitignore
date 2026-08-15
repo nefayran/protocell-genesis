@@ -4,3 +4,4 @@ dist/
 __pycache__/
 *.pyc
 verify/out/
+.superpowers/
