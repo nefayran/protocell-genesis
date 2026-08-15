@@ -58,9 +58,10 @@ fn probe_main(@builtin(global_invocation_id) gid: vec3<u32>) {
 // particle here and summed on the CPU rather than accumulated into one shared total on the GPU.
 //
 // Topology: lipids are 3 consecutive beads, head (type 0), tail1 (type 1), tail2 (type 1).
-// Bonded: FENE head-tail1, FENE tail1-tail2, bend head-tail2 (around r_bend). Non-bonded (WCA +
-// tail-tail cos^2 attraction) acts on every pair except those three bonded pairs — which, since a
-// lipid only has three beads, means simply "every pair except two beads of the same lipid".
+// Bonded: FENE head-tail1, FENE tail1-tail2, bend head-tail2 (around r_bend). Non-bonded splits in
+// two: WCA acts on EVERY pair, the two FENE-bonded pairs and the 1-3 bend pair included (FENE is
+// purely attractive, so WCA is the bonded pair's only repulsive core — see the long comment on
+// nonbonded() below); the tail-tail cos^2 attraction is the only term excluded within a lipid.
 
 struct GridDims { dims: vec4<u32>, box: vec4<f32> };
 

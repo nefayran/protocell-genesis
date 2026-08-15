@@ -43,62 +43,99 @@ test('термостат выводит систему на заданную т�
   expect(kT).toBeLessThan(p.thermostat.kT * 1.05)
 })
 
-test('силы и полная энергия для фиксированной конфигурации совпадают с независимым CPU-эталоном', async () => {
+/** Runs one fixed, RNG-free configuration through the real engine (grid forces + totalEnergy) and
+ * hands back everything the CPU reference below needs to check it. Velocities are hand-picked (no
+ * RNG) so kinetic energy is exercised too. */
+async function gpuFixture(beads: number[][], box: number[]) {
   const page = await gpuPage()
-  const result = await page.evaluate(async () => {
-    const api = (window as any).api
+  return page.evaluate(
+    async ({ beads, box }) => {
+      const api = (window as any).api
+      const positions = new Float32Array(beads.length * 4)
+      beads.forEach((b, i) => positions.set(b, i * 4))
+      const N = beads.length
+      const velocities = new Float32Array(N * 4)
+      for (let i = 0; i < N; i++) {
+        velocities.set([0.1 * (i + 1), -0.05 * (i + 1), 0.02 * (i + 1), 0], i * 4)
+      }
+      const sys = await api.createSystem({
+        lipids: N / 3,
+        box,
+        seed: 1,
+        layout: 'random',
+        positions,
+        velocities,
+      })
+      const forces = Array.from(await sys.forces())
+      const totalEnergy = await sys.totalEnergy()
+      return { forces, totalEnergy, positions: Array.from(positions), velocities: Array.from(velocities), N, box }
+    },
+    { beads, box },
+  )
+}
 
-    // Three lipids, fixed coordinates, no RNG. Layout, in reduced units (sigma=b=1 for tail-tail):
-    //   A: head(0,0,10) - tail1(0,0,9.05) - tail2(0,0,8.05)   [straight rod along -z]
-    //   B: head(1.5,0,10) - tail1(1.5,0,9.05) - tail2(1.5,0,8.05)  [same rod, offset +1.5 in x]
-    //   C: head(19,0,10) - tail1(19,0,9.05) - tail2(19,0,8.05)     [same rod, offset -1 in x via
-    //      periodic wrap: 19 is 1 short of the box edge at 20]
-    // Bond lengths (0.95 head-tail, 1.0 tail-tail) put every bonded pair at a modest, safe FENE
-    // stretch. A-C tail-tail pairs land at r=1 (< r_c=2^(1/6): WCA repulsion, and — since the fix
-    // for the plateau-gating bug — inside the attraction's constant -epsilon plateau too). A-B and
-    // A-C tail-tail pairs at r~1.5/1.8/2.06/2.36 exercise the cos^2 attraction ramp. A-C spans the
-    // periodic boundary in x, exercising mi(). All A-B, A-C, B-C non-bonded pairs are included by
-    // the reference below (a plain double loop). Same-lipid pairs (head-tail1 r=0.95, tail1-tail2
-    // r=1.0, both under their WCA cutoffs) now ALSO get a WCA contribution on top of FENE/bend —
-    // per the ruling reversing Task 4's exclusion, WCA acts between every pair including bonded
-    // and 1-3 pairs; only the tail-tail cos^2 attraction stays excluded within a lipid.
-    const box = [20, 20, 20]
-    const beads: number[][] = []
-    const rod = (hx: number) => {
-      beads.push([hx, 0, 10, 0])
-      beads.push([hx, 0, 9.05, 1])
-      beads.push([hx, 0, 8.05, 1])
-    }
-    rod(0)
-    rod(1.5)
-    rod(19)
-    const positions = new Float32Array(beads.length * 4)
-    beads.forEach((b, i) => positions.set(b, i * 4))
+test('силы и полная энергия для фиксированной конфигурации совпадают с независимым CPU-эталоном', async () => {
+  // Three lipids, fixed coordinates, no RNG. Layout, in reduced units (sigma=b=1 for tail-tail):
+  //   A: head(0,0,10) - tail1(0,0,9.05) - tail2(0,0,8.05)   [straight rod along -z]
+  //   B: head(1.5,0,10) - tail1(1.5,0,9.05) - tail2(1.5,0,8.05)  [same rod, offset +1.5 in x]
+  //   C: head(19,0,10) - tail1(19,0,9.05) - tail2(19,0,8.05)     [same rod, offset -1 in x via
+  //      periodic wrap: 19 is 1 short of the box edge at 20]
+  // Bond lengths (0.95 head-tail, 1.0 tail-tail) put every bonded pair at a modest, safe FENE
+  // stretch. A-C tail-tail pairs land at r=1 (< r_c=2^(1/6): WCA repulsion, and — since the fix
+  // for the plateau-gating bug — inside the attraction's constant -epsilon plateau too). A-B and
+  // A-C tail-tail pairs at r~1.5/1.8/2.06/2.36 exercise the cos^2 attraction ramp. A-C spans the
+  // periodic boundary in x, exercising mi(). All A-B, A-C, B-C non-bonded pairs are included by
+  // the reference below (a plain double loop). Same-lipid pairs (head-tail1 r=0.95, tail1-tail2
+  // r=1.0, both under their WCA cutoffs) now ALSO get a WCA contribution on top of FENE/bend —
+  // per the ruling reversing Task 4's exclusion, WCA acts between every pair including bonded
+  // and 1-3 pairs; only the tail-tail cos^2 attraction stays excluded within a lipid.
+  // NOTE: this configuration does NOT cover WCA on the 1-3 (head-tail2) pair — at 1.95 it sits
+  // above that pair's cutoff (2^(1/6)*0.95 = 1.0665). The compressed fixture in the next test does.
+  const beads: number[][] = []
+  const rod = (hx: number) => {
+    beads.push([hx, 0, 10, 0])
+    beads.push([hx, 0, 9.05, 1])
+    beads.push([hx, 0, 8.05, 1])
+  }
+  rod(0)
+  rod(1.5)
+  rod(19)
 
-    // Small, distinct, hand-picked velocities (no RNG) so kinetic energy is also exercised.
-    const N = beads.length
-    const velocities = new Float32Array(N * 4)
-    for (let i = 0; i < N; i++) {
-      velocities.set([0.1 * (i + 1), -0.05 * (i + 1), 0.02 * (i + 1), 0], i * 4)
-    }
+  const result = await gpuFixture(beads, [20, 20, 20])
+  expectMatchesReference(result)
+})
 
-    const sys = await api.createSystem({
-      lipids: 3,
-      box,
-      seed: 1,
-      layout: 'random',
-      positions,
-      velocities,
-    })
-    const forces = Array.from(await sys.forces())
-    const totalEnergy = await sys.totalEnergy()
-    return { forces, totalEnergy, positions: Array.from(positions), velocities: Array.from(velocities), N, box }
-  })
+test('сжатая конфигурация: WCA работает и на паре 1-3 (голова-хвост2)', async () => {
+  // The exact branch the WCA ruling reversed — WCA between the head and tail2 of ONE lipid — is
+  // only live when that pair sits below its own cutoff, 2^(1/6)*b_ht = 1.0665. The fixture above
+  // never gets there (1.95). Here lipid A is strongly bent so head-tail2 = 1.0500 < 1.0665 while
+  // both FENE bonds keep safe lengths (head-tail1 = 0.95, tail1-tail2 = 1.0):
+  //   A: head(0,0,10) - tail1(0,0,9.05) - tail2(0.9070,0,9.4711)
+  // (tail2 solved from |tail2-tail1| = 1 and |tail2-head| = 1.05.) Lipid B is the straight rod,
+  // offset far enough in x that no intermolecular WCA is live but the tail-tail cos^2 ramp is, so
+  // the fixture still exercises intermolecular terms alongside the bonded ones. If WCA were
+  // excluded on the 1-3 pair, the head and tail2 forces would differ from this reference by ~1.2
+  // — three hundred times the toBeCloseTo(_, 2) tolerance.
+  const beads: number[][] = [
+    [0, 0, 10, 0],
+    [0, 0, 9.05, 1],
+    [0.907, 0, 9.4711, 1],
+    [2.5, 0, 10, 0],
+    [2.5, 0, 9.05, 1],
+    [2.5, 0, 8.05, 1],
+  ]
+  const result = await gpuFixture(beads, [20, 20, 20])
+  // Guard the fixture itself: if anyone edits the coordinates, this is what must stay true.
+  const dHeadTail2 = Math.hypot(0.907, 10 - 9.4711)
+  expect(dHeadTail2).toBeLessThan(2 ** (1 / 6) * p.beadSizes.head_tail)
+  expectMatchesReference(result)
+})
 
-  // --- independent CPU reference, written from the Cooke & Deserno 2005 formulas (not from the
-  // shader): WCA is a shifted-truncated LJ, FENE is the standard finite-extensible bond, bend is a
-  // harmonic spring on the head-tail2 distance, and the tail attraction is a cos^2 ramp between
-  // r_c and r_c+w_c preceded by a constant -epsilon plateau for r < r_c.
+// --- independent CPU reference, written from the Cooke & Deserno 2005 formulas (not from the
+// shader): WCA is a shifted-truncated LJ, FENE is the standard finite-extensible bond, bend is a
+// harmonic spring on the head-tail2 distance, and the tail attraction is a cos^2 ramp between
+// r_c and r_c+w_c preceded by a constant -epsilon plateau for r < r_c.
+function expectMatchesReference(result: Awaited<ReturnType<typeof gpuFixture>>) {
   const wcaCut = (b: number) => 2 ** (1 / 6) * b
   const wcaDv = (r: number, b: number) => {
     if (r >= wcaCut(b) || r <= 0) return 0
@@ -202,7 +239,7 @@ test('силы и полная энергия для фиксированной 
     expect(result.forces[i * 4 + 3]).toBe(0)
   }
   expect(result.totalEnergy).toBeCloseTo(ref.totalEnergy, 2)
-})
+}
 
 test('без трения полная энергия дрейфует слабо', async () => {
   const page = await gpuPage()

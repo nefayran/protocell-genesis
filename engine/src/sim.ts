@@ -43,13 +43,19 @@ export interface System {
   forces(): Promise<Float32Array>
   /** Wall-clock time (ms, GPU-inclusive) of the most recent neighbor-grid rebuild. */
   neighborBuildMs: number
-  /** Zero-tension Metropolis Monte Carlo move on the box's lateral area: proposes L_x, L_y (and
-   * every bead's x, y) scaled by the same sqrt(s), s = exp(u), leaves L_z and z untouched, and
-   * accepts with probability min(1, exp(-DeltaU/kT)) where DeltaU is the change in total
-   * POTENTIAL energy only (kinetic energy is invariant under a coordinate rescale, and lateral
-   * tension is zero so there is no gammaDeltaA term). Runs `trials` such moves and returns the
-   * accepted fraction. Rebuilds the neighbor grid after every trial (accepted or not) since the
-   * box the grid's cell/box uniform refers to may have changed. */
+  /** Zero-tension Metropolis Monte Carlo move on the box's lateral area. Proposes s = exp(u),
+   * u ~ U(-delta, +delta), multiplies L_x and L_y by sqrt(s) (L_z and every bead's z untouched),
+   * and displaces each LIPID rigidly: its center of mass in x,y is scaled by sqrt(s) and its three
+   * beads are rebuilt around that scaled center from their unchanged internal offsets, so every
+   * intramolecular distance survives the move exactly and DeltaU is purely intermolecular. Accepts
+   * with
+   * min(1, exp(-(DeltaU - N*kT*ln(A'/A))/kT)) = min(1, exp(N*u - DeltaU/kT)) where N is the number
+   * of LIPIDS (the objects whose coordinates are being scaled, hence the count that enters the
+   * configurational Jacobian) and DeltaU is the change in total POTENTIAL energy only (kinetic
+   * energy is untouched by a positional move, and lateral tension is zero so there is no
+   * gamma*DeltaA term). Runs `trials` such moves and returns the accepted fraction. Rebuilds the
+   * neighbor grid after every trial (accepted or not) since the box the grid's cell/box uniform
+   * refers to may have changed. */
   areaMove(trials: number): Promise<number>
   /** Current box lengths — a live snapshot, since areaMove() mutates L_x, L_y in place. */
   readonly box: [number, number, number]
@@ -258,8 +264,9 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
   const N = opts.lipids * 3
   const box = opts.box
   // Live box, mutated in place by areaMove(); `box` above stays the immutable value opts was
-  // called with (still needed below for the cell-size/dims computation, which is fixed for the
-  // system's lifetime — see the areaMove doc comment near its definition for why that's safe).
+  // called with, used below for the initial cell-size/dims computation and the layout. `cellSize`
+  // really is fixed for the system's lifetime (it depends only on params); `dims`/`ncells` are NOT
+  // — resizeGrid() recomputes them from the live box after every area-move trial.
   let liveBox: [number, number, number] = [box[0], box[1], box[2]]
   let totalSteps = 0
   const rng = mulberry32(opts.seed)
@@ -475,13 +482,21 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
 
   async function rebuildGridTimed(): Promise<void> {
     const t0 = performance.now()
+    await rebuildGridUntimed()
+    neighborBuildMs = performance.now() - t0
+  }
+
+  /** Same rebuild, without touching `neighborBuildMs`. Used everywhere the rebuild is incidental
+   * (warm-up, the two energy evaluations inside every area-move trial) so the number Task 9 reports
+   * as a neighbor-grid rebuild time stays the one measured by an explicit, deliberate rebuild
+   * instead of whatever the last Monte Carlo trial happened to cost. */
+  async function rebuildGridUntimed(): Promise<void> {
     const enc = device.createCommandEncoder()
     const pass = enc.beginComputePass()
     encodeGridRebuild(pass)
     pass.end()
     device.queue.submit([enc.finish()])
     await device.queue.onSubmittedWorkDone()
-    neighborBuildMs = performance.now() - t0
   }
 
   // Warm-up: pipelines are compiled lazily on first dispatch, not at createComputePipeline()
@@ -489,14 +504,7 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
   // (measured: 5.4ms for a 600-particle system built first on the page vs about a fifth of that
   // for a 3000-particle one built after pipelines were already warm). Run one untimed rebuild before
   // the timed one so `neighborBuildMs` reports the rebuild itself, not compilation.
-  {
-    const enc = device.createCommandEncoder()
-    const pass = enc.beginComputePass()
-    encodeGridRebuild(pass)
-    pass.end()
-    device.queue.submit([enc.finish()])
-    await device.queue.onSubmittedWorkDone()
-  }
+  await rebuildGridUntimed()
 
   // Initial grid build + force evaluation, timed for Task 9's `neighborBuildMs`, and needed as
   // F(x0) for the first kick of step().
@@ -598,13 +606,16 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
   // parameter (it does not appear in any Cooke & Deserno formula and has no effect on the
   // equilibrium distribution, only on how fast the chain explores it), so it lives here rather
   // than in data/params.json. Tuned (see task-5-report.md) so the accepted fraction lands in the
-  // 0.2-0.6 range once the Jacobian-corrected, rigid-center-of-mass move below is in place —
-  // retuned smaller again after WCA was restored on bonded pairs (that change stiffened the
-  // potential enough that the previous value's acceptance dropped under 0.2).
-  const AREA_MOVE_LOG_DELTA = 0.003
+  // 0.2-0.6 range: measured 0.54 / 0.36 / 0.23 at half-widths 0.006 / 0.010 / 0.016 once the
+  // rigid-lipid displacement below became exact. Earlier, much smaller values were forced by the
+  // periodic-image defect in that displacement, which put a spurious quadratic cost on every
+  // proposal and pushed acceptance under 0.2 for anything but a tiny step; with the defect fixed a
+  // step three to four times larger is accepted at the same rate, and the chain reaches its area
+  // plateau in ~150 moves (before the fix it never reached one — it slid out of the corridor).
+  const AREA_MOVE_LOG_DELTA = 0.012
 
   async function totalPotentialGPU(): Promise<number> {
-    await rebuildGridTimed()
+    await rebuildGridUntimed()
     const enc = device.createCommandEncoder()
     const pass = enc.beginComputePass()
     encodeForceGrid(pass)
@@ -621,6 +632,11 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
   // head itself may sit anywhere in [0, box).
   function mi1(d: number, box: number): number {
     return d - Math.round(d / box) * box
+  }
+
+  /** Wraps one coordinate into [0, box) — the scalar form of wrapXY() above. */
+  function wrap1(v: number, box: number): number {
+    return v - Math.floor(v / box) * box
   }
 
   async function areaMove(trials: number): Promise<number> {
@@ -642,37 +658,49 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
       const potentialBefore = await totalPotentialGPU()
       const before = await readBack(device, posBuf, N * 16)
 
-      // Scale each LIPID's center of mass (x,y) by sqrt(s), then translate all three of its
-      // beads by that same displacement — never rescale a bead's coordinate directly. This keeps
-      // every intramolecular distance (FENE head-tail1, FENE tail1-tail2, bend head-tail2)
-      // exactly unchanged by the move, so ΔU below reflects only intermolecular structure, which
-      // is what the area coordinate is actually supposed to couple to. The center of mass itself
-      // is computed via each lipid's minimum-image offset from its head (mi1), so a lipid whose
-      // beads happen to straddle a periodic boundary still gets the correct displacement — the
-      // displacement is then applied to the beads' real (possibly-wrapped) stored coordinates, so
-      // intramolecular vectors stay bit-exact regardless of which periodic image the head sits in.
+      // Rigid lipid displacement: scale each LIPID's center of mass (x,y) by sqrt(s) and REBUILD its
+      // three beads around the scaled center from their unchanged internal offsets. Bead coordinates
+      // are never rescaled themselves, so every intramolecular distance (FENE head-tail1, FENE
+      // tail1-tail2, bend head-tail2) survives the move exactly and ΔU below reflects only
+      // intermolecular structure — which is what the area coordinate is supposed to couple to.
+      //
+      // Both the center of mass and the offsets must be handled in the periodic sense, and BOTH
+      // matter (each of the two was measured to break the move on its own):
+      //  - the center is built from the head coordinate plus minimum-image offsets (mi1) and then
+      //    WRAPPED into [0, oldBox). Only a wrapped center makes this move the identity in scaled
+      //    coordinates s = R/L (s stays in [0,1), so s' = sqrt(s)R/(sqrt(s)L) = s), which is what
+      //    makes the configurational Jacobian exactly (A'/A)^N_lipids and the move an involution
+      //    under u -> -u. An unwrapped center displaces its lipid by up to L*(sqrt(s)-1) away from
+      //    the homogeneous value every other lipid gets.
+      //  - each bead is then placed at comScaled + offset rather than at storedCoordinate +
+      //    comX*(sqrt(s)-1). Those two differ by exactly L*(sqrt(s)-1) ~ 0.04 sigma for any bead
+      //    whose stored coordinate sits on the far side of a periodic boundary from its own center
+      //    (about a tenth of the lipids at these box sizes): translating the stored coordinate and
+      //    re-wrapping lands such a bead one box length off its lipid, i.e. STRETCHES or COMPRESSES
+      //    that bond by 0.04 sigma. The measured damage was severe and not obvious: the bond
+      //    perturbation is quadratic in u and one-signed, which showed up as a quenched curvature of
+      //    d2U/dlnA2 of order a million (so a u = 0.003 proposal cost ~13 kT whichever direction it
+      //    went), a per-configuration scatter of +/-1500 in dU/dlnA, and a Metropolis chain that
+      //    walked the area monotonically out of the literature corridor while every aggregate
+      //    diagnostic (acceptance fraction, energy conservation) looked healthy.
       const proposed = new Float32Array(before.length)
       for (let lip = 0; lip < opts.lipids; lip++) {
         const h = lip * 3, t1 = lip * 3 + 1, t2 = lip * 3 + 2
         const hx = before[h * 4], hy = before[h * 4 + 1]
-        const t1x = hx + mi1(before[t1 * 4] - hx, oldBox[0])
-        const t1y = hy + mi1(before[t1 * 4 + 1] - hy, oldBox[1])
-        const t2x = hx + mi1(before[t2 * 4] - hx, oldBox[0])
-        const t2y = hy + mi1(before[t2 * 4 + 1] - hy, oldBox[1])
-        const comX = (hx + t1x + t2x) / 3
-        const comY = (hy + t1y + t2y) / 3
-        const dx = comX * (sq - 1)
-        const dy = comY * (sq - 1)
-        for (const b of [h, t1, t2]) {
+        const ox = [0, mi1(before[t1 * 4] - hx, oldBox[0]), mi1(before[t2 * 4] - hx, oldBox[0])]
+        const oy = [0, mi1(before[t1 * 4 + 1] - hy, oldBox[1]), mi1(before[t2 * 4 + 1] - hy, oldBox[1])]
+        const cx = (ox[0] + ox[1] + ox[2]) / 3
+        const cy = (oy[0] + oy[1] + oy[2]) / 3
+        const comX = wrap1(hx + cx, oldBox[0]) * sq
+        const comY = wrap1(hy + cy, oldBox[1]) * sq
+        const beads = [h, t1, t2]
+        for (let k = 0; k < 3; k++) {
+          const b = beads[k]
           // Explicit re-wrap into [0, newBox) — mirrors wrap_main in integrate.wgsl — so a bead
-          // translated just past the edge lands in the cell cell_of() actually expects (which
-          // clamps rather than wraps) instead of waiting for the next step()'s wrap pass.
-          let x = before[b * 4] + dx
-          let y = before[b * 4 + 1] + dy
-          x = x - Math.floor(x / proposedBox[0]) * proposedBox[0]
-          y = y - Math.floor(y / proposedBox[1]) * proposedBox[1]
-          proposed[b * 4] = x
-          proposed[b * 4 + 1] = y
+          // landing just past the edge sits in the cell cell_coord() actually expects (it clamps
+          // rather than wraps) instead of waiting for the next step()'s wrap pass.
+          proposed[b * 4] = wrap1(comX + (ox[k] - cx), proposedBox[0])
+          proposed[b * 4 + 1] = wrap1(comY + (oy[k] - cy), proposedBox[1])
           proposed[b * 4 + 2] = before[b * 4 + 2]
           proposed[b * 4 + 3] = before[b * 4 + 3]
         }
