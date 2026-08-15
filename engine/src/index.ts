@@ -11,6 +11,7 @@ import {
 } from './metrics'
 import { loadParams, wcaCutoff } from './params'
 import type { System } from './sim'
+import { fitBendingModulus, heightField, logLogFit, selectFitWindow, spectrum, type Spectrum } from './spectrum'
 
 export { probeForces } from './forces'
 export { createSystem } from './sim'
@@ -26,6 +27,15 @@ export {
 } from './metrics'
 export type { ZProfile } from './metrics'
 export { clusters, largestClusterFraction } from './aggregate'
+export {
+  fitBendingModulus,
+  heightField,
+  logLogFit,
+  selectFitWindow,
+  spectrum,
+  synthesizeHeightField,
+} from './spectrum'
+export type { Spectrum } from './spectrum'
 
 /** Facade for Task 6's self-assembly gate: snapshots `sys`'s current positions and box, then hands
  * them to largestClusterFraction with cutoff = r_c + w_c (the tail-tail attraction's full range —
@@ -178,6 +188,158 @@ export async function measureBilayerAveraged(
     steps: sys.steps,
     samples: opts.samples,
   }
+}
+
+// Sampling spacing (in MD steps) between successive height-field snapshots for the bending-modulus
+// ensemble, when the caller does not override it. Not a physical model parameter -- it sets how far
+// apart samples are, not what the samples measure -- so it lives here rather than in
+// data/params.json, same rationale as AREA_MOVE_LOG_DELTA in sim.ts. Matches the order of magnitude
+// measureBilayerAveraged uses for the same purpose on this engine's bilayers.
+const BENDING_STEPS_PER_SAMPLE = 100
+
+// Number of blocks the sample window is split into for reporting kappa's scatter, mirroring
+// blockDrift's block-averaging above: consecutive samples are correlated (a bending mode relaxes
+// over many integration steps, not one), so a standard error needs decorrelated block MEANS, not
+// the raw per-sample series.
+const BENDING_BLOCKS = 10
+
+export interface BendingModulusResult {
+  kappa: number
+  kappaSd: number
+  slope: number
+  fitModes: number
+  fitShells: number
+  /** false means the data-driven window never found a trustworthy fit (see selectFitWindow in
+   * spectrum.ts) -- kappa is NaN in that case, on purpose: a failed measurement must read as a
+   * failed measurement, not as a number that happens to fail its own range check for an unrelated
+   * reason. slope/qMax/fitShells still describe the best attempt made, for diagnosis. */
+  valid: boolean
+  samples: number
+  stepsPerSample: number
+  qMax: number
+  ceilingQMax: number
+  spectrum: Spectrum
+}
+
+/** Ensemble measurement of the membrane's bending modulus from its own undulation spectrum (Task
+ * 7's structural gate). Takes `samples` height-field snapshots spaced `stepsPerSample` MD steps
+ * apart (the box is not touched here -- no areaMove -- so every snapshot shares one q grid),
+ * averages |h_q|^2 mode-by-mode over all of them, then picks the fit window BY THE DATA
+ * (selectFitWindow: grows from the smallest |q| shell while the slope stays near -4, up to the
+ * generous ceiling `(2*pi*opts.modes)/Lx`) rather than trusting a fixed mode count -- see
+ * selectFitWindow's doc comment in spectrum.ts for why: a fixed ceiling has no way to know where
+ * this box's q^-4 regime actually ends before the spectrum crosses over into protrusion/tilt modes
+ * (~q^-2), and this measurement DID cross that line the first time it ran with a fixed ceiling at
+ * mode index 8 (task-7-report.md: slopes -3.25, -3.09, -2.72 across independent runs, never close
+ * to -4). kappa itself still comes from fitBendingModulus on the selected window (its -4 check and
+ * intercept->kappa conversion are the single source of truth for that step).
+ *
+ * Also reports kappa's SCATTER across BENDING_BLOCKS contiguous blocks of the sample window, each
+ * block's own ensemble-averaged spectrum fit independently (over the SAME selected window -- the
+ * window is a property of the box/grid, shared by every block, not re-selected per block) for its
+ * own kappa point estimate -- mirroring measureBilayerAveraged's per-sample scatter reporting, and
+ * directly answering the lesson from Tasks 5-6 that this engine is not bit-reproducible run to run
+ * and a single marginal number proves nothing. A block kappa skips fitBendingModulus's -4 throw (a
+ * single noisier block failing that check must widen the reported scatter, not abort the whole
+ * measurement); the headline kappa above still goes through the full check. */
+export async function measureBendingModulusDetailed(
+  sys: System,
+  opts: { grid: number; modes: number; samples: number; stepsPerSample?: number },
+): Promise<BendingModulusResult> {
+  const p = loadParams()
+  const kT = p.thermostat.kT
+  const box = sys.box
+  const area = box[0] * box[1]
+  // Ceiling for selectFitWindow's search, not the window itself: opts.modes now names the FURTHEST
+  // mode index the data-driven search is ever allowed to grow into (a generous upper limit -- the
+  // grid's own Nyquist index is the natural choice), not a fixed cutoff every measurement uses.
+  const ceilingQMax = (2 * Math.PI * opts.modes) / box[0]
+  const stepsPerSample = opts.stepsPerSample ?? BENDING_STEPS_PER_SAMPLE
+
+  let qs: number[] | undefined
+  const perSampleHq2: number[][] = []
+  const t0 = performance.now()
+  // Progress logging: this loop is the expensive part of a real gate run (hundreds of samples,
+  // each stepsPerSample MD steps apart), and a silent multi-minute await gives no signal that the
+  // process is alive or where it is heading. Printed every tenth of the sample budget (at least
+  // every sample for small budgets) with a running kappa estimate from the mean-so-far -- caught
+  // rather than thrown, since early samples may not yet satisfy fitBendingModulus's -4 sanity
+  // check and that must not abort a still-accumulating ensemble.
+  const logEvery = Math.max(1, Math.floor(opts.samples / 10))
+  for (let s = 0; s < opts.samples; s++) {
+    if (s > 0) await sys.step(stepsPerSample)
+    const raw = await sys.positions()
+    const h = heightField(raw, sys.box, opts.grid)
+    const sp = spectrum(h, opts.grid, sys.box)
+    if (!qs) qs = sp.q
+    perSampleHq2.push(sp.hq2)
+    if (s % logEvery === 0 || s === opts.samples - 1) {
+      const running = new Array(sp.hq2.length).fill(0)
+      for (const hq2 of perSampleHq2) for (let i = 0; i < hq2.length; i++) running[i] += hq2[i] / perSampleHq2.length
+      // selectFitWindow never throws (see spectrum.ts) -- it returns its best attempt with
+      // valid:false when the running average does not yet look like q^-4 anywhere, which is
+      // expected early on; NaN-ing the reported kappa in that case is enough, no try/catch needed.
+      const win = selectFitWindow({ q: qs, hq2: running }, ceilingQMax)
+      const runningKappa = win.valid ? kT / (area * Math.exp(win.intercept)) : NaN
+      console.log(
+        `BENDING-PROGRESS sample=${s + 1}/${opts.samples} elapsedMs=${(performance.now() - t0).toFixed(0)} ` +
+          `steps=${sys.steps} runningKappa=${runningKappa.toFixed(3)} runningSlope=${win.slope.toFixed(3)} ` +
+          `runningShells=${win.nShells} runningValid=${win.valid}`,
+      )
+    }
+  }
+  const nModes = qs!.length
+
+  const meanHq2 = new Array(nModes).fill(0)
+  for (const hq2 of perSampleHq2) for (let i = 0; i < nModes; i++) meanHq2[i] += hq2[i] / opts.samples
+  const meanSpectrum: Spectrum = { q: qs!, hq2: meanHq2 }
+
+  // The final, ensemble-averaged window. If valid, fitBendingModulus is called for the headline
+  // kappa (reusing its canonical intercept->kappa conversion, guaranteed not to throw here since
+  // selectFitWindow already verified the slope is within tolerance at this exact qMax); if not,
+  // kappa is NaN on purpose -- see BendingModulusResult's doc comment.
+  const window = selectFitWindow(meanSpectrum, ceilingQMax)
+  const kappa = window.valid ? fitBendingModulus(meanSpectrum, kT, area, window.qMax) : NaN
+
+  const blocks = Math.min(BENDING_BLOCKS, opts.samples)
+  const perBlock = Math.floor(opts.samples / blocks)
+  const blockKappas: number[] = []
+  for (let b = 0; b < blocks; b++) {
+    const blockMean = new Array(nModes).fill(0)
+    for (let k = b * perBlock; k < (b + 1) * perBlock; k++) {
+      for (let i = 0; i < nModes; i++) blockMean[i] += perSampleHq2[k][i] / perBlock
+    }
+    const { intercept } = logLogFit({ q: qs!, hq2: blockMean }, window.qMax)
+    blockKappas.push(kT / (area * Math.exp(intercept)))
+  }
+  const kappaMean = blockKappas.reduce((a, b) => a + b, 0) / blockKappas.length
+  const kappaSd = Math.sqrt(
+    blockKappas.reduce((a, b) => a + (b - kappaMean) ** 2, 0) / Math.max(1, blockKappas.length - 1),
+  )
+
+  return {
+    kappa,
+    kappaSd,
+    slope: window.slope,
+    fitModes: window.nModes,
+    fitShells: window.nShells,
+    valid: window.valid,
+    samples: opts.samples,
+    stepsPerSample,
+    qMax: window.qMax,
+    ceilingQMax,
+    spectrum: meanSpectrum,
+  }
+}
+
+/** Facade for Task 7's structural gate (gate6-kappa.test.ts): bending modulus alone, from an
+ * ensemble-averaged undulation spectrum -- see measureBendingModulusDetailed for the block-averaged
+ * scatter, the fitted slope, and the spectrum itself that this collapses to one number. */
+export async function measureBendingModulus(
+  sys: System,
+  opts: { grid: number; modes: number; samples: number },
+): Promise<number> {
+  return (await measureBendingModulusDetailed(sys, opts)).kappa
 }
 
 export async function gpuSmoke() {
