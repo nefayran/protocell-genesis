@@ -94,6 +94,92 @@ export function heightField(positions: Float32Array, box: [number, number, numbe
   return out
 }
 
+export interface ColumnNoiseStats {
+  meanBeadsPerColumn: number
+  meanColumnVariance: number
+  predictedFloor: number
+}
+
+/** Predicts the flat, q-INDEPENDENT noise floor a column-averaged height field carries from
+ * intra-column bead scatter (any spread of individual bead z around the local column mean, within
+ * one lateral cell). For i.i.d. per-column noise of variance sigma_col^2 =
+ * sigma_bead^2/beadsPerColumn, the DFT of a spatially UNCORRELATED (white) field has
+ * E[|h_q|^2] = sigma_col^2/N for every q!=0 -- uncorrelated noise has no preferred wavelength, so
+ * it lands as a flat plateau rather than falling off with q the way genuine bending power does.
+ *
+ * sigma_bead^2 is estimated directly from the data: the population variance of individual bead z
+ * around each column's OWN mean, averaged across non-empty columns weighted by bead count (so
+ * columns that actually have beads in them, not sparse edge cases, dominate the estimate).
+ *
+ * Diagnostic only -- takes the SAME positions/box/n a heightField()+spectrum() call would, but
+ * predicts what a purely-noise floor in that measurement would look like, for comparison against
+ * the observed high-q plateau (task-7-report.md: measured ~4.5-6e-5 with the all-beads/32x32
+ * construction, motivating tailEndBeads() and a coarser grid below). Not used by
+ * heightField/spectrum/fitBendingModulus themselves. */
+export function columnNoiseStats(positions: Float32Array, box: [number, number, number], n: number): ColumnNoiseStats {
+  const [Lx, Ly] = box
+  const dx = Lx / n
+  const dy = Ly / n
+  const nBeads = positions.length / 4
+  const sums = new Float64Array(n * n)
+  const sqSums = new Float64Array(n * n)
+  const counts = new Int32Array(n * n)
+  for (let i = 0; i < nBeads; i++) {
+    const x = wrap1(positions[i * 4], Lx)
+    const y = wrap1(positions[i * 4 + 1], Ly)
+    const z = positions[i * 4 + 2]
+    const cx = Math.min(n - 1, Math.floor(x / dx))
+    const cy = Math.min(n - 1, Math.floor(y / dy))
+    const idx = cy * n + cx
+    sums[idx] += z
+    sqSums[idx] += z * z
+    counts[idx] += 1
+  }
+  let totalBeads = 0
+  let nonEmpty = 0
+  let weightedVarSum = 0
+  for (let i = 0; i < n * n; i++) {
+    if (counts[i] > 0) {
+      const mean = sums[i] / counts[i]
+      const variance = Math.max(0, sqSums[i] / counts[i] - mean * mean)
+      weightedVarSum += variance * counts[i]
+      totalBeads += counts[i]
+      nonEmpty += 1
+    }
+  }
+  if (nonEmpty === 0) throw new Error(`columnNoiseStats: сетка ${n}x${n} пуста`)
+  const meanBeadsPerColumn = totalBeads / nonEmpty
+  const meanColumnVariance = weightedVarSum / totalBeads
+  const N = n * n
+  const predictedFloor = meanColumnVariance / (meanBeadsPerColumn * N)
+  return { meanBeadsPerColumn, meanColumnVariance, predictedFloor }
+}
+
+/** Extracts the tail-end bead -- the third of every three, closest to the bilayer midplane BY
+ * CONSTRUCTION -- from a flat positions array. Every lipid layout in sim.ts (layoutBilayer,
+ * layoutRandom) writes its three beads in the fixed order head, tail1, tail2, and nothing in this
+ * engine ever reorders beads within a lipid, so index%3===2 is tail2 for the whole run.
+ *
+ * Built for heightField's caller (measureBendingModulusDetailed in index.ts): averaging heads AND
+ * tails per lateral column mixes in their ~2 sigma vertical separation, which divided by only
+ * sqrt(beads per column) is large enough to dominate the column mean's own noise over most of the
+ * q range -- measured as the flat ~4.5-6e-5 plateau spanning ~90% of the searched spectrum
+ * (task-7-report.md, columnNoiseStats above quantifies this). Restricting to the beads that sit at
+ * the midplane already removes that leading spread; heightField itself is unchanged and works on
+ * whatever bead subset it is given. */
+export function tailEndBeads(positions: Float32Array): Float32Array {
+  const n = positions.length / 4
+  if (n % 3 !== 0) {
+    throw new Error(`tailEndBeads: ${n} бусин не делится на 3 — раскладка не head/tail1/tail2 по липиду`)
+  }
+  const nLipids = n / 3
+  const out = new Float32Array(nLipids * 4)
+  for (let lip = 0; lip < nLipids; lip++) {
+    out.set(positions.subarray((lip * 3 + 2) * 4, (lip * 3 + 2) * 4 + 4), lip * 4)
+  }
+  return out
+}
+
 /** Discrete Fourier amplitude spectrum of a height field on an n x n grid: |h_q|^2 for every mode
  * (mx, my) up to the grid's own Nyquist limit (|mx|,|my| <= floor(n/2)), skipping the DC mode
  * (mx=my=0, where q=0 and the Helfrich formula has a pole). Computed by direct summation over

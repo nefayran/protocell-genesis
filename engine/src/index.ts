@@ -11,7 +11,16 @@ import {
 } from './metrics'
 import { loadParams, wcaCutoff } from './params'
 import type { System } from './sim'
-import { fitBendingModulus, heightField, logLogFit, selectFitWindow, spectrum, type Spectrum } from './spectrum'
+import {
+  columnNoiseStats,
+  fitBendingModulus,
+  heightField,
+  logLogFit,
+  selectFitWindow,
+  spectrum,
+  tailEndBeads,
+  type Spectrum,
+} from './spectrum'
 
 export { probeForces } from './forces'
 export { createSystem } from './sim'
@@ -28,14 +37,16 @@ export {
 export type { ZProfile } from './metrics'
 export { clusters, largestClusterFraction } from './aggregate'
 export {
+  columnNoiseStats,
   fitBendingModulus,
   heightField,
   logLogFit,
   selectFitWindow,
   spectrum,
   synthesizeHeightField,
+  tailEndBeads,
 } from './spectrum'
-export type { Spectrum } from './spectrum'
+export type { ColumnNoiseStats, Spectrum } from './spectrum'
 
 /** Facade for Task 6's self-assembly gate: snapshots `sys`'s current positions and box, then hands
  * them to largestClusterFraction with cutoff = r_c + w_c (the tail-tail attraction's full range —
@@ -269,7 +280,11 @@ export async function measureBendingModulusDetailed(
   for (let s = 0; s < opts.samples; s++) {
     if (s > 0) await sys.step(stepsPerSample)
     const raw = await sys.positions()
-    const h = heightField(raw, sys.box, opts.grid)
+    // tailEndBeads, not the full bead array: averaging heads AND tails per column injects their
+    // ~2 sigma vertical separation divided by only sqrt(beads/column), which measured as a flat
+    // noise floor dominating ~90% of the searched spectrum (task-7-report.md). Tail-end beads sit
+    // at the midplane by construction and remove that leading spread.
+    const h = heightField(tailEndBeads(raw), sys.box, opts.grid)
     const sp = spectrum(h, opts.grid, sys.box)
     if (!qs) qs = sp.q
     perSampleHq2.push(sp.hq2)
