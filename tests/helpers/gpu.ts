@@ -17,12 +17,24 @@ export async function gpuPage(): Promise<Page> {
       headless: true,
       args: ['--enable-unsafe-webgpu', '--no-sandbox'],
       // Puppeteer's CDP protocolTimeout defaults to 180_000ms and applies to every command,
-      // including page.evaluate() — a long-running simulation (Task 6's self-assembly test
-      // measured ~115s for 400k steps in one evaluate() call) can approach that ceiling with no
-      // warning beyond a generic "Runtime.callFunctionOn timed out" from deep inside
-      // puppeteer-core, unrelated to vitest's own testTimeout. 0 disables it: the caller's own
-      // testTimeout (passed as the third argument to `test(...)`) is the real bound.
-      protocolTimeout: 0,
+      // including page.evaluate() — Task 6's self-assembly test runs its whole step loop inside
+      // ONE evaluate() call and measured ~300s there (1_000_000 steps), so the default ceiling
+      // would kill a legitimate run with a generic "Runtime.callFunctionOn timed out" unrelated to
+      // vitest's own testTimeout.
+      //
+      // This must stay FINITE, not 0 (0 disables it entirely): protocolTimeout is also the only
+      // thing that bounds a genuinely HUNG evaluate() — one that never resolves at all, as opposed
+      // to one that is merely slow but progressing. Without it, a true hang is bounded only by
+      // vitest's own per-test timeout racing against `browser.close()` inside the 60s `afterAll`
+      // hook, and if the browser process itself is what's wedged, that close() can hang too,
+      // taking the whole suite down instead of failing one test.
+      //
+      // 1_800_000ms (30 min): 6x the longest legitimate evaluate() measured for the committed
+      // suite (self-assembly, ~300s) and 3x the longest ever measured during this task's
+      // diagnostics (a 2_000_000-step exploratory run, ~596s) — comfortable headroom for a slower
+      // CI machine without being long enough to leave a real hang undetected for the length of a
+      // workday.
+      protocolTimeout: 1_800_000,
     })
   }
   const base = server.resolvedUrls!.local[0]
