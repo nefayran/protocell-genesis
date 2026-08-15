@@ -1,6 +1,8 @@
 import { getGpu, readBack, storageBuffer } from './gpu'
 
 export { probeForces } from './forces'
+export { createSystem } from './sim'
+export type { CreateSystemOpts, Layout, System } from './sim'
 
 export async function gpuSmoke() {
   const { device, adapterInfo } = await getGpu()
