@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "resolveJsonModule": true,
+    "types": ["@webgpu/types", "vitest/globals"],
+    "noEmit": true
+  },
+  "include": ["engine", "viewer", "verify", "tests"]
+}
