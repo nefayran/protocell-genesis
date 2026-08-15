@@ -1,4 +1,5 @@
 import { clusters, largestClusterFraction } from './aggregate'
+import { dimsFor, enclosedVolume, enclosedVolumeGpuDetailed, occupancy } from './closure'
 import { getGpu, readBack, storageBuffer } from './gpu'
 import {
   areaPerLipid,
@@ -36,6 +37,8 @@ export {
 } from './metrics'
 export type { ZProfile } from './metrics'
 export { clusters, largestClusterFraction } from './aggregate'
+export { dimsFor, enclosedVolume, enclosedVolumeGpuDetailed, occupancy } from './closure'
+export type { Dims, EnclosedVolumeGpuResult } from './closure'
 export {
   columnNoiseStats,
   fitBendingModulus,
@@ -57,6 +60,30 @@ export async function largestClusterFractionOf(sys: System): Promise<number> {
   const p = loadParams()
   const cutoff = wcaCutoff(p.beadSizes.tail_tail) + p.attraction.wc
   return largestClusterFraction(pos, sys.box, cutoff)
+}
+
+/** Facade for Task 8's closure gate: snapshots `sys`'s current positions and box, builds the
+ * occupancy grid, and floods it from the box's boundary on the CPU -- the reference implementation
+ * (occupancy()/enclosedVolume() in closure.ts) that enclosedVolumeGpu below is checked against. */
+export async function enclosedVolumeCpu(sys: System, opts: { cell: number; radius: number }): Promise<number> {
+  const pos = await sys.positions()
+  const box = sys.box
+  const occ = occupancy(pos, box, opts.cell, opts.radius)
+  return enclosedVolume(occ, dimsFor(box, opts.cell), opts.cell)
+}
+
+/** Same measurement as enclosedVolumeCpu, computed by closure.wgsl on the GPU (occupancy via
+ * atomicOr, then iterative outside-flood propagation with a change flag) -- see
+ * enclosedVolumeGpuDetailed in closure.ts for the iteration count/wall-clock this task's brief
+ * asks to report, logged here rather than added to this facade's return type since the interface
+ * this task specifies is `Promise<number>`. */
+export async function enclosedVolumeGpu(sys: System, opts: { cell: number; radius: number }): Promise<number> {
+  const pos = await sys.positions()
+  const result = await enclosedVolumeGpuDetailed(pos, sys.box, opts)
+  console.log(
+    `CLOSURE-GPU iterations=${result.iterations}/${result.maxIterations} ms=${result.ms.toFixed(1)} volume=${result.volume.toFixed(2)}`,
+  )
+  return result.volume
 }
 
 /** Facade for Task 5's structural gate: current area per lipid and bilayer thickness (200-bin

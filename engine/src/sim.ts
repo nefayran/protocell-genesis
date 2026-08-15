@@ -197,6 +197,99 @@ function layoutBilayer(lipids: number, box: [number, number, number], p: Params,
   return out
 }
 
+// --- Task 8: vesicle layout ------------------------------------------------------------------
+
+// Target area per lipid for the OUTER leaflet's head shell (see layoutVesicle below) -- the value
+// this engine's own self-assembly settled on for a flat bilayer (task-6-report.md: largest-
+// cluster fraction 0.9975 at 1e6 steps, area/lipid ~1.208 sigma^2), not a Cooke & Deserno model
+// constant, so it lives here next to AREA_MOVE_LOG_DELTA rather than in data/params.json -- it
+// tunes a STARTING configuration for Task 8's closure detector only; the story's own vesicle
+// comes from self-assembly (Task 6), not from this layout.
+const VESICLE_AREA_PER_LIPID = 1.208
+
+/** Two concentric spherical shells: heads outward on the outer leaflet, heads inward on the
+ * inner leaflet, tails meeting near the midpoint between the shells -- the spherical analogue of
+ * layoutBilayer's planar construction below (same radial offsets, moving away from a mid-radius
+ * instead of a mid-plane: halfGap, then tail_tail, then head_tail).
+ *
+ * Radius: let L = halfGap + tail_tail + head_tail (mid-to-head radial offset) and
+ * K = lipids * VESICLE_AREA_PER_LIPID / (4*pi). The two head-shell radii are R = midR + L (outer)
+ * and midR - L (inner); requiring the OUTER shell's area per lipid to equal
+ * VESICLE_AREA_PER_LIPID and splitting the lipid count between leaflets in proportion to their
+ * head-shell areas (R_out^2 : R_in^2, per the brief -- not equally) together reduce to
+ * R_out^2 + R_in^2 = K, i.e. a quadratic in R_out whose positive root is
+ * R_out = L + sqrt(K/2 - L^2) (task-8-report.md carries the full derivation). One consequence of
+ * splitting by shell area: the INNER leaflet lands on the same area per lipid automatically
+ * (N_in/R_in^2 = N_out/R_out^2 = 4*pi/VESICLE_AREA_PER_LIPID by construction).
+ *
+ * Points on each shell come from a golden-angle (Fibonacci) spiral: deterministic, no rejection
+ * sampling, and no pole clustering -- reproducible by construction, independent of `rng` (kept in
+ * the signature only so this layout matches layoutRandom/layoutBilayer's call shape). */
+function layoutVesicle(lipids: number, box: [number, number, number], p: Params): Float32Array {
+  const halfGap = p.beadSizes.tail_tail / 2
+  const L = halfGap + p.beadSizes.tail_tail + p.beadSizes.head_tail
+  const K = (lipids * VESICLE_AREA_PER_LIPID) / (4 * Math.PI)
+  const discriminant = K / 2 - L * L
+  if (discriminant <= 0) {
+    throw new Error(
+      `layoutVesicle: lipids=${lipids} слишком мало для двухслойной сферы ` +
+        `(K/2-L^2=${discriminant.toFixed(4)} <= 0) — нужно больше липидов`,
+    )
+  }
+  const rHeadOut = L + Math.sqrt(discriminant)
+  const midR = rHeadOut - L
+  const rHeadIn = midR - L
+  if (rHeadIn <= 0) {
+    throw new Error(`layoutVesicle: внутренний радиус головного слоя ${rHeadIn.toFixed(4)} <= 0 — нужно больше липидов`)
+  }
+  const maxReach = Math.min(box[0], box[1], box[2]) / 2
+  if (rHeadOut >= maxReach) {
+    throw new Error(
+      `layoutVesicle: внешний радиус ${rHeadOut.toFixed(4)} не помещается в box=[${box[0]},${box[1]},${box[2]}] ` +
+        `с центром в середине (нужно min(box)/2 > R)`,
+    )
+  }
+  const center: [number, number, number] = [box[0] / 2, box[1] / 2, box[2] / 2]
+
+  const nOut = Math.round((lipids * rHeadOut * rHeadOut) / (rHeadOut * rHeadOut + rHeadIn * rHeadIn))
+  const nIn = lipids - nOut
+
+  const out = new Float32Array(lipids * 3 * 4)
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5))
+
+  function place(count: number, sign: 1 | -1, offset: number) {
+    const rTail2 = midR + sign * halfGap
+    const rTail1 = rTail2 + sign * p.beadSizes.tail_tail
+    const rHead = rTail1 + sign * p.beadSizes.head_tail
+    for (let i = 0; i < count; i++) {
+      // Golden-angle spiral on the unit sphere (Marsaglia/Fibonacci construction): near-uniform
+      // coverage, deterministic, no RNG needed.
+      const y = count > 1 ? 1 - (2 * i) / (count - 1) : 0
+      const radial = Math.sqrt(Math.max(0, 1 - y * y))
+      const theta = goldenAngle * i
+      const dir: [number, number, number] = [Math.cos(theta) * radial, y, Math.sin(theta) * radial]
+
+      const head = wrapXY([center[0] + dir[0] * rHead, center[1] + dir[1] * rHead, center[2] + dir[2] * rHead], box)
+      const tail1 = wrapXY(
+        [center[0] + dir[0] * rTail1, center[1] + dir[1] * rTail1, center[2] + dir[2] * rTail1],
+        box,
+      )
+      const tail2 = wrapXY(
+        [center[0] + dir[0] * rTail2, center[1] + dir[1] * rTail2, center[2] + dir[2] * rTail2],
+        box,
+      )
+      const base = (offset + i) * 12
+      out.set([...head, 0], base)
+      out.set([...tail1, 1], base + 4)
+      out.set([...tail2, 1], base + 8)
+    }
+  }
+
+  place(nOut, 1, 0)
+  place(nIn, -1, nOut)
+  return out
+}
+
 // --- pure coordinate map for the area move (Task 6: factored out so it is unit-testable without a
 // GPU — see tests/sim.test.ts) --------------------------------------------------------------------
 
@@ -314,11 +407,6 @@ function getPipelines(device: GPUDevice): Pipelines {
 // --- system --------------------------------------------------------------------------------
 
 export async function createSystem(opts: CreateSystemOpts): Promise<System> {
-  if (opts.layout === 'vesicle') {
-    // Task 8. Deliberately not implemented here.
-    throw new Error("layout 'vesicle' не реализован в Задаче 4 — относится к Задаче 8")
-  }
-
   const base = loadParams()
   const p: Params = opts.gamma === undefined ? base : { ...base, thermostat: { ...base.thermostat, gamma: opts.gamma } }
 
@@ -332,7 +420,13 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
   let totalSteps = 0
   const rng = mulberry32(opts.seed)
 
-  const positions0 = opts.positions ?? (opts.layout === 'random' ? layoutRandom(opts.lipids, box, p, rng) : layoutBilayer(opts.lipids, box, p, rng))
+  const positions0 =
+    opts.positions ??
+    (opts.layout === 'random'
+      ? layoutRandom(opts.lipids, box, p, rng)
+      : opts.layout === 'vesicle'
+        ? layoutVesicle(opts.lipids, box, p)
+        : layoutBilayer(opts.lipids, box, p, rng))
   const velocities0 = opts.velocities ?? initialVelocities(N, p.thermostat.kT, rng)
   const rngState0 = new Uint32Array(N)
   for (let i = 0; i < N; i++) rngState0[i] = (opts.seed >>> 0) ^ Math.imul(i + 1, 2654435761) ^ 0x9e3779b9
