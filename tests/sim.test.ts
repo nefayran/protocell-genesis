@@ -58,8 +58,10 @@ test('силы и полная энергия для фиксированной 
     // for the plateau-gating bug — inside the attraction's constant -epsilon plateau too). A-B and
     // A-C tail-tail pairs at r~1.5/1.8/2.06/2.36 exercise the cos^2 attraction ramp. A-C spans the
     // periodic boundary in x, exercising mi(). All A-B, A-C, B-C non-bonded pairs are included by
-    // the reference below (a plain double loop), so nothing here needs to be excluded by hand
-    // except same-lipid pairs (which are also the only pairs the shader excludes).
+    // the reference below (a plain double loop). Same-lipid pairs (head-tail1 r=0.95, tail1-tail2
+    // r=1.0, both under their WCA cutoffs) now ALSO get a WCA contribution on top of FENE/bend —
+    // per the ruling reversing Task 4's exclusion, WCA acts between every pair including bonded
+    // and 1-3 pairs; only the tail-tail cos^2 attraction stays excluded within a lipid.
     const box = [20, 20, 20]
     const beads: number[][] = []
     const rod = (hx: number) => {
@@ -157,10 +159,11 @@ test('силы и полная энергия для фиксированной 
       addBond(t1, t2, feneDv, feneV)
       addBond(h, t2, bendDv, bendV)
     }
-    // non-bonded: every pair except two beads of the same lipid, counted once for energy.
+    // non-bonded: EVERY pair gets WCA, including same-lipid (bonded/1-3) pairs — the reversed
+    // Task 4 exclusion. Only the tail-tail cos^2 attraction stays excluded within a lipid.
     for (let i = 0; i < N; i++) {
       for (let j = i + 1; j < N; j++) {
-        if (Math.floor(i / 3) === Math.floor(j / 3)) continue
+        const sameLipid = Math.floor(i / 3) === Math.floor(j / 3)
         const d = disp(i, j)
         const r = Math.sqrt(d[0] ** 2 + d[1] ** 2 + d[2] ** 2)
         const ti = type(i), tj = type(j)
@@ -173,7 +176,7 @@ test('силы и полная энергия для фиксированной 
           }
           potential += wcaV(r, b)
         }
-        if (ti > 0.5 && tj > 0.5 && r <= rcTT + p.attraction.wc) {
+        if (ti > 0.5 && tj > 0.5 && !sameLipid && r <= rcTT + p.attraction.wc) {
           const dva = attrDv(r)
           for (let k = 0; k < 3; k++) {
             force[i][k] -= (dva * d[k]) / r

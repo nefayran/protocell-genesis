@@ -1,8 +1,35 @@
 import { getGpu, readBack, storageBuffer } from './gpu'
+import { areaPerLipid, bilayerThickness, densityProfileZ } from './metrics'
+import type { System } from './sim'
 
 export { probeForces } from './forces'
 export { createSystem } from './sim'
 export type { CreateSystemOpts, Layout, System } from './sim'
+export { areaPerLipid, bilayerPeaks, bilayerThickness, densityProfileZ } from './metrics'
+export type { ZProfile } from './metrics'
+
+/** Facade for Task 5's structural gate: current area per lipid and bilayer thickness (200-bin
+ * z-density profile of head beads), plus enough bookkeeping (box, lipids, cumulative steps) for
+ * a caller to report a full trajectory without re-deriving it from raw positions each time. */
+export async function measureBilayer(sys: System): Promise<{
+  areaPerLipid: number
+  thickness: number
+  box: [number, number, number]
+  lipids: number
+  steps: number
+}> {
+  const pos = await sys.positions()
+  const box = sys.box
+  const lipids = sys.lipids
+  const profile = densityProfileZ(pos, box, 200)
+  return {
+    areaPerLipid: areaPerLipid(box, lipids),
+    thickness: bilayerThickness(profile),
+    box,
+    lipids,
+    steps: sys.steps,
+  }
+}
 
 export async function gpuSmoke() {
   const { device, adapterInfo } = await getGpu()

@@ -112,10 +112,24 @@ struct Pair { f: vec3<f32>, u: f32 };
 
 // Non-bonded contribution between i (position xi, type ti) and j (xj, tj): WCA sized by the
 // type-pair radius (head-head -> b_hh, tail-tail -> b_tt, mixed -> b_ht) plus, for a tail-tail
-// pair, the cos^2 attraction. Force is the pair's full contribution to i; potential is halved
-// here because the same pair is visited symmetrically from j's own thread too (see force_main /
-// force_brute_main), so summing outPotential over all particles counts each pair exactly once.
-fn nonbonded(xi: vec3<f32>, xj: vec3<f32>, ti: f32, tj: f32, box: vec3<f32>) -> Pair {
+// pair NOT in the same lipid, the cos^2 attraction. Force is the pair's full contribution to i;
+// potential is halved here because the same pair is visited symmetrically from j's own thread too
+// (see force_main / force_brute_main), so summing outPotential over all particles counts each pair
+// exactly once.
+//
+// WCA is applied here to EVERY pair, including the two FENE-bonded pairs and the 1-3 bend pair
+// (sameLipid = true for those) — this replaces the Task 4 exclusion rule, which reasoned WCA would
+// "fight the bond" and excluded it for bonded/1-3 pairs. That reasoning was backwards: FENE
+// (-0.5*k*r_inf^2*ln(1-(r/r_inf)^2)) is purely attractive with its minimum at r=0 and no repulsive
+// core of its own; in the standard bead-spring construction WCA IS the bonded pair's repulsive
+// core, FENE only caps the maximum extension. Excluding WCA there left nothing to stop a bonded
+// pair collapsing, and the bend spring's permanent pull (r0=4, unreachable by two capped FENE
+// bonds, so it pulls monotonically) compressed the bonds down to well under one bead diameter,
+// measured as a ~3.2sigma bilayer against the ~5sigma literature value (task-5-report.md). The
+// cos^2 attraction stays excluded within a lipid: it is a tail-tail-only effect, and its force is
+// identically zero below its own cutoff r_c anyway for the range spanned by a taut lipid, so
+// excluding it only avoids reporting a meaningless constant plateau in the same-lipid energy.
+fn nonbonded(xi: vec3<f32>, xj: vec3<f32>, ti: f32, tj: f32, box: vec3<f32>, sameLipid: bool) -> Pair {
   var out: Pair;
   out.f = vec3<f32>(0.0);
   out.u = 0.0;
@@ -131,7 +145,7 @@ fn nonbonded(xi: vec3<f32>, xj: vec3<f32>, ti: f32, tj: f32, box: vec3<f32>) -> 
     out.f = out.f - dv * d / r;
     out.u = out.u + 0.5 * wca_v(r, b);
   }
-  if (ti > 0.5 && tj > 0.5) {
+  if (ti > 0.5 && tj > 0.5 && !sameLipid) {
     let rc = wca_cut(P.b_tt);
     // Gate on r <= rc+wc only (not r >= rc too): attr_v has a constant -epsilon plateau for
     // r < rc that is part of the potential (a tail pair sitting inside the attractive well
@@ -232,8 +246,8 @@ fn force_main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let end = cellStart[nc + 1u];
         for (var k = start; k < end; k = k + 1u) {
           let j = cellIdx[k];
-          if (j == i || j / 3u == myLipid) { continue; }
-          let p = nonbonded(xi, pos2[j].xyz, ti, pos2[j].w, box);
+          if (j == i) { continue; }
+          let p = nonbonded(xi, pos2[j].xyz, ti, pos2[j].w, box, j / 3u == myLipid);
           f = f + p.f;
           u = u + p.u;
         }
@@ -261,8 +275,8 @@ fn force_brute_main(@builtin(global_invocation_id) gid: vec3<u32>) {
   var u = bp.u;
 
   for (var j = 0u; j < n; j = j + 1u) {
-    if (j == i || j / 3u == myLipid) { continue; }
-    let p = nonbonded(xi, pos2[j].xyz, ti, pos2[j].w, box);
+    if (j == i) { continue; }
+    let p = nonbonded(xi, pos2[j].xyz, ti, pos2[j].w, box, j / 3u == myLipid);
     f = f + p.f;
     u = u + p.u;
   }

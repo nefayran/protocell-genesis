@@ -43,6 +43,20 @@ export interface System {
   forces(): Promise<Float32Array>
   /** Wall-clock time (ms, GPU-inclusive) of the most recent neighbor-grid rebuild. */
   neighborBuildMs: number
+  /** Zero-tension Metropolis Monte Carlo move on the box's lateral area: proposes L_x, L_y (and
+   * every bead's x, y) scaled by the same sqrt(s), s = exp(u), leaves L_z and z untouched, and
+   * accepts with probability min(1, exp(-DeltaU/kT)) where DeltaU is the change in total
+   * POTENTIAL energy only (kinetic energy is invariant under a coordinate rescale, and lateral
+   * tension is zero so there is no gammaDeltaA term). Runs `trials` such moves and returns the
+   * accepted fraction. Rebuilds the neighbor grid after every trial (accepted or not) since the
+   * box the grid's cell/box uniform refers to may have changed. */
+  areaMove(trials: number): Promise<number>
+  /** Current box lengths — a live snapshot, since areaMove() mutates L_x, L_y in place. */
+  readonly box: [number, number, number]
+  /** Number of lipids the system was created with (fixed for its lifetime). */
+  readonly lipids: number
+  /** Cumulative count of integration steps taken via step(), across all calls so far. */
+  readonly steps: number
 }
 
 // --- seeded RNG for reproducible layouts -------------------------------------------------------
@@ -243,6 +257,11 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
 
   const N = opts.lipids * 3
   const box = opts.box
+  // Live box, mutated in place by areaMove(); `box` above stays the immutable value opts was
+  // called with (still needed below for the cell-size/dims computation, which is fixed for the
+  // system's lifetime — see the areaMove doc comment near its definition for why that's safe).
+  let liveBox: [number, number, number] = [box[0], box[1], box[2]]
+  let totalSteps = 0
   const rng = mulberry32(opts.seed)
 
   const positions0 = opts.positions ?? (opts.layout === 'random' ? layoutRandom(opts.lipids, box, p, rng) : layoutBilayer(opts.lipids, box, p, rng))
@@ -252,33 +271,41 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
 
   // Cell size: at least r_c + w_c (the largest interaction range, the tail-tail attraction's
   // outer cutoff) so any pair within range of each other is guaranteed to fall in the same cell
-  // or one of the 26 neighbors. A smaller cell silently drops forces.
+  // or one of the 26 neighbors. A smaller cell silently drops forces. Fixed for the system's
+  // lifetime (it depends only on params, not on the box), but `dims`/`ncells` derived from it are
+  // NOT fixed: areaMove() below recomputes and reallocates them whenever the live box crosses a
+  // cell-count boundary, which is exactly the "shrinking the box changes the grid" case the brief
+  // warns about. Leaving dims frozen at the value computed here would let the box drift far
+  // enough that box/dims < cellSize — at that point the ±1 neighbor-cell walk in force_main no
+  // longer reaches every pair within the interaction range, WCA repulsion at close range goes
+  // silently under-counted, and nothing then resists further compression: measured on this
+  // engine, a run that kept dims frozen collapsed area/lipid from 1.352 to 0.697 over 200 area
+  // moves instead of equilibrating in the literature corridor.
   const cellSize = wcaCutoff(p.beadSizes.tail_tail) + p.attraction.wc
-  const dims = [Math.max(1, Math.floor(box[0] / cellSize)), Math.max(1, Math.floor(box[1] / cellSize)), Math.max(1, Math.floor(box[2] / cellSize))]
-  const ncells = dims[0] * dims[1] * dims[2]
 
-  // The ±1 neighbor-cell walk in force_main wraps periodically in x,y. With fewer than 3 cells
-  // on a periodic axis, +1 and -1 land on the same wrapped cell (or, at 1 cell, all three land
-  // on the cell itself), so that cell gets visited twice (2 cells) or three times (1 cell) per
+  function computeDims(b: [number, number, number]): [number, number, number] {
+    return [Math.max(1, Math.floor(b[0] / cellSize)), Math.max(1, Math.floor(b[1] / cellSize)), Math.max(1, Math.floor(b[2] / cellSize))]
+  }
+
+  // The ±1 neighbor-cell walk in force_main wraps periodically in x,y. With fewer than 3 cells on
+  // a periodic axis, +1 and -1 land on the same wrapped cell (or, at 1 cell, all three land on
+  // the cell itself), so that cell gets visited twice (2 cells) or three times (1 cell) per
   // particle — every non-bonded force and energy contribution from it is silently doubled or
-  // tripled. This is a geometric property of the algorithm, not something a smaller cellSize
-  // could fix without breaking the "cell size >= interaction range" guarantee, so it must be
-  // caught here rather than produce a quietly-wrong answer.
-  if (dims[0] < 3 || dims[1] < 3) {
+  // tripled. Minimum-image convention (mi() in forces.wgsl) separately assumes each axis sees at
+  // most one periodic image within range, i.e. box/2 must exceed every interaction's reach in
+  // that axis — including the bend pair (head-tail2, reach ~r0) which mi() also wraps.
+  function gridInvariantsHold(b: [number, number, number], d: [number, number, number]): boolean {
+    return d[0] >= 3 && d[1] >= 3 && Math.min(b[0], b[1]) / 2 > p.bend.r0
+  }
+
+  let dims = computeDims(box)
+  if (!gridInvariantsHold(box, dims)) {
     throw new Error(
-      `сетка соседей: box=[${box[0]},${box[1]},${box[2]}] даёт cellSize=${cellSize.toFixed(4)} и dims=[${dims[0]},${dims[1]},${dims[2]}] — ` +
-        `периодическим осям x,y нужно dims>=3, иначе соседний обход по ±1 посещает одну и ту же обёрнутую ячейку дважды/трижды и удваивает/утраивает силы`,
+      `сетка соседей: box=[${box[0]},${box[1]},${box[2]}] даёт cellSize=${cellSize.toFixed(4)}, dims=[${dims[0]},${dims[1]},${dims[2]}] ` +
+        `и min(box.x,box.y)/2=${(Math.min(box[0], box[1]) / 2).toFixed(4)} — нужно dims>=3 на осях x,y и min(box.x,box.y)/2 > bend.r0=${p.bend.r0}`,
     )
   }
-  // Minimum-image convention (mi() in forces.wgsl) assumes each axis sees at most one periodic
-  // image within range, i.e. box/2 must exceed every interaction's reach in that axis —
-  // including the bend pair (head-tail2, reach ~r0) which mi() also wraps.
-  if (Math.min(box[0], box[1]) / 2 <= p.bend.r0) {
-    throw new Error(
-      `сетка соседей: min(box.x,box.y)/2=${(Math.min(box[0], box[1]) / 2).toFixed(4)} должен быть больше bend.r0=${p.bend.r0} — ` +
-        `иначе minimum-image для изгибной пары head-tail2 не однозначен`,
-    )
-  }
+  let ncells = dims[0] * dims[1] * dims[2]
 
   const { device } = await getGpu()
   const pipe = getPipelines(device)
@@ -287,10 +314,13 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
   const velBuf = storageBuffer(device, velocities0)
   const forceBuf = storageBuffer(device, new Float32Array(N * 4))
   const potentialBuf = storageBuffer(device, new Float32Array(N))
-  const countsBuf = storageBuffer(device, new Float32Array(ncells))
+  // Sized N (one slot per bead, sorted by cell), not ncells — independent of the grid resize
+  // below, so it is never reallocated.
   const cellsBuf = storageBuffer(device, new Float32Array(N))
-  const cellStartBuf = storageBuffer(device, new Float32Array(ncells + 1))
-  const cursorBuf = storageBuffer(device, new Float32Array(ncells))
+  // Sized ncells — reallocated by resizeGrid() whenever dims changes.
+  let countsBuf = storageBuffer(device, new Float32Array(ncells))
+  let cellStartBuf = storageBuffer(device, new Float32Array(ncells + 1))
+  let cursorBuf = storageBuffer(device, new Float32Array(ncells))
   const rngBuf = device.createBuffer({
     size: rngState0.byteLength,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
@@ -301,51 +331,87 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
   device.queue.writeBuffer(paramsUniform, 0, paramsToUniform(p))
 
   const gridUniform = device.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
-  {
-    const buf = new ArrayBuffer(32)
-    new Uint32Array(buf, 0, 4).set([dims[0], dims[1], dims[2], 0])
-    new Float32Array(buf, 16, 4).set([box[0], box[1], box[2], 0])
-    device.queue.writeBuffer(gridUniform, 0, buf)
-  }
-
   const boxUniform = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
-  device.queue.writeBuffer(boxUniform, 0, new Float32Array([box[0], box[1], box[2], 0]))
+
+  function writeGridUniforms(b: [number, number, number], d: [number, number, number]) {
+    const bytes = new ArrayBuffer(32)
+    new Uint32Array(bytes, 0, 4).set([d[0], d[1], d[2], 0])
+    new Float32Array(bytes, 16, 4).set([b[0], b[1], b[2], 0])
+    device.queue.writeBuffer(gridUniform, 0, bytes)
+    device.queue.writeBuffer(boxUniform, 0, new Float32Array([b[0], b[1], b[2], 0]))
+  }
 
   const bind = (pipeline: GPUComputePipeline, group: number, entries: GPUBindGroupEntry[]) =>
     device.createBindGroup({ layout: pipeline.getBindGroupLayout(group), entries })
   const buf = (b: GPUBuffer) => ({ buffer: b })
 
-  const clearCountsBind = bind(pipe.clearCounts, 0, [
-    { binding: 0, resource: buf(gridUniform) },
-    { binding: 2, resource: buf(countsBuf) },
-  ])
-  const countBind = bind(pipe.count, 0, [
-    { binding: 0, resource: buf(gridUniform) },
-    { binding: 1, resource: buf(posBuf) },
-    { binding: 2, resource: buf(countsBuf) },
-  ])
-  const prefixBind = bind(pipe.prefix, 0, [
-    { binding: 0, resource: buf(gridUniform) },
-    { binding: 2, resource: buf(countsBuf) },
-    { binding: 4, resource: buf(cellStartBuf) },
-    { binding: 5, resource: buf(cursorBuf) },
-  ])
-  const fillBind = bind(pipe.fill, 0, [
-    { binding: 0, resource: buf(gridUniform) },
-    { binding: 1, resource: buf(posBuf) },
-    { binding: 3, resource: buf(cellsBuf) },
-    { binding: 5, resource: buf(cursorBuf) },
-  ])
+  // Bind groups that reference the ncells-sized buffers (countsBuf/cellStartBuf/cursorBuf) — must
+  // be rebuilt by resizeGrid() every time those buffers are reallocated, since a WebGPU bind
+  // group is a fixed reference to specific buffer objects.
+  let clearCountsBind!: GPUBindGroup
+  let countBind!: GPUBindGroup
+  let prefixBind!: GPUBindGroup
+  let fillBind!: GPUBindGroup
+  let forceGridGroup1!: GPUBindGroup
+  let wgCells = 0
+
+  function rebindGridDependent() {
+    clearCountsBind = bind(pipe.clearCounts, 0, [
+      { binding: 0, resource: buf(gridUniform) },
+      { binding: 2, resource: buf(countsBuf) },
+    ])
+    countBind = bind(pipe.count, 0, [
+      { binding: 0, resource: buf(gridUniform) },
+      { binding: 1, resource: buf(posBuf) },
+      { binding: 2, resource: buf(countsBuf) },
+    ])
+    prefixBind = bind(pipe.prefix, 0, [
+      { binding: 0, resource: buf(gridUniform) },
+      { binding: 2, resource: buf(countsBuf) },
+      { binding: 4, resource: buf(cellStartBuf) },
+      { binding: 5, resource: buf(cursorBuf) },
+    ])
+    fillBind = bind(pipe.fill, 0, [
+      { binding: 0, resource: buf(gridUniform) },
+      { binding: 1, resource: buf(posBuf) },
+      { binding: 3, resource: buf(cellsBuf) },
+      { binding: 5, resource: buf(cursorBuf) },
+    ])
+    forceGridGroup1 = bind(pipe.forceGrid, 1, [
+      { binding: 0, resource: buf(posBuf) },
+      { binding: 1, resource: buf(forceBuf) },
+      { binding: 2, resource: buf(potentialBuf) },
+      { binding: 3, resource: buf(gridUniform) },
+      { binding: 4, resource: buf(cellStartBuf) },
+      { binding: 5, resource: buf(cellsBuf) },
+    ])
+    wgCells = Math.ceil(ncells / 64)
+  }
+
+  writeGridUniforms(box, dims)
+  rebindGridDependent()
+
+  // Recomputes dims for `newBox`; if the cell count changed, destroys and reallocates the
+  // ncells-sized buffers and rebinds everything that references them. Called by areaMove() after
+  // every trial (accepted or reverted) so the grid always matches the box actually in use — see
+  // the comment on `cellSize` above for why a frozen grid silently breaks under compression.
+  async function resizeGrid(newBox: [number, number, number]): Promise<void> {
+    const newDims = computeDims(newBox)
+    if (newDims[0] !== dims[0] || newDims[1] !== dims[1] || newDims[2] !== dims[2]) {
+      countsBuf.destroy()
+      cellStartBuf.destroy()
+      cursorBuf.destroy()
+      dims = newDims
+      ncells = dims[0] * dims[1] * dims[2]
+      countsBuf = storageBuffer(device, new Float32Array(ncells))
+      cellStartBuf = storageBuffer(device, new Float32Array(ncells + 1))
+      cursorBuf = storageBuffer(device, new Float32Array(ncells))
+      rebindGridDependent()
+    }
+    writeGridUniforms(newBox, dims)
+  }
 
   const forceGridGroup0 = bind(pipe.forceGrid, 0, [{ binding: 0, resource: buf(paramsUniform) }])
-  const forceGridGroup1 = bind(pipe.forceGrid, 1, [
-    { binding: 0, resource: buf(posBuf) },
-    { binding: 1, resource: buf(forceBuf) },
-    { binding: 2, resource: buf(potentialBuf) },
-    { binding: 3, resource: buf(gridUniform) },
-    { binding: 4, resource: buf(cellStartBuf) },
-    { binding: 5, resource: buf(cellsBuf) },
-  ])
   const forceBruteGroup0 = bind(pipe.forceBrute, 0, [{ binding: 0, resource: buf(paramsUniform) }])
   const forceBruteGroup1 = bind(pipe.forceBrute, 1, [
     { binding: 0, resource: buf(posBuf) },
@@ -375,7 +441,6 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
   ])
 
   const wgN = Math.ceil(N / 64)
-  const wgCells = Math.ceil(ncells / 64)
 
   function encodeGridRebuild(pass: GPUComputePassEncoder) {
     pass.setPipeline(pipe.clearCounts)
@@ -474,6 +539,7 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
     pass.end()
     device.queue.submit([enc.finish()])
     await device.queue.onSubmittedWorkDone()
+    totalSteps += n
   }
 
   async function positions(): Promise<Float32Array> {
@@ -527,11 +593,133 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
     return kinetic + potential
   }
 
+  // Proposal half-width for the area move's log-area step u ~ U(-AREA_MOVE_LOG_DELTA,
+  // +AREA_MOVE_LOG_DELTA). This is a Monte Carlo move-size tuning knob, not a physical model
+  // parameter (it does not appear in any Cooke & Deserno formula and has no effect on the
+  // equilibrium distribution, only on how fast the chain explores it), so it lives here rather
+  // than in data/params.json. Tuned (see task-5-report.md) so the accepted fraction lands in the
+  // 0.2-0.6 range once the Jacobian-corrected, rigid-center-of-mass move below is in place —
+  // retuned smaller again after WCA was restored on bonded pairs (that change stiffened the
+  // potential enough that the previous value's acceptance dropped under 0.2).
+  const AREA_MOVE_LOG_DELTA = 0.003
+
+  async function totalPotentialGPU(): Promise<number> {
+    await rebuildGridTimed()
+    const enc = device.createCommandEncoder()
+    const pass = enc.beginComputePass()
+    encodeForceGrid(pass)
+    pass.end()
+    device.queue.submit([enc.finish()])
+    const u = await readBack(device, potentialBuf, N * 4)
+    let sum = 0
+    for (let i = 0; i < N; i++) sum += u[i]
+    return sum
+  }
+
+  // Minimum-image displacement of a scalar coordinate difference, matching mi() in forces.wgsl —
+  // needed to find each lipid's true (unwrapped-relative-to-its-head) center of mass when the
+  // head itself may sit anywhere in [0, box).
+  function mi1(d: number, box: number): number {
+    return d - Math.round(d / box) * box
+  }
+
+  async function areaMove(trials: number): Promise<number> {
+    let accepted = 0
+    for (let t = 0; t < trials; t++) {
+      const oldBox: [number, number, number] = [liveBox[0], liveBox[1], liveBox[2]]
+
+      const u = (rng() * 2 - 1) * AREA_MOVE_LOG_DELTA
+      const sq = Math.sqrt(Math.exp(u))
+      const proposedBox: [number, number, number] = [oldBox[0] * sq, oldBox[1] * sq, oldBox[2]]
+
+      // Reject up front, with no GPU work at all, if the proposal would breach either grid
+      // invariant createSystem() enforces at construction time (dims>=3 on the periodic axes,
+      // min(box.x,box.y)/2 > bend.r0). AREA_MOVE_LOG_DELTA is tuned small enough that this should
+      // essentially never fire once the chain is anywhere near the literature corridor — it is a
+      // safety net, not the normal path.
+      if (!gridInvariantsHold(proposedBox, computeDims(proposedBox))) continue
+
+      const potentialBefore = await totalPotentialGPU()
+      const before = await readBack(device, posBuf, N * 16)
+
+      // Scale each LIPID's center of mass (x,y) by sqrt(s), then translate all three of its
+      // beads by that same displacement — never rescale a bead's coordinate directly. This keeps
+      // every intramolecular distance (FENE head-tail1, FENE tail1-tail2, bend head-tail2)
+      // exactly unchanged by the move, so ΔU below reflects only intermolecular structure, which
+      // is what the area coordinate is actually supposed to couple to. The center of mass itself
+      // is computed via each lipid's minimum-image offset from its head (mi1), so a lipid whose
+      // beads happen to straddle a periodic boundary still gets the correct displacement — the
+      // displacement is then applied to the beads' real (possibly-wrapped) stored coordinates, so
+      // intramolecular vectors stay bit-exact regardless of which periodic image the head sits in.
+      const proposed = new Float32Array(before.length)
+      for (let lip = 0; lip < opts.lipids; lip++) {
+        const h = lip * 3, t1 = lip * 3 + 1, t2 = lip * 3 + 2
+        const hx = before[h * 4], hy = before[h * 4 + 1]
+        const t1x = hx + mi1(before[t1 * 4] - hx, oldBox[0])
+        const t1y = hy + mi1(before[t1 * 4 + 1] - hy, oldBox[1])
+        const t2x = hx + mi1(before[t2 * 4] - hx, oldBox[0])
+        const t2y = hy + mi1(before[t2 * 4 + 1] - hy, oldBox[1])
+        const comX = (hx + t1x + t2x) / 3
+        const comY = (hy + t1y + t2y) / 3
+        const dx = comX * (sq - 1)
+        const dy = comY * (sq - 1)
+        for (const b of [h, t1, t2]) {
+          // Explicit re-wrap into [0, newBox) — mirrors wrap_main in integrate.wgsl — so a bead
+          // translated just past the edge lands in the cell cell_of() actually expects (which
+          // clamps rather than wraps) instead of waiting for the next step()'s wrap pass.
+          let x = before[b * 4] + dx
+          let y = before[b * 4 + 1] + dy
+          x = x - Math.floor(x / proposedBox[0]) * proposedBox[0]
+          y = y - Math.floor(y / proposedBox[1]) * proposedBox[1]
+          proposed[b * 4] = x
+          proposed[b * 4 + 1] = y
+          proposed[b * 4 + 2] = before[b * 4 + 2]
+          proposed[b * 4 + 3] = before[b * 4 + 3]
+        }
+      }
+      device.queue.writeBuffer(posBuf, 0, proposed)
+      liveBox = proposedBox
+      await resizeGrid(proposedBox)
+
+      const potentialAfter = await totalPotentialGPU()
+      const dU = potentialAfter - potentialBefore
+      // Zero-tension Metropolis with the configurational Jacobian from rescaling N=lipids
+      // centers of mass by sqrt(A'/A): accept with min(1, exp(-(dU - lipids*kT*ln(A'/A))/kT)) =
+      // min(1, exp(lipids*u - dU/kT)), since ln(A'/A) = ln(s) = u exactly. The entropic term
+      // favors expansion (positive u) and is what balances the tail-tail attraction's pull
+      // toward smaller area — see task-5-report.md for the measurement that showed this term is
+      // required (its absence produces a monotonic collapse with a perfectly healthy aggregate
+      // acceptance fraction, not a near-zero one).
+      const acceptProb = Math.min(1, Math.exp(opts.lipids * u - dU / p.thermostat.kT))
+      if (rng() < acceptProb) {
+        accepted++
+        // Proposed state kept; forceBuf/potentialBuf/grid already reflect it from the
+        // totalPotentialGPU() call above — nothing left to resync.
+      } else {
+        device.queue.writeBuffer(posBuf, 0, before)
+        liveBox = oldBox
+        await resizeGrid(oldBox)
+        // Resync forceBuf/potentialBuf/grid with the reverted positions/box so the next step()
+        // kicks off of F(x) at the state actually being kept, not the discarded proposal.
+        await totalPotentialGPU()
+      }
+    }
+    return accepted / trials
+  }
+
   return {
     step,
     positions,
     kineticEnergyPerDof,
     totalEnergy,
+    areaMove,
+    get box(): [number, number, number] {
+      return [liveBox[0], liveBox[1], liveBox[2]]
+    },
+    lipids: opts.lipids,
+    get steps() {
+      return totalSteps
+    },
     forces,
     forcesBruteForce,
     get neighborBuildMs() {
