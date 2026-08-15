@@ -27,13 +27,13 @@ test('в движке нет вписанных констант модели', 
   // Forbidden literals with word-boundary regexes to avoid false positives
   // E.g., 31.5 contains 1.5 as substring, but regex requires no adjacent digit/dot
   const forbidden = [
-    /(?<![\d.])0\.95(?![\d])/,
-    /(?<![\d.])1\.6(?![\d])/,
-    /(?<![\d.])30\.0(?![\d])/,
-    /(?<![\d.])1\.5(?![\d])/,
-    /(?<![\d.])4\.0(?![\d])/,
-    /(?<![\d.])1\.1(?![\d])/,
-    /(?<![\d.])0\.01(?![\d])/,
+    /(?<![\d.])0\.95(?![\d.])/,
+    /(?<![\d.])1\.6(?![\d.])/,
+    /(?<![\d.])30\.0(?![\d.])/,
+    /(?<![\d.])1\.5(?![\d.])/,
+    /(?<![\d.])4\.0(?![\d.])/,
+    /(?<![\d.])1\.1(?![\d.])/,
+    /(?<![\d.])0\.01(?![\d.])/,
   ]
   const forbiddenLiterals = ['0.95', '1.6', '30.0', '1.5', '4.0', '1.1', '0.01']
   const dirs = ['engine/src', 'engine/wgsl']
