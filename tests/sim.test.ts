@@ -1,6 +1,7 @@
 import { afterAll, expect, test } from 'vitest'
 import { gpuPage, shutdownGpu } from './helpers/gpu'
 import { loadParams } from '../engine/src/params'
+import { scaleLateralRigid } from '../engine/src/sim'
 
 afterAll(shutdownGpu)
 const p = loadParams()
@@ -240,6 +241,109 @@ function expectMatchesReference(result: Awaited<ReturnType<typeof gpuFixture>>) 
   }
   expect(result.totalEnergy).toBeCloseTo(ref.totalEnergy, 2)
 }
+
+// --- area-move coordinate map: direct, GPU-free unit test (Task 6) -----------------------------
+//
+// Task 5's biggest defect (a box move that silently stretched intramolecular bonds by translating
+// each bead's stored coordinate instead of rebuilding it from a periodic-aware offset) survived two
+// review rounds and was only caught by an indirect thermodynamic identity (d2U/dlnA2 blowing up).
+// These two tests check the actual coordinate map directly and cheaply, with no GPU: every
+// intramolecular distance must be exactly unchanged by the move, and applying the map forward then
+// backward must be an involution. Fixed, RNG-free positions (no seed to reproduce, no browser).
+
+/** 24 lipids, fixed head positions spread across a 10x10x10 box, with two lipids (index 5 and 11)
+ * placed deliberately close enough to the x and y edges that their tail beads wrap around the
+ * periodic boundary — the case Task 5's bug actually broke on. One shared, fixed (non-physical,
+ * arbitrary but small) offset vector per bond keeps every lipid's internal geometry identical and
+ * easy to check by hand. */
+function buildAreaMoveFixture(): { positions: Float32Array; lipids: number; box: [number, number, number] } {
+  const box: [number, number, number] = [10, 10, 10]
+  const lipids = 24
+  const offsetHT1 = [0.4, 0.25, 0.15] // head -> tail1
+  const offsetT1T2 = [0.35, -0.2, -0.1] // tail1 -> tail2
+  const wrap = (v: number, L: number) => v - Math.floor(v / L) * L
+
+  const heads: number[][] = []
+  for (let i = 0; i < lipids; i++) {
+    const col = i % 6
+    const row = Math.floor(i / 6)
+    heads.push([0.3 + col * 1.6, 0.3 + row * 2.3, 5.0])
+  }
+  heads[5] = [9.8, 5.0, 5.0] // head-tail1 will wrap in x
+  heads[11] = [5.0, 9.85, 5.0] // head-tail1 will wrap in y
+
+  const positions = new Float32Array(lipids * 3 * 4)
+  for (let lip = 0; lip < lipids; lip++) {
+    const [hx, hy, hz] = heads[lip]
+    const t1x = wrap(hx + offsetHT1[0], box[0])
+    const t1y = wrap(hy + offsetHT1[1], box[1])
+    const t1z = hz + offsetHT1[2]
+    const t2x = wrap(t1x + offsetT1T2[0], box[0])
+    const t2y = wrap(t1y + offsetT1T2[1], box[1])
+    const t2z = t1z + offsetT1T2[2]
+    const base = lip * 12
+    positions.set([hx, hy, hz, 0], base)
+    positions.set([t1x, t1y, t1z, 1], base + 4)
+    positions.set([t2x, t2y, t2z, 1], base + 8)
+  }
+  return { positions, lipids, box }
+}
+
+/** Independent periodic-aware distance (minimum image in x,y, open in z) — matches mi() in
+ * forces.wgsl / mi1() in sim.ts, written from scratch here rather than imported, so this check does
+ * not share code with whatever it is verifying. */
+function periodicDistance(pos: Float32Array, box: [number, number, number], i: number, j: number): number {
+  const mi = (d: number, L: number) => d - Math.round(d / L) * L
+  const dx = mi(pos[i * 4] - pos[j * 4], box[0])
+  const dy = mi(pos[i * 4 + 1] - pos[j * 4 + 1], box[1])
+  const dz = pos[i * 4 + 2] - pos[j * 4 + 2] // z is open: no periodic image
+  return Math.sqrt(dx * dx + dy * dy + dz * dz)
+}
+
+function intramolecularDistances(pos: Float32Array, box: [number, number, number], lipids: number) {
+  const out: { ht1: number; t1t2: number; ht2: number }[] = []
+  for (let lip = 0; lip < lipids; lip++) {
+    const h = lip * 3, t1 = lip * 3 + 1, t2 = lip * 3 + 2
+    out.push({
+      ht1: periodicDistance(pos, box, h, t1),
+      t1t2: periodicDistance(pos, box, t1, t2),
+      ht2: periodicDistance(pos, box, h, t2),
+    })
+  }
+  return out
+}
+
+test('карта area move сохраняет все внутримолекулярные расстояния точно', () => {
+  const { positions, lipids, box } = buildAreaMoveFixture()
+  const before = intramolecularDistances(positions, box, lipids)
+
+  const newBox: [number, number, number] = [box[0] * 1.18, box[1] * 1.18, box[2]]
+  const after = scaleLateralRigid(positions, box, newBox, lipids)
+  const afterDist = intramolecularDistances(after, newBox, lipids)
+
+  expect(before.length).toBe(lipids)
+  // scaleLateralRigid writes a Float32Array (matching the GPU buffer it feeds in production), so
+  // "floating-point noise" here is float32 noise (~1e-7 relative), not float64's ~1e-15 — precision
+  // 6 (threshold 5e-7) is comfortably above the measured ~6e-8 float32 rounding and comfortably
+  // below any real bond-length perturbation, which would be of order 0.01-1.
+  for (let lip = 0; lip < lipids; lip++) {
+    expect(afterDist[lip].ht1).toBeCloseTo(before[lip].ht1, 6)
+    expect(afterDist[lip].t1t2).toBeCloseTo(before[lip].t1t2, 6)
+    expect(afterDist[lip].ht2).toBeCloseTo(before[lip].ht2, 6)
+  }
+})
+
+test('карта area move — инволюция: +u затем -u возвращает исходные позиции', () => {
+  const { positions, lipids, box } = buildAreaMoveFixture()
+
+  const newBox: [number, number, number] = [box[0] * 0.82, box[1] * 0.82, box[2]]
+  const mid = scaleLateralRigid(positions, box, newBox, lipids)
+  const back = scaleLateralRigid(mid, newBox, box, lipids)
+
+  for (let i = 0; i < positions.length; i++) {
+    expect(back[i]).toBeCloseTo(positions[i], 6)
+  }
+})
 
 test('без трения полная энергия дрейфует слабо', async () => {
   const page = await gpuPage()

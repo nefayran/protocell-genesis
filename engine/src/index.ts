@@ -1,3 +1,4 @@
+import { clusters, largestClusterFraction } from './aggregate'
 import { getGpu, readBack, storageBuffer } from './gpu'
 import {
   areaPerLipid,
@@ -8,6 +9,7 @@ import {
   sumProfiles,
   type ZProfile,
 } from './metrics'
+import { loadParams, wcaCutoff } from './params'
 import type { System } from './sim'
 
 export { probeForces } from './forces'
@@ -23,6 +25,18 @@ export {
   sumProfiles,
 } from './metrics'
 export type { ZProfile } from './metrics'
+export { clusters, largestClusterFraction } from './aggregate'
+
+/** Facade for Task 6's self-assembly gate: snapshots `sys`'s current positions and box, then hands
+ * them to largestClusterFraction with cutoff = r_c + w_c (the tail-tail attraction's full range —
+ * the same reach the physics itself uses to pull two tails together), matching the cell size the
+ * engine's own neighbor grid uses (see `cellSize` in sim.ts). */
+export async function largestClusterFractionOf(sys: System): Promise<number> {
+  const pos = await sys.positions()
+  const p = loadParams()
+  const cutoff = wcaCutoff(p.beadSizes.tail_tail) + p.attraction.wc
+  return largestClusterFraction(pos, sys.box, cutoff)
+}
 
 /** Facade for Task 5's structural gate: current area per lipid and bilayer thickness (200-bin
  * z-density profile of head beads), plus enough bookkeeping (box, lipids, cumulative steps) for

@@ -16,6 +16,13 @@ export async function gpuPage(): Promise<Page> {
       executablePath: CHROME,
       headless: true,
       args: ['--enable-unsafe-webgpu', '--no-sandbox'],
+      // Puppeteer's CDP protocolTimeout defaults to 180_000ms and applies to every command,
+      // including page.evaluate() — a long-running simulation (Task 6's self-assembly test
+      // measured ~115s for 400k steps in one evaluate() call) can approach that ceiling with no
+      // warning beyond a generic "Runtime.callFunctionOn timed out" from deep inside
+      // puppeteer-core, unrelated to vitest's own testTimeout. 0 disables it: the caller's own
+      // testTimeout (passed as the third argument to `test(...)`) is the real bound.
+      protocolTimeout: 0,
     })
   }
   const base = server.resolvedUrls!.local[0]
