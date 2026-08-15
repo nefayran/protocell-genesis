@@ -133,7 +133,13 @@ fn nonbonded(xi: vec3<f32>, xj: vec3<f32>, ti: f32, tj: f32, box: vec3<f32>) -> 
   }
   if (ti > 0.5 && tj > 0.5) {
     let rc = wca_cut(P.b_tt);
-    if (r >= rc && r <= rc + P.wc) {
+    // Gate on r <= rc+wc only (not r >= rc too): attr_v has a constant -epsilon plateau for
+    // r < rc that is part of the potential (a tail pair sitting inside the attractive well
+    // contributes -epsilon of energy, it doesn't just coast at zero until the cos^2 ramp
+    // starts) — gating the energy call the same way the force is gated dropped that plateau
+    // entirely, making totalEnergy() discontinuous by epsilon at r=rc. attr_dv already
+    // returns 0 for r < rc on its own, so widening this gate leaves the force unaffected.
+    if (r <= rc + P.wc) {
       let dva = attr_dv(r);
       out.f = out.f - dva * d / r;
       out.u = out.u + 0.5 * attr_v(r);

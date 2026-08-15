@@ -13,6 +13,14 @@ export interface CreateSystemOpts {
   layout: Layout
   /** Overrides thermostat.gamma from params.json — needed to run the drift test at gamma=0. */
   gamma?: number
+  /** Test-only escape hatch: when given, replaces the layout function's output with these exact
+   * bead positions (4 floats per bead: x,y,z,type), skipping RNG entirely. `layout` is still
+   * required by the type but is not consulted. Lets a test build a fixed, hand-picked
+   * configuration (no RNG) to check against an independently-computed reference. */
+  positions?: Float32Array
+  /** Paired with `positions`: fixed initial velocities (4 floats per bead: vx,vy,vz,0). Defaults
+   * to the same Gaussian(kT) initialization used otherwise if omitted. */
+  velocities?: Float32Array
 }
 
 export interface System {
@@ -237,8 +245,8 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
   const box = opts.box
   const rng = mulberry32(opts.seed)
 
-  const positions0 = opts.layout === 'random' ? layoutRandom(opts.lipids, box, p, rng) : layoutBilayer(opts.lipids, box, p, rng)
-  const velocities0 = initialVelocities(N, p.thermostat.kT, rng)
+  const positions0 = opts.positions ?? (opts.layout === 'random' ? layoutRandom(opts.lipids, box, p, rng) : layoutBilayer(opts.lipids, box, p, rng))
+  const velocities0 = opts.velocities ?? initialVelocities(N, p.thermostat.kT, rng)
   const rngState0 = new Uint32Array(N)
   for (let i = 0; i < N; i++) rngState0[i] = (opts.seed >>> 0) ^ Math.imul(i + 1, 2654435761) ^ 0x9e3779b9
 
@@ -248,6 +256,29 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
   const cellSize = wcaCutoff(p.beadSizes.tail_tail) + p.attraction.wc
   const dims = [Math.max(1, Math.floor(box[0] / cellSize)), Math.max(1, Math.floor(box[1] / cellSize)), Math.max(1, Math.floor(box[2] / cellSize))]
   const ncells = dims[0] * dims[1] * dims[2]
+
+  // The ±1 neighbor-cell walk in force_main wraps periodically in x,y. With fewer than 3 cells
+  // on a periodic axis, +1 and -1 land on the same wrapped cell (or, at 1 cell, all three land
+  // on the cell itself), so that cell gets visited twice (2 cells) or three times (1 cell) per
+  // particle — every non-bonded force and energy contribution from it is silently doubled or
+  // tripled. This is a geometric property of the algorithm, not something a smaller cellSize
+  // could fix without breaking the "cell size >= interaction range" guarantee, so it must be
+  // caught here rather than produce a quietly-wrong answer.
+  if (dims[0] < 3 || dims[1] < 3) {
+    throw new Error(
+      `сетка соседей: box=[${box[0]},${box[1]},${box[2]}] даёт cellSize=${cellSize.toFixed(4)} и dims=[${dims[0]},${dims[1]},${dims[2]}] — ` +
+        `периодическим осям x,y нужно dims>=3, иначе соседний обход по ±1 посещает одну и ту же обёрнутую ячейку дважды/трижды и удваивает/утраивает силы`,
+    )
+  }
+  // Minimum-image convention (mi() in forces.wgsl) assumes each axis sees at most one periodic
+  // image within range, i.e. box/2 must exceed every interaction's reach in that axis —
+  // including the bend pair (head-tail2, reach ~r0) which mi() also wraps.
+  if (Math.min(box[0], box[1]) / 2 <= p.bend.r0) {
+    throw new Error(
+      `сетка соседей: min(box.x,box.y)/2=${(Math.min(box[0], box[1]) / 2).toFixed(4)} должен быть больше bend.r0=${p.bend.r0} — ` +
+        `иначе minimum-image для изгибной пары head-tail2 не однозначен`,
+    )
+  }
 
   const { device } = await getGpu()
   const pipe = getPipelines(device)
@@ -386,6 +417,20 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
     device.queue.submit([enc.finish()])
     await device.queue.onSubmittedWorkDone()
     neighborBuildMs = performance.now() - t0
+  }
+
+  // Warm-up: pipelines are compiled lazily on first dispatch, not at createComputePipeline()
+  // time, and that one-time compile latency would otherwise leak into the first measurement
+  // (measured: 5.4ms for a 600-particle system built first on the page vs about a fifth of that
+  // for a 3000-particle one built after pipelines were already warm). Run one untimed rebuild before
+  // the timed one so `neighborBuildMs` reports the rebuild itself, not compilation.
+  {
+    const enc = device.createCommandEncoder()
+    const pass = enc.beginComputePass()
+    encodeGridRebuild(pass)
+    pass.end()
+    device.queue.submit([enc.finish()])
+    await device.queue.onSubmittedWorkDone()
   }
 
   // Initial grid build + force evaluation, timed for Task 9's `neighborBuildMs`, and needed as
