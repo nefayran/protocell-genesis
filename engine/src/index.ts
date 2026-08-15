@@ -23,6 +23,11 @@ export async function gpuSmoke() {
   pass.dispatchWorkgroups(1)
   pass.end()
   device.queue.submit([enc.finish()])
-  const doubled = Array.from(await readBack(device, buf, 16))
+  let doubled: number[]
+  try {
+    doubled = Array.from(await readBack(device, buf, 16))
+  } finally {
+    buf.destroy()
+  }
   return { vendor: adapterInfo.vendor, architecture: adapterInfo.architecture, doubled }
 }
