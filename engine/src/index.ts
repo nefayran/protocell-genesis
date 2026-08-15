@@ -1,5 +1,7 @@
 import { getGpu, readBack, storageBuffer } from './gpu'
 
+export { probeForces } from './forces'
+
 export async function gpuSmoke() {
   const { device, adapterInfo } = await getGpu()
   const module = device.createShaderModule({
