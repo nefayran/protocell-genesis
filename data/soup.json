@@ -1,0 +1,21 @@
+{
+  "kappaT": 1.0,
+  "monomers": [
+    { "id": "C", "kind": "carbon",   "radiusSigma": 1.0,  "polar": false },
+    { "id": "O", "kind": "head",     "radiusSigma": 0.95, "polar": true  },
+    { "id": "H", "kind": "donor",    "radiusSigma": 0.8,  "polar": false },
+    { "id": "M", "kind": "catalyst", "radiusSigma": 1.2,  "polar": false }
+  ],
+  "start": { "C": 6000, "O": 900, "H": 6000, "M": 200 },
+  "rules": [
+    { "id": "cc_bond",  "kind": "bond",  "a": "C", "b": "C", "requiresCatalyst": true,  "energyKT": 6.0, "attemptRate": 0.05, "rank": "D",
+      "basis": "оценка: рост углеродной цепи идёт только на каталитическом центре; глубина 6 kT задаёт устойчивость цепи к тепловому разрыву" },
+    { "id": "cc_break", "kind": "break", "a": "C", "b": "C", "requiresCatalyst": false, "energyKT": 6.0, "attemptRate": 0.05, "rank": "D",
+      "basis": "парный разрыв к cc_bond, связан детальным балансом" },
+    { "id": "co_bond",  "kind": "bond",  "a": "C", "b": "O", "requiresCatalyst": false, "energyKT": 8.0, "attemptRate": 0.05, "rank": "D",
+      "basis": "оценка: присоединение полярной головы к концу цепи, глубже связи C-C, поэтому голова не отваливается первой" },
+    { "id": "co_break", "kind": "break", "a": "C", "b": "O", "requiresCatalyst": false, "energyKT": 8.0, "attemptRate": 0.05, "rank": "D",
+      "basis": "парный разрыв к co_bond, связан детальным балансом" }
+  ],
+  "sweep": { "kT": [0.9, 1.1, 1.3], "carbonDensity": [0.03, 0.06, 0.09], "catalystCount": [50, 200, 800] }
+}

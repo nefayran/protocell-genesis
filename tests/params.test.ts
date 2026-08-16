@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { loadParams, wcaCutoff } from '../engine/src/params'
 
@@ -36,9 +36,10 @@ test('в движке нет вписанных констант модели', 
     /(?<![\d.])0\.01(?![\d.])/,
   ]
   const forbiddenLiterals = ['0.95', '1.6', '30.0', '1.5', '4.0', '1.1', '0.01']
-  const dirs = ['engine/src', 'engine/wgsl']
+  const dirs = ['engine/src', 'engine/wgsl', 'chem/src', 'soup/src', 'soup/wgsl']
   const offenders: string[] = []
   for (const dir of dirs) {
+    if (!existsSync(dir)) continue // future task adds soup/wgsl; nothing to scan until it exists
     for (const name of readdirSync(dir)) {
       if (name === 'params.ts') continue
       const text = readFileSync(join(dir, name), 'utf8')
