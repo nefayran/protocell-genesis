@@ -68,7 +68,15 @@ export interface System {
    * touching any other engine state — the running simulation keeps its positions, velocities,
    * step count and neighbor grid exactly as they were. Only subsequent kick/force/thermostat
    * passes see the new value. Added for viewer/'s two sliders (kT/epsilon and w_c), which must
-   * retune a live simulation rather than restart it. */
+   * retune a live simulation rather than restart it.
+   *
+   * Validates and THROWS rather than clamping: wc above the value the neighbor grid was built for
+   * (params.attraction.wc, or createSystem's `maxWc` override if given) would silently drop
+   * forces beyond cell range -- the exact failure mode `cellSize`'s doc comment above describes,
+   * just reached live instead of at construction; kT outside data/params.json's `kTRange` is
+   * rejected the same way. A clamp would hide the caller's mistake; the throw names the requested
+   * value, the value the grid was actually built for (or the configured range), and the resulting
+   * cellSize, so misuse fails at the call site instead of showing up later as wrong physics. */
   setLiveParams(overrides: { kT?: number; wc?: number }): void
   /** Current box lengths — a live snapshot, since areaMove() mutates L_x, L_y in place. */
   readonly box: [number, number, number]
@@ -456,7 +464,11 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
   // silently under-counted, and nothing then resists further compression: measured on this
   // engine, a run that kept dims frozen collapsed area/lipid from 1.352 to 0.697 over 200 area
   // moves instead of equilibrating in the literature corridor.
-  const cellSize = wcaCutoff(p.beadSizes.tail_tail) + Math.max(p.attraction.wc, opts.maxWc ?? p.attraction.wc)
+  // The wc value the neighbor grid was actually sized for — the ceiling setLiveParams below must
+  // enforce, since raising wc past this after creation is exactly the silently-dropped-forces
+  // failure mode the comment above describes, just triggered live instead of at construction.
+  const builtForWc = Math.max(p.attraction.wc, opts.maxWc ?? p.attraction.wc)
+  const cellSize = wcaCutoff(p.beadSizes.tail_tail) + builtForWc
 
   function computeDims(b: [number, number, number]): [number, number, number] {
     return [Math.max(1, Math.floor(b[0] / cellSize)), Math.max(1, Math.floor(b[1] / cellSize)), Math.max(1, Math.floor(b[2] / cellSize))]
@@ -728,6 +740,22 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
   let livep: Params = p
 
   function setLiveParams(overrides: { kT?: number; wc?: number }): void {
+    // Validate loudly, before touching anything, rather than clamping: a silent clamp hides a
+    // caller's mistake exactly the way a too-small grid hides one -- the failure this method
+    // exists to prevent must fail AT THE CALL, not show up later as wrong physics. Same style as
+    // createSystem's own gridInvariantsHold/discriminant guards.
+    if (overrides.wc !== undefined && overrides.wc > builtForWc) {
+      throw new Error(
+        `setLiveParams: wc=${overrides.wc} превышает значение, под которое построена сетка соседей ` +
+          `(builtForWc=${builtForWc}, cellSize=${cellSize.toFixed(4)}) — пересоздайте систему с ` +
+          `опцией maxWc>=${overrides.wc}, иначе силы будут молча теряться`,
+      )
+    }
+    if (overrides.kT !== undefined && (overrides.kT < p.kTRange[0] || overrides.kT > p.kTRange[1])) {
+      throw new Error(
+        `setLiveParams: kT=${overrides.kT} вне data/params.json kTRange=[${p.kTRange[0]},${p.kTRange[1]}]`,
+      )
+    }
     livep = {
       ...livep,
       thermostat: overrides.kT !== undefined ? { ...livep.thermostat, kT: overrides.kT } : livep.thermostat,

@@ -357,3 +357,29 @@ test('без трения полная энергия дрейфует слаб�
   })
   expect(drift).toBeLessThan(0.02)
 })
+
+test('setLiveParams бросает при wc выше значения, под которое построена сетка, и при kT вне kTRange', async () => {
+  const page = await gpuPage()
+  const result = await page.evaluate(async () => {
+    const api = (window as any).api
+    // maxWc=1.8: the grid is built for wc up to 1.8 (params.json's own default wc=1.6 is lower,
+    // so builtForWc = max(1.6, 1.8) = 1.8 — see sim.ts's builtForWc). 1.9 must be rejected.
+    const sys = await api.createSystem({ lipids: 200, box: [16, 16, 16], seed: 1, layout: 'bilayer', maxWc: 1.8 })
+    let wcMessage = ''
+    try {
+      sys.setLiveParams({ wc: 1.9 })
+    } catch (e: any) {
+      wcMessage = e.message
+    }
+    let ktMessage = ''
+    try {
+      sys.setLiveParams({ kT: 999 })
+    } catch (e: any) {
+      ktMessage = e.message
+    }
+    return { wcMessage, ktMessage }
+  })
+  expect(result.wcMessage).toContain('превышает')
+  expect(result.wcMessage).toContain('builtForWc=1.8')
+  expect(result.ktMessage).toContain('kTRange=[0.6,1.1]')
+})
