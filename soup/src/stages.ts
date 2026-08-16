@@ -18,12 +18,14 @@
 // engine/src/index.ts's own facades already use (e.g. largestClusterFractionOf's cutoff derived
 // from the caller's own species sizes) -- it is not a new union-find or a new histogram.
 //
-// Deviation from the plan's literal `detectStage(sys: SoupSystem)` signature, documented in
-// task-3-report.md: SoupSystem (soup/src/sim.ts, Task 2) has no `box` field -- unlike the membrane
-// engine's System, which does -- and this task's Files list only permits modifying
-// engine/src/index.ts, not soup/src/sim.ts. Every measurement here (clustering, the z-density
-// profile, the closure flood) needs the box, so detectStage takes it as an explicit second
-// argument rather than reading it off `sys`.
+// Task 3 flagged a deviation here: SoupSystem (soup/src/sim.ts, Task 2) had no `box` field --
+// unlike the membrane engine's System, which does -- so detectStage took box as an explicit second
+// argument. Task 4 (soup/src/sim.ts's runUntil) needs to call detectStage once per sample without
+// the caller re-threading box through every call, and the plan's own Task 4 test calls
+// `api.stageOf(sys)` with a single argument -- so the reconciliation chosen here is: SoupSystem now
+// carries its own `box` field (set once in createSoup, never mutated), and detectStage reads
+// `sys.box` instead of taking it as a parameter. Every measurement below (clustering, the
+// z-density profile, the closure flood) still needs the box; it now gets it from `sys.box`.
 
 import rawSoup from '../../data/soup.json'
 import { largestClusterFraction } from '../../engine/src/aggregate'
@@ -80,14 +82,12 @@ function remapFlag(particles: Float32Array, flagFor: (i: number) => number): Flo
 }
 
 /** Measures the four stage-deciding numbers for one snapshot of `sys`, then maps them to a stage
- * label via data/soup.json's stageThresholds. See this file's header for the box-parameter
- * deviation from the plan's literal signature. */
-export async function detectStage(
-  sys: SoupSystem,
-  box: [number, number, number],
-): Promise<{ stage: Stage; evidence: StageEvidence }> {
+ * label via data/soup.json's stageThresholds. See this file's header for how `box` is obtained
+ * (Task 4 reconciliation: `sys.box`, not a parameter). */
+export async function detectStage(sys: SoupSystem): Promise<{ stage: Stage; evidence: StageEvidence }> {
   const soup = loadSoup()
   const thresholds = loadStageThresholds()
+  const box = sys.box
   const particles = await sys.particles()
   const bonds = await sys.bonds()
   const n = particles.length / 4

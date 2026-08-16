@@ -28,6 +28,7 @@ import bondWgsl from '../wgsl/bond.wgsl?raw'
 import { getGpu, readBack, storageBuffer } from '../../engine/src/gpu'
 import { loadParams, paramsToUniform, wcaCutoff, type Params } from '../../engine/src/params'
 import { acceptanceProbability, assertRulesConsistent, attemptProbability, loadSoup, type Rule } from './rules'
+import { detectStage, type Stage, type StageEvidence } from './stages'
 
 export interface CreateSoupOpts {
   box: [number, number, number]
@@ -59,6 +60,22 @@ export interface SoupSystem {
    * must be EXACTLY unchanged (nothing here ever creates or destroys a particle), bonds must be
    * able to change (that is the whole point of this task). */
   invariants(): Promise<{ monomers: Record<string, number>; bonds: number; charge: number }>
+  /** The box this system was created with (`CreateSoupOpts.box`), fixed for the system's lifetime.
+   * Task 4's reconciliation of the deviation Task 3 flagged: soup/src/stages.ts's detectStage
+   * reads this instead of taking box as a second parameter, so `stageOf(sys)` (and this file's own
+   * runUntil, below) never has to re-thread it. */
+  box: [number, number, number]
+  /** Steps in batches of `sampleEvery`, running detectStage after each batch and appending
+   * `{steps, stage, evidence}` to a trace (also logged one line at a time, via console.log, so a
+   * long run is diagnosable while it is still in progress). Stops early the first batch whose
+   * stage equals the target `stage`; otherwise runs until `maxSteps` is exhausted. `steps` in the
+   * trace and in the return value is the CUMULATIVE step count taken by this call (independent of
+   * whatever `globalStep` step() itself has already advanced from earlier calls) -- it is what a
+   * caller graphs a trajectory against, not a raw step()-internal counter. */
+  runUntil(
+    stage: Stage,
+    opts: { maxSteps: number; sampleEvery: number },
+  ): Promise<{ reached: boolean; steps: number; trace: { steps: number; stage: Stage; evidence: StageEvidence }[] }>
 }
 
 const NONE_U32 = 0xffffffff
@@ -712,5 +729,41 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     return { monomers, bonds: bondCount, charge }
   }
 
-  return { step, particles, bonds, events, invariants, stepPhasesDEBUG: stepPhasesDEBUG as any }
+  // Task 4: the continuous soup->vesicle run. Declared with `let sys!` and assigned AFTER the
+  // object literal below so runUntil's own closure can call detectStage(sys) -- detectStage only
+  // ever reads sys.particles()/sys.bonds()/sys.box (see stages.ts), never sys.runUntil itself, so
+  // the circularity is only in the TYPE, not in anything actually read before `sys` is assigned.
+  async function runUntil(
+    stage: Stage,
+    opts: { maxSteps: number; sampleEvery: number },
+  ): Promise<{ reached: boolean; steps: number; trace: { steps: number; stage: Stage; evidence: StageEvidence }[] }> {
+    const trace: { steps: number; stage: Stage; evidence: StageEvidence }[] = []
+    let steps = 0
+    let reached = false
+    while (steps < opts.maxSteps) {
+      const chunk = Math.min(opts.sampleEvery, opts.maxSteps - steps)
+      await sys.step(chunk)
+      steps += chunk
+      const { stage: currentStage, evidence } = await detectStage(sys)
+      trace.push({ steps, stage: currentStage, evidence })
+      // Printed AS IT HAPPENS (not buffered to the end) -- the whole point per this task's brief:
+      // a run long enough to matter (the pilot is minutes, the full-scale run tens of minutes) must
+      // be diagnosable while it is still running, not only from the return value after the fact.
+      console.log(
+        `[runUntil] steps=${steps} stage=${currentStage} ` +
+          `amphiphileFraction=${evidence.amphiphileFraction.toFixed(4)} ` +
+          `largestAggregateFraction=${evidence.largestAggregateFraction.toFixed(4)} ` +
+          `headPeaks=${evidence.headPeaks} enclosedVolume=${evidence.enclosedVolume.toFixed(4)}`,
+      )
+      if (currentStage === stage) {
+        reached = true
+        break
+      }
+    }
+    return { reached, steps, trace }
+  }
+
+  let sys!: SoupSystem
+  sys = { step, particles, bonds, events, invariants, box, runUntil, stepPhasesDEBUG: stepPhasesDEBUG as any }
+  return sys
 }

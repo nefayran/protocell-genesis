@@ -31,11 +31,17 @@ export type { CreateSystemOpts, Layout, System } from './sim'
 // reaches createSystem.
 export { createSoup } from '../../soup/src/sim'
 export type { CreateSoupOpts, SoupSystem } from '../../soup/src/sim'
-// Task 3: amphiphile/stage recognition, published as window.api.stageOf for tests and the scene
-// (soup/src/stages.ts's own detectStage takes `box` as an explicit second argument -- SoupSystem
-// has no box field, see stages.ts's header for why -- so stageOf carries that through unchanged).
+// Task 3: amphiphile/stage recognition, published as window.api.stageOf for tests and the scene.
+// Task 4 reconciled the box-parameter deviation Task 3 flagged: SoupSystem now carries its own
+// `box` field, so stageOf(sys) takes a single argument (see soup/src/stages.ts's header).
 export { detectStage as stageOf } from '../../soup/src/stages'
 export type { Stage, StageEvidence } from '../../soup/src/stages'
+// Task 4: re-exported for diagnostics (the pilot run's own histogram-over-time measurement needs
+// them from page.evaluate, and browser-side `import()` inside a page.evaluate callback gets
+// mis-rewritten by Vitest's own SSR transform of the OUTER test file -- window.api is the
+// established escape hatch every other facade call already uses instead).
+export { loadSoup } from '../../soup/src/rules'
+export { findAmphiphiles, amphiphileHistogram } from '../../soup/src/amphiphile'
 export {
   areaPerLipid,
   bilayerPeaks,
