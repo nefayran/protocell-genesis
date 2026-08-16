@@ -34,8 +34,8 @@ export type { CreateSoupOpts, SoupSystem } from '../../soup/src/sim'
 // Task 3: amphiphile/stage recognition, published as window.api.stageOf for tests and the scene.
 // Task 4 reconciled the box-parameter deviation Task 3 flagged: SoupSystem now carries its own
 // `box` field, so stageOf(sys) takes a single argument (see soup/src/stages.ts's header).
-export { detectStage as stageOf } from '../../soup/src/stages'
-export type { Stage, StageEvidence } from '../../soup/src/stages'
+export { detectStage as stageOf, loadStageThresholds, memberIndicesOf, positionsFor } from '../../soup/src/stages'
+export type { Stage, StageEvidence, StageThresholds } from '../../soup/src/stages'
 // Task 4: re-exported for diagnostics (the pilot run's own histogram-over-time measurement needs
 // them from page.evaluate, and browser-side `import()` inside a page.evaluate callback gets
 // mis-rewritten by Vitest's own SSR transform of the OUTER test file -- window.api is the
@@ -54,14 +54,17 @@ export {
 export type { ZProfile } from './metrics'
 export { clusters, largestClusterFraction, largestClusterCenter } from './aggregate'
 export {
+  cavities,
+  cavitiesFromPositions,
   dimsFor,
   enclosedVolume,
   enclosedVolumeFromPositions,
   enclosedVolumeGpuDetailed,
+  equivalentSphereRadius,
   occupancy,
   recenterOnLargestCluster,
 } from './closure'
-export type { Dims, EnclosedVolumeGpuResult } from './closure'
+export type { Cavity, CavitiesResult, CavityWorld, Dims, EnclosedVolumeGpuResult } from './closure'
 export {
   columnNoiseStats,
   fitBendingModulus,

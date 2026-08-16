@@ -17,11 +17,20 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import atomsRaw from '../data/atoms.json'
 import { backmapLipid, type BackmapAtom } from '../chem/src/backmap'
+import { cavitiesFromPositions, equivalentSphereRadius, type CavityWorld } from '../engine/src/closure'
 import { loadParams } from '../engine/src/params'
 import { findAmphiphiles, type Amphiphile } from '../soup/src/amphiphile'
-import { loadSoup, type Monomer } from '../soup/src/rules'
+import { loadSoup } from '../soup/src/rules'
 import { createSoup, type SoupSystem } from '../soup/src/sim'
-import { detectStage, HEAD_PEAKS_UNAVAILABLE, type Stage, type StageEvidence } from '../soup/src/stages'
+import {
+  detectStage,
+  HEAD_PEAKS_UNAVAILABLE,
+  loadStageThresholds,
+  memberIndicesOf,
+  positionsFor,
+  type Stage,
+  type StageEvidence,
+} from '../soup/src/stages'
 
 interface ElementInfo {
   vdw: number
@@ -91,6 +100,17 @@ const BOND_RADIUS = atomsData.elements.C.vdw * 0.16
 // documented stand-in chosen only to keep it visually distinct, not a claim about its chemistry.
 const MONOMER_ELEMENT: Record<string, string> = { C: 'C', O: 'O', H: 'H', M: 'Na' }
 
+// Cavity voxel cloud: display-only styling for the closure detector's own unreached grid cells (see
+// buildCavityDrawing() below). Colour/opacity are chosen only to read as visually distinct from
+// every monomer sphere (data/atoms.json's element palette) and every bond cylinder (plain white) --
+// a translucent teal that no monomer or bond uses. CAVITY_CUBE_SCALE shrinks each cube slightly
+// below the detector's own grid cell (thresholds.closureCell) so adjacent voxels of the same cavity
+// still read as a granular cloud instead of one solid slab -- purely cosmetic, never fed back into
+// any measurement.
+const CAVITY_COLOR = 0x2de6c0
+const CAVITY_OPACITY = 0.35
+const CAVITY_CUBE_SCALE = 0.85
+
 // Safe upper bounds for InstancedMesh capacities, derived rather than guessed: soup/src/stages.ts's
 // own header notes valence is capped at 3, so bonds <= N*3/2 and this file's two-half-cylinder
 // convention needs N*3 segments at most. ATOMS_PER_CARBON_ESTIMATE covers the reconstructed
@@ -148,6 +168,13 @@ interface RunUI {
    * completed step count folded into the message so the on-screen state itself carries that
    * number (also still readable from `steps`, which the failure path freezes rather than zeroes). */
   error: string | null
+  /** How many disjoint cavities the closure detector found on the latest sample -- 0 whenever
+   * nothing is closed at all (the normal state for most of a run). */
+  cavityCount: number
+  /** The largest of those cavities' own summary numbers (voxelCount/volume/radius/centre), without
+   * its full voxel list -- that list lives on Snapshot.largestCavity for drawing only, not on this
+   * UI-readout object. null exactly when cavityCount === 0. */
+  largestCavity: { voxelCount: number; volume: number; radius: number; centre: [number, number, number] } | null
 }
 
 function main(): void {
@@ -174,6 +201,22 @@ function main(): void {
   const visibilityNoteEl = document.getElementById('visibility-note') as HTMLElement
   const honestyNoteEl = document.getElementById('honesty-note') as HTMLElement
   const atomBadgeEl = document.getElementById('atom-badge') as HTMLElement
+
+  const cavityCountEl = document.getElementById('cavity-count') as HTMLElement
+  const cavityVoxelsEl = document.getElementById('cavity-voxels') as HTMLElement
+  const cavityVolumeEl = document.getElementById('cavity-volume') as HTMLElement
+  const cavityRadiusEl = document.getElementById('cavity-radius') as HTMLElement
+  const cavityCentreEl = document.getElementById('cavity-centre') as HTMLElement
+  const cavityAimBtn = document.getElementById('cavity-aim-btn') as HTMLButtonElement
+  const cavityHonestyEl = document.getElementById('cavity-honesty') as HTMLElement
+
+  const thresholds = loadStageThresholds()
+  cavityHonestyEl.textContent =
+    `ЧЕСТНО: полость из нескольких клеток сетки — это карман между бидами, а не внутренность ` +
+    `везикулы. Порог считается физически: минимальный объём — это шар радиусом, ПРЕВЫШАЮЩИМ ` +
+    `измеренную толщину бислоя (data/literature.json's closure gate, ≈${thresholds.enclosedVolume.toFixed(2)} σ³ ` +
+    `≈ ${equivalentSphereRadius(thresholds.enclosedVolume).toFixed(2)}σ экв. радиуса) — меньшая полость ` +
+    `физически не может быть внутренностью мембраны, которая должна её огибать.`
 
   for (const [key, preset] of Object.entries(SIZE_PRESETS)) {
     const opt = document.createElement('option')
@@ -254,13 +297,14 @@ function main(): void {
     bondMesh: THREE.InstancedMesh
     atomMesh: THREE.InstancedMesh
     atomBondMesh: THREE.InstancedMesh
+    cavityMesh: THREE.InstancedMesh
   }
   let meshes: SceneMeshes | null = null
 
   function buildMeshes(n: number, box: [number, number, number]): SceneMeshes {
     if (meshes) {
       for (const m of Object.values(meshes.monomerMesh)) scene.remove(m)
-      scene.remove(meshes.bondMesh, meshes.atomMesh, meshes.atomBondMesh)
+      scene.remove(meshes.bondMesh, meshes.atomMesh, meshes.atomBondMesh, meshes.cavityMesh)
     }
     const monomerMesh: Record<string, THREE.InstancedMesh> = {}
     for (const m of soup.monomers) {
@@ -291,8 +335,25 @@ function main(): void {
     atomBondMesh.count = 0
     scene.add(atomBondMesh)
 
+    // Cavity voxel cloud (see CAVITY_COLOR's own doc comment): capacity is the box's own total
+    // grid-cell count at this run's closure resolution (thresholds.closureCell) -- a cavity can
+    // never have more voxels than the grid itself, so this is a structural bound, not a guess (same
+    // reasoning as MAX_BOND_SEGMENTS_PER_PARTICLE/ATOMS_PER_CARBON_ESTIMATE above).
+    const cellsPerAxis = box.map((side) => Math.max(1, Math.ceil(side / thresholds.closureCell)))
+    const cavityCap = Math.max(1, cellsPerAxis[0] * cellsPerAxis[1] * cellsPerAxis[2])
+    const cavityGeo = new THREE.BoxGeometry(1, 1, 1)
+    const cavityMat = new THREE.MeshBasicMaterial({
+      color: CAVITY_COLOR,
+      transparent: true,
+      opacity: CAVITY_OPACITY,
+      depthWrite: false,
+    })
+    const cavityMesh = new THREE.InstancedMesh(cavityGeo, cavityMat, cavityCap)
+    cavityMesh.count = 0
+    scene.add(cavityMesh)
+
     frameCamera(box)
-    return { monomerMesh, bondMesh, atomMesh, atomBondMesh }
+    return { monomerMesh, bondMesh, atomMesh, atomBondMesh, cavityMesh }
   }
 
   const dummy = new THREE.Object3D()
@@ -416,6 +477,22 @@ function main(): void {
     if (meshes.atomMesh.instanceColor) meshes.atomMesh.instanceColor.needsUpdate = true
     drawHalfCylinders(meshes.atomBondMesh, atomSegments)
 
+    // --- largest cavity's voxel cloud (see CAVITY_COLOR's own doc comment) -------------------
+    const cavityMesh = meshes.cavityMesh
+    const cubeSide = thresholds.closureCell * CAVITY_CUBE_SCALE
+    const voxels = snap.largestCavity?.voxelCentres ?? null
+    const voxelCount = voxels ? voxels.length / 3 : 0
+    const cavityInstances = Math.min(voxelCount, cavityMesh.instanceMatrix.count)
+    for (let k = 0; k < cavityInstances; k++) {
+      dummy.position.set(voxels![k * 3], voxels![k * 3 + 1], voxels![k * 3 + 2])
+      dummy.scale.setScalar(cubeSide)
+      dummy.rotation.set(0, 0, 0)
+      dummy.updateMatrix()
+      cavityMesh.setMatrixAt(k, dummy.matrix)
+    }
+    cavityMesh.count = cavityInstances
+    cavityMesh.instanceMatrix.needsUpdate = true
+
     controls.update()
     renderer.render(scene, camera)
   }
@@ -428,6 +505,15 @@ function main(): void {
     atomistic: { atoms: BackmapAtom[]; bonds: [number, number][] }[]
     atomisticSet: Set<number>
     amphiphileCount: number
+    /** The largest disjoint cavity the closure detector found on this snapshot's amphiphile-member
+     * positions (the exact same "wall" material detectStage's own enclosedVolume measures), already
+     * mapped back into this snapshot's own (un-recentred) coordinate frame -- see
+     * cavitiesFromPositions' own doc comment. null when no cavity was found at all. Recomputed only
+     * on sampled ticks (SAMPLE_INTERVAL_MS), same throttle as the stage/evidence readout -- the grid
+     * flood is cheap, but there is no reason to redo it faster than the numbers it feeds ever
+     * repaint. */
+    largestCavity: CavityWorld | null
+    cavityCount: number
   }
 
   const runUI: RunUI = {
@@ -438,6 +524,8 @@ function main(): void {
     evidence: { amphiphileFraction: 0, largestAggregateFraction: 0, headPeaks: 0, enclosedVolume: 0 },
     trace: [],
     error: null,
+    cavityCount: 0,
+    largestCavity: null,
   }
   ;(window as unknown as { runUI: RunUI }).runUI = runUI
 
@@ -445,6 +533,12 @@ function main(): void {
   let stepCap = DEFAULT_STEP_CAP
   let box: [number, number, number] = SIZE_PRESETS[DEFAULT_SIZE_KEY].box
   let bondCount = 0
+  // Cavity info persists ACROSS ticks between samples (unlike evidence/stage, which only ever
+  // exist as of the last sample too, but are read straight off runUI) -- draw() reads
+  // Snapshot.largestCavity every rendered frame, including the many ticks between two samples, so
+  // without this the voxel cloud would flicker to "nothing" every tick that is not itself a sample.
+  let lastCavity: CavityWorld | null = null
+  let lastCavityCount = 0
 
   // Wall-clock bookkeeping: elapsed only accumulates while ACTUALLY running (not paused, not
   // hidden-auto-paused) -- pausing must freeze the clock, not just stop the step counter, or "прошло"
@@ -547,18 +641,29 @@ function main(): void {
       `<div class="row"><span>пики голов</span><span>${ev.headPeaks === HEAD_PEAKS_UNAVAILABLE ? 'н/д' : ev.headPeaks}</span></div>` +
       `<div class="row"><span>замкн. объём</span><span>${ev.enclosedVolume.toFixed(4)}</span></div>` +
       `<div class="row"><span>связей</span><span>${bondCount}</span></div>`
+
+    cavityCountEl.textContent = String(runUI.cavityCount)
+    const largest = runUI.largestCavity
+    cavityVoxelsEl.textContent = largest ? String(largest.voxelCount) : '–'
+    cavityVolumeEl.textContent = largest ? largest.volume.toFixed(4) : '–'
+    cavityRadiusEl.textContent = largest ? largest.radius.toFixed(3) : '–'
+    cavityCentreEl.textContent = largest
+      ? `${largest.centre[0].toFixed(1)}, ${largest.centre[1].toFixed(1)}, ${largest.centre[2].toFixed(1)}`
+      : '–'
+    cavityAimBtn.disabled = !largest
   }
 
   /** Builds this snapshot's atomistic slice (backmapLipid per amphiphile whose head falls inside
-   * the fixed spatial band -- exactly viewer/molecular.ts's own convention), given already-fetched
-   * particles/bonds so the caller pays for exactly one particles()/bonds() read-back, not several. */
+   * the fixed spatial band -- exactly viewer/molecular.ts's own convention). Takes an already-
+   * recognised `amphiphiles` list (simDriver's own single findAmphiphiles() call per tick) rather
+   * than recomputing it here a second time -- the same list feeds the cavity-drawing member
+   * positions below, and both uses must agree on exactly which particles count as "amphiphile
+   * members" for this tick. */
   function buildAtomisticSlice(
+    amphiphiles: Amphiphile[],
     particles: Float32Array,
-    bonds: Uint32Array,
-    monomers: Monomer[],
     boxNow: [number, number, number],
-  ): { atomistic: Snapshot['atomistic']; atomisticSet: Set<number>; amphiphileCount: number } {
-    const amphiphiles = findAmphiphiles(particles, bonds, monomers)
+  ): { atomistic: Snapshot['atomistic']; atomisticSet: Set<number> } {
     const halfWidth = boxNow[0] * SLICE_HALF_WIDTH_FRAC
     const cx = boxNow[0] / 2
     const inSlice = (a: Amphiphile): boolean => {
@@ -589,7 +694,7 @@ function main(): void {
       atomisticSet.add(a.headIndex)
       for (const c of a.chain) atomisticSet.add(c)
     }
-    return { atomistic, atomisticSet, amphiphileCount: amphiphiles.length }
+    return { atomistic, atomisticSet }
   }
 
   /** Races mySys.step(batch) against a fixed deadline instead of awaiting it unconditionally --
@@ -652,12 +757,22 @@ function main(): void {
         bondCount = bnds.length / 2
 
         const now = performance.now()
-        const { atomistic, atomisticSet, amphiphileCount } = buildAtomisticSlice(pos, bnds, soup.monomers, box)
-        latestSnapshot = { particles: pos, bonds: bnds, box, atomistic, atomisticSet, amphiphileCount }
+        const amphiphiles = findAmphiphiles(pos, bnds, soup.monomers)
+        const { atomistic, atomisticSet } = buildAtomisticSlice(amphiphiles, pos, box)
+        latestSnapshot = {
+          particles: pos,
+          bonds: bnds,
+          box,
+          atomistic,
+          atomisticSet,
+          amphiphileCount: amphiphiles.length,
+          largestCavity: lastCavity,
+          cavityCount: lastCavityCount,
+        }
         atomBadgeEl.textContent =
           `Скелет реконструированных атомов взят из ПРОВЕРЕННОЙ огрублённой динамики бульона; атомная ` +
           `геометрия — литературные длины связей/углы (chem/src/backmap.ts), не независимая ` +
-          `атомистическая симуляция. Атом за атомом показано ${atomistic.length} из ${amphiphileCount} ` +
+          `атомистическая симуляция. Атом за атомом показано ${atomistic.length} из ${amphiphiles.length} ` +
           `найденных амфифилов (остальные — те же коарс-грейн мономеры).`
 
         if (sampleDue || now - lastSampleAt >= SAMPLE_INTERVAL_MS) {
@@ -674,11 +789,38 @@ function main(): void {
           const entry: TraceEntry = { steps: runUI.steps, stage, evidence }
           runUI.trace.push(entry)
           if (runUI.trace.length > MAX_TRACE_LINES) runUI.trace.shift()
+
+          // --- cavity breakdown: the SAME amphiphile-member positions detectStage's own
+          // enclosedVolume just measured above, run through cavitiesFromPositions for the full
+          // per-cavity list instead of one summed scalar -- see this file's Snapshot.largestCavity
+          // doc comment for why this must reuse memberIndicesOf/positionsFor (soup/src/stages.ts)
+          // rather than a second, independently-written "what counts as the wall" definition.
+          const memberIdx = memberIndicesOf(amphiphiles)
+          const cavityResult =
+            memberIdx.size > 0
+              ? cavitiesFromPositions(positionsFor(pos, memberIdx), box, {
+                  cell: thresholds.closureCell,
+                  radius: thresholds.closureRadius,
+                })
+              : { cavityCount: 0, cavities: [] }
+          lastCavity = cavityResult.cavities[0] ?? null
+          lastCavityCount = cavityResult.cavityCount
+          runUI.cavityCount = lastCavityCount
+          runUI.largestCavity = lastCavity
+            ? { voxelCount: lastCavity.voxelCount, volume: lastCavity.volume, radius: lastCavity.radius, centre: lastCavity.centre }
+            : null
+          // The snapshot built just above this block still carries the PREVIOUS tick's cavity --
+          // overwrite it now that this tick's own cavity is known, so draw() never lags a whole
+          // sample interval behind the readout it is drawn to match.
+          latestSnapshot.largestCavity = lastCavity
+          latestSnapshot.cavityCount = lastCavityCount
+
           appendTraceLine(
             `шаг=${entry.steps} стадия=${stage} амф=${evidence.amphiphileFraction.toFixed(4)} ` +
               `агр=${evidence.largestAggregateFraction.toFixed(4)} пики=${
                 evidence.headPeaks === HEAD_PEAKS_UNAVAILABLE ? 'н/д' : evidence.headPeaks
-              } объём=${evidence.enclosedVolume.toFixed(4)}`,
+              } объём=${evidence.enclosedVolume.toFixed(4)} полостей=${lastCavityCount} ` +
+              `крупн.полость.вокс=${lastCavity?.voxelCount ?? 0}`,
           )
 
           paintProgress()
@@ -744,8 +886,12 @@ function main(): void {
     runUI.evidence = { amphiphileFraction: 0, largestAggregateFraction: 0, headPeaks: 0, enclosedVolume: 0 }
     runUI.trace = []
     runUI.error = null
+    runUI.cavityCount = 0
+    runUI.largestCavity = null
     traceLogEl.textContent = ''
     bondCount = 0
+    lastCavity = null
+    lastCavityCount = 0
     activeElapsedMs = 0
     lastResumeAt = performance.now()
     lastSampleAt = performance.now()
@@ -801,6 +947,21 @@ function main(): void {
   })
   pauseBtn.addEventListener('click', togglePause)
   stopBtn.addEventListener('click', stopRun)
+
+  /** Points the camera at the largest cavity's own centre, preserving the CURRENT camera-to-target
+   * offset (distance and angle) rather than jumping to some fixed distance -- so a user who has
+   * already zoomed/rotated to a view they like keeps that same framing, just re-aimed. No-op (the
+   * button is disabled, see paintProgress()) when no cavity has been found yet. */
+  function aimAtCavity(): void {
+    const largest = runUI.largestCavity
+    if (!largest) return
+    const target = new THREE.Vector3(...largest.centre)
+    const offset = camera.position.clone().sub(controls.target)
+    controls.target.copy(target)
+    camera.position.copy(target).add(offset)
+    controls.update()
+  }
+  cavityAimBtn.addEventListener('click', aimAtCavity)
 
   // Machine-friendliness requirement: pause automatically when the tab is hidden, resume only when
   // it becomes visible again -- and ONLY if this pause was the automatic kind, never overriding a

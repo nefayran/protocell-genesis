@@ -45,12 +45,13 @@
 //    separation falls inside a plausible bilayer-thickness band (`headPeakSeparationMin/Max`) --
 //    two local maxima that just happen to sit far apart are not a bilayer.
 
+import rawLiterature from '../../data/literature.json'
 import rawSoup from '../../data/soup.json'
 import { largestClusterFraction } from '../../engine/src/aggregate'
 import { enclosedVolumeFromPositions } from '../../engine/src/closure'
 import { bilayerThickness, densityProfileZ } from '../../engine/src/metrics'
 import { loadParams, wcaCutoff } from '../../engine/src/params'
-import { findAmphiphiles } from './amphiphile'
+import { findAmphiphiles, type Amphiphile } from './amphiphile'
 import { loadSoup, type Monomer } from './rules'
 import type { SoupSystem } from './sim'
 
@@ -103,10 +104,65 @@ export interface StageThresholds {
   basis: string
 }
 
+/** The vesicle-closure gate's own physically-grounded minimum (data/literature.json, id "closure",
+ * target.min) -- see that file's `conditions` field for the derivation: the smallest sphere whose
+ * radius exceeds this project's own measured bilayer thickness. Read here (not re-derived) so
+ * loadStageThresholds() below can assert the ladder's own vesicle threshold is the SAME number,
+ * rather than trusting two independently hand-maintained copies to stay equal. */
+function literatureClosureMin(): number {
+  const gates = (rawLiterature as { gates: Array<{ id: string; target: { min?: number } }> }).gates
+  const gate = gates.find((g) => g.id === 'closure')
+  if (!gate || gate.target.min === undefined) {
+    throw new Error('data/literature.json: отсутствует closure.target.min')
+  }
+  return gate.target.min
+}
+
 export function loadStageThresholds(): StageThresholds {
   const t = (rawSoup as unknown as { stageThresholds?: StageThresholds }).stageThresholds
   if (!t) throw new Error('data/soup.json: отсутствует поле stageThresholds')
+  const literatureMin = literatureClosureMin()
+  if (t.enclosedVolume !== literatureMin) {
+    // The whole point of tying these two numbers together (task: "so the ladder and the gate
+    // agree") is that an editor changing ONE of them without the other must fail loudly, not
+    // quietly let a run's stage label and its own literature-gate verdict disagree about what
+    // counts as a vesicle -- exactly the kind of gap that let enclosedVolume=1.1250 (9 flood-fill
+    // cells) read as "vesicle" under the old min:1 threshold while the gate's own written
+    // conditions never meant that as a physical criterion.
+    throw new Error(
+      `data/soup.json stageThresholds.enclosedVolume (${t.enclosedVolume}) не совпадает с ` +
+        `data/literature.json closure.target.min (${literatureMin}) -- лестница стадий и ворота ` +
+        `должны использовать один и тот же физически обоснованный минимум объёма полости`,
+    )
+  }
   return t
+}
+
+/** Every particle index that belongs to a recognised amphiphile (its head or any bead of its
+ * chain) -- the vesicle wall's own material, as opposed to free monomers/donors/catalysts drifting
+ * through the box. Exported so a caller that wants the SAME "wall" definition detectStage's own
+ * closure/aggregation measurements use (e.g. a viewer highlighting the cavity those measurements
+ * found) can rebuild it from `amphiphiles` it already has, instead of drifting from this
+ * definition with a second, independently-written one. */
+export function memberIndicesOf(amphiphiles: Amphiphile[]): Set<number> {
+  const memberIdx = new Set<number>()
+  for (const a of amphiphiles) {
+    memberIdx.add(a.headIndex)
+    for (const c of a.chain) memberIdx.add(c)
+  }
+  return memberIdx
+}
+
+/** `particles`, filtered down to just the indices in `idx` -- the flat vec4-per-particle layout
+ * enclosedVolumeFromPositions/cavitiesFromPositions (engine/src/closure.ts) expect. Exported
+ * alongside memberIndicesOf() for the same reason: one definition of "the wall's positions", used
+ * both by detectStage's own enclosedVolume measurement below and by a viewer wanting the identical
+ * cavity as voxels to draw. */
+export function positionsFor(particles: Float32Array, idx: Set<number>): Float32Array {
+  const idxArr = Array.from(idx)
+  const out = new Float32Array(idxArr.length * 4)
+  for (let k = 0; k < idxArr.length; k++) out.set(particles.subarray(idxArr[k] * 4, idxArr[k] * 4 + 4), k * 4)
+  return out
 }
 
 /** Copy of `particles` with the 4th (kind-index) component replaced by `flagFor(particleIndex)` --
@@ -200,11 +256,7 @@ export async function detectStage(sys: SoupSystem): Promise<{ stage: Stage; evid
   const n = particles.length / 4
 
   const amphiphiles = findAmphiphiles(particles, bonds, soup.monomers)
-  const memberIdx = new Set<number>()
-  for (const a of amphiphiles) {
-    memberIdx.add(a.headIndex)
-    for (const c of a.chain) memberIdx.add(c)
-  }
+  const memberIdx = memberIndicesOf(amphiphiles)
 
   // --- amphiphileFraction: carbon particles bound into a recognised chain / carbon particles total
   const carbonKinds = new Set(soup.monomers.map((m, i) => (m.kind === 'carbon' ? i : -1)).filter((i) => i >= 0))
@@ -238,11 +290,7 @@ export async function detectStage(sys: SoupSystem): Promise<{ stage: Stage; evid
   // cluster internally (engine/src/closure.ts), so no separate recentring step is needed here.
   let enclosedVolume = 0
   if (memberIdx.size > 0) {
-    const idxArr = Array.from(memberIdx)
-    const memberPositions = new Float32Array(idxArr.length * 4)
-    for (let k = 0; k < idxArr.length; k++) {
-      memberPositions.set(particles.subarray(idxArr[k] * 4, idxArr[k] * 4 + 4), k * 4)
-    }
+    const memberPositions = positionsFor(particles, memberIdx)
     enclosedVolume = enclosedVolumeFromPositions(memberPositions, box, {
       cell: thresholds.closureCell,
       radius: thresholds.closureRadius,

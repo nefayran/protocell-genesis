@@ -106,15 +106,15 @@ export function occupancy(
   return occ
 }
 
-/** CPU reference: breadth-first flood of every EMPTY cell reachable from any of the box's six
- * boundary faces (open boundary, no periodic wraparound -- see the module note above), then the
- * enclosed volume is the count of empty cells the flood never reached, times cell^3. This is the
- * definition of truth enclosedVolumeGpuDetailed's WGSL kernel is checked against. */
-export function enclosedVolume(occ: Uint8Array, dims: [number, number, number], cell: number): number {
+/** The flood itself, factored out of enclosedVolume() below so the cavity-labelling pass added
+ * later in this file (cavities()) can reuse the EXACT SAME "outside" BFS rather than a second,
+ * possibly-drifting copy of it -- this is a pure extraction, the traversal order, seeding rule and
+ * termination condition are byte-for-byte what enclosedVolume() ran inline before. Breadth-first
+ * flood of every EMPTY cell reachable from any of the box's six boundary faces (open boundary, no
+ * periodic wraparound -- see the module note above). Returns the visited mask; callers decide what
+ * to do with the unreached (occ=0, visited=0) cells. */
+function floodOutside(occ: Uint8Array, dims: [number, number, number]): Uint8Array {
   const [nx, ny, nz] = dims
-  if (occ.length !== nx * ny * nz) {
-    throw new Error(`enclosedVolume: occ.length=${occ.length} не совпадает с dims=[${nx},${ny},${nz}]`)
-  }
   const visited = new Uint8Array(occ.length)
   const idx = (x: number, y: number, z: number) => x + nx * (y + ny * z)
   const queue: number[] = []
@@ -144,9 +144,124 @@ export function enclosedVolume(occ: Uint8Array, dims: [number, number, number], 
     seed(x, y, z + 1); seed(x, y, z - 1)
   }
 
+  return visited
+}
+
+/** CPU reference: breadth-first flood of every EMPTY cell reachable from any of the box's six
+ * boundary faces (open boundary, no periodic wraparound -- see the module note above), then the
+ * enclosed volume is the count of empty cells the flood never reached, times cell^3. This is the
+ * definition of truth enclosedVolumeGpuDetailed's WGSL kernel is checked against. */
+export function enclosedVolume(occ: Uint8Array, dims: [number, number, number], cell: number): number {
+  const [nx, ny, nz] = dims
+  if (occ.length !== nx * ny * nz) {
+    throw new Error(`enclosedVolume: occ.length=${occ.length} не совпадает с dims=[${nx},${ny},${nz}]`)
+  }
+  const visited = floodOutside(occ, dims)
   let unreached = 0
   for (let i = 0; i < occ.length; i++) if (occ[i] === 0 && visited[i] === 0) unreached++
   return unreached * cell * cell * cell
+}
+
+// --- cavity breakdown: WHICH unreached cells belong to WHICH disjoint pocket -----------------------
+//
+// enclosedVolume() above answers "how much empty space did the flood never reach, total" -- a
+// single scalar that silently sums every disjoint unreached region together. That scalar is what
+// the vesicle gate has always been checked against and stays checked against (data/soup.json /
+// data/literature.json), so this section does not change it. But a single number cannot show a
+// viewer WHERE a cavity is, whether it is one pocket or several unrelated ones, or how big any ONE
+// of them actually is -- exactly the distinction this task exists to make honest (a run can report
+// a total enclosedVolume that clears a threshold while consisting of several small, physically
+// meaningless pockets, none of which is remotely vesicle-sized). cavities() below labels the SAME
+// unreached cells floodOutside() already identified into connected components (6-connected, same
+// open-boundary convention as the flood itself -- no periodic wrap, matching floodOutside()'s own
+// choice) via a second, independent BFS/labelling pass. This is new analysis of the flood's output,
+// not a change to the flood algorithm itself.
+
+export interface Cavity {
+  /** Number of grid cells in this cavity. */
+  voxelCount: number
+  /** voxelCount * cell^3, in the same reduced units as the box. */
+  volume: number
+  /** Flat cell indices (x + nx*(y+ny*z), same indexing as occ/visited) belonging to this cavity. */
+  cells: Uint32Array
+  /** Centre of mass of this cavity's cell CENTRES, in the same coordinate frame as the `occ` grid
+   * passed in (i.e. NOT undone of any recentring the caller applied before building `occ`). */
+  centre: [number, number, number]
+}
+
+/** (3*volume/(4*pi))^(1/3) -- the radius of a sphere with the same volume as `volume`. Pure
+ * geometry, used to make a cavity's size intuitive (a viewer showing "voxelCount=2984" is not
+ * intuitive; "equivalent radius 8.9 sigma" is). */
+export function equivalentSphereRadius(volume: number): number {
+  return Math.cbrt((3 * volume) / (4 * Math.PI))
+}
+
+/** Labels every EMPTY, flood-unreached cell of `occ` into connected components (6-connected, open
+ * boundary -- see this section's header), sorted largest-voxelCount-first. `enclosedVolume(occ,
+ * dims, cell)` above always equals the sum of every returned cavity's `volume` -- this function is
+ * strictly a breakdown of the same unreached set, not a different measurement of it. */
+export function cavities(occ: Uint8Array, dims: Dims, cell: number): Cavity[] {
+  const [nx, ny, nz] = dims
+  if (occ.length !== nx * ny * nz) {
+    throw new Error(`cavities: occ.length=${occ.length} не совпадает с dims=[${nx},${ny},${nz}]`)
+  }
+  const visited = floodOutside(occ, dims)
+  const labelled = new Uint8Array(occ.length) // 1 once assigned to some cavity, to avoid a second visit
+  const cellOf = (i: number): [number, number, number] => {
+    const z = Math.floor(i / (nx * ny))
+    const rem = i - z * nx * ny
+    const y = Math.floor(rem / nx)
+    const x = rem - y * nx
+    return [x, y, z]
+  }
+  const idx = (x: number, y: number, z: number) => x + nx * (y + ny * z)
+
+  const result: Cavity[] = []
+  const queue: number[] = []
+  for (let start = 0; start < occ.length; start++) {
+    if (occ[start] !== 0 || visited[start] !== 0 || labelled[start] !== 0) continue
+
+    labelled[start] = 1
+    queue.length = 0
+    queue.push(start)
+    const cellsArr: number[] = []
+    let sx = 0
+    let sy = 0
+    let sz = 0
+    let head = 0
+    while (head < queue.length) {
+      const i = queue[head++]
+      cellsArr.push(i)
+      const [x, y, z] = cellOf(i)
+      sx += (x + 0.5) * cell
+      sy += (y + 0.5) * cell
+      sz += (z + 0.5) * cell
+      const neighbors: [number, number, number][] = [
+        [x + 1, y, z], [x - 1, y, z],
+        [x, y + 1, z], [x, y - 1, z],
+        [x, y, z + 1], [x, y, z - 1],
+      ]
+      for (const [nx2, ny2, nz2] of neighbors) {
+        if (nx2 < 0 || nx2 >= nx || ny2 < 0 || ny2 >= ny || nz2 < 0 || nz2 >= nz) continue
+        const ni = idx(nx2, ny2, nz2)
+        if (occ[ni] === 0 && visited[ni] === 0 && labelled[ni] === 0) {
+          labelled[ni] = 1
+          queue.push(ni)
+        }
+      }
+    }
+
+    const n = cellsArr.length
+    result.push({
+      voxelCount: n,
+      volume: n * cell * cell * cell,
+      cells: Uint32Array.from(cellsArr),
+      centre: [sx / n, sy / n, sz / n],
+    })
+  }
+
+  result.sort((a, b) => b.voxelCount - a.voxelCount)
+  return result
 }
 
 // --- recentring: the fix for the open-boundary flood's face-coincidence blind spot -------------
@@ -169,14 +284,19 @@ function wrap1(v: number, box: number): number {
  * occupancy()/enclosedVolume()'s open-boundary flood seeds "outside" from every boundary face with
  * no idea what structure surrounds it. Recentring first removes the coincidence entirely, at the
  * cost of one extra union-find pass. The caller's own array is never mutated. */
-export function recenterOnLargestCluster(positions: Float32Array, box: [number, number, number]): Float32Array {
+/** The (shiftX, shiftY, shiftZ) recenterOnLargestCluster applies -- factored out so a caller that
+ * needs to walk the SAME shift backwards (mapping something computed in the recentred frame, e.g.
+ * a cavity's voxels, back into the original frame the caller's own positions are drawn in) can get
+ * it without re-deriving it, and without recenterOnLargestCluster itself changing shape. */
+function largestClusterShift(positions: Float32Array, box: [number, number, number]): [number, number, number] {
   const p = loadParams()
   const cutoff = wcaCutoff(p.beadSizes.tail_tail) + p.attraction.wc
   const [comX, comY, comZ] = largestClusterCenter(positions, box, cutoff)
-  const shiftX = box[0] / 2 - comX
-  const shiftY = box[1] / 2 - comY
-  const shiftZ = box[2] / 2 - comZ
+  return [box[0] / 2 - comX, box[1] / 2 - comY, box[2] / 2 - comZ]
+}
 
+export function recenterOnLargestCluster(positions: Float32Array, box: [number, number, number]): Float32Array {
+  const [shiftX, shiftY, shiftZ] = largestClusterShift(positions, box)
   const n = positions.length / 4
   const out = new Float32Array(positions.length)
   for (let i = 0; i < n; i++) {
@@ -200,6 +320,82 @@ export function enclosedVolumeFromPositions(
   const centered = recenterOnLargestCluster(positions, box)
   const occ = occupancy(centered, box, opts.cell, opts.radius)
   return enclosedVolume(occ, dimsFor(box, opts.cell), opts.cell)
+}
+
+/** A cavity from cavitiesFromPositions() below, with everything mapped OUT of the internal
+ * recentred frame and back into the same coordinate frame `positions` was given in -- the frame a
+ * caller's own particles are actually drawn in. `centre`/`voxelCentres` are therefore directly
+ * plottable alongside the caller's own position data with no further transform. */
+export interface CavityWorld {
+  voxelCount: number
+  volume: number
+  /** Equivalent-sphere radius of `volume` -- see equivalentSphereRadius(). */
+  radius: number
+  centre: [number, number, number]
+  /** Flat x,y,z triples, one per voxel (grid-cell centre) belonging to this cavity, length ===
+   * voxelCount*3 -- what a viewer instances to draw the cavity. */
+  voxelCentres: Float32Array
+}
+
+export interface CavitiesResult {
+  /** Total number of disjoint cavities found (cavities.length, kept as its own field so a caller
+   * that only wants the count -- and not to materialize every cavity's voxel list -- can read it
+   * without counting the array itself). */
+  cavityCount: number
+  /** Every cavity found, largest voxelCount first. */
+  cavities: CavityWorld[]
+}
+
+/** Same recentring + occupancy pipeline as enclosedVolumeFromPositions above, but returns the full
+ * per-cavity breakdown (cavities()) instead of one summed scalar, with every cavity's centre and
+ * voxel list mapped back out of the recentred frame into the frame `positions` was given in (see
+ * recenterOnLargestCluster's own doc comment for why recentring exists at all: an open-boundary
+ * flood run directly on `positions` would misread a self-assembled object sitting near a box face
+ * as open, even when it is genuinely closed). `cavities[0].volume` summed with every other
+ * `cavities[k].volume` equals what enclosedVolumeFromPositions(positions, box, opts) returns for
+ * the SAME inputs -- this is a breakdown of that same measurement, not a second one. */
+export function cavitiesFromPositions(
+  positions: Float32Array,
+  box: [number, number, number],
+  opts: { cell: number; radius: number },
+): CavitiesResult {
+  const [shiftX, shiftY, shiftZ] = largestClusterShift(positions, box)
+  const centered = recenterOnLargestCluster(positions, box)
+  const occ = occupancy(centered, box, opts.cell, opts.radius)
+  const dims = dimsFor(box, opts.cell)
+  const [nx, ny] = dims
+  const comps = cavities(occ, dims, opts.cell)
+
+  const toWorld = (x: number, y: number, z: number): [number, number, number] => [
+    wrap1(x - shiftX, box[0]),
+    wrap1(y - shiftY, box[1]),
+    z - shiftZ,
+  ]
+
+  const cavitiesOut: CavityWorld[] = comps.map((c) => {
+    const voxelCentres = new Float32Array(c.cells.length * 3)
+    for (let k = 0; k < c.cells.length; k++) {
+      const i = c.cells[k]
+      const z = Math.floor(i / (nx * ny))
+      const rem = i - z * nx * ny
+      const y = Math.floor(rem / nx)
+      const x = rem - y * nx
+      const [wx, wy, wz] = toWorld((x + 0.5) * opts.cell, (y + 0.5) * opts.cell, (z + 0.5) * opts.cell)
+      voxelCentres[k * 3] = wx
+      voxelCentres[k * 3 + 1] = wy
+      voxelCentres[k * 3 + 2] = wz
+    }
+    const [cx, cy, cz] = toWorld(c.centre[0], c.centre[1], c.centre[2])
+    return {
+      voxelCount: c.voxelCount,
+      volume: c.volume,
+      radius: equivalentSphereRadius(c.volume),
+      centre: [cx, cy, cz],
+      voxelCentres,
+    }
+  })
+
+  return { cavityCount: cavitiesOut.length, cavities: cavitiesOut }
 }
 
 // --- GPU kernel driver -------------------------------------------------------------------------

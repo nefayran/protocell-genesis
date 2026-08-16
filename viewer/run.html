@@ -38,6 +38,23 @@
     white-space: pre;
   }
 
+  /* Below #controls, same left column -- #controls' own content (select/select/input/buttons)
+     never exceeds this offset at this font size, and this panel's own bottom notes (honesty/
+     visibility/atom-badge) are anchored from the viewport's bottom edge instead, so the two never
+     compete for the same vertical band. */
+  #cavity {
+    position: absolute; top: 300px; left: 12px; z-index: 2; width: 260px;
+    background: rgba(15, 17, 20, 0.92); border: 1px solid #2b6f5e; border-radius: 8px;
+    padding: 10px 14px; font-size: 12px; line-height: 1.5;
+  }
+  #cavity .title { font-weight: 600; margin-bottom: 4px; color: #6fd6b8; }
+  #cavity .row { display: flex; justify-content: space-between; }
+  #cavity-aim-btn { width: 100%; margin-top: 8px; padding: 6px 4px; cursor: pointer; }
+  #cavity-aim-btn:disabled { cursor: not-allowed; opacity: 0.5; }
+  #cavity-honesty {
+    margin-top: 8px; border-top: 1px solid #2b6f5e; padding-top: 6px; font-weight: 600; color: #e0c060;
+  }
+
   /* Honesty note and visibility note: same treatment as every other viewer's honesty badge --
      always visible, never a tooltip. */
   #honesty-note, #visibility-note {
@@ -83,6 +100,17 @@
   <div id="ladder"></div>
   <div id="evidence"></div>
   <div id="trace-log"></div>
+</div>
+
+<div id="cavity">
+  <div class="title">Полость (детектор заливкой)</div>
+  <div class="row"><span>найдено полостей</span><span id="cavity-count">0</span></div>
+  <div class="row"><span>крупнейшая, ячеек</span><span id="cavity-voxels">–</span></div>
+  <div class="row"><span>объём, σ³</span><span id="cavity-volume">–</span></div>
+  <div class="row"><span>экв. радиус, σ</span><span id="cavity-radius">–</span></div>
+  <div class="row"><span>центр, σ</span><span id="cavity-centre">–</span></div>
+  <button id="cavity-aim-btn" disabled>НАВЕСТИ КАМЕРУ НА ПОЛОСТЬ</button>
+  <div id="cavity-honesty"></div>
 </div>
 
 <div id="visibility-note">Пока эта заметка синяя — вкладка видима, счёт идёт. Как только вкладка уходит из
