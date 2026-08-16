@@ -131,8 +131,8 @@ struct Pair { f: vec3<f32>, u: f32 };
 // tail1-tail2) with nothing opposing their own collapse toward FENE's zero-separation minimum,
 // which roughly HALVES the resulting bilayer thickness relative to the published target -- see the
 // spec and task-5-report.md (Addendum 3) for the measured bond lengths and thickness this produced,
-// not quoted here. The
-// cos^2 attraction stays excluded within a lipid: it is a tail-tail-only effect, and its force is
+// not quoted here. The cos^2 attraction stays excluded within a lipid: it is a tail-tail-only
+// effect, and its force is
 // identically zero below its own cutoff r_c anyway for the range spanned by a taut lipid, so
 // excluding it only avoids reporting a meaningless constant plateau in the same-lipid energy.
 fn nonbonded(xi: vec3<f32>, xj: vec3<f32>, ti: f32, tj: f32, box: vec3<f32>, sameLipid: bool) -> Pair {
