@@ -101,13 +101,24 @@ export function renderReport(results: GateResult[], meta: Record<string, unknown
     )
     .join('\n')
 
+  // Derived from kappaDetail.spectrumTable AT RENDER TIME, not hardcoded: an earlier version of
+  // this sentence quoted a fixed "58-75%" figure from a different (Task 7) run, which drifted out
+  // of sync with the table rendered two lines below it the moment a later run's spread numbers
+  // differed (review finding). min/max here are always the exact bounds of the rows the table
+  // itself marks inFitWindow, so the sentence and the table can never disagree.
+  const inWindowSpreads = kappaDetail?.spectrumTable.filter((r) => r.inFitWindow).map((r) => r.degenerateSpreadRel) ?? []
+  const spreadSentence =
+    inWindowSpreads.length > 0
+      ? `наблюдается разброс ${(Math.min(...inWindowSpreads) * 100).toFixed(1)}–${(Math.max(...inWindowSpreads) * 100).toFixed(1)}% между модами, которые по симметрии решётки обязаны совпадать —`
+      : `наблюдается большой и неравномерный разброс между модами, которые по симметрии решётки обязаны совпадать —`
+
   const kappaSection = kappaDetail
     ? `
     <section class="kappa">
       <h2>Модуль изгиба κ — почему «недоказано»</h2>
       <p>Изгибная мода релаксирует со скоростью порядка q⁻³…q⁻⁴, поэтому подгонка нуждается именно
       в самых медленных, наименее сошедшихся оболочках q. У оболочек, которые требует окно подгонки,
-      наблюдается разброс 58–75% между модами, которые по симметрии решётки обязаны совпадать —
+      ${spreadSentence}
       прямое, не требующее эталона доказательство того, что эти оболочки ещё не сошлись.</p>
       <table class="meta-table">
         <tr><td>наклон log-log подгонки</td><td>${fmtNum(kappaDetail.slope)}</td></tr>
