@@ -84,6 +84,25 @@ export interface VerletList {
   basis: string
 }
 
+/**
+ * Modelling constraint (rank D, like every other rule in this file): a carboxyl head sits on a
+ * TERMINAL carbon in real amphiphile chemistry, never buried mid-chain. `terminalOnly=true` makes
+ * that a condition on the bond-forming attempt itself (soup/wgsl/bond.wgsl's tryClaimSlot):
+ * (1) a head may claim its slot on a carbon only while that carbon has at most one existing C-C
+ * bond, and (2) a carbon that already carries a head may not accept a further C-C bond. Both are
+ * expressed through the SAME atomic claim-then-rollback idiom the valence cap already uses, not a
+ * separate lock -- see the WGSL file for the reversibility argument (breaking a C-O bond off a
+ * terminal-head carbon returns to a state where forming it is again allowed; a C-C bond this
+ * rule blocks can never have formed, so its own reverse never needs to fire). `terminalOnly=false`
+ * reproduces pre-change behaviour exactly (the same honest A/B control point every other switch in
+ * this file provides) and is the value to flip back to if this constraint is ever suspected of
+ * corrupting detailed balance.
+ */
+export interface HeadPlacement {
+  terminalOnly: boolean
+  basis: string
+}
+
 export interface Soup {
   /** Единственная явная калибровка временнóй шкалы модели (kappa_t на экране в отчётах). */
   kappaT: number
@@ -94,12 +113,14 @@ export interface Soup {
   neighborGrid: NeighborGrid
   verletList: VerletList
   bondAttemptInterval: BondAttemptInterval
+  headPlacement: HeadPlacement
 }
 
 const ALLOWED_MONOMER_KINDS = new Set<Monomer['kind']>(['carbon', 'head', 'donor', 'catalyst'])
 
 const REQUIRED = [
   'kappaT', 'monomers', 'rules', 'start', 'sweep', 'neighborGrid', 'verletList', 'bondAttemptInterval',
+  'headPlacement',
 ] as const
 
 export function loadSoup(): Soup {
@@ -229,5 +250,13 @@ export function assertRulesConsistent(s: Soup): void {
   }
   if (!vl.basis || vl.basis.trim().length <= 10) {
     throw new Error('data/soup.json: verletList не имеет содержательного обоснования (basis)')
+  }
+
+  const hp = s.headPlacement
+  if (typeof hp.terminalOnly !== 'boolean') {
+    throw new Error('data/soup.json: headPlacement.terminalOnly должен быть булевым значением')
+  }
+  if (!hp.basis || hp.basis.trim().length <= 10) {
+    throw new Error('data/soup.json: headPlacement не имеет содержательного обоснования (basis)')
   }
 }

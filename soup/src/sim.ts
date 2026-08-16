@@ -543,6 +543,11 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     const requiresCatalyst = packVec4(rules.map((r) => (r.bond.requiresCatalyst ? 1 : 0)))
     const slotRoleA = packVec4(rules.map((r) => r.slotRoleA))
     const slotRoleB = packVec4(rules.map((r) => r.slotRoleB))
+    // data/soup.json's headPlacement.terminalOnly (rank D, basis in that file): whether
+    // soup/wgsl/bond.wgsl's tryClaimSlot gates head/chain-slot claims on chain-end position, packed
+    // as a 1/0 float the same way requiresCatalyst already is -- the flag is data, not a constant
+    // written into soup/src or soup/wgsl.
+    const headTerminalOnly = soup.headPlacement.terminalOnly ? 1 : 0
     device.queue.writeBuffer(
       bondParamsUniform,
       0,
@@ -557,7 +562,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
         ...slotRoleA,
         ...slotRoleB,
         catalystKind,
-        0,
+        headTerminalOnly,
         0,
         0,
       ]),

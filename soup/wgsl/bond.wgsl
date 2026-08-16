@@ -25,6 +25,22 @@
 // formation walk, `if (partner < i) { continue; }` in the break walk) -- so no edge is ever
 // double-attempted from both sides in the same dispatch, and formation/breaking themselves run as
 // two separate, ordered dispatches (never concurrently) within one step.
+//
+// Head placement (data/soup.json's headPlacement.terminalOnly, valence-and-heads-report.md /
+// terminal-heads-report.md): a carboxyl head belongs on a chain END, never mid-chain, even though
+// mid-chain is a valid VALENCE state (2 chain bonds + 1 head bond is exactly the cap). tryClaimSlot
+// below adds two conditions on WHERE a bond may form, not on the energies: (1) a head may only
+// claim its slot on a carbon that currently has at most one chain (C-C) bond, (2) a carbon that
+// already carries a head may not accept a further chain bond. Both are implemented the same way
+// the valence cap itself is -- claim the slot optimistically with the existing
+// atomicCompareExchangeWeak, THEN check the other condition, and roll the claim back if it was
+// violated -- never a pre-check-then-claim, because a plain pre-check reading two different atomics
+// without an intervening claim is exactly the kind of race the compareExchange pattern exists to
+// avoid. Reversibility: breaking a C-O bond off a terminal-head carbon returns the system to a
+// state where forming that bond is again allowed (nothing about the break is gated by this rule),
+// so detailed balance for co_bond/co_break is undisturbed; a C-C bond this rule forbids can never
+// have formed in the first place, so its reverse (a cc_break of a bond that never existed) never
+// needs to fire -- there is no realised transition this rule makes irreversible.
 
 const BOND_NONE: u32 = 0xFFFFFFFFu;
 const BOND_RULES: u32 = 2u;
@@ -43,7 +59,10 @@ struct BondParams {
   slotRoleA: vec4<f32>,
   slotRoleB: vec4<f32>,
   catalystKind: f32,
-  bpPad0: f32, bpPad1: f32, bpPad2: f32,
+  // data/soup.json's headPlacement.terminalOnly, 1.0/0.0 the same way requiresCatalyst's flags are
+  // -- see tryClaimSlot() below for what it gates and why. bpPad1/bpPad2 remain unused padding.
+  headTerminalOnly: f32,
+  bpPad1: f32, bpPad2: f32,
 };
 @group(2) @binding(0) var<uniform> BP: BondParams;
 
@@ -121,15 +140,47 @@ fn hasBondTo(i: u32, j: u32) -> bool {
 
 fn tryClaimSlot(particle: u32, role: u32, partner: u32) -> i32 {
   let base = particle * 3u;
+  let headTerminalOnly = BP.headTerminalOnly > 0.5;
   if (role == 0u) {
+    // Chain-pool claim (a C-C bond). headPlacement.terminalOnly's condition (2): a carbon that
+    // already carries a head (slot 2 occupied) may not accept a further chain bond, since that
+    // would bury the head mid-chain. Claim the chain slot first (unconditionally, same as before),
+    // then check slot 2 and roll back if this particle turns out to already have a head -- never
+    // the other order, see the file header for why a pre-check would race.
     let r0 = atomicCompareExchangeWeak(&bondSlots[base + 0u], BOND_NONE, partner);
-    if (r0.exchanged) { return 0; }
+    if (r0.exchanged) {
+      if (headTerminalOnly && atomicLoad(&bondSlots[base + 2u]) != BOND_NONE) {
+        atomicStore(&bondSlots[base + 0u], BOND_NONE);
+        return -1;
+      }
+      return 0;
+    }
     let r1 = atomicCompareExchangeWeak(&bondSlots[base + 1u], BOND_NONE, partner);
-    if (r1.exchanged) { return 1; }
+    if (r1.exchanged) {
+      if (headTerminalOnly && atomicLoad(&bondSlots[base + 2u]) != BOND_NONE) {
+        atomicStore(&bondSlots[base + 1u], BOND_NONE);
+        return -1;
+      }
+      return 1;
+    }
     return -1;
   } else if (role == 1u) {
+    // Head-slot claim (the C side of a C-O bond). headPlacement.terminalOnly's condition (1): a
+    // head may only end up on a carbon that has at most one existing chain bond -- a chain end (or
+    // a lone carbon), not a carbon already using both chain slots. Claim slot 2 first, then check
+    // whether both chain slots turned out to already be occupied and roll back if so.
     let r2 = atomicCompareExchangeWeak(&bondSlots[base + 2u], BOND_NONE, partner);
-    if (r2.exchanged) { return 2; }
+    if (r2.exchanged) {
+      if (headTerminalOnly) {
+        let s0 = atomicLoad(&bondSlots[base + 0u]);
+        let s1 = atomicLoad(&bondSlots[base + 1u]);
+        if (s0 != BOND_NONE && s1 != BOND_NONE) {
+          atomicStore(&bondSlots[base + 2u], BOND_NONE);
+          return -1;
+        }
+      }
+      return 2;
+    }
     return -1;
   } else {
     let r0 = atomicCompareExchangeWeak(&bondSlots[base + 0u], BOND_NONE, partner);
