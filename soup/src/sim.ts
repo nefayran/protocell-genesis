@@ -83,6 +83,20 @@ export interface SoupSystem {
     stage: Stage,
     opts: { maxSteps: number; sampleEvery: number },
   ): Promise<{ reached: boolean; steps: number; trace: { steps: number; stage: Stage; evidence: StageEvidence }[] }>
+  /** Destroys every GPUBuffer this system owns. getGpu() memoizes ONE device for the whole page,
+   * so a caller that creates a second SoupSystem in the same page (viewer/run.ts's "start a new
+   * run" button, tests/run-ui.test.ts's second-run regression) leaves the FIRST system's buffers
+   * (positions, velocities, bond slots, Verlet lists, every uniform -- ~20 GPUBuffers, see
+   * createSoup's own allocations) alive on that shared device unless something explicitly destroys
+   * them: unlike CPU memory, a GPUBuffer whose JS object becomes unreachable is not promptly freed
+   * by garbage collection, so repeated runs without disposal accumulate GPU-side allocations
+   * without bound. Pipelines (module-level `cached`, keyed by device) are NOT touched here -- they
+   * hold no reference to any particular system's buffers (bind groups, which do, are always
+   * recreated fresh per createSoup call) and are safe, and intended, to be reused by the next
+   * system on the same device. Safe to call more than once (GPUBuffer.destroy() is a no-op on an
+   * already-destroyed buffer per the WebGPU spec) and safe to call on a system whose step() is not
+   * currently in flight; callers must not call step()/particles()/etc. afterward. */
+  dispose(): void
 }
 
 const NONE_U32 = 0xffffffff
@@ -1167,6 +1181,35 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     return { reached, steps, trace }
   }
 
+  // Every GPUBuffer createSoup allocates above, for dispose() to destroy -- listed exhaustively
+  // rather than tracked via a running array at allocation time, so this list is a single place to
+  // audit against createSoup's own allocations whenever a new buffer is added up there.
+  function dispose(): void {
+    posBuf.destroy()
+    velBuf.destroy()
+    forceBuf.destroy()
+    cellsBuf.destroy()
+    countsBuf.destroy()
+    cellStartBuf.destroy()
+    cursorBuf.destroy()
+    posSortedBuf.destroy()
+    statsBuf.destroy()
+    verletListBuf.destroy()
+    verletCountBuf.destroy()
+    verletOverflowBuf.destroy()
+    posAtRebuildBuf.destroy()
+    maxDriftSqBuf.destroy()
+    verletUniform.destroy()
+    bondSlotsBuf.destroy()
+    bondRngBuf.destroy()
+    thermoRngBuf.destroy()
+    eventsBuf.destroy()
+    paramsUniform.destroy()
+    gridUniform.destroy()
+    speciesUniform.destroy()
+    bondParamsUniform.destroy()
+  }
+
   let sys!: SoupSystem
   sys = {
     step,
@@ -1178,6 +1221,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     invariants,
     box,
     runUntil,
+    dispose,
     stepPhasesDEBUG: stepPhasesDEBUG as any,
     forceCandidateStatsDEBUG: forceCandidateStatsDEBUG as any,
   }

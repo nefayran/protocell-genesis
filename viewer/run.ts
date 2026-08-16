@@ -51,6 +51,20 @@ const RENDER_INTERVAL_MS = 1000 / 30
 // Scrolling trace is bounded so a long run's log can't grow the DOM without limit.
 const MAX_TRACE_LINES = 300
 
+// Watchdog on each simDriver tick's mySys.step(batch) call. getGpu() memoizes ONE GPUDevice for
+// the whole page (engine/src/gpu.ts); soup/src/sim.ts's own step() chunks at STEP_CHUNK=1000 so a
+// single onSubmittedWorkDone() round trip is already known-safe at that size (see that file's own
+// header on the second-large-submission browser bug this project hit once already) -- but nothing
+// in this page ever destroyed a finished run's GPUBuffers before starting the next one, so a
+// second SoupSystem's own step() could, in principle, hit the SAME "await never settles" failure
+// mode this project has already seen once, or any OTHER unexpected exception, and previously that
+// left the page silently stuck at "идёт" forever with no visible sign anything was wrong. This
+// bounds that: if step() has not returned by this deadline, the run is declared wedged instead of
+// waiting forever. 15s is generous margin -- STEP_BATCH=250 measured at ~500-2300 steps/s for
+// every preset this page offers (well under 1s/batch) -- while still surfacing a real hang to the
+// person watching within a reasonable, interactive time.
+const STEP_WATCHDOG_MS = 15_000
+
 // Nanometres per reduced sigma -- same viewer-only convention as viewer/molecular.ts (sigma~1nm is
 // the standard literature mapping for this bead model, not a measured quantity; chosen here purely
 // so the atomistic reconstruction's coordinates read directly in the same numbers as the coarse
@@ -112,7 +126,10 @@ const STAGE_LABEL: Record<Stage, string> = {
   vesicle: 'vesicle',
 }
 
-type RunState = 'idle' | 'running' | 'paused' | 'stopped'
+// 'error': the watchdog (or an unexpected exception in simDriver) declared the run wedged/dead.
+// Deliberately its own state rather than reusing 'stopped' with a side flag: a wedged run must be
+// visibly DIFFERENT from a normal stop, not just carry an extra field a casual look would miss.
+type RunState = 'idle' | 'running' | 'paused' | 'stopped' | 'error'
 
 interface TraceEntry {
   steps: number
@@ -127,6 +144,10 @@ interface RunUI {
   stage: Stage
   evidence: StageEvidence
   trace: TraceEntry[]
+  /** Non-null exactly when state === 'error' -- what the watchdog/catch reported, with the last
+   * completed step count folded into the message so the on-screen state itself carries that
+   * number (also still readable from `steps`, which the failure path freezes rather than zeroes). */
+  error: string | null
 }
 
 function main(): void {
@@ -416,6 +437,7 @@ function main(): void {
     stage: 'monomers',
     evidence: { amphiphileFraction: 0, largestAggregateFraction: 0, headPeaks: 0, enclosedVolume: 0 },
     trace: [],
+    error: null,
   }
   ;(window as unknown as { runUI: RunUI }).runUI = runUI
 
@@ -448,10 +470,25 @@ function main(): void {
 
   let latestSnapshot: Snapshot | null = null
 
+  // The currently live SoupSystem, if any -- tracked at this scope (not just simDriver's own local
+  // `mySys` parameter) purely so startRun() can dispose() the PREVIOUS run's system before handing
+  // the device to a new one. See SoupSystem.dispose()'s own doc comment (soup/src/sim.ts) for why
+  // this matters: getGpu() memoizes one GPUDevice for the whole page, so without this, every
+  // "start a new run" click would leak the just-finished run's ~20 GPUBuffers forever.
+  let activeSys: SoupSystem | null = null
+
   function setState(s: RunState): void {
     runUI.state = s
     stateValue.textContent =
-      s === 'idle' ? 'простой' : s === 'running' ? 'идёт' : s === 'paused' ? 'пауза' : 'остановлен'
+      s === 'idle'
+        ? 'простой'
+        : s === 'running'
+          ? 'идёт'
+          : s === 'paused'
+            ? 'пауза'
+            : s === 'error'
+              ? 'ОШИБКА — GPU не отвечает'
+              : 'остановлен'
     startBtn.disabled = s === 'running' || s === 'paused'
     pauseBtn.disabled = s !== 'running' && s !== 'paused'
     pauseBtn.textContent = s === 'paused' ? 'ПРОДОЛЖИТЬ' : 'ПАУЗА'
@@ -555,78 +592,112 @@ function main(): void {
     return { atomistic, atomisticSet, amphiphileCount: amphiphiles.length }
   }
 
+  /** Races mySys.step(batch) against a fixed deadline instead of awaiting it unconditionally --
+   * see STEP_WATCHDOG_MS's own doc comment for why an unconditional await is exactly the shape of
+   * bug this project has already hit once (a second big submission's onSubmittedWorkDone() that
+   * never settled). Returns 'ok' if step() won the race; 'timeout' if the deadline did. If step()
+   * itself REJECTS (throws), that rejection propagates out of this function's own `await` as a
+   * normal exception -- Promise.race does not swallow it, so simDriver's try/catch below still
+   * sees it. A step() that wins the race late (after a timeout was already declared) is left to
+   * settle on its own; nothing reads its result at that point, and Promise.race attaching its own
+   * reaction to it is enough that a late rejection is not reported as an unhandled one either. */
+  async function stepWithWatchdog(mySys: SoupSystem, batch: number): Promise<'ok' | 'timeout'> {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<'timeout'>((resolve) => {
+      timer = setTimeout(() => resolve('timeout'), STEP_WATCHDOG_MS)
+    })
+    const result = await Promise.race([mySys.step(batch).then(() => 'ok' as const), timeout])
+    clearTimeout(timer)
+    return result
+  }
+
   /** Async loop: advances the sim in bounded STEP_BATCH chunks, sampling evidence/trace at most
    * every SAMPLE_INTERVAL_MS. Every iteration checks `myGeneration` against the live
    * `runGeneration` and `runUI.state` -- a STOP (which bumps runGeneration) or a PAUSE makes the
    * very next check exit/idle instead of this loop ever touching sys.step() again. That is the
    * whole mechanism by which STOP "releases the GPU": WebGPU has no persistent kernel between
    * command-buffer submissions, so once this loop stops calling step(), no further work is ever
-   * submitted to the device and GPU load returns to whatever the browser/OS shows at idle. */
+   * submitted to the device and GPU load returns to whatever the browser/OS shows at idle.
+   *
+   * The whole body runs under one try/catch: previously an exception ANYWHERE in this loop (a
+   * genuinely wedged step() surfaced via stepWithWatchdog's 'timeout', or any other unexpected
+   * throw) left `runUI.state` stuck at 'running' forever with nothing on screen to say so -- the
+   * run LOOKED alive because nothing ever told it otherwise. failRun() below is what makes a dead
+   * run look dead. */
   async function simDriver(mySys: SoupSystem, myGeneration: number): Promise<void> {
-    while (true) {
-      if (runGeneration !== myGeneration) return // superseded by a STOP (and possibly a new run)
-      if (runUI.state !== 'running') {
-        // Paused (manually or by visibility): yield without stepping, poll cheaply.
-        await new Promise((r) => setTimeout(r, 50))
-        continue
-      }
-      const batch = Math.min(STEP_BATCH, stepCap - runUI.steps)
-      if (batch <= 0) {
-        finishRun('предел шагов достигнут')
-        return
-      }
-      await mySys.step(batch)
-      if (runGeneration !== myGeneration) return
-      runUI.steps += batch
-
-      const pos = await mySys.particles()
-      const bnds = await mySys.bonds()
-      if (runGeneration !== myGeneration) return
-      bondCount = bnds.length / 2
-
-      const now = performance.now()
-      const { atomistic, atomisticSet, amphiphileCount } = buildAtomisticSlice(pos, bnds, soup.monomers, box)
-      latestSnapshot = { particles: pos, bonds: bnds, box, atomistic, atomisticSet, amphiphileCount }
-      atomBadgeEl.textContent =
-        `Скелет реконструированных атомов взят из ПРОВЕРЕННОЙ огрублённой динамики бульона; атомная ` +
-        `геометрия — литературные длины связей/углы (chem/src/backmap.ts), не независимая ` +
-        `атомистическая симуляция. Атом за атомом показано ${atomistic.length} из ${amphiphileCount} ` +
-        `найденных амфифилов (остальные — те же коарс-грейн мономеры).`
-
-      if (sampleDue || now - lastSampleAt >= SAMPLE_INTERVAL_MS) {
-        sampleDue = false
-        const dtSec = (now - lastSampleAt) / 1000
-        runUI.stepsPerSecond = dtSec > 0 ? (runUI.steps - lastSampleSteps) / dtSec : runUI.stepsPerSecond
-        lastSampleAt = now
-        lastSampleSteps = runUI.steps
-
-        const { stage, evidence } = await detectStage(mySys)
-        if (runGeneration !== myGeneration) return
-        runUI.stage = stage
-        runUI.evidence = evidence
-        const entry: TraceEntry = { steps: runUI.steps, stage, evidence }
-        runUI.trace.push(entry)
-        if (runUI.trace.length > MAX_TRACE_LINES) runUI.trace.shift()
-        appendTraceLine(
-          `шаг=${entry.steps} стадия=${stage} амф=${evidence.amphiphileFraction.toFixed(4)} ` +
-            `агр=${evidence.largestAggregateFraction.toFixed(4)} пики=${
-              evidence.headPeaks === HEAD_PEAKS_UNAVAILABLE ? 'н/д' : evidence.headPeaks
-            } объём=${evidence.enclosedVolume.toFixed(4)}`,
-        )
-
-        paintProgress()
-
-        // Compare positions on the ladder, not identity: a sample can jump two stages at once
-        // (aggregation is fast once amphiphiles exist), and an identity check would miss the stop.
-        if (STAGES.indexOf(stage) >= STAGES.indexOf(targetStage)) {
-          finishRun(
-            stage === targetStage
-              ? `целевая стадия «${STAGE_LABEL[targetStage]}» достигнута`
-              : `стадия «${STAGE_LABEL[stage]}» достигнута, это не ниже цели «${STAGE_LABEL[targetStage]}»`,
-          )
+    try {
+      while (true) {
+        if (runGeneration !== myGeneration) return // superseded by a STOP (and possibly a new run)
+        if (runUI.state !== 'running') {
+          // Paused (manually or by visibility): yield without stepping, poll cheaply.
+          await new Promise((r) => setTimeout(r, 50))
+          continue
+        }
+        const batch = Math.min(STEP_BATCH, stepCap - runUI.steps)
+        if (batch <= 0) {
+          finishRun('предел шагов достигнут')
           return
         }
+        const stepResult = await stepWithWatchdog(mySys, batch)
+        if (runGeneration !== myGeneration) return
+        if (stepResult === 'timeout') {
+          failRun(`GPU не отвечает: step() не вернулся за ${(STEP_WATCHDOG_MS / 1000).toFixed(0)}с`)
+          return
+        }
+        runUI.steps += batch
+
+        const pos = await mySys.particles()
+        const bnds = await mySys.bonds()
+        if (runGeneration !== myGeneration) return
+        bondCount = bnds.length / 2
+
+        const now = performance.now()
+        const { atomistic, atomisticSet, amphiphileCount } = buildAtomisticSlice(pos, bnds, soup.monomers, box)
+        latestSnapshot = { particles: pos, bonds: bnds, box, atomistic, atomisticSet, amphiphileCount }
+        atomBadgeEl.textContent =
+          `Скелет реконструированных атомов взят из ПРОВЕРЕННОЙ огрублённой динамики бульона; атомная ` +
+          `геометрия — литературные длины связей/углы (chem/src/backmap.ts), не независимая ` +
+          `атомистическая симуляция. Атом за атомом показано ${atomistic.length} из ${amphiphileCount} ` +
+          `найденных амфифилов (остальные — те же коарс-грейн мономеры).`
+
+        if (sampleDue || now - lastSampleAt >= SAMPLE_INTERVAL_MS) {
+          sampleDue = false
+          const dtSec = (now - lastSampleAt) / 1000
+          runUI.stepsPerSecond = dtSec > 0 ? (runUI.steps - lastSampleSteps) / dtSec : runUI.stepsPerSecond
+          lastSampleAt = now
+          lastSampleSteps = runUI.steps
+
+          const { stage, evidence } = await detectStage(mySys)
+          if (runGeneration !== myGeneration) return
+          runUI.stage = stage
+          runUI.evidence = evidence
+          const entry: TraceEntry = { steps: runUI.steps, stage, evidence }
+          runUI.trace.push(entry)
+          if (runUI.trace.length > MAX_TRACE_LINES) runUI.trace.shift()
+          appendTraceLine(
+            `шаг=${entry.steps} стадия=${stage} амф=${evidence.amphiphileFraction.toFixed(4)} ` +
+              `агр=${evidence.largestAggregateFraction.toFixed(4)} пики=${
+                evidence.headPeaks === HEAD_PEAKS_UNAVAILABLE ? 'н/д' : evidence.headPeaks
+              } объём=${evidence.enclosedVolume.toFixed(4)}`,
+          )
+
+          paintProgress()
+
+          // Compare positions on the ladder, not identity: a sample can jump two stages at once
+          // (aggregation is fast once amphiphiles exist), and an identity check would miss the stop.
+          if (STAGES.indexOf(stage) >= STAGES.indexOf(targetStage)) {
+            finishRun(
+              stage === targetStage
+                ? `целевая стадия «${STAGE_LABEL[targetStage]}» достигнута`
+                : `стадия «${STAGE_LABEL[stage]}» достигнута, это не ниже цели «${STAGE_LABEL[targetStage]}»`,
+            )
+            return
+          }
+        }
       }
+    } catch (err) {
+      if (runGeneration !== myGeneration) return // a superseded generation's own error, not this run's
+      failRun(`ошибка в цикле прогона: ${(err as Error).message}`)
     }
   }
 
@@ -636,6 +707,28 @@ function main(): void {
     setState('stopped')
     paintProgress()
     appendTraceLine(`[остановлено] ${reason}`)
+    // Release this run's GPUBuffers now, not just before the NEXT run starts -- a run that is
+    // stopped and never restarted should not hold ~20 buffers on the shared device indefinitely.
+    activeSys?.dispose()
+    activeSys = null
+  }
+
+  /** A run declared dead by the watchdog or by an uncaught exception (see simDriver's own
+   * try/catch) -- distinct from finishRun(): sets state to 'error' (not 'stopped') and records
+   * `runUI.error` with the last completed step count folded in, so the page LOOKS wedged instead
+   * of looking like a normal, intentional stop. Still tears down the GPU side exactly like
+   * finishRun() does -- a dead run must not keep holding its buffers either. */
+  function failRun(reason: string): void {
+    runGeneration++
+    activeElapsedMs = currentElapsedMs()
+    const message = `${reason} (пройдено шагов: ${runUI.steps})`
+    runUI.error = message
+    setState('error')
+    paintProgress()
+    appendTraceLine(`[ошибка] ${message}`)
+    console.error('[viewer/run] simDriver failed:', message)
+    activeSys?.dispose()
+    activeSys = null
   }
 
   async function startRun(): Promise<void> {
@@ -650,6 +743,7 @@ function main(): void {
     runUI.stage = 'monomers'
     runUI.evidence = { amphiphileFraction: 0, largestAggregateFraction: 0, headPeaks: 0, enclosedVolume: 0 }
     runUI.trace = []
+    runUI.error = null
     traceLogEl.textContent = ''
     bondCount = 0
     activeElapsedMs = 0
@@ -659,10 +753,20 @@ function main(): void {
     sampleDue = true
     autoPausedByVisibility = false
 
+    // Defensive: finishRun()/failRun() already dispose() the previous run's system on every path
+    // that ends a run (stop, step cap, target stage reached, watchdog, exception). This is a
+    // second, belt-and-suspenders release right before handing the shared device to a brand new
+    // system, in case some future code path ever calls startRun() again without having gone
+    // through one of those -- see SoupSystem.dispose()'s own doc comment for why an undisposed
+    // system's GPUBuffers do not otherwise get freed on this shared, memoized device.
+    activeSys?.dispose()
+    activeSys = null
+
     setState('running')
     appendTraceLine(`[старт] размер=${presetKey} цель=${targetStage} предел_шагов=${stepCap}`)
 
     const sys = await createSoup({ box, seed: RUN_SEED, kT: params.thermostat.kT, start: preset.start })
+    activeSys = sys
     const n = Object.values(preset.start ?? soup.start).reduce((a, b) => a + b, 0)
     meshes = buildMeshes(n, box)
 

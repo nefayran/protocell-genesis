@@ -82,3 +82,54 @@ test('управление прогоном: старт держит счёт, �
   expect(finalUI.traceLength).toBeGreaterThan(0)
   expect(typeof finalUI.stage).toBe('string')
 })
+
+// Regression: starting a SECOND run in the same page (after the first was stopped) used to wedge
+// forever after exactly one STEP_BATCH -- getGpu() memoizes ONE GPUDevice for the whole page
+// (engine/src/gpu.ts), and SoupSystem had no dispose(), so the first run's ~20 GPUBuffers stayed
+// alive on that shared device when the second run's createSoup() allocated its own fresh set.
+// SoupSystem.dispose() (soup/src/sim.ts) plus viewer/run.ts calling it on every run-ending path
+// (finishRun/failRun) and defensively before starting a new one is the fix this guards. Kept tiny
+// (the page's own default "tiny" preset, a low step cap) so this costs seconds, not minutes.
+test('второй прогон на той же странице: счёт шагов продвигается дальше одного STEP_BATCH', async () => {
+  const page = await gpuPage()
+  await page.goto(new URL('/viewer/run.html', page.url()).href, { waitUntil: 'load' })
+
+  await page.$eval('#step-cap', (el) => {
+    ;(el as HTMLInputElement).value = '500'
+  })
+
+  // --- RUN 1: start it, then stop it early (covers both triggers named in the bug report --
+  // "STOP then START" and "let it finish on its step cap" -- by stopping manually here and letting
+  // run 2 below run to its own cap). --------------------------------------------------------------
+  await page.click('#start-btn')
+  await page.waitForFunction('window.runUI.steps > 0 && window.runUI.state === "running"')
+  await page.click('#stop-btn')
+  await page.waitForFunction('window.runUI.state === "stopped"')
+
+  // --- RUN 2: a fresh SoupSystem on the SAME page/device. Before the fix this got exactly one
+  // STEP_BATCH in and then wedged forever (state stuck at 'running', steps stuck at 250). ---------
+  await page.click('#start-btn')
+  await page.waitForFunction('window.runUI.steps > 0 && window.runUI.state === "running"')
+
+  // Prove it is genuinely advancing, not just slow: wait for it to pass the first STEP_BATCH. (Not
+  // asserting state === 'running' at this exact instant -- with a small step cap the run can
+  // legitimately finish between this wait resolving and the next read, which is itself part of
+  // the proof nothing is wedged.)
+  await page.waitForFunction('window.runUI.steps > 250', { timeout: 30_000 })
+
+  const run2 = await page.evaluate(() => ({
+    steps: (window as any).runUI.steps,
+    error: (window as any).runUI.error,
+  }))
+  expect(run2.error).toBeNull()
+  expect(run2.steps).toBeGreaterThan(250)
+
+  // Let it reach its own step cap and confirm it finishes cleanly (not via the watchdog/error path).
+  await page.waitForFunction('window.runUI.state === "stopped"', { timeout: 30_000 })
+  const final = await page.evaluate(() => ({
+    steps: (window as any).runUI.steps,
+    error: (window as any).runUI.error,
+  }))
+  expect(final.error).toBeNull()
+  expect(final.steps).toBe(500)
+})
