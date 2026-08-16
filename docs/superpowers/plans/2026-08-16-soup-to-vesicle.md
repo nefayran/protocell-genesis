@@ -491,6 +491,173 @@ git commit -m "feat: hypothesis test by phase map over temperature, density and 
 
 ---
 
+### Task 7: Строгость химии — Флори и Ван-Гофф
+
+Эти два теста и есть ответ на требование «непрерывный прогон, но научно достоверный»: они не зависят ни от одной неизвестной константы скорости, потому что проверяют равновесие и его температурную зависимость, а не время.
+
+**Files:**
+- Create: `soup/src/equilibrium.ts`
+- Test: `tests/soup-equilibrium.test.ts`
+
+**Interfaces:**
+- Consumes: `loadSoup`, `SoupSystem`, `findAmphiphiles`, `amphiphileHistogram`.
+- Produces: `floryPrediction(energyKT: number, monomerVolumeFraction: number, maxLength: number): Record<number, number>` — равновесная геометрическая доля цепей каждой длины из константы равновесия `K = exp(energyKT)` и объёмной доли; `bondFraction(sys: SoupSystem): Promise<number>` — доля реализованных связей от максимально возможных; `vanHoffSlope(points: {kT: number, bondFraction: number}[]): {slope: number, r2: number}` — наклон `ln[p/(1−p)]` против `1/kT`.
+
+- [ ] **Step 1: Написать падающие тесты**
+
+`tests/soup-equilibrium.test.ts`:
+
+```ts
+import { afterAll, expect, test } from 'vitest'
+import { gpuPage, shutdownGpu } from './helpers/gpu'
+import { floryPrediction, vanHoffSlope } from '../soup/src/equilibrium'
+
+afterAll(shutdownGpu)
+
+test('предсказание Флори нормировано и убывает геометрически', () => {
+  const p = floryPrediction(2.0, 0.05, 30)
+  const vals = Object.values(p)
+  expect(vals.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 6)
+  for (let n = 2; n <= 10; n++) expect(p[n] / p[n - 1]).toBeCloseTo(p[3] / p[2], 3)
+})
+
+test('оценка наклона Ван-Гоффа восстанавливает заложенную энергию на синтетике', () => {
+  const e = 6.0
+  const pts = [0.8, 1.0, 1.2, 1.5, 2.0].map((kT) => {
+    const K = Math.exp(e / kT) * 0.02
+    return { kT, bondFraction: K / (1 + K) }
+  })
+  const f = vanHoffSlope(pts)
+  expect(f.slope).toBeCloseTo(e, 1)
+  expect(f.r2).toBeGreaterThan(0.99)
+})
+
+test('измеренное распределение длин совпадает с Флори без подгонки', async () => {
+  const page = await gpuPage()
+  const r = await page.evaluate(async () => {
+    const api = (window as any).api
+    const sys = await api.createSoup({ box: [30, 30, 30], seed: 29, kT: 1.1, catalystCount: 800 })
+    await sys.step(600000)
+    return { hist: await api.histogramOf(sys), predicted: api.floryOf(sys) }
+  })
+  const ns = Object.keys(r.hist).map(Number).filter((n) => n >= 2 && n <= 8)
+  const total = ns.reduce((s, n) => s + r.hist[n], 0)
+  for (const n of ns) {
+    const measured = r.hist[n] / total
+    expect(Math.abs(measured - r.predicted[n])).toBeLessThan(0.08)
+  }
+}, 1_800_000)
+
+test('доля связей против обратной температуры даёт заложенную энергию', async () => {
+  const page = await gpuPage()
+  const pts = await page.evaluate(async () => {
+    const api = (window as any).api
+    const out: { kT: number; bondFraction: number }[] = []
+    for (const kT of [0.8, 1.1, 1.5, 2.0]) {
+      const sys = await api.createSoup({ box: [30, 30, 30], seed: 31, kT, catalystCount: 800 })
+      await sys.step(400000)
+      out.push({ kT, bondFraction: await api.bondFractionOf(sys) })
+    }
+    return out
+  })
+  const f = vanHoffSlope(pts)
+  expect(f.r2).toBeGreaterThan(0.9)
+  expect(f.slope).toBeGreaterThan(4.5)
+  expect(f.slope).toBeLessThan(7.5)
+}, 3_600_000)
+```
+
+- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+
+Run: `npx vitest run tests/soup-equilibrium.test.ts`
+Expected: FAIL — `soup/src/equilibrium` не найден.
+
+- [ ] **Step 3: Реализовать**
+
+`floryPrediction` строит `p_n = (1−x)·x^(n−1)` где `x` — вероятность продолжения, выведенная из константы равновесия и объёмной доли мономера, и нормирует на `maxLength`. `bondFraction` делит число связей на максимально возможное при данной валентности. `vanHoffSlope` делает линейную регрессию `ln[p/(1−p)]` против `1/kT` и возвращает наклон с коэффициентом детерминации. Фасады `histogramOf`, `floryOf`, `bondFractionOf` публикуются в `engine/src/index.ts`.
+
+Если измеренное распределение систематически шире предсказанного, это НЕ повод менять допуск: сначала проверить, что прогон дошёл до равновесия (доля связей перестала расти) и что валентность в шейдере совпадает с той, из которой считается предсказание.
+
+- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+
+Run: `npx vitest run tests/soup-equilibrium.test.ts`
+Expected: PASS все четыре. Наклон Ван-Гоффа, отличающийся от 6 kT в разы, означает, что принятие по Метрополису применяется не к обеим сторонам.
+
+- [ ] **Step 5: Коммит**
+
+```bash
+git add soup/src/equilibrium.ts engine/src/index.ts tests/soup-equilibrium.test.ts
+git commit -m "feat: Flory distribution and van't Hoff slope as rate-free rigor checks"
+```
+
+---
+
+### Task 8: Строгость сборки — закон порога агрегации
+
+**Files:**
+- Create: `soup/src/cac.ts`
+- Modify: `data/literature.json`, `verify/soup.ts`
+- Test: `tests/soup-cac.test.ts`
+
+**Interfaces:**
+- Produces: `criticalAggregationConcentration(sys: SoupSystem, chainLength: number): Promise<number>` — концентрация свободных амфифилов, при которой появляется первый устойчивый агрегат; `cacSlope(points: {n: number, cac: number}[]): {slope: number, r2: number}` — наклон `log10 CAC` против длины цепи.
+
+- [ ] **Step 1: Написать падающий тест**
+
+`tests/soup-cac.test.ts`:
+
+```ts
+import { afterAll, expect, test } from 'vitest'
+import { gpuPage, shutdownGpu } from './helpers/gpu'
+import { cacSlope } from '../soup/src/cac'
+
+afterAll(shutdownGpu)
+
+test('оценка наклона восстанавливает измеренные точки октаноата и деканоата', () => {
+  const f = cacSlope([{ n: 8, cac: 300 }, { n: 10, cac: 86 }])
+  expect(f.slope).toBeCloseTo(-(Math.log10(300 / 86) / 2), 3)
+})
+
+test('порог агрегации падает с длиной цепи с наклоном около измеренного', async () => {
+  const page = await gpuPage()
+  const pts = await page.evaluate(async () => {
+    const api = (window as any).api
+    const out: { n: number; cac: number }[] = []
+    for (const n of [4, 6, 8, 10]) out.push({ n, cac: await api.cacFor(n) })
+    return out
+  })
+  const f = cacSlope(pts)
+  expect(f.r2).toBeGreaterThan(0.9)
+  expect(Math.abs(f.slope)).toBeGreaterThan(0.15)
+  expect(Math.abs(f.slope)).toBeLessThan(0.45)
+}, 3_600_000)
+```
+
+- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+
+Run: `npx vitest run tests/soup-cac.test.ts`
+Expected: FAIL — `soup/src/cac` не найден.
+
+- [ ] **Step 3: Реализовать**
+
+`cacFor(n)` собирает систему из готовых амфифилов длины `n` (это допустимо: здесь проверяется закон сборки, а не синтез), поднимает концентрацию ступенями и фиксирует концентрацию первого устойчивого агрегата, устойчивость — по доле крупнейшего кластера, удержавшейся заданное число шагов. `cacSlope` делает регрессию `log10 CAC` против `n`.
+
+Добавить в `data/literature.json` ворота `cac-slope`: метрика `cacSlopeAbs`, коридор `min: 0.15, max: 0.45`, ранг **A**, источник — измеренные CMC октаноата натрия 300 мМ и деканоата 86 мМ, что даёт 0.27 на метиленовую группу; условия — приведённые единицы модели, поэтому сверяется наклон, а не абсолютная концентрация.
+
+- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+
+Run: `npx vitest run tests/soup-cac.test.ts`
+Expected: PASS оба.
+
+- [ ] **Step 5: Коммит**
+
+```bash
+git add soup/src/cac.ts data/literature.json verify/soup.ts tests/soup-cac.test.ts
+git commit -m "feat: aggregation threshold law checked against measured CMC slope"
+```
+
+---
+
 ## Что план сознательно не делает
 
 Не привязывает время к секундам: `κ_t` остаётся единственным множителем, и абсолютные скорости не заявляются. Не считает квантовые барьеры и не повышает ранг скоростей выше D — это отдельные слои `thermo/` и `qm/`. Не строит полноатомную динамику: атомная детализация в кадре остаётся реконструкцией поверх огрублённых координат, и так подписана на экране.
