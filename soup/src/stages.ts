@@ -49,7 +49,7 @@ import rawLiterature from '../../data/literature.json'
 import rawSoup from '../../data/soup.json'
 import { largestClusterFraction } from '../../engine/src/aggregate'
 import { enclosedVolumeFromPositions } from '../../engine/src/closure'
-import { bilayerThickness, densityProfileZ } from '../../engine/src/metrics'
+import { bilayerThickness, densityProfileZ, dropEscapedZ } from '../../engine/src/metrics'
 import { loadParams, wcaCutoff } from '../../engine/src/params'
 import { findAmphiphiles, type Amphiphile } from './amphiphile'
 import { loadSoup, type Monomer } from './rules'
@@ -195,7 +195,21 @@ function remapFlag(particles: Float32Array, flagFor: (i: number) => number): Flo
  *    first falls outside the plausible bilayer-thickness band -- two local maxima that are not, by
  *    this guard's judgement, two leaflets of the same structure.
  *  - 2: enough particles per bin, AND two peaks, AND their separation is inside the plausible band.
- *    The only value the bilayer/vesicle stages are allowed to treat as a real bilayer signal. */
+ *    The only value the bilayer/vesicle stages are allowed to treat as a real bilayer signal.
+ *
+ * Item 1a (2026-08 crash report): a live run died with `densityProfileZ: бусина с z=... вне [0,
+ * ...)` while this function fed it a raw, unfiltered snapshot. densityProfileZ is RIGHT to throw
+ * on out-of-range z (its own doc comment: clamping would manufacture a false peak at an edge bin)
+ * -- the bug was here, the caller, handing it a particle it cannot profile. A soup particle really
+ * can end up with z outside [0, box[2]) on a live snapshot (soup/wgsl/step.wgsl wraps every axis
+ * every step, but that wrap is a float32 `x - floor(x/box)*box`, which can round to exactly `box`
+ * -- or, on a diverging trajectory, drift far past it -- so "wrapped" is not a strict on-paper
+ * guarantee at read-back time). Fixed the same way engine/src/index.ts's measureBilayerAveraged
+ * already handles the identical situation for the membrane engine's own open z axis: drop the
+ * escaped particles with dropEscapedZ (engine/src/metrics.ts) before profiling, never hand
+ * densityProfileZ anything it would reject. If dropping empties out the head population below
+ * the existing minHeadsPerBin guard, that guard now fires on the POST-drop count and this reports
+ * HEAD_PEAKS_UNAVAILABLE -- an honest "can't say" rather than a crash. */
 export function computeHeadPeaks(
   particles: Float32Array,
   box: [number, number, number],
@@ -209,11 +223,18 @@ export function computeHeadPeaks(
   }
   if (totalHeads === 0) return 0
 
-  const avgHeadsPerBin = totalHeads / thresholds.headDensityBins
+  const remapped = remapFlag(particles, (i) => (monomers[Math.round(particles[i * 4 + 3])]?.polar ? 0 : 1))
+  // Drop anything densityProfileZ would throw on -- see this function's own doc comment above.
+  const { positions: inBounds } = dropEscapedZ(remapped, box)
+  let keptHeads = 0
+  const m = inBounds.length / 4
+  for (let i = 0; i < m; i++) if (inBounds[i * 4 + 3] === 0) keptHeads++
+  if (keptHeads === 0) return HEAD_PEAKS_UNAVAILABLE // every head escaped -- nothing left to profile
+
+  const avgHeadsPerBin = keptHeads / thresholds.headDensityBins
   if (avgHeadsPerBin < thresholds.minHeadsPerBin) return HEAD_PEAKS_UNAVAILABLE
 
-  const remapped = remapFlag(particles, (i) => (monomers[Math.round(particles[i * 4 + 3])]?.polar ? 0 : 1))
-  const profile = densityProfileZ(remapped, box, thresholds.headDensityBins)
+  const profile = densityProfileZ(inBounds, box, thresholds.headDensityBins)
   try {
     const separation = bilayerThickness(profile) // throws => no second peak at all; caught below
     if (separation >= thresholds.headPeakSeparationMin && separation <= thresholds.headPeakSeparationMax) return 2

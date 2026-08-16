@@ -21,7 +21,7 @@ import { cavitiesFromPositions, equivalentSphereRadius, type CavityWorld } from 
 import { loadParams } from '../engine/src/params'
 import { findAmphiphiles, type Amphiphile } from '../soup/src/amphiphile'
 import { loadSoup } from '../soup/src/rules'
-import { createSoup, type SoupSystem } from '../soup/src/sim'
+import { createSoup, planSoupGrid, type SoupSystem } from '../soup/src/sim'
 import {
   detectStage,
   HEAD_PEAKS_UNAVAILABLE,
@@ -168,6 +168,15 @@ interface RunUI {
    * completed step count folded into the message so the on-screen state itself carries that
    * number (also still readable from `steps`, which the failure path freezes rather than zeroes). */
   error: string | null
+  /** Non-null exactly when state === 'error' -- WHICH of the two distinct failure modes this was,
+   * so the status line can name what actually happened instead of a fixed guess (item 1b, 2026-08
+   * crash report: the watchdog and an exception used to share one hardcoded "GPU не отвечает"
+   * label, which was a lie whenever the real cause was an exception in metric code -- see
+   * setState()'s own use of this field below). 'timeout': stepWithWatchdog's deadline fired, the
+   * GPU-bound step() call itself never returned -- "GPU не отвечает" is an honest description ONLY
+   * of this case. 'exception': something in the sample/step loop THREW (its own message is what
+   * `error` carries) -- the GPU answered fine; the failure is in this page's own code. */
+  errorKind: 'timeout' | 'exception' | null
   /** How many disjoint cavities the closure detector found on the latest sample -- 0 whenever
    * nothing is closed at all (the normal state for most of a run). */
   cavityCount: number
@@ -177,12 +186,51 @@ interface RunUI {
   largestCavity: { voxelCount: number; volume: number; radius: number; centre: [number, number, number] } | null
 }
 
+/** Item 4 (2026-08 UI-fixes task): three "the page must never imply more than it delivers"
+ * disclaimers -- honesty-note (step units are reduced τ, not seconds; sps/elapsed are measured, ETA
+ * is a forecast), cavity-honesty (a flood-fill pocket is not a vesicle interior), atom-badge (beads
+ * are not atoms; the shown atomic detail is reconstructed, not independently simulated) -- used to
+ * sit on screen as full paragraphs, always fully expanded. Correct, and required (this project's
+ * own honesty rule), but loud: a long-running page kept three multi-sentence blocks permanently
+ * open. Collapses each into one short summary line plus a small toggle that reveals the EXACT SAME
+ * full text on demand -- nothing here is deleted, and nothing moves into a tooltip (which reliably
+ * never gets read, the reason the task rejects that option outright). Remembers the open/closed
+ * choice for the rest of this browser SESSION via sessionStorage (not localStorage: a fresh tab
+ * should default back to collapsed, not silently inherit a choice made days ago in a different
+ * session). Returns a setter for the full text, since one of the three (atom-badge) recomputes its
+ * full text every sampled tick -- the summary/toggle DOM nodes stay put; only the hidden full-text
+ * node's content changes, so the toggle's own open/closed state is never disturbed by a repaint. */
+function initCollapsibleNote(container: HTMLElement, storageKey: string, summary: string): (full: string) => void {
+  container.innerHTML =
+    `<div class="note-summary"><span>${summary}</span>` +
+    `<button class="note-toggle" type="button" aria-expanded="false">ⓘ подробнее</button></div>` +
+    `<div class="note-full" hidden></div>`
+  const toggleBtn = container.querySelector('.note-toggle') as HTMLButtonElement
+  const fullEl = container.querySelector('.note-full') as HTMLElement
+  const storeKey = `run-note-expanded:${storageKey}`
+  const setExpanded = (expanded: boolean): void => {
+    fullEl.hidden = !expanded
+    toggleBtn.setAttribute('aria-expanded', String(expanded))
+    toggleBtn.textContent = expanded ? 'ⓘ свернуть' : 'ⓘ подробнее'
+    sessionStorage.setItem(storeKey, expanded ? '1' : '0')
+  }
+  toggleBtn.addEventListener('click', () => setExpanded(fullEl.hidden))
+  setExpanded(sessionStorage.getItem(storeKey) === '1')
+  return (full: string) => {
+    fullEl.textContent = full
+  }
+}
+
 function main(): void {
   const params = loadParams()
   const soup = loadSoup()
 
   // --- DOM handles ---------------------------------------------------------------------------
   const sizeSelect = document.getElementById('size-select') as HTMLSelectElement
+  const boxSideInput = document.getElementById('box-side-input') as HTMLInputElement
+  const particleScaleInput = document.getElementById('particle-scale-input') as HTMLInputElement
+  const sizePreviewEl = document.getElementById('size-preview') as HTMLElement
+  const sizeErrorEl = document.getElementById('size-error') as HTMLElement
   const stageSelect = document.getElementById('stage-select') as HTMLSelectElement
   const stepCapInput = document.getElementById('step-cap') as HTMLInputElement
   const startBtn = document.getElementById('start-btn') as HTMLButtonElement
@@ -211,12 +259,17 @@ function main(): void {
   const cavityHonestyEl = document.getElementById('cavity-honesty') as HTMLElement
 
   const thresholds = loadStageThresholds()
-  cavityHonestyEl.textContent =
+  initCollapsibleNote(
+    cavityHonestyEl,
+    'cavity-honesty',
+    'ЧЕСТНО: полость из клеток сетки — карман между бидами, не внутренность везикулы.',
+  )(
     `ЧЕСТНО: полость из нескольких клеток сетки — это карман между бидами, а не внутренность ` +
-    `везикулы. Порог считается физически: минимальный объём — это шар радиусом, ПРЕВЫШАЮЩИМ ` +
-    `измеренную толщину бислоя (data/literature.json's closure gate, ≈${thresholds.enclosedVolume.toFixed(2)} σ³ ` +
-    `≈ ${equivalentSphereRadius(thresholds.enclosedVolume).toFixed(2)}σ экв. радиуса) — меньшая полость ` +
-    `физически не может быть внутренностью мембраны, которая должна её огибать.`
+      `везикулы. Порог считается физически: минимальный объём — это шар радиусом, ПРЕВЫШАЮЩИМ ` +
+      `измеренную толщину бислоя (data/literature.json's closure gate, ≈${thresholds.enclosedVolume.toFixed(2)} σ³ ` +
+      `≈ ${equivalentSphereRadius(thresholds.enclosedVolume).toFixed(2)}σ экв. радиуса) — меньшая полость ` +
+      `физически не может быть внутренностью мембраны, которая должна её огибать.`,
+  )
 
   for (const [key, preset] of Object.entries(SIZE_PRESETS)) {
     const opt = document.createElement('option')
@@ -225,6 +278,96 @@ function main(): void {
     sizeSelect.appendChild(opt)
   }
   sizeSelect.value = DEFAULT_SIZE_KEY
+
+  // --- item 3 (2026-08 UI-fixes task): the user picks box side + particle scale directly instead
+  // of choosing between two fixed guesses. The presets above are kept only as a convenience "fill
+  // these two fields for me" shortcut -- picking one sets `baseStart` (this composition, scaled by
+  // 1x) and the box-side field, but both fields stay freely editable afterward, and typing into
+  // either no longer requires the preset dropdown to agree.
+  let baseStart: Record<string, number> = SIZE_PRESETS[DEFAULT_SIZE_KEY].start ?? soup.start
+  boxSideInput.value = String(SIZE_PRESETS[DEFAULT_SIZE_KEY].box[0])
+  particleScaleInput.value = '1'
+
+  /** `baseStart` scaled by `scale` and rounded to whole particles per species -- the "particle
+   * scale" control's own effect. Never negative (a scale below what rounds to 0 for every species
+   * is caught by planSoupGrid's own N===0 downstream check in createSoup, not specially guarded
+   * here). */
+  function scaledStart(scale: number): Record<string, number> {
+    return Object.fromEntries(Object.entries(baseStart).map(([id, n]) => [id, Math.max(0, Math.round(n * scale))]))
+  }
+
+  /** The box/startCounts the CURRENT form fields describe, regardless of whether a run has ever
+   * started -- read fresh from the inputs every time (never the run's own `box`/`stepCap` state
+   * below, which only updates on START) so the preview always reflects what the user is looking
+   * at right now. Falls back to the tiny preset's own numbers for anything that fails to parse
+   * (empty field, non-numeric typing mid-edit) rather than propagating NaN into the preview/guard. */
+  function currentSizeSelection(): { box: [number, number, number]; startCounts: Record<string, number> } {
+    const side = Number(boxSideInput.value)
+    const scale = Number(particleScaleInput.value)
+    const boxSide = Number.isFinite(side) && side > 0 ? side : SIZE_PRESETS[DEFAULT_SIZE_KEY].box[0]
+    const particleScale = Number.isFinite(scale) && scale > 0 ? scale : 1
+    return { box: [boxSide, boxSide, boxSide], startCounts: scaledStart(particleScale) }
+  }
+
+  /** Item 3's other guard, alongside planSoupGrid's neighbour-grid check: the vesicle-closure
+   * gate's own minimum cavity volume (thresholds.enclosedVolume, tied 1:1 to data/literature.json's
+   * measured-bilayer-thickness-derived closure.target.min -- see loadStageThresholds's own doc
+   * comment) needs room to physically exist inside the box at all. A cavity of that minimum volume
+   * needs a sphere of its own equivalent radius PLUS a wall at least one plausible bilayer
+   * thickness (headPeakSeparationMin -- the SAME physically-grounded band the stage ladder itself
+   * trusts, not a new number) thick around it on every side, so the box's smallest side must clear
+   * twice (radius + wall). A box below this can never show a qualifying cavity no matter how long
+   * it runs -- worth refusing up front rather than after a wasted run. */
+  function closureMinBoxSide(): number {
+    return 2 * (equivalentSphereRadius(thresholds.enclosedVolume) + thresholds.headPeakSeparationMin)
+  }
+
+  /** Both of item 3's guards against the CURRENT form selection -- null when the selection is fine
+   * to start, otherwise the human-readable reason (possibly both reasons, one per line) the start
+   * button must refuse. Shared by refreshSizePreview() (so the refusal is visible before the user
+   * even clicks START) and startRun() (so START itself never proceeds on a selection this already
+   * flagged, no matter how fast the user clicks past the live preview). */
+  function validateSizeSelection(boxNow: [number, number, number], startCounts: Record<string, number>): string | null {
+    const reasons: string[] = []
+    const plan = planSoupGrid(boxNow, startCounts)
+    if (!plan.valid) reasons.push(plan.reason!)
+    const minSide = closureMinBoxSide()
+    if (Math.min(...boxNow) < minSide) {
+      reasons.push(
+        `бокс слишком мал для полости-кандидата в везикулу: наименьшая сторона (${Math.min(...boxNow).toFixed(2)}σ) ` +
+          `должна быть не меньше ${minSide.toFixed(2)}σ (2×(экв. радиус минимальной полости ` +
+          `${equivalentSphereRadius(thresholds.enclosedVolume).toFixed(2)}σ + минимальная толщина стенки ` +
+          `${thresholds.headPeakSeparationMin}σ)) — иначе замкнутый объём порога закрытия физически не поместится, ` +
+          `независимо от того, сколько шагов прогон сделает`,
+      )
+    }
+    return reasons.length > 0 ? reasons.join('\n') : null
+  }
+
+  /** Repaints the particle-count/grid-dims preview and the refusal banner from the CURRENT form
+   * fields -- called on load and on every edit to size-select/box-side-input/particle-scale-input,
+   * so the cost (and any guard violation) is visible before START is ever clicked, per item 3's own
+   * "so the cost is visible in advance" requirement. */
+  function refreshSizePreview(): void {
+    const { box: boxNow, startCounts } = currentSizeSelection()
+    const plan = planSoupGrid(boxNow, startCounts)
+    sizePreviewEl.textContent =
+      `частиц: ${plan.N} · сетка соседей: ${plan.dims[0]}×${plan.dims[1]}×${plan.dims[2]} = ${plan.ncells} ячеек`
+    const reason = validateSizeSelection(boxNow, startCounts)
+    sizeErrorEl.hidden = reason === null
+    sizeErrorEl.textContent = reason ?? ''
+  }
+
+  sizeSelect.addEventListener('change', () => {
+    const preset = SIZE_PRESETS[sizeSelect.value]
+    baseStart = preset.start ?? soup.start
+    boxSideInput.value = String(preset.box[0])
+    particleScaleInput.value = '1'
+    refreshSizePreview()
+  })
+  boxSideInput.addEventListener('input', refreshSizePreview)
+  particleScaleInput.addEventListener('input', refreshSizePreview)
+  refreshSizePreview()
 
   // `monomers` is the state every run STARTS in, so offering it as a target makes the run
   // declare success on its first sample. Only stages that require the physics to do something
@@ -241,11 +384,25 @@ function main(): void {
 
   ladderEl.innerHTML = STAGES.map((s) => `<div class="stage" data-stage="${s}">${STAGE_LABEL[s]}</div>`).join('')
 
-  honestyNoteEl.textContent =
+  initCollapsibleNote(
+    honestyNoteEl,
+    'honesty',
+    'ОЦЕНКА vs ИЗМЕРЕНО: шаги — приведённые единицы (τ), не секунды; ETA — прогноз, не гарантия.',
+  )(
     `ОЦЕНКА vs ИЗМЕРЕНО: «шагов/с» и «прошло (реал.)» измерены по системным часам браузера; ` +
-    `«осталось (оцен.)» — прогноз из текущей измеренной скорости, не гарантия. Единицы шагов — ` +
-    `ПРИВЕДЁННЫЕ (τ, σ=1), это не секунды реального мира: κ_t = ${soup.kappaT} — единственная явная ` +
-    `калибровка временной шкалы модели (data/soup.json), настоящей секундной привязки для бульона нет.`
+      `«осталось (оцен.)» — прогноз из текущей измеренной скорости, не гарантия. Единицы шагов — ` +
+      `ПРИВЕДЁННЫЕ (τ, σ=1), это не секунды реального мира: κ_t = ${soup.kappaT} — единственная явная ` +
+      `калибровка временной шкалы модели (data/soup.json), настоящей секундной привязки для бульона нет.`,
+  )
+
+  // atom-badge's full text is recomputed every sampled tick (it names how many amphiphiles got the
+  // atomistic treatment THIS tick) -- see simDriver's own use of this setter below. The summary/
+  // toggle themselves are built once, here, so the toggle's open/closed choice survives every repaint.
+  const setAtomBadgeFull = initCollapsibleNote(
+    atomBadgeEl,
+    'atom-badge',
+    'Бусины — не атомы; показанная атомная детализация реконструирована, не симулирована отдельно.',
+  )
 
   // --- three.js scene --------------------------------------------------------------------------
   const canvas = document.getElementById('scene') as HTMLCanvasElement
@@ -265,8 +422,20 @@ function main(): void {
   sun.position.set(1, 1.4, 1)
   scene.add(sun)
 
+  /** Item 2 (2026-08 UI-fixes task): the near/far planes used to be fixed (0.1/1000) -- sized for
+   * the two old hardcoded presets (box 16/30), so they never had to move. Item 3 lets the user pick
+   * an arbitrary box side now, and a fixed far=1000 clips a large box's own far corner the moment
+   * the box's own diagonal (times frameCamera's own ~2x placement below) approaches it, exactly
+   * "nothing disappears by clipping" in reverse -- while a fixed near=0.1 on a TINY box wastes most
+   * of the depth buffer's precision on distances the camera is never placed within. Both planes are
+   * now derived from the box's own diagonal every time this is called (on every run start, since
+   * box can change run to run), not tied to either preset. */
   function frameCamera(box: [number, number, number]): void {
     const center = new THREE.Vector3(box[0] / 2, box[1] / 2, box[2] / 2)
+    const diag = Math.sqrt(box[0] ** 2 + box[1] ** 2 + box[2] ** 2)
+    camera.near = Math.max(diag / 1000, 1e-3)
+    camera.far = diag * 20
+    camera.updateProjectionMatrix()
     camera.position.set(box[0] * 1.6, box[1] * 1.2, box[2] * 1.4)
     camera.lookAt(center)
     controls.target.copy(center)
@@ -301,6 +470,18 @@ function main(): void {
   }
   let meshes: SceneMeshes | null = null
 
+  // Item 2 (2026-08 UI-fixes task): every InstancedMesh below gets frustumCulled = false. three.js
+  // culls a mesh against its GEOMETRY's own bounding sphere transformed by the MESH's own
+  // matrixWorld -- for an InstancedMesh that mesh-level transform is the identity at the scene
+  // origin (per-instance transforms live in instanceMatrix, which the built-in frustum check never
+  // looks at), so the sphere it actually tests is a unit-ish sphere sitting at (0,0,0), nowhere near
+  // where the thousands of actual instances are scattered across the box. Depending on camera
+  // distance/angle that coincidence can go either way -- the whole mesh vanishes while its instances
+  // are plainly on screen, or (rarer) it stays "visible" by luck -- which is exactly the "scene
+  // vanishes at some zoom levels and angles" symptom. Maintaining a correct per-frame bounding
+  // sphere covering the whole box would work too, but these five meshes are the entire draw call
+  // count of this page; disabling culling on them costs nothing measurable and removes the bug
+  // class outright rather than chasing whichever camera pose exposes it next.
   function buildMeshes(n: number, box: [number, number, number]): SceneMeshes {
     if (meshes) {
       for (const m of Object.values(meshes.monomerMesh)) scene.remove(m)
@@ -313,6 +494,7 @@ function main(): void {
       const mat = new THREE.MeshStandardMaterial({ color: elementColor(element) })
       const mesh = new THREE.InstancedMesh(geo, mat, n)
       mesh.count = 0
+      mesh.frustumCulled = false
       monomerMesh[m.id] = mesh
       scene.add(mesh)
     }
@@ -320,6 +502,7 @@ function main(): void {
     const bondMat = new THREE.MeshStandardMaterial({ color: 0xffffff })
     const bondMesh = new THREE.InstancedMesh(bondGeo, bondMat, Math.max(1, n * MAX_BOND_SEGMENTS_PER_PARTICLE))
     bondMesh.count = 0
+    bondMesh.frustumCulled = false
     scene.add(bondMesh)
 
     const atomCap = Math.max(1, n * ATOMS_PER_CARBON_ESTIMATE)
@@ -327,12 +510,14 @@ function main(): void {
     const atomMat = new THREE.MeshStandardMaterial({ color: 0xffffff })
     const atomMesh = new THREE.InstancedMesh(atomGeo, atomMat, atomCap)
     atomMesh.count = 0
+    atomMesh.frustumCulled = false
     scene.add(atomMesh)
 
     const atomBondGeo = new THREE.CylinderGeometry(1, 1, 1, 6)
     const atomBondMat = new THREE.MeshStandardMaterial({ color: 0xffffff })
     const atomBondMesh = new THREE.InstancedMesh(atomBondGeo, atomBondMat, atomCap * 2)
     atomBondMesh.count = 0
+    atomBondMesh.frustumCulled = false
     scene.add(atomBondMesh)
 
     // Cavity voxel cloud (see CAVITY_COLOR's own doc comment): capacity is the box's own total
@@ -350,6 +535,7 @@ function main(): void {
     })
     const cavityMesh = new THREE.InstancedMesh(cavityGeo, cavityMat, cavityCap)
     cavityMesh.count = 0
+    cavityMesh.frustumCulled = false
     scene.add(cavityMesh)
 
     frameCamera(box)
@@ -524,6 +710,7 @@ function main(): void {
     evidence: { amphiphileFraction: 0, largestAggregateFraction: 0, headPeaks: 0, enclosedVolume: 0 },
     trace: [],
     error: null,
+    errorKind: null,
     cavityCount: 0,
     largestCavity: null,
   }
@@ -533,6 +720,59 @@ function main(): void {
   let stepCap = DEFAULT_STEP_CAP
   let box: [number, number, number] = SIZE_PRESETS[DEFAULT_SIZE_KEY].box
   let bondCount = 0
+
+  // --- test-support hook (item 2, 2026-08 UI-fixes task) ------------------------------------------
+  // tests/run-ui.test.ts's camera sweep needs to move the camera through several distances/angles
+  // around the CURRENT box and check that something non-background actually rendered at each one --
+  // there is no DOM state that proves "the instanced meshes are visible", the only ground truth is
+  // the rendered pixels, read back here via WebGL readPixels (never --dump-dom, per this task's own
+  // constraint) so the test stays inside page.evaluate the same way every other assertion here does.
+  // Exposed the same way `runUI` already is: a small, explicitly-named object on `window`, not a
+  // production feature.
+  interface SceneDebugHooks {
+    /** Places the camera at `distanceScale` * the CURRENT box's own diagonal from its centre, at
+     * spherical angles (thetaDeg around the vertical axis, phiDeg from it), looking at the centre,
+     * then renders one frame immediately so nonBackgroundPixelFraction() below has something fresh
+     * to read. */
+    setCameraOrbit(distanceScale: number, thetaDeg: number, phiDeg: number): void
+    /** Fraction of the canvas's own pixels that differ from the scene's background colour
+     * (0x0b0d10) by more than a small tolerance (float/antialiasing noise) -- 0 means "the canvas
+     * shows nothing but empty background", which is exactly the item-2 symptom this guards. */
+    nonBackgroundPixelFraction(): number
+  }
+  const sceneDebug: SceneDebugHooks = {
+    setCameraOrbit(distanceScale, thetaDeg, phiDeg) {
+      const center = new THREE.Vector3(box[0] / 2, box[1] / 2, box[2] / 2)
+      const diag = Math.sqrt(box[0] ** 2 + box[1] ** 2 + box[2] ** 2)
+      const r = diag * distanceScale
+      const theta = (thetaDeg * Math.PI) / 180
+      const phi = (phiDeg * Math.PI) / 180
+      camera.position.set(
+        center.x + r * Math.sin(phi) * Math.cos(theta),
+        center.y + r * Math.cos(phi),
+        center.z + r * Math.sin(phi) * Math.sin(theta),
+      )
+      camera.lookAt(center)
+      controls.target.copy(center)
+      controls.update()
+      if (latestSnapshot) draw(latestSnapshot)
+      else renderer.render(scene, camera)
+    },
+    nonBackgroundPixelFraction() {
+      const gl = renderer.getContext()
+      const w = canvas.width
+      const h = canvas.height
+      const buf = new Uint8Array(w * h * 4)
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf)
+      const bg = [0x0b, 0x0d, 0x10]
+      let diff = 0
+      for (let i = 0; i < buf.length; i += 4) {
+        if (Math.abs(buf[i] - bg[0]) > 6 || Math.abs(buf[i + 1] - bg[1]) > 6 || Math.abs(buf[i + 2] - bg[2]) > 6) diff++
+      }
+      return diff / (w * h)
+    },
+  }
+  ;(window as unknown as { sceneDebug: SceneDebugHooks }).sceneDebug = sceneDebug
   // Cavity info persists ACROSS ticks between samples (unlike evidence/stage, which only ever
   // exist as of the last sample too, but are read straight off runUI) -- draw() reads
   // Snapshot.largestCavity every rendered frame, including the many ticks between two samples, so
@@ -571,6 +811,17 @@ function main(): void {
   // "start a new run" click would leak the just-finished run's ~20 GPUBuffers forever.
   let activeSys: SoupSystem | null = null
 
+  // Item 1b (2026-08 crash report): the status line must not name a cause it does not know. Before
+  // this fix every 'error' state rendered the SAME hardcoded "GPU не отвечает", true only for a
+  // genuine watchdog timeout -- an exception thrown inside the sample loop (e.g. a metric function
+  // rejecting bad data) got the identical label, misattributing the failure to a GPU that had, in
+  // fact, answered every command. runUI.errorKind (set by failRun, one call site per cause) is what
+  // this now reads instead of guessing.
+  function errorLabel(): string {
+    if (runUI.errorKind === 'timeout') return 'ОШИБКА — GPU не отвечает'
+    return `ОШИБКА — сбой в коде: ${runUI.error ?? 'неизвестная ошибка'}`
+  }
+
   function setState(s: RunState): void {
     runUI.state = s
     stateValue.textContent =
@@ -581,7 +832,7 @@ function main(): void {
           : s === 'paused'
             ? 'пауза'
             : s === 'error'
-              ? 'ОШИБКА — GPU не отвечает'
+              ? errorLabel()
               : 'остановлен'
     startBtn.disabled = s === 'running' || s === 'paused'
     pauseBtn.disabled = s !== 'running' && s !== 'paused'
@@ -589,6 +840,8 @@ function main(): void {
     stopBtn.disabled = s !== 'running' && s !== 'paused'
     const controlsLocked = s === 'running' || s === 'paused'
     sizeSelect.disabled = controlsLocked
+    boxSideInput.disabled = controlsLocked
+    particleScaleInput.disabled = controlsLocked
     stageSelect.disabled = controlsLocked
     stepCapInput.disabled = controlsLocked
   }
@@ -746,7 +999,7 @@ function main(): void {
         const stepResult = await stepWithWatchdog(mySys, batch)
         if (runGeneration !== myGeneration) return
         if (stepResult === 'timeout') {
-          failRun(`GPU не отвечает: step() не вернулся за ${(STEP_WATCHDOG_MS / 1000).toFixed(0)}с`)
+          failRun(`GPU не отвечает: step() не вернулся за ${(STEP_WATCHDOG_MS / 1000).toFixed(0)}с`, 'timeout')
           return
         }
         runUI.steps += batch
@@ -769,11 +1022,12 @@ function main(): void {
           largestCavity: lastCavity,
           cavityCount: lastCavityCount,
         }
-        atomBadgeEl.textContent =
+        setAtomBadgeFull(
           `Скелет реконструированных атомов взят из ПРОВЕРЕННОЙ огрублённой динамики бульона; атомная ` +
-          `геометрия — литературные длины связей/углы (chem/src/backmap.ts), не независимая ` +
-          `атомистическая симуляция. Атом за атомом показано ${atomistic.length} из ${amphiphiles.length} ` +
-          `найденных амфифилов (остальные — те же коарс-грейн мономеры).`
+            `геометрия — литературные длины связей/углы (chem/src/backmap.ts), не независимая ` +
+            `атомистическая симуляция. Атом за атомом показано ${atomistic.length} из ${amphiphiles.length} ` +
+            `найденных амфифилов (остальные — те же коарс-грейн мономеры).`,
+        )
 
         if (sampleDue || now - lastSampleAt >= SAMPLE_INTERVAL_MS) {
           sampleDue = false
@@ -839,7 +1093,7 @@ function main(): void {
       }
     } catch (err) {
       if (runGeneration !== myGeneration) return // a superseded generation's own error, not this run's
-      failRun(`ошибка в цикле прогона: ${(err as Error).message}`)
+      failRun(`ошибка в цикле прогона: ${(err as Error).message}`, 'exception')
     }
   }
 
@@ -859,12 +1113,18 @@ function main(): void {
    * try/catch) -- distinct from finishRun(): sets state to 'error' (not 'stopped') and records
    * `runUI.error` with the last completed step count folded in, so the page LOOKS wedged instead
    * of looking like a normal, intentional stop. Still tears down the GPU side exactly like
-   * finishRun() does -- a dead run must not keep holding its buffers either. */
-  function failRun(reason: string): void {
+   * finishRun() does -- a dead run must not keep holding its buffers either.
+   *
+   * `kind` (item 1b) is which of the two distinct failure modes this call site is reporting -- see
+   * runUI.errorKind's own doc comment and errorLabel() above for why the status line needs this
+   * rather than a single hardcoded message. Set on `runUI` BEFORE setState('error') so errorLabel()
+   * reads the right value the first time it runs. */
+  function failRun(reason: string, kind: 'timeout' | 'exception'): void {
     runGeneration++
     activeElapsedMs = currentElapsedMs()
     const message = `${reason} (пройдено шагов: ${runUI.steps})`
     runUI.error = message
+    runUI.errorKind = kind
     setState('error')
     paintProgress()
     appendTraceLine(`[ошибка] ${message}`)
@@ -874,11 +1134,22 @@ function main(): void {
   }
 
   async function startRun(): Promise<void> {
-    const presetKey = sizeSelect.value
-    const preset = SIZE_PRESETS[presetKey]
+    const { box: boxNow, startCounts } = currentSizeSelection()
+    const refusal = validateSizeSelection(boxNow, startCounts)
+    if (refusal) {
+      // Item 3 (2026-08 UI-fixes task): refuse cleanly instead of letting createSoup's own
+      // planSoupGrid check throw (or worse, an invalid neighbour grid misbehave on the GPU) -- see
+      // validateSizeSelection's own doc comment for what each possible reason means. Nothing about
+      // run state changes here: this is refused before anything starts, not a failed run, so the
+      // trace log / evidence / step counter from any PREVIOUS run are deliberately left alone.
+      sizeErrorEl.hidden = false
+      sizeErrorEl.textContent = refusal
+      return
+    }
+
     targetStage = stageSelect.value as Stage
     stepCap = Math.max(1, Math.floor(Number(stepCapInput.value) || DEFAULT_STEP_CAP))
-    box = preset.box
+    box = boxNow
 
     runUI.steps = 0
     runUI.stepsPerSecond = 0
@@ -886,6 +1157,7 @@ function main(): void {
     runUI.evidence = { amphiphileFraction: 0, largestAggregateFraction: 0, headPeaks: 0, enclosedVolume: 0 }
     runUI.trace = []
     runUI.error = null
+    runUI.errorKind = null
     runUI.cavityCount = 0
     runUI.largestCavity = null
     traceLogEl.textContent = ''
@@ -909,11 +1181,11 @@ function main(): void {
     activeSys = null
 
     setState('running')
-    appendTraceLine(`[старт] размер=${presetKey} цель=${targetStage} предел_шагов=${stepCap}`)
+    appendTraceLine(`[старт] бокс=${box[0]}×${box[1]}×${box[2]} цель=${targetStage} предел_шагов=${stepCap}`)
 
-    const sys = await createSoup({ box, seed: RUN_SEED, kT: params.thermostat.kT, start: preset.start })
+    const sys = await createSoup({ box, seed: RUN_SEED, kT: params.thermostat.kT, start: startCounts })
     activeSys = sys
-    const n = Object.values(preset.start ?? soup.start).reduce((a, b) => a + b, 0)
+    const n = Object.values(startCounts).reduce((a, b) => a + b, 0)
     meshes = buildMeshes(n, box)
 
     runGeneration++

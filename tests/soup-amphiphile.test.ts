@@ -109,3 +109,46 @@ test('настоящий двухслойный профиль голов даё
   }
   expect(computeHeadPeaks(parts, box, monomers, thresholds)).toBe(2)
 })
+
+// Item 1a (2026-08 crash report): a live run died mid-loop with `densityProfileZ: бусина с z=... вне
+// [0, ...)` -- computeHeadPeaks was handing densityProfileZ a raw, unfiltered snapshot, and a soup
+// particle can legitimately read back with z outside [0, box[2]) on a live snapshot (see
+// computeHeadPeaks's own updated doc comment for why: soup/wgsl/step.wgsl's float32 wrap can round
+// to exactly `box`, or worse on a diverging trajectory). densityProfileZ is right to throw on that
+// (its own doc comment) -- the caller was wrong to feed it unfiltered data. Reproduced here with
+// the exact two-slab profile from the previous test, but with one head bumped to z=box[2] exactly
+// (the float32-rounding case) and a second bumped further out (z > box[2], the "genuinely escaped"
+// case) -- computeHeadPeaks must not throw, and with only 2 of 700 heads dropped the remaining
+// signal is still well above every guard, so the real two-peak reading must survive unharmed.
+test('улетевшая за коробку бусина не рушит computeHeadPeaks (item 1a)', () => {
+  const thresholds = loadStageThresholds()
+  const monomers = loadSoup().monomers
+  const box: [number, number, number] = [20, 20, 20]
+  const n = 700
+  const parts = new Float32Array(n * 4)
+  for (let i = 0; i < n; i++) {
+    parts[i * 4 + 2] = i < n / 2 ? 6 : 13 // two thin slabs, 7 sigma apart -- same as the passing case
+    parts[i * 4 + 3] = 1
+  }
+  parts[0 * 4 + 2] = box[2] // exactly on the boundary -- z < box[2] fails, this is "escaped"
+  parts[1 * 4 + 2] = box[2] + 4 // clearly past the box -- the open-axis-drift case
+  expect(() => computeHeadPeaks(parts, box, monomers, thresholds)).not.toThrow()
+  expect(computeHeadPeaks(parts, box, monomers, thresholds)).toBe(2)
+})
+
+// The all-escaped extreme: if every polar head has left the box, there is nothing left to profile
+// at all -- must report 'unavailable' (an honest "can't say"), not throw and not silently invent a
+// peak count from an empty profile.
+test('все головы улетели за коробку — computeHeadPeaks сообщает н/д, не рушится (item 1a)', () => {
+  const thresholds = loadStageThresholds()
+  const monomers = loadSoup().monomers
+  const box: [number, number, number] = [20, 20, 20]
+  const n = 50
+  const parts = new Float32Array(n * 4)
+  for (let i = 0; i < n; i++) {
+    parts[i * 4 + 2] = box[2] + 1 + i // every head past the box, spread out so it isn't one coincidence
+    parts[i * 4 + 3] = 1
+  }
+  expect(() => computeHeadPeaks(parts, box, monomers, thresholds)).not.toThrow()
+  expect(computeHeadPeaks(parts, box, monomers, thresholds)).toBe('unavailable')
+})

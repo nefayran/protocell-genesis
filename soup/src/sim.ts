@@ -27,7 +27,7 @@ import stepWgsl from '../wgsl/step.wgsl?raw'
 import bondWgsl from '../wgsl/bond.wgsl?raw'
 import { getGpu, readBack, storageBuffer } from '../../engine/src/gpu'
 import { loadParams, paramsToUniform, wcaCutoff, type Params } from '../../engine/src/params'
-import { acceptanceProbability, assertRulesConsistent, attemptProbability, loadSoup, type Rule } from './rules'
+import { acceptanceProbability, assertRulesConsistent, attemptProbability, loadSoup, type Rule, type Soup } from './rules'
 import { detectStage, type Stage, type StageEvidence } from './stages'
 
 export interface CreateSoupOpts {
@@ -252,6 +252,78 @@ function getSoupPipelines(device: GPUDevice, sortedGather: boolean): SoupPipelin
   return cached
 }
 
+/** The neighbour-grid geometry a given `box` would get, and whether it is even valid -- the exact
+ * derivation createSoup() itself needs before it may allocate a single GPU buffer (walkRadius from
+ * the species' own interaction range, the grid dims that follow from box/cellSize, and the two
+ * periodicity/minimum-image invariants below), pulled out into its own pure, GPU-free function so
+ * a caller (a viewer letting the user pick their own box, item 3 of the 2026-08 UI-fixes task) can
+ * preview the cost -- particle count, grid dims -- and catch an invalid box BEFORE calling the async,
+ * GPU-allocating createSoup() at all, rather than only finding out from a caught exception after
+ * paying for the attempt. createSoup() below calls this too, so there is exactly one definition of
+ * "is this box valid" for the soup engine, not a second one drifting out of sync in a viewer. */
+export interface SoupPlan {
+  /** Total starting particle count for this composition (independent of box). */
+  N: number
+  box: [number, number, number]
+  /** Neighbour-grid cell side, sigma. */
+  cellSize: number
+  /** How many cells the neighbour walk must cover on each side (Verlet-list build radius when the
+   * list is enabled, this soup's own regular walk radius otherwise). */
+  effectiveWalkRadius: number
+  /** Grid cell counts, one per axis -- `floor(box[axis]/cellSize)`, at least 1. */
+  dims: [number, number, number]
+  ncells: number
+  /** `2*effectiveWalkRadius+1` -- the minimum dims[axis] the periodic ±effectiveWalkRadius cell
+   * walk needs on every axis: with fewer cells than this on a periodic axis, the wrap revisits a
+   * cell more than once, silently multiplying every force/bond-attempt/list-build contribution
+   * from it. The OTHER half of `valid` (not separately named) is the minimum-image guard,
+   * min(box)/2 > bend.r0, unaffected by cell count -- it is about the bond's own reach. */
+  minCells: number
+  valid: boolean
+  /** Populated (non-null) exactly when `!valid` -- the exact message createSoup() itself would
+   * throw for this box, so a caller can show it without waiting for that throw. */
+  reason: string | null
+}
+
+export function planSoupGrid(box: [number, number, number], startCounts?: Record<string, number>): SoupPlan {
+  const soup = loadSoup()
+  const p = loadParams()
+
+  const counts: Record<string, number> = { ...soup.start, ...(startCounts ?? {}) }
+  const N = soup.monomers.reduce((sum, m) => sum + (counts[m.id] ?? 0), 0)
+
+  // Same derivation as createSoup's own interactionRange/cellSize/walkRadius/listBuildWalkRadius --
+  // see that function's own comments for the reasoning; not repeated here since it does not depend
+  // on `box` at all (only on data/soup.json's own species/neighborGrid/verletList settings), so a
+  // caller previewing many candidate box sizes is not re-deriving anything box-independent.
+  const maxRadiusSigma = Math.max(...soup.monomers.map((m) => m.radiusSigma))
+  const maxB = p.sigma * maxRadiusSigma
+  const interactionRange = wcaCutoff(maxB) + p.attraction.wc
+  const cellSize = interactionRange / soup.neighborGrid.cellDivisor
+  const walkRadius = Math.ceil(interactionRange / cellSize)
+  const verlet = soup.verletList
+  const listRange = interactionRange + verlet.skin
+  const listBuildWalkRadius = Math.ceil(listRange / cellSize)
+  const effectiveWalkRadius = verlet.enabled ? listBuildWalkRadius : walkRadius
+
+  const dims: [number, number, number] = [
+    Math.max(1, Math.floor(box[0] / cellSize)),
+    Math.max(1, Math.floor(box[1] / cellSize)),
+    Math.max(1, Math.floor(box[2] / cellSize)),
+  ]
+  const ncells = dims[0] * dims[1] * dims[2]
+  const minCells = 2 * effectiveWalkRadius + 1
+  const gridOk = dims[0] >= minCells && dims[1] >= minCells && dims[2] >= minCells
+  const miOk = Math.min(box[0], box[1], box[2]) / 2 > p.bend.r0
+  const valid = gridOk && miOk
+  const reason = valid
+    ? null
+    : `сетка соседей: box=[${box[0]},${box[1]},${box[2]}] даёт cellSize=${cellSize.toFixed(4)}, dims=[${dims[0]},${dims[1]},${dims[2]}] ` +
+      `и min(box)/2=${(Math.min(box[0], box[1], box[2]) / 2).toFixed(4)} — нужно dims>=${minCells} (2*effectiveWalkRadius+1) на всех трёх осях и min(box)/2 > bend.r0=${p.bend.r0}`
+
+  return { N, box, cellSize, effectiveWalkRadius, dims, ncells, minCells, valid, reason }
+}
+
 export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   const soup = loadSoup()
   assertRulesConsistent(soup)
@@ -337,38 +409,20 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   }
   const effectiveWalkRadius = verlet.enabled ? listBuildWalkRadius : walkRadius
 
-  function computeDims(b: [number, number, number]): [number, number, number] {
-    return [Math.max(1, Math.floor(b[0] / cellSize)), Math.max(1, Math.floor(b[1] / cellSize)), Math.max(1, Math.floor(b[2] / cellSize))]
-  }
-
   // Full 3-axis periodicity here (unlike engine/src/sim.ts's membrane, which leaves z open for a
   // bilayer in vacuum) -- a bulk soup has no preferred axis, so the ±effectiveWalkRadius
   // neighbour-cell walk wraps z too (soup/wgsl/step.wgsl, soup/wgsl/bond.wgsl), and needs
-  // dims>=2*effectiveWalkRadius+1 on every axis for the same reason engine/src/sim.ts's
-  // gridInvariantsHold needs dims>=3 on x,y for its own ±1 walk: with fewer than
-  // 2*effectiveWalkRadius+1 cells on a periodic axis, the wrap revisits a cell more than once,
-  // silently multiplying every force/bond-attempt/list-build contribution from it. min(box)/2 >
-  // bend.r0 guards the minimum-image convention (mi3) the same way, generalised to all three axes
-  // and unaffected by walkRadius (it is about the bond's own reach, not the neighbour grid).
-  function gridInvariantsHold(b: [number, number, number], d: [number, number, number]): boolean {
-    const minCells = 2 * effectiveWalkRadius + 1
-    return (
-      d[0] >= minCells &&
-      d[1] >= minCells &&
-      d[2] >= minCells &&
-      Math.min(b[0], b[1], b[2]) / 2 > p.bend.r0
-    )
-  }
-
-  const dims = computeDims(box)
-  if (!gridInvariantsHold(box, dims)) {
-    const minCells = 2 * effectiveWalkRadius + 1
-    throw new Error(
-      `сетка соседей: box=[${box[0]},${box[1]},${box[2]}] даёт cellSize=${cellSize.toFixed(4)}, dims=[${dims[0]},${dims[1]},${dims[2]}] ` +
-        `и min(box)/2=${(Math.min(box[0], box[1], box[2]) / 2).toFixed(4)} — нужно dims>=${minCells} (2*effectiveWalkRadius+1) на всех трёх осях и min(box)/2 > bend.r0=${p.bend.r0}`,
-    )
-  }
-  const ncells = dims[0] * dims[1] * dims[2]
+  // dims>=2*effectiveWalkRadius+1 on every axis: with fewer than 2*effectiveWalkRadius+1 cells on a
+  // periodic axis, the wrap revisits a cell more than once, silently multiplying every force/
+  // bond-attempt/list-build contribution from it. min(box)/2 > bend.r0 guards the minimum-image
+  // convention (mi3) the same way, generalised to all three axes and unaffected by walkRadius (it
+  // is about the bond's own reach, not the neighbour grid). Both checks -- and computeDims below --
+  // are planSoupGrid()'s own job now (see its doc comment): the SAME derivation a viewer previews
+  // before calling this function at all, not a second copy that could drift from this one.
+  const plan = planSoupGrid(box, startCounts)
+  if (!plan.valid) throw new Error(plan.reason!)
+  const dims = plan.dims
+  const ncells = plan.ncells
 
   const { device } = await getGpu()
   const sortedGather = soup.neighborGrid.sortedGather
