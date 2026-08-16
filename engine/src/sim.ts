@@ -13,6 +13,13 @@ export interface CreateSystemOpts {
   layout: Layout
   /** Overrides thermostat.gamma from params.json — needed to run the drift test at gamma=0. */
   gamma?: number
+  /** Widens the neighbor-grid cell size as if attraction.wc were at least this value, WITHOUT
+   * changing the actual physics wc used at creation (that still comes from params.json/gamma
+   * override above). Needed by viewer/, whose w_c slider calls System.setLiveParams() after
+   * creation to retune a RUNNING system — the grid's cell size is fixed at creation time (see the
+   * `cellSize` comment below for why a frozen-too-small grid silently drops forces), so a caller
+   * that plans to raise wc above its initial value after the fact must say so up front here. */
+  maxWc?: number
   /** Test-only escape hatch: when given, replaces the layout function's output with these exact
    * bead positions (4 floats per bead: x,y,z,type), skipping RNG entirely. `layout` is still
    * required by the type but is not consulted. Lets a test build a fixed, hand-picked
@@ -57,6 +64,12 @@ export interface System {
    * neighbor grid after every trial (accepted or not) since the box the grid's cell/box uniform
    * refers to may have changed. */
   areaMove(trials: number): Promise<number>
+  /** Rewrites the params uniform buffer in place (kT and/or wc), WITHOUT recreating the system or
+   * touching any other engine state — the running simulation keeps its positions, velocities,
+   * step count and neighbor grid exactly as they were. Only subsequent kick/force/thermostat
+   * passes see the new value. Added for viewer/'s two sliders (kT/epsilon and w_c), which must
+   * retune a live simulation rather than restart it. */
+  setLiveParams(overrides: { kT?: number; wc?: number }): void
   /** Current box lengths — a live snapshot, since areaMove() mutates L_x, L_y in place. */
   readonly box: [number, number, number]
   /** Number of lipids the system was created with (fixed for its lifetime). */
@@ -443,7 +456,7 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
   // silently under-counted, and nothing then resists further compression: measured on this
   // engine, a run that kept dims frozen collapsed area/lipid from 1.352 to 0.697 over 200 area
   // moves instead of equilibrating in the literature corridor.
-  const cellSize = wcaCutoff(p.beadSizes.tail_tail) + p.attraction.wc
+  const cellSize = wcaCutoff(p.beadSizes.tail_tail) + Math.max(p.attraction.wc, opts.maxWc ?? p.attraction.wc)
 
   function computeDims(b: [number, number, number]): [number, number, number] {
     return [Math.max(1, Math.floor(b[0] / cellSize)), Math.max(1, Math.floor(b[1] / cellSize)), Math.max(1, Math.floor(b[2] / cellSize))]
@@ -709,6 +722,20 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
     return readBack(device, posBuf, N * 16)
   }
 
+  // Mutable copy of the params actually in force, distinct from the immutable `p` above (which
+  // still reflects exactly what the system was CREATED with) — see setLiveParams's doc comment on
+  // the System interface for why this exists.
+  let livep: Params = p
+
+  function setLiveParams(overrides: { kT?: number; wc?: number }): void {
+    livep = {
+      ...livep,
+      thermostat: overrides.kT !== undefined ? { ...livep.thermostat, kT: overrides.kT } : livep.thermostat,
+      attraction: overrides.wc !== undefined ? { ...livep.attraction, wc: overrides.wc } : livep.attraction,
+    }
+    device.queue.writeBuffer(paramsUniform, 0, paramsToUniform(livep))
+  }
+
   async function forces(): Promise<Float32Array> {
     await rebuildGridTimed()
     const enc = device.createCommandEncoder()
@@ -867,6 +894,7 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
     kineticEnergyPerDof,
     totalEnergy,
     areaMove,
+    setLiveParams,
     get box(): [number, number, number] {
       return [liveBox[0], liveBox[1], liveBox[2]]
     },
