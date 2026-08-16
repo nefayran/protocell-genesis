@@ -1,5 +1,6 @@
 import { afterAll, expect, test } from 'vitest'
 import { cavities, cavitiesFromPositions, dimsFor, enclosedVolume, enclosedVolumeFromPositions, occupancy } from '../engine/src/closure'
+import { isVesicleShape } from '../soup/src/aggregates'
 import { loadStageThresholds, stageFromEvidence } from '../soup/src/stages'
 import { gpuPage, shutdownGpu } from './helpers/gpu'
 
@@ -79,9 +80,16 @@ test('плоский лист полости не даёт', () => {
 // stageThresholds, kept equal by soup/src/stages.ts's loadStageThresholds() itself) against both
 // ends: a real detector run on a genuinely large synthetic shell must pass, and the exact reported
 // pocket number must not -- regardless of how saturated the rest of the stage ladder is.
-test('исправленный порог closure: настоящая большая полость даёт vesicle, карман в 9 клеток из живого прогона — нет, независимо от насыщенности остальной лестницы', () => {
+// task-3c/per-aggregate-report moved the vesicle gate from a box-wide StageEvidence.enclosedVolume
+// scalar to isVesicleShape() (soup/src/aggregates.ts): two head SHELLS on one aggregate's own radial
+// profile AND that SAME aggregate's own local cavity clearing the existing physically-derived
+// minimum (unchanged -- see this file's header for the 9-cell-pocket regression this minimum itself
+// fixes). Both ends pinned here, same as before: a genuinely large cavity (the real detector run on
+// the big synthetic shell) must clear the gate, and the EXACT reported 9-cell pocket must not --
+// regardless of how saturated the rest of the ladder is (a fully saturated AggregateAnalysis with
+// hasLamellarAggregate:true still must not read `vesicle` when hasVesicleAggregate comes out false).
+test('исправленный порог closure: настоящая большая полость на агрегате даёт vesicle, карман в 9 клеток из живого прогона — нет, независимо от насыщенности остальной лестницы', () => {
   const thresholds = loadStageThresholds()
-  const ladderSaturated = { amphiphileFraction: 1, largestAggregateFraction: 1, headPeaks: 2 as const }
 
   // Genuine cavity: the SAME big synthetic shell as this file's very first test (radius 8, thickness
   // 1.5, 40_000 beads), run through the REAL detector (occupancy+enclosedVolume), not a fabricated
@@ -89,16 +97,38 @@ test('исправленный порог closure: настоящая больш
   const box: [number, number, number] = [40, 40, 40]
   const bigVolume = enclosedVolumeFromPositions(shell(8, 1.5, 40_000), box, { cell: 0.5, radius: 0.6 })
   expect(bigVolume).toBeGreaterThan(thresholds.enclosedVolume)
-  expect(stageFromEvidence({ ...ladderSaturated, enclosedVolume: bigVolume }, thresholds)).toBe('vesicle')
+  expect(isVesicleShape({ radialHeadShells: 2, cavityVolume: bigVolume }, thresholds)).toBe(true)
 
   // The bug this task fixes, pinned with the EXACT number the live run reported: enclosedVolume =
-  // 1.1250 (9 flood-fill cells at cell=0.5sigma, cell^3=0.125). However saturated the amphiphile/
-  // aggregation/head-peak ladder is, a 9-cell pocket must not read as a vesicle under the corrected
-  // threshold -- and it must sit nowhere close to the new minimum, not just barely under it.
+  // 1.1250 (9 flood-fill cells at cell=0.5sigma, cell^3=0.125). A 9-cell pocket must not read as a
+  // vesicle-worthy cavity under the corrected threshold -- and it sits nowhere close to the new
+  // minimum, not just barely under it -- EVEN with a trusted two-shell head reading on the same
+  // aggregate (isolating that this is the volume gate failing it, not the shell-count gate).
   const reportedPocketVolume = 1.125
   expect(reportedPocketVolume).toBeLessThan(thresholds.enclosedVolume / 100)
-  expect(stageFromEvidence({ ...ladderSaturated, enclosedVolume: reportedPocketVolume }, thresholds)).not.toBe('vesicle')
-  expect(stageFromEvidence({ ...ladderSaturated, enclosedVolume: reportedPocketVolume }, thresholds)).toBe('bilayer')
+  expect(isVesicleShape({ radialHeadShells: 2, cavityVolume: reportedPocketVolume }, thresholds)).toBe(false)
+
+  // Full pipeline, ladder saturated up through bilayer: hasVesicleAggregate is exactly what
+  // isVesicleShape decided above -- the pocket case must land on `bilayer`, not `vesicle`, and the
+  // genuine-cavity case must land on `vesicle`, however saturated everything upstream of it is.
+  const ladderSaturated = {
+    amphiphileFraction: 1,
+    largestAggregateFraction: 1,
+    headPeaks: 2 as const,
+    enclosedVolume: 0, // box-wide diagnostic only, does not gate anything any more
+  }
+  const analysisFor = (cavityVolume: number) => ({
+    aggregateCount: 1,
+    sizeHistogram: [1000],
+    aggregates: [],
+    qualifyingAggregateCount: thresholds.minMicelleAggregates,
+    amphiphilesInQualifying: 1000,
+    amphiphileShareInQualifying: 1,
+    hasLamellarAggregate: true,
+    hasVesicleAggregate: isVesicleShape({ radialHeadShells: 2, cavityVolume }, thresholds),
+  })
+  expect(stageFromEvidence({ ...ladderSaturated, aggregateAnalysis: analysisFor(bigVolume) }, thresholds)).toBe('vesicle')
+  expect(stageFromEvidence({ ...ladderSaturated, aggregateAnalysis: analysisFor(reportedPocketVolume) }, thresholds)).toBe('bilayer')
 })
 
 // cavities()/cavitiesFromPositions(): the per-cavity breakdown the viewer draws from. Pins that (a)

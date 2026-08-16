@@ -24,6 +24,7 @@ import { loadSoup } from '../soup/src/rules'
 import { createSoup, planSoupGrid, type SoupSystem } from '../soup/src/sim'
 import {
   detectStage,
+  emptyAggregateAnalysis,
   HEAD_PEAKS_UNAVAILABLE,
   loadStageThresholds,
   memberIndicesOf,
@@ -257,6 +258,17 @@ function main(): void {
   const cavityCentreEl = document.getElementById('cavity-centre') as HTMLElement
   const cavityAimBtn = document.getElementById('cavity-aim-btn') as HTMLButtonElement
   const cavityHonestyEl = document.getElementById('cavity-honesty') as HTMLElement
+
+  // Per-aggregate panel (task-3c/per-aggregate-report) -- see paintProgress()'s own use of these
+  // for what each field shows and StageEvidence.aggregateAnalysis's own doc comment (soup/src/
+  // stages.ts) for where the numbers come from.
+  const aggCountEl = document.getElementById('agg-count') as HTMLElement
+  const aggQualifyingEl = document.getElementById('agg-qualifying') as HTMLElement
+  const aggShareEl = document.getElementById('agg-share') as HTMLElement
+  const aggLamellarEl = document.getElementById('agg-lamellar') as HTMLElement
+  const aggVesicleEl = document.getElementById('agg-vesicle') as HTMLElement
+  const aggHistogramEl = document.getElementById('aggregate-histogram') as HTMLElement
+  const aggDetailEl = document.getElementById('aggregate-detail') as HTMLElement
 
   const thresholds = loadStageThresholds()
   initCollapsibleNote(
@@ -707,7 +719,7 @@ function main(): void {
     steps: 0,
     stepsPerSecond: 0,
     stage: 'monomers',
-    evidence: { amphiphileFraction: 0, largestAggregateFraction: 0, headPeaks: 0, enclosedVolume: 0 },
+    evidence: { amphiphileFraction: 0, largestAggregateFraction: 0, headPeaks: 0, enclosedVolume: 0, aggregateAnalysis: emptyAggregateAnalysis() },
     trace: [],
     error: null,
     errorKind: null,
@@ -904,6 +916,32 @@ function main(): void {
       ? `${largest.centre[0].toFixed(1)}, ${largest.centre[1].toFixed(1)}, ${largest.centre[2].toFixed(1)}`
       : '–'
     cavityAimBtn.disabled = !largest
+
+    // --- per-aggregate panel (task-3c/per-aggregate-report): WHY this tick's stage did or did not
+    // fire -- every number the ladder itself reads (loadStageThresholds()'s new fields), not a
+    // narrative summary of them. ev.aggregateAnalysis is the SAME object stageFromEvidence() (soup/
+    // src/stages.ts) decided runUI.stage from -- this panel shows its own reasoning, not a second
+    // guess at it.
+    const agg = ev.aggregateAnalysis
+    aggCountEl.textContent = String(agg.aggregateCount)
+    aggQualifyingEl.textContent = `${agg.qualifyingAggregateCount} (≥${thresholds.minAmphiphilesPerAggregate} амф.)`
+    aggShareEl.textContent = agg.amphiphileShareInQualifying.toFixed(3)
+    aggLamellarEl.textContent = agg.hasLamellarAggregate ? 'да' : 'нет'
+    aggVesicleEl.textContent = agg.hasVesicleAggregate ? 'да' : 'нет'
+    aggHistogramEl.textContent = agg.sizeHistogram.length > 0 ? `размеры: [${agg.sizeHistogram.join(', ')}]` : 'нет агрегатов'
+    aggDetailEl.innerHTML = agg.aggregates
+      .map(
+        (a, i) =>
+          `<div class="aggregate-card">` +
+          `<div class="row"><span>#${i + 1}, амф.</span><span>${a.amphiphileCount}</span></div>` +
+          `<div class="row"><span>плоскостность λ0/λ2</span><span>${a.flatnessRatio.toFixed(3)}</span></div>` +
+          `<div class="row"><span>в-плоск. λ1/λ2</span><span>${a.inPlaneSymmetry.toFixed(3)}</span></div>` +
+          `<div class="row"><span>слоёв голов (радиал.)</span><span>${a.radialHeadShells === HEAD_PEAKS_UNAVAILABLE ? 'н/д' : a.radialHeadShells}</span></div>` +
+          `<div class="row"><span>слоёв голов (поперечн.)</span><span>${a.transverseHeadShells === HEAD_PEAKS_UNAVAILABLE ? 'н/д' : a.transverseHeadShells}</span></div>` +
+          `<div class="row"><span>полость, σ³</span><span>${a.cavityVolume.toFixed(3)}</span></div>` +
+          `</div>`,
+      )
+      .join('')
   }
 
   /** Builds this snapshot's atomistic slice (backmapLipid per amphiphile whose head falls inside
@@ -1154,7 +1192,7 @@ function main(): void {
     runUI.steps = 0
     runUI.stepsPerSecond = 0
     runUI.stage = 'monomers'
-    runUI.evidence = { amphiphileFraction: 0, largestAggregateFraction: 0, headPeaks: 0, enclosedVolume: 0 }
+    runUI.evidence = { amphiphileFraction: 0, largestAggregateFraction: 0, headPeaks: 0, enclosedVolume: 0, aggregateAnalysis: emptyAggregateAnalysis() }
     runUI.trace = []
     runUI.error = null
     runUI.errorKind = null

@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { amphiphileHistogram, findAmphiphiles } from '../soup/src/amphiphile'
 import { loadSoup } from '../soup/src/rules'
-import { computeHeadPeaks, loadStageThresholds, stageFromEvidence } from '../soup/src/stages'
+import { computeHeadPeaks, emptyAggregateAnalysis, loadStageThresholds, stageFromEvidence } from '../soup/src/stages'
 
 const P = (xs: number[][]) => new Float32Array(xs.flat())
 
@@ -28,38 +28,56 @@ test('гистограмма длин считает цепи по числу у
   expect(amphiphileHistogram(findAmphiphiles(parts, bonds, m))).toEqual({ 1: 1, 2: 1 })
 })
 
-// --- task-3b: two pilot-exposed stage-detection defects (task-3b-report.md) ------------------------
-// Both fixes live in soup/src/stages.ts as pure, GPU-free functions (stageFromEvidence,
-// computeHeadPeaks) precisely so they can be unit-tested here on synthetic data, with no browser/
-// WebGPU context -- the pilot itself (30 samples, 300k steps) is not re-run.
+// --- task-3b: pilot-exposed stage-detection defect (task-3b-report.md), ladder ordering -------------
+// stageFromEvidence lives in soup/src/stages.ts as a pure, GPU-free function precisely so it can be
+// unit-tested here on synthetic data, with no browser/WebGPU context -- the pilot itself (30
+// samples, 300k steps) is not re-run. task-3c/per-aggregate-report redefined WHAT the micelles/
+// bilayer/vesicle conditions consist of (per-aggregate quantities, soup/src/aggregates.ts's
+// AggregateAnalysis, instead of largestAggregateFraction/headPeaks) but kept the LADDER PROPERTY
+// task-3b's own fix established: a later stage is structurally impossible without every earlier
+// stage's own condition too. These two tests, updated for the new evidence shape, still pin exactly
+// that property.
 
-// Defect 1: the OLD stage ladder tested each stage's OWN condition in isolation, so
-// largestAggregateFraction alone (denominator = the small amphiphile-member pool only) could
-// saturate past aggregationLow/High before amphiphileFraction ever crossed its own threshold --
-// this pilot's own step 30,000 sample (amphiphileFraction=0.0855, largestAggregateFraction=0.6619)
-// is exactly that: aggregation already past 0.3 while amphiphileFraction sat below the OLD 0.1
-// threshold, so the trace jumped straight to `micelles`, skipping `amphiphiles` in all 30 samples.
-test('амфифилы есть, агрегат ещё мал — стадия amphiphiles, не перепрыгнутая агрегацией (дефект 1)', () => {
+// Defect 1 (task-3b): the OLD stage ladder tested each stage's OWN condition in isolation, so an
+// aggregation-derived number could saturate before amphiphileFraction ever crossed its own
+// threshold, skipping the `amphiphiles` label. Here: amphiphiles are present (fraction above
+// threshold) but no aggregate has yet cleared the per-aggregate qualifying bar (an empty
+// AggregateAnalysis, e.g. amphiphile-member particles have not yet found each other) -- the stage
+// must read `amphiphiles`, not jump ahead on any other number.
+test('амфифилы есть, агрегаты ещё не сложились — стадия amphiphiles (дефект 1, лестница)', () => {
   const thresholds = loadStageThresholds()
   const evidence = {
     amphiphileFraction: thresholds.amphiphileFraction + 0.01,
-    largestAggregateFraction: thresholds.aggregationLow - 0.01,
+    largestAggregateFraction: 0,
     headPeaks: 0,
     enclosedVolume: 0,
+    aggregateAnalysis: emptyAggregateAnalysis(),
   }
   expect(stageFromEvidence(evidence, thresholds)).toBe('amphiphiles')
 })
 
-// The direct flip side: a crisp `largestAggregateFraction`/`headPeaks` reading with NO amphiphiles
-// recognised at all must not be read as `micelles` (or `bilayer`) just because the aggregate/peak
-// numbers alone look like one -- the ladder makes both stages structurally require the amphiphile
-// condition first.
-test('крупный агрегат без единого распознанного амфифила НЕ считается micelles (дефект 1)', () => {
+// The direct flip side: a per-aggregate reading that would otherwise satisfy EVERY later stage's
+// own condition (many qualifying aggregates, all the material in them, a lamellar shape, a shell +
+// cavity) must still not be read as `micelles`/`bilayer`/`vesicle` when NO amphiphiles were
+// recognised at all -- the ladder makes every later stage structurally require the amphiphile
+// condition first, regardless of how saturated the aggregate analysis alone looks.
+test('насыщенный анализ агрегатов без единого распознанного амфифила НЕ считается micelles (дефект 1, лестница)', () => {
   const thresholds = loadStageThresholds()
-  const evidence = { amphiphileFraction: 0, largestAggregateFraction: 0.95, headPeaks: 2, enclosedVolume: 0 }
+  const saturatedAnalysis = {
+    aggregateCount: 3,
+    sizeHistogram: [500, 400, 300],
+    aggregates: [],
+    qualifyingAggregateCount: 3,
+    amphiphilesInQualifying: 1200,
+    amphiphileShareInQualifying: 1,
+    hasLamellarAggregate: true,
+    hasVesicleAggregate: true,
+  }
+  const evidence = { amphiphileFraction: 0, largestAggregateFraction: 0.95, headPeaks: 2, enclosedVolume: 500, aggregateAnalysis: saturatedAnalysis }
   const stage = stageFromEvidence(evidence, thresholds)
   expect(stage).not.toBe('micelles')
   expect(stage).not.toBe('bilayer')
+  expect(stage).not.toBe('vesicle')
   expect(stage).toBe('monomers')
 })
 
