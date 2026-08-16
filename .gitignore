@@ -4,3 +4,4 @@ dist/
 __pycache__/
 *.pyc
 .superpowers/
+verify/out/kappa-test-run.json
