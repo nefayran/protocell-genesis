@@ -80,13 +80,32 @@ test('готовый бислой при нулевом натяжении де�
 // internal constant, not exposed to callers, and this test does not add a tuning knob for it — the
 // area move used during sampling is byte-for-byte the one the gate test and the physics validation
 // in task-5-report.md use, unchanged and unadjusted for the whole run.
+//
+// The large-box start is 1.55 sigma^2/lipid, not the originally-tried 1.9: 1.9 is ~57% areal strain
+// against the measured 1.208 plateau, and a run at that start was observed (task-5b-report.md, run
+// 2) to rupture the sheet rather than merely converge slowly — after rupture "area per lipid" no
+// longer means anything (its denominator assumes one intact bilayer spanning the box), which is
+// exactly why that run's ln(A) kept sliding well past the lower bound instead of leveling off. 1.55
+// is still outside the corridor (>1.5) but only ~28% strain, close to what the small-box side (0.9,
+// unchanged — compression is the benign direction and converged in every run so far) is asked to
+// recover from on the other side.
+//
+// Convergence is not accepted on the area number alone: before a trailing window is accepted as
+// "converged", the bilayer must still be verifiably ONE INTACT SHEET — largestClusterFractionOf
+// (essentially all tail beads in one connected component) and a real second head-density peak
+// (bilayerPeaks, which throws when the profile is not bimodal). A run that tears is a physically
+// different outcome from a run that is merely slow, so it gets a different, explicitly-labelled
+// failure (RUPTURE) instead of being folded into "did not converge" or, worse, silently judged by a
+// number that no longer describes an intact structure.
 test('площадь сходится в литературный коридор и из слишком большого, и из слишком малого бокса', async () => {
   const page = await gpuPage()
   const CAP = 2500 // hard cap on sampling moves per side; convergence is expected far earlier (see report)
   const TAIL = 200 // trailing window checked for "inside corridor + flat drift" — same width the old fixed-budget test used
   const BLOCKS = 20 // block count for the drift regression, same as measureBilayerAveraged's default
+  const STRUCTURE_CHECK_EVERY = 50 // cadence for the intact-bilayer check, to bail out of a ruptured run well before CAP
+  const INTACT_CLUSTER_FRACTION = 0.95 // "essentially all beads" — self-assembly's own bar for a GROWING aggregate is 0.8; an already-formed sheet merely surviving should clear that easily
   const runs = await page.evaluate(
-    async (CAP: number, TAIL: number, BLOCKS: number) => {
+    async (CAP: number, TAIL: number, BLOCKS: number, STRUCTURE_CHECK_EVERY: number, INTACT_CLUSTER_FRACTION: number) => {
       const api = (window as any).api
       const lipids = 400
       const out: any[] = []
@@ -120,13 +139,35 @@ test('площадь сходится в литературный коридор
         return { perStep: slope, stdErr, t: slope / stdErr }
       }
 
-      // area per lipid = Lx*Ly/(lipids/2): 1.9 is well above the corridor, 0.9 below it. 0.9 rather
-      // than something even smaller because the lattice layout, not the physics, sets the floor here:
-      // at 0.8 the perfectly ordered start overlaps beads hard enough that the first few hundred
-      // integration steps blow the configuration up (measured: total energy goes non-finite, beads
-      // reach z ~ 1e14), so there is nothing left to converge. 0.9 survives the same warm-up and is
-      // still clearly outside the corridor.
-      for (const startArea of [1.9, 0.9]) {
+      // Is `sys` still one intact bilayer sheet? Two independent, cheap structural checks:
+      //  - largestClusterFractionOf: essentially all tail beads must sit in one connected component
+      //    (the same connectivity the self-assembly gate uses to judge aggregation);
+      //  - bilayerPeaks on the head-density z-profile must find a genuine second peak — it throws
+      //    "второй пик не найден" when the heads are no longer bimodal, which is exactly what a torn
+      //    or interdigitated sheet looks like.
+      async function structuralCheck(sys: any): Promise<{ intact: boolean; clusterFraction: number; peaksOk: boolean }> {
+        const clusterFraction = await api.largestClusterFractionOf(sys)
+        let peaksOk = true
+        try {
+          const box = sys.box
+          const raw = await sys.positions()
+          const { positions } = api.dropEscapedZ(api.centerMembraneZ(raw, box), box)
+          const profile = api.densityProfileZ(positions, box, 200)
+          api.bilayerPeaks(profile)
+        } catch {
+          peaksOk = false
+        }
+        return { intact: clusterFraction > INTACT_CLUSTER_FRACTION && peaksOk, clusterFraction, peaksOk }
+      }
+
+      // area per lipid = Lx*Ly/(lipids/2): 1.55 is outside the corridor on the high side, 0.9 below
+      // it. 0.9 rather than something even smaller because the lattice layout, not the physics, sets
+      // the floor here: at 0.8 the perfectly ordered start overlaps beads hard enough that the first
+      // few hundred integration steps blow the configuration up (measured: total energy goes
+      // non-finite, beads reach z ~ 1e14), so there is nothing left to converge. 0.9 survives the
+      // same warm-up and is still clearly outside the corridor. See the file-level comment above for
+      // why the large side is 1.55, not the originally-tried 1.9.
+      for (const startArea of [1.55, 0.9]) {
         const L = Math.sqrt((startArea * lipids) / 2)
         const sys = await api.createSystem({ lipids, box: [L, L, 40], seed: 9, layout: 'bilayer' })
         // EQUILIBRATION PHASE: fixed-box relaxation only, no area move at all — nothing to tune,
@@ -138,31 +179,52 @@ test('площадь сходится в литературный коридор
         const series: number[] = []
         let accepted = 0
         let movesUsed = -1
+        let outcome: 'converged' | 'ruptured' | 'cap' = 'cap'
+        let structuralAtStop: { intact: boolean; clusterFraction: number; peaksOk: boolean } | null = null
         for (let i = 0; i < CAP; i++) {
           await sys.step(100)
           accepted += (await sys.areaMove(3)) * 3
           series.push(api.areaPerLipid(sys.box, lipids))
-          if (series.length >= TAIL) {
-            const tail = series.slice(-TAIL)
-            const tailMin = Math.min(...tail)
-            const tailMax = Math.max(...tail)
-            const insideCorridor = tailMin > 1.1 && tailMax < 1.5
-            const drift = blockDrift(
-              tail.map((a) => Math.log(a)),
-              BLOCKS,
-            )
-            // "Statistically indistinguishable from zero": |t| < 2 (~95% two-sided). Also bounded in
-            // absolute magnitude by the same 0.05 ln-A-over-the-window threshold the gate test above
-            // asserts, so a long, barely-significant creep cannot pass just because the block noise
-            // is large — same spirit as the gate's existing drift check, not a looser one.
-            const driftNegligible = Math.abs(drift.t) < 2 && Math.abs(drift.perStep) * TAIL < 0.05
-            if (insideCorridor && driftNegligible) {
-              movesUsed = i + 1
+          const idx = i + 1
+          if (series.length < TAIL) continue
+
+          // Periodic early-bail structural check: catches a rupture well before CAP instead of
+          // grinding through the rest of the budget measuring a number that no longer means anything.
+          if (idx % STRUCTURE_CHECK_EVERY === 0) {
+            const structural = await structuralCheck(sys)
+            if (!structural.intact) {
+              outcome = 'ruptured'
+              structuralAtStop = structural
+              movesUsed = idx
               break
             }
           }
+
+          const tail = series.slice(-TAIL)
+          const tailMin = Math.min(...tail)
+          const tailMax = Math.max(...tail)
+          const insideCorridor = tailMin > 1.1 && tailMax < 1.5
+          const drift = blockDrift(
+            tail.map((a) => Math.log(a)),
+            BLOCKS,
+          )
+          // "Statistically indistinguishable from zero": |t| < 2 (~95% two-sided). Also bounded in
+          // absolute magnitude by the same 0.05 ln-A-over-the-window threshold the gate test above
+          // asserts, so a long, barely-significant creep cannot pass just because the block noise
+          // is large — same spirit as the gate's existing drift check, not a looser one.
+          const driftNegligible = Math.abs(drift.t) < 2 && Math.abs(drift.perStep) * TAIL < 0.05
+          if (insideCorridor && driftNegligible) {
+            // Before judging the corridor met, confirm the structure that produced these numbers is
+            // still one intact sheet — a corridor-shaped number from a torn membrane is not a pass.
+            const structural = await structuralCheck(sys)
+            structuralAtStop = structural
+            movesUsed = idx
+            outcome = structural.intact ? 'converged' : 'ruptured'
+            break
+          }
         }
 
+        if (!structuralAtStop) structuralAtStop = await structuralCheck(sys)
         const tail = series.slice(-TAIL)
         const drift =
           series.length >= TAIL
@@ -176,7 +238,10 @@ test('площадь сходится в литературный коридор
           start: series[0],
           series,
           movesUsed,
-          converged: movesUsed !== -1,
+          outcome,
+          converged: outcome === 'converged',
+          clusterFraction: structuralAtStop.clusterFraction,
+          peaksOk: structuralAtStop.peaksOk,
           tailMin: Math.min(...tail),
           tailMax: Math.max(...tail),
           tailMean: tail.reduce((a, b) => a + b, 0) / tail.length,
@@ -190,17 +255,23 @@ test('площадь сходится в литературный коридор
     CAP,
     TAIL,
     BLOCKS,
+    STRUCTURE_CHECK_EVERY,
+    INTACT_CLUSTER_FRACTION,
   )
 
   for (const r of runs) {
+    const label = r.outcome === 'converged' ? `moves ${r.movesUsed}` : r.outcome === 'ruptured' ? `RUPTURE at move ${r.movesUsed}` : `CAP REACHED (${CAP})`
     console.log(
-      `CONVERGE start ${r.startArea} (first sample ${r.start.toFixed(3)})  ` +
-        `moves ${r.converged ? r.movesUsed : `CAP REACHED (${CAP})`}  ` +
+      `CONVERGE start ${r.startArea} (first sample ${r.start.toFixed(3)})  ${label}  ` +
         `tail mean ${r.tailMean.toFixed(4)} min ${r.tailMin.toFixed(4)} max ${r.tailMax.toFixed(4)}  ` +
-        `lnA drift t=${r.driftT.toFixed(2)} (${r.driftPerMove.toExponential(2)}/move)  accepted ${r.acceptedFraction.toFixed(3)}`,
+        `lnA drift t=${r.driftT.toFixed(2)} (${r.driftPerMove.toExponential(2)}/move)  accepted ${r.acceptedFraction.toFixed(3)}  ` +
+        `clusterFraction ${r.clusterFraction.toFixed(4)}  peaksOk ${r.peaksOk}`,
     )
     if (!r.converged) {
-      console.log(`CONVERGE FULL TRAJECTORY start=${r.startArea} (${r.series.length} samples): ${r.series.map((x: number) => x.toFixed(4)).join(',')}`)
+      console.log(
+        `CONVERGE ${r.outcome === 'ruptured' ? 'RUPTURE' : 'FULL'} TRAJECTORY start=${r.startArea} (${r.series.length} samples): ` +
+          `${r.series.map((x: number) => x.toFixed(4)).join(',')}`,
+      )
     }
   }
 
@@ -209,9 +280,20 @@ test('площадь сходится в литературный коридор
   // Started outside the corridor on the correct side...
   expect(big.start).toBeGreaterThan(1.5)
   expect(small.start).toBeLessThan(1.1)
-  // ...each side must have demonstrably CONVERGED within the cap — never skipped, never softened.
-  expect(big.converged, `large-box side did not converge within ${CAP} moves`).toBe(true)
-  expect(small.converged, `small-box side did not converge within ${CAP} moves`).toBe(true)
+  // ...each side must have demonstrably CONVERGED within the cap as one intact sheet — never
+  // skipped, never softened. A rupture gets its own explicit message, not a bare "false".
+  expect(
+    big.converged,
+    big.outcome === 'ruptured'
+      ? `RUPTURE: large-box side tore (clusterFraction=${big.clusterFraction.toFixed(4)}, peaksOk=${big.peaksOk}) at move ${big.movesUsed}`
+      : `large-box side did not converge within ${CAP} moves`,
+  ).toBe(true)
+  expect(
+    small.converged,
+    small.outcome === 'ruptured'
+      ? `RUPTURE: small-box side tore (clusterFraction=${small.clusterFraction.toFixed(4)}, peaksOk=${small.peaksOk}) at move ${small.movesUsed}`
+      : `small-box side did not converge within ${CAP} moves`,
+  ).toBe(true)
   // ...and its converged trailing window sits inside the corridor — entering AND staying, from both sides.
   expect(big.tailMin).toBeGreaterThan(1.1)
   expect(big.tailMax).toBeLessThan(1.5)
