@@ -1,5 +1,5 @@
 import { clusters, largestClusterFraction } from './aggregate'
-import { dimsFor, enclosedVolume, enclosedVolumeGpuDetailed, occupancy } from './closure'
+import { enclosedVolumeFromPositions, enclosedVolumeGpuDetailed, recenterOnLargestCluster } from './closure'
 import { getGpu, readBack, storageBuffer } from './gpu'
 import {
   areaPerLipid,
@@ -36,8 +36,15 @@ export {
   sumProfiles,
 } from './metrics'
 export type { ZProfile } from './metrics'
-export { clusters, largestClusterFraction } from './aggregate'
-export { dimsFor, enclosedVolume, enclosedVolumeGpuDetailed, occupancy } from './closure'
+export { clusters, largestClusterFraction, largestClusterCenter } from './aggregate'
+export {
+  dimsFor,
+  enclosedVolume,
+  enclosedVolumeFromPositions,
+  enclosedVolumeGpuDetailed,
+  occupancy,
+  recenterOnLargestCluster,
+} from './closure'
 export type { Dims, EnclosedVolumeGpuResult } from './closure'
 export {
   columnNoiseStats,
@@ -62,24 +69,27 @@ export async function largestClusterFractionOf(sys: System): Promise<number> {
   return largestClusterFraction(pos, sys.box, cutoff)
 }
 
-/** Facade for Task 8's closure gate: snapshots `sys`'s current positions and box, builds the
- * occupancy grid, and floods it from the box's boundary on the CPU -- the reference implementation
- * (occupancy()/enclosedVolume() in closure.ts) that enclosedVolumeGpu below is checked against. */
+/** Facade for Task 8's closure gate: snapshots `sys`'s current positions and box, RECENTRES on the
+ * dominant connected structure (recenterOnLargestCluster -- a self-assembled vesicle forms
+ * wherever it forms in a periodic box, and the flood's open boundary must not mistake "near a box
+ * face" for "open"; see the periodic-flood note in closure.ts), then builds the occupancy grid and
+ * floods it from the box's boundary on the CPU -- the reference implementation that
+ * enclosedVolumeGpu below is checked against. */
 export async function enclosedVolumeCpu(sys: System, opts: { cell: number; radius: number }): Promise<number> {
   const pos = await sys.positions()
-  const box = sys.box
-  const occ = occupancy(pos, box, opts.cell, opts.radius)
-  return enclosedVolume(occ, dimsFor(box, opts.cell), opts.cell)
+  return enclosedVolumeFromPositions(pos, sys.box, opts)
 }
 
-/** Same measurement as enclosedVolumeCpu, computed by closure.wgsl on the GPU (occupancy via
- * atomicOr, then iterative outside-flood propagation with a change flag) -- see
- * enclosedVolumeGpuDetailed in closure.ts for the iteration count/wall-clock this task's brief
- * asks to report, logged here rather than added to this facade's return type since the interface
- * this task specifies is `Promise<number>`. */
+/** Same measurement as enclosedVolumeCpu (including the same recentring step, so the two remain
+ * comparable), computed by closure.wgsl on the GPU (occupancy via atomicOr, then iterative
+ * outside-flood propagation with a change flag) -- see enclosedVolumeGpuDetailed in closure.ts for
+ * the iteration count/wall-clock this task's brief asks to report, logged here rather than added
+ * to this facade's return type since the interface this task specifies is `Promise<number>`. */
 export async function enclosedVolumeGpu(sys: System, opts: { cell: number; radius: number }): Promise<number> {
   const pos = await sys.positions()
-  const result = await enclosedVolumeGpuDetailed(pos, sys.box, opts)
+  const box = sys.box
+  const centered = recenterOnLargestCluster(pos, box)
+  const result = await enclosedVolumeGpuDetailed(centered, box, opts)
   console.log(
     `CLOSURE-GPU iterations=${result.iterations}/${result.maxIterations} ms=${result.ms.toFixed(1)} volume=${result.volume.toFixed(2)}`,
   )

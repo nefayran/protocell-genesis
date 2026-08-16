@@ -22,9 +22,26 @@
 // is not what this task's tests are about (a shell/vesicle centered well inside the box) -- so the
 // simpler open-boundary choice is made deliberately, not by default, and does not need to be to
 // pass the flat-sheet requirement.
+//
+// Consequence of the open-boundary choice that DOES need active handling, not just a caveat: a
+// perfectly closed object that merely sits near a box face has its own interior cells seeded as
+// "outside" by seed_main/the CPU seed() walk, because seeding only looks at WHICH FACE a cell is
+// on, never at what structure surrounds it. occupancy()/enclosedVolume() are deliberately dumb
+// about this (they are the low-level, position-in-box-as-given primitives); the facades in
+// index.ts (enclosedVolumeCpu/enclosedVolumeGpu) are what must not hand them a coincidentally
+// off-centre object, since a SELF-ASSEMBLED vesicle (this project's headline object) forms
+// wherever it forms in a periodic box, not necessarily mid-box. recenterOnLargestCluster() below
+// is the fix: it relocates the dominant connected structure to the box centre (wrapping in x,y,
+// plain-shifting in z) before occupancy() ever runs. This still does not, and cannot, help an
+// object that requires the periodic boundary to close AT ALL -- e.g. a tube that only forms a
+// closed loop by wrapping around x -- since recentring changes where the object sits, not whether
+// its own surface is complete; that case is out of scope for this detector by design, the same way
+// the open-boundary flood itself is.
 
+import { largestClusterCenter } from './aggregate'
 import closureWgsl from '../wgsl/closure.wgsl?raw'
 import { getGpu, storageBuffer } from './gpu'
+import { loadParams, wcaCutoff } from './params'
 
 export type Dims = [number, number, number]
 
@@ -130,6 +147,59 @@ export function enclosedVolume(occ: Uint8Array, dims: [number, number, number], 
   let unreached = 0
   for (let i = 0; i < occ.length; i++) if (occ[i] === 0 && visited[i] === 0) unreached++
   return unreached * cell * cell * cell
+}
+
+// --- recentring: the fix for the open-boundary flood's face-coincidence blind spot -------------
+
+function wrap1(v: number, box: number): number {
+  return v - Math.floor(v / box) * box
+}
+
+/** Returns a COPY of `positions` translated so the periodic-aware (x,y) centre of mass of the
+ * single largest connected cluster (largestClusterCenter() in aggregate.ts) sits at the box centre
+ * in x,y, and that same cluster's plain z mean sits at the box's z midpoint. x,y are translated by
+ * a wrapped shift (any translation of a periodic configuration is itself just another valid
+ * configuration of it); z is a plain shift, never wrapped, since z has no periodic image anywhere
+ * in this engine. The cutoff for "single largest connected cluster" is the same tail-tail
+ * attraction range used everywhere else a cluster needs defining (largestClusterFractionOf in
+ * index.ts, the self-assembly gate) -- not a new constant.
+ *
+ * See the module doc above for why this step exists: without it, a self-assembled object that
+ * happens to sit near a box face reads as open even when it is genuinely closed, because
+ * occupancy()/enclosedVolume()'s open-boundary flood seeds "outside" from every boundary face with
+ * no idea what structure surrounds it. Recentring first removes the coincidence entirely, at the
+ * cost of one extra union-find pass. The caller's own array is never mutated. */
+export function recenterOnLargestCluster(positions: Float32Array, box: [number, number, number]): Float32Array {
+  const p = loadParams()
+  const cutoff = wcaCutoff(p.beadSizes.tail_tail) + p.attraction.wc
+  const [comX, comY, comZ] = largestClusterCenter(positions, box, cutoff)
+  const shiftX = box[0] / 2 - comX
+  const shiftY = box[1] / 2 - comY
+  const shiftZ = box[2] / 2 - comZ
+
+  const n = positions.length / 4
+  const out = new Float32Array(positions.length)
+  for (let i = 0; i < n; i++) {
+    out[i * 4] = wrap1(positions[i * 4] + shiftX, box[0])
+    out[i * 4 + 1] = wrap1(positions[i * 4 + 1] + shiftY, box[1])
+    out[i * 4 + 2] = positions[i * 4 + 2] + shiftZ
+    out[i * 4 + 3] = positions[i * 4 + 3]
+  }
+  return out
+}
+
+/** Recentres (see recenterOnLargestCluster above), then runs the CPU occupancy()/enclosedVolume()
+ * pipeline in one call -- the pure-CPU convenience the closure.test.ts boundary-straddling test
+ * uses directly (no GPU/browser needed), and what enclosedVolumeCpu (index.ts) reduces to once it
+ * has snapshotted `sys`'s positions/box. */
+export function enclosedVolumeFromPositions(
+  positions: Float32Array,
+  box: [number, number, number],
+  opts: { cell: number; radius: number },
+): number {
+  const centered = recenterOnLargestCluster(positions, box)
+  const occ = occupancy(centered, box, opts.cell, opts.radius)
+  return enclosedVolume(occ, dimsFor(box, opts.cell), opts.cell)
 }
 
 // --- GPU kernel driver -------------------------------------------------------------------------

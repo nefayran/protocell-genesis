@@ -44,19 +44,21 @@ function wrap1(v: number, box: number): number {
   return v - Math.floor(v / box) * box
 }
 
-/** Cluster sizes among the given beads, joining any pair within `cutoff` of each other. `positions`
- * is the flat vec4-per-bead layout used throughout the engine (x, y, z, type) — the type field is
- * not consulted here; callers decide which bead subset defines connectivity (the self-assembly
- * facade below uses tail beads only, per the brief's definition) and pass just that subset in.
+/** Shared connectivity pass for clusters()/largestClusterFraction() (Task 6) and
+ * largestClusterCenter() (Task 8): builds the union-find over `positions`, joining any pair within
+ * `cutoff` of each other. `positions` is the flat vec4-per-bead layout used throughout the engine
+ * (x, y, z, type) — the type field is not consulted here; callers decide which bead subset defines
+ * connectivity and pass just that subset in.
  *
  * x and y are periodic (minimum-image, matching the engine's box); z is open — exactly the physics
  * (only x,y wrap; z does not). Built on a cell list of side `cutoff` (so cell width is always >=
  * cutoff, guaranteeing any pair within cutoff shares a cell or one of its 26 neighbors) plus
  * union-find, not an O(N^2) double loop: the self-assembly test runs this on ~3600 beads every time
  * it samples the trajectory, and a double loop there would be the dominant cost of the whole test. */
-export function clusters(positions: Float32Array, box: [number, number, number], cutoff: number): number[] {
+function buildClusterUnionFind(positions: Float32Array, box: [number, number, number], cutoff: number): { uf: UnionFind; n: number } {
   const n = positions.length / 4
-  if (n === 0) return []
+  const uf = new UnionFind(n)
+  if (n === 0) return { uf, n }
 
   const [Lx, Ly] = box
   // Cells tile the periodic x,y plane exactly: nx/ny cells of width Lx/nx, Ly/ny, each >= cutoff
@@ -88,7 +90,6 @@ export function clusters(positions: Float32Array, box: [number, number, number],
     else buckets.set(key, [i])
   }
 
-  const uf = new UnionFind(n)
   const cutoff2 = cutoff * cutoff
 
   for (let i = 0; i < n; i++) {
@@ -115,12 +116,67 @@ export function clusters(positions: Float32Array, box: [number, number, number],
     }
   }
 
+  return { uf, n }
+}
+
+/** Cluster sizes among the given beads — see buildClusterUnionFind() above for the connectivity
+ * rule this reduces to component sizes. */
+export function clusters(positions: Float32Array, box: [number, number, number], cutoff: number): number[] {
+  const { uf, n } = buildClusterUnionFind(positions, box, cutoff)
+  if (n === 0) return []
   const sizeByRoot = new Map<number, number>()
   for (let i = 0; i < n; i++) {
     const r = uf.find(i)
     sizeByRoot.set(r, (sizeByRoot.get(r) ?? 0) + 1)
   }
   return Array.from(sizeByRoot.values())
+}
+
+/** Periodic-aware (x,y) centre of mass, plus plain (z) mean, of the single largest connected
+ * cluster among `positions` (same connectivity rule as clusters() above, sharing one
+ * buildClusterUnionFind() pass). Task 8's recenterOnLargestCluster (closure.ts) uses this to
+ * relocate a self-assembled object's dominant structure to the box centre before flood-filling for
+ * enclosed volume — a vesicle forms wherever it forms in a periodic box, and its own cavity must
+ * not be seeded as "outside" just because the vesicle happens to sit near a box face.
+ *
+ * The (x,y) mean is computed the same way the area-move's rigid-lipid map does (sim.ts's
+ * scaleLateralRigid): pick the first cluster member as a reference, accumulate minimum-image
+ * offsets from it (mi1), average, then wrap the reference-plus-average back into [0, box) — the
+ * only way to average points that may sit on opposite sides of a periodic wrap without the naive
+ * mean being pulled toward whichever side happens to have more points near the seam. */
+export function largestClusterCenter(
+  positions: Float32Array,
+  box: [number, number, number],
+  cutoff: number,
+): [number, number, number] {
+  const { uf, n } = buildClusterUnionFind(positions, box, cutoff)
+  if (n === 0) throw new Error('largestClusterCenter: пустой набор бидов')
+
+  const sizeByRoot = new Map<number, number>()
+  for (let i = 0; i < n; i++) {
+    const r = uf.find(i)
+    sizeByRoot.set(r, (sizeByRoot.get(r) ?? 0) + 1)
+  }
+  let bestRoot = -1
+  let bestSize = -1
+  for (const [r, s] of sizeByRoot) {
+    if (s > bestSize) { bestSize = s; bestRoot = r }
+  }
+
+  const [Lx, Ly] = box
+  let refX = 0
+  let refY = 0
+  let sx = 0, sy = 0, sz = 0, count = 0
+  for (let i = 0; i < n; i++) {
+    if (uf.find(i) !== bestRoot) continue
+    const x = positions[i * 4], y = positions[i * 4 + 1], z = positions[i * 4 + 2]
+    if (count === 0) { refX = x; refY = y }
+    sx += mi1(x - refX, Lx)
+    sy += mi1(y - refY, Ly)
+    sz += z
+    count++
+  }
+  return [wrap1(refX + sx / count, Lx), wrap1(refY + sy / count, Ly), sz / count]
 }
 
 /** Fraction of TAIL beads (type field nonzero, i.e. w !== 0 — head is 0, tail1/tail2 are 1) that
