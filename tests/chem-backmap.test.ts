@@ -61,3 +61,15 @@ test('сцена рисует молекулы атом за атомом и ч�
     expect(shot.length).toBeGreaterThan(5000)
   })()
 })
+
+test('одноуглеродная кислота и совпавшие голова с хвостом не роняют разворачивание', () => {
+  // A soup run really produces chains of length 1, and their chain axis is degenerate:
+  // the last carbon IS the first. This used to throw inside vNormalize and silently killed
+  // the whole run loop, leaving the UI showing "running" forever.
+  const one = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 1, 0.8)
+  expect(one.atoms.filter((a) => a.element === 'C').length).toBe(1)
+  expect(one.atoms.every((a) => a.position.every((c) => Number.isFinite(c)))).toBe(true)
+
+  const coincident = backmapLipid([1, 1, 1], [1, 1, 1], [1, 1, 1], 8, 0.8)
+  expect(coincident.atoms.every((a) => a.position.every((c) => Number.isFinite(c)))).toBe(true)
+})

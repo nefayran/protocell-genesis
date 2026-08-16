@@ -11,6 +11,10 @@
 import { buildAlkanoicAcid } from './species'
 import { vAdd, vCross, vDot, vLength, vNormalize, vScale, vSub, perpendicular, rotateAroundAxis, type Vec3 } from './geometry'
 
+/** Below this span (nm) an axis carries no orientation: far under any real bond length, so it can
+ *  only mean "the two reference points coincide", never a short-but-meaningful separation. */
+const DEGENERATE_AXIS_NM = 1e-9
+
 export interface BackmapAtom {
   element: string
   position: Vec3
@@ -59,13 +63,22 @@ export function backmapLipid(
   const species = buildAlkanoicAcid(carbons)
   const carbonPositions = species.atoms.filter((a) => a.element === 'C').map((a) => a.position)
   const chainOrigin = carbonPositions[0]
-  const localAxis = vNormalize(vSub(carbonPositions[carbonPositions.length - 1], chainOrigin))
 
   const headNm = vScale(head, sigmaNm)
   const tailNm = vScale(tail2, sigmaNm)
-  const targetAxis = vNormalize(vSub(tailNm, headNm))
 
-  const { axis, angleDeg } = rotationAligning(localAxis, targetAxis)
+  // Both axes can legitimately be degenerate, and neither is an error:
+  // a single-carbon acid has no chain axis at all (last carbon IS the first), and a soup run
+  // really does produce chains of length one; and head and last tail can coincide numerically.
+  // A degenerate axis carries no orientation information, so the molecule is placed unrotated
+  // rather than throwing — orientation is undefined here, not wrong.
+  const localSpan = vSub(carbonPositions[carbonPositions.length - 1], chainOrigin)
+  const targetSpan = vSub(tailNm, headNm)
+  const degenerate = vLength(localSpan) < DEGENERATE_AXIS_NM || vLength(targetSpan) < DEGENERATE_AXIS_NM
+
+  const { axis, angleDeg } = degenerate
+    ? { axis: [0, 0, 1] as Vec3, angleDeg: 0 }
+    : rotationAligning(vNormalize(localSpan), vNormalize(targetSpan))
 
   const atoms: BackmapAtom[] = species.atoms.map((a) => {
     const relative = vSub(a.position, chainOrigin)
