@@ -1,14 +1,14 @@
 // Task 3: stage detection -- EVIDENCE, not narrative. detectStage never asserts a stage on its own
 // say-so: it always hands back the four measurements the plan names (amphiphileFraction,
 // largestAggregateFraction, headPeaks, enclosedVolume) alongside the label, so a caller can look at
-// the numbers and disagree with the label. The four thresholds that turn those numbers into a
-// label live in data/soup.json's `stageThresholds` (with their basis), not here -- this file reads
-// them, it does not declare them, matching the "no numeric constants in soup/src" rule
+// the numbers and disagree with the label. The thresholds that turn those numbers into a label live
+// in data/soup.json's `stageThresholds` (with their basis), not here -- this file reads them, it
+// does not declare them, matching the "no numeric constants in soup/src" rule
 // tests/params.test.ts's literal scanner enforces over this directory.
 //
 // Reuses rather than reimplements: findAmphiphiles (this task, soup/src/amphiphile.ts),
 // largestClusterFraction (engine/src/aggregate.ts, Task 6's cell-list + union-find),
-// densityProfileZ/bilayerPeaks (engine/src/metrics.ts, Task 5's sub-bin-peak z-histogram), and
+// densityProfileZ/bilayerThickness (engine/src/metrics.ts, Task 5's sub-bin-peak z-histogram), and
 // enclosedVolumeFromPositions (engine/src/closure.ts, Task 8's verified flood-fill closure
 // detector, which recentres on the dominant cluster internally). None of those four functions know
 // about soup/src/rules.ts's monomer kinds -- they were built for the membrane engine's own
@@ -26,17 +26,43 @@
 // carries its own `box` field (set once in createSoup, never mutated), and detectStage reads
 // `sys.box` instead of taking it as a parameter. Every measurement below (clustering, the
 // z-density profile, the closure flood) still needs the box; it now gets it from `sys.box`.
+//
+// Task 3b (task-3b-report.md) fixed two pilot-exposed defects, both isolated into pure, GPU-free
+// functions below so they are unit-testable on synthetic particle/evidence data without a browser:
+//  - stageFromEvidence(): the pilot's 300k-step trace never showed the `amphiphiles` label even
+//    once, because the OLD stage ladder tested each stage's OWN condition independently
+//    (`largestAggregateFraction >= aggregationLow` alone decided `micelles`, with no requirement
+//    that amphiphiles be present at all) -- so a handful of non-amphiphile particles clustering
+//    together could satisfy `micelles`/`bilayer` on aggregation alone. Fixed into a genuine ladder:
+//    each stage's condition now REQUIRES the previous stage's condition too (micelles = amphiphile
+//    condition AND its own; bilayer = micelles' condition AND its own; vesicle = bilayer's condition
+//    AND its own), so a later stage is structurally impossible without the earlier one.
+//  - computeHeadPeaks(): `headPeaks` reported 2 at step 0 of the pilot -- zero bonds, zero
+//    structure, 267 head particles spread over 60 z-bins (~4.45/bin) -- pure Poisson binning noise
+//    misread as a bilayer signal. Guarded two ways: (a) the profile's own particle-per-bin average
+//    must clear `minHeadsPerBin` before ANY peak count is trusted (returns HEAD_PEAKS_UNAVAILABLE
+//    otherwise, not a number); (b) even with enough particles, two maxima only count as `2` if their
+//    separation falls inside a plausible bilayer-thickness band (`headPeakSeparationMin/Max`) --
+//    two local maxima that just happen to sit far apart are not a bilayer.
 
 import rawSoup from '../../data/soup.json'
 import { largestClusterFraction } from '../../engine/src/aggregate'
 import { enclosedVolumeFromPositions } from '../../engine/src/closure'
-import { bilayerPeaks, densityProfileZ } from '../../engine/src/metrics'
+import { bilayerThickness, densityProfileZ } from '../../engine/src/metrics'
 import { loadParams, wcaCutoff } from '../../engine/src/params'
 import { findAmphiphiles } from './amphiphile'
-import { loadSoup } from './rules'
+import { loadSoup, type Monomer } from './rules'
 import type { SoupSystem } from './sim'
 
 export type Stage = 'monomers' | 'amphiphiles' | 'micelles' | 'bilayer' | 'vesicle'
+
+/** Sentinel returned by computeHeadPeaks() when the head-density profile does not carry enough
+ * particles to trust ANY peak count read off it (defect 2, task-3b-report.md): 267 heads spread
+ * over 60 z-bins (~4.45/bin) reported two peaks at step 0 of the pilot, before a single bond
+ * existed -- pure Poisson binning noise, not structure. A caller that treats that "2" as a real
+ * bilayer signal is trusting a coin flip; 'unavailable' says the instrument has nothing to say
+ * here rather than making something up. */
+export const HEAD_PEAKS_UNAVAILABLE = 'unavailable' as const
 
 export interface StageEvidence {
   /** Fraction of carbon particles bound into a recognised amphiphile chain. */
@@ -44,15 +70,18 @@ export interface StageEvidence {
   /** Fraction of amphiphile-member particles (heads + their chains) that belong to the single
    * largest connected aggregate among them -- 0 when there are no amphiphiles yet. */
   largestAggregateFraction: number
-  /** 0 (no polar particles at all), 1 (one head-density peak -- not yet a bilayer, the normal case
-   * for most of a soup trajectory), or 2 (two peaks -- bilayerPeaks succeeded). */
-  headPeaks: number
+  /** 0 (no polar particles at all), 1 (one head-density peak, or two peaks whose separation is
+   * not a plausible bilayer thickness -- not yet a bilayer, the normal case for most of a soup
+   * trajectory), 2 (two peaks separated by a plausible bilayer thickness -- a trusted bilayer
+   * candidate), or 'unavailable' (too few head particles per bin, on average, to trust ANY peak
+   * count read off this profile -- see HEAD_PEAKS_UNAVAILABLE). */
+  headPeaks: number | typeof HEAD_PEAKS_UNAVAILABLE
   /** Volume of any flood-unreachable cavity, in the same reduced units as the box. 0 when nothing
    * is closed. */
   enclosedVolume: number
 }
 
-interface StageThresholds {
+export interface StageThresholds {
   amphiphileFraction: number
   aggregationLow: number
   aggregationHigh: number
@@ -60,10 +89,21 @@ interface StageThresholds {
   closureCell: number
   closureRadius: number
   headDensityBins: number
+  /** Minimum head particles per bin, ON AVERAGE (totalHeadCount / headDensityBins -- a property of
+   * the run's own composition, not of any one snapshot), before headPeaks is trusted at all --
+   * defect 2's guard, see HEAD_PEAKS_UNAVAILABLE. */
+  minHeadsPerBin: number
+  /** Plausible bilayer-thickness band (peak-to-peak separation, same reduced sigma units as the
+   * box) a two-peak reading must fall inside to be trusted as headPeaks=2 rather than downgraded
+   * to 1 -- defect 2's second guard: two local maxima that are merely far apart (e.g. one near each
+   * box face on an otherwise unstructured profile) are not a bilayer just because bilayerPeaks()
+   * found two maxima. */
+  headPeakSeparationMin: number
+  headPeakSeparationMax: number
   basis: string
 }
 
-function loadStageThresholds(): StageThresholds {
+export function loadStageThresholds(): StageThresholds {
   const t = (rawSoup as unknown as { stageThresholds?: StageThresholds }).stageThresholds
   if (!t) throw new Error('data/soup.json: отсутствует поле stageThresholds')
   return t
@@ -79,6 +119,73 @@ function remapFlag(particles: Float32Array, flagFor: (i: number) => number): Flo
   const n = out.length / 4
   for (let i = 0; i < n; i++) out[i * 4 + 3] = flagFor(i)
   return out
+}
+
+/** Defect 2's fix: how many head-density peaks to trust, given a snapshot's raw particle array.
+ * Pure CPU math (densityProfileZ/bilayerThickness are both pure, no GPU) -- unit-testable on
+ * synthetic `particles` with no browser/WebGPU context, which is what
+ * tests/soup-amphiphile.test.ts's new tests do.
+ *
+ * Three-way result, never a bare "2" on faith:
+ *  - 0: no polar particles in this snapshot at all -- nothing to profile.
+ *  - HEAD_PEAKS_UNAVAILABLE: there ARE polar particles, but too few of them per bin, on average
+ *    (totalHeadCount / headDensityBins < minHeadsPerBin), for a peak count read off this histogram
+ *    to mean anything -- see this file's header for the pilot's step-0 false positive this guards
+ *    against. This is a property of the run's OWN composition (particle counts and bin count never
+ *    change once a system is created), not of any one snapshot's structure -- so for a given
+ *    system, headPeaks is either trustworthy for its whole trajectory or never trustworthy at all.
+ *  - 1: enough particles per bin to trust the count, but either bilayerThickness() found no second
+ *    peak (the normal case for most of a soup trajectory) or it found one whose separation from the
+ *    first falls outside the plausible bilayer-thickness band -- two local maxima that are not, by
+ *    this guard's judgement, two leaflets of the same structure.
+ *  - 2: enough particles per bin, AND two peaks, AND their separation is inside the plausible band.
+ *    The only value the bilayer/vesicle stages are allowed to treat as a real bilayer signal. */
+export function computeHeadPeaks(
+  particles: Float32Array,
+  box: [number, number, number],
+  monomers: Monomer[],
+  thresholds: Pick<StageThresholds, 'headDensityBins' | 'minHeadsPerBin' | 'headPeakSeparationMin' | 'headPeakSeparationMax'>,
+): number | typeof HEAD_PEAKS_UNAVAILABLE {
+  const n = particles.length / 4
+  let totalHeads = 0
+  for (let i = 0; i < n; i++) {
+    if (monomers[Math.round(particles[i * 4 + 3])]?.polar) totalHeads++
+  }
+  if (totalHeads === 0) return 0
+
+  const avgHeadsPerBin = totalHeads / thresholds.headDensityBins
+  if (avgHeadsPerBin < thresholds.minHeadsPerBin) return HEAD_PEAKS_UNAVAILABLE
+
+  const remapped = remapFlag(particles, (i) => (monomers[Math.round(particles[i * 4 + 3])]?.polar ? 0 : 1))
+  const profile = densityProfileZ(remapped, box, thresholds.headDensityBins)
+  try {
+    const separation = bilayerThickness(profile) // throws => no second peak at all; caught below
+    if (separation >= thresholds.headPeakSeparationMin && separation <= thresholds.headPeakSeparationMax) return 2
+    return 1 // two maxima exist, but not a plausible bilayer separation -- not trusted as a bilayer
+  } catch {
+    return 1
+  }
+}
+
+/** Defect 1's fix: the stage ladder. Each stage's condition REQUIRES every earlier stage's own
+ * condition to hold too, not merely its own -- so `micelles` is structurally impossible without the
+ * amphiphile condition, `bilayer` impossible without micelles' condition, `vesicle` impossible
+ * without bilayer's. This is what makes the ladder a ladder: before this fix, `micelles`/`bilayer`
+ * tested `largestAggregateFraction` alone, so a handful of NON-amphiphile particles clustering
+ * together (large fraction, zero amphiphiles) could satisfy them -- see this file's header and
+ * task-3b-report.md for the pilot trace this produced. Pure function of the evidence + thresholds,
+ * no GPU, unit-testable on synthetic StageEvidence objects. */
+export function stageFromEvidence(evidence: StageEvidence, thresholds: StageThresholds): Stage {
+  const amphiphileOk = evidence.amphiphileFraction >= thresholds.amphiphileFraction
+  const micelleOk = amphiphileOk && evidence.largestAggregateFraction >= thresholds.aggregationLow
+  const bilayerOk = micelleOk && evidence.headPeaks === 2 && evidence.largestAggregateFraction >= thresholds.aggregationHigh
+  const vesicleOk = bilayerOk && evidence.enclosedVolume > thresholds.enclosedVolume
+
+  if (vesicleOk) return 'vesicle'
+  if (bilayerOk) return 'bilayer'
+  if (micelleOk) return 'micelles'
+  if (amphiphileOk) return 'amphiphiles'
+  return 'monomers'
 }
 
 /** Measures the four stage-deciding numbers for one snapshot of `sys`, then maps them to a stage
@@ -122,30 +229,8 @@ export async function detectStage(sys: SoupSystem): Promise<{ stage: Stage; evid
     largestAggregateFraction = largestClusterFraction(remapped, box, cutoff)
   }
 
-  // --- headPeaks: reuse densityProfileZ/bilayerPeaks by remapping polar particles into the "head"
-  // (w=0) bucket those functions already read. bilayerPeaks THROWS when there is no second peak --
-  // the normal case for most of a soup trajectory, per this task's brief -- so that throw is caught
-  // here and downgraded to "one peak", never left to propagate as a test failure.
-  let headPeaks = 0
-  let hasPolarParticle = false
-  for (let i = 0; i < n && !hasPolarParticle; i++) {
-    const kind = Math.round(particles[i * 4 + 3])
-    if (soup.monomers[kind]?.polar) hasPolarParticle = true
-  }
-  if (hasPolarParticle) {
-    headPeaks = 1
-    try {
-      const remapped = remapFlag(particles, (i) => {
-        const kind = Math.round(particles[i * 4 + 3])
-        return soup.monomers[kind].polar ? 0 : 1
-      })
-      const profile = densityProfileZ(remapped, box, thresholds.headDensityBins)
-      bilayerPeaks(profile) // throws => not a bilayer yet, caught below
-      headPeaks = 2
-    } catch {
-      headPeaks = 1
-    }
-  }
+  // --- headPeaks: defect 2's fix, see computeHeadPeaks()'s own header for the two guards.
+  const headPeaks = computeHeadPeaks(particles, box, soup.monomers, thresholds)
 
   // --- enclosedVolume: flood-fill closure over the amphiphile-member particles only (the vesicle
   // wall's own material) -- free monomers/donors/catalysts drifting through the box interior must
@@ -165,19 +250,7 @@ export async function detectStage(sys: SoupSystem): Promise<{ stage: Stage; evid
   }
 
   const evidence: StageEvidence = { amphiphileFraction, largestAggregateFraction, headPeaks, enclosedVolume }
-
-  let stage: Stage
-  if (enclosedVolume > thresholds.enclosedVolume) {
-    stage = 'vesicle'
-  } else if (headPeaks >= 2 && largestAggregateFraction >= thresholds.aggregationHigh) {
-    stage = 'bilayer'
-  } else if (largestAggregateFraction >= thresholds.aggregationLow) {
-    stage = 'micelles'
-  } else if (amphiphileFraction >= thresholds.amphiphileFraction) {
-    stage = 'amphiphiles'
-  } else {
-    stage = 'monomers'
-  }
+  const stage = stageFromEvidence(evidence, thresholds)
 
   return { stage, evidence }
 }
