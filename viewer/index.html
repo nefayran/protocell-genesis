@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<title>protocell-genesis — просмотрщик</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0d10; color: #e7e9ec; font-family: system-ui, sans-serif; overflow: hidden; }
+  #scene { position: absolute; inset: 0; display: block; }
+  #panel {
+    position: absolute; top: 12px; left: 12px; z-index: 2;
+    background: rgba(15, 17, 20, 0.85); border: 1px solid #333; border-radius: 8px;
+    padding: 12px 14px; width: 260px; font-size: 13px;
+  }
+  #panel label { display: block; margin-top: 8px; }
+  #panel .row { display: flex; justify-content: space-between; }
+  #panel input[type="range"] { width: 100%; }
+  /* Honesty badge: not a tooltip, not hidden behind a hover -- always visible, always on top. */
+  #badge {
+    position: absolute; bottom: 12px; left: 12px; right: 12px; z-index: 2;
+    background: rgba(120, 20, 20, 0.9); border: 1px solid #a33; border-radius: 8px;
+    padding: 8px 12px; font-size: 13px; line-height: 1.4; font-weight: 600;
+  }
+  #frames { position: absolute; top: 12px; right: 12px; z-index: 2; font-size: 12px; color: #9aa; }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="panel">
+  <div style="font-weight:600;margin-bottom:4px;">параметры</div>
+  <label>
+    <div class="row"><span>kT/ε</span><span id="kt-value"></span></div>
+    <input id="kt-slider" type="range" step="0.001" />
+  </label>
+  <label>
+    <div class="row"><span>w_c (σ)</span><span id="wc-value"></span></div>
+    <input id="wc-slider" type="range" step="0.01" />
+  </label>
+</div>
+<div id="frames"></div>
+<div id="badge"></div>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>

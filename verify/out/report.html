@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>protocell-genesis — отчёт проверки</title>
+<style>
+  body { font: 15px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; max-width: 980px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #ccc; padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+  th { background: #f0f0f0; }
+  tr.passed .verdict { color: #147a14; font-weight: 600; }
+  tr.failed .verdict { color: #a3120a; font-weight: 600; }
+  tr.unproven .verdict { color: #8a6d00; font-weight: 600; }
+  .id { color: #888; font-size: 0.85em; }
+  .meta-table td:first-child { color: #555; width: 40%; }
+  section { margin: 2rem 0; }
+  footer { color: #888; font-size: 0.85em; margin-top: 3rem; }
+</style>
+</head>
+<body>
+<h1>protocell-genesis — отчёт проверки (Ступень C, ворота 6)</h1>
+<p>Сгенерировано 2026-08-16T02:31:30.056Z, коммит <code>823dbb8daa2dba15d9c85056a862c54f50f07b8a</code> <strong>(рабочее дерево на момент генерации было НЕ чистым — эти артефакты сгенерированы ДО коммита, который их содержит; указанный коммит — последний реальный, а не тот, что упаковывает этот файл)</strong>, run <code>0f8c0185-036e-4af0-8a76-5fceb533cbcd</code>
+(тот же идентификатор проставлен на gates.json и kappa-measurement.json — расхождение означало бы, что артефакты из разных прогонов).</p>
+<table>
+  <thead>
+    <tr><th>ворота</th><th>значение</th><th>коридор</th><th>ранг</th><th>вердикт</th><th>источник</th><th>условия</th></tr>
+  </thead>
+  <tbody>
+    
+      <tr class="passed">
+        <td>Площадь на липид<br><span class="id">area-per-lipid</span></td>
+        <td>1.2089 sigma^2</td>
+        <td>1.1 – 1.5 sigma^2</td>
+        <td>A</td>
+        <td class="verdict">пройдено</td>
+        <td>Cooke &amp; Deserno 2005, arXiv:cond-mat/0509218</td>
+        <td>kT/eps = 1.1, w_c = 1.6 sigma, нулевое натяжение</td>
+      </tr>
+
+      <tr class="passed">
+        <td>Толщина бислоя<br><span class="id">bilayer-thickness</span></td>
+        <td>4.4565 sigma</td>
+        <td>4 – 6 sigma</td>
+        <td>A</td>
+        <td class="verdict">пройдено</td>
+        <td>Cooke &amp; Deserno 2005, arXiv:cond-mat/0509218</td>
+        <td>по максимумам плотности головных бидов</td>
+      </tr>
+
+      <tr class="unproven">
+        <td>Модуль изгиба<br><span class="id">bending-modulus</span></td>
+        <td>—</td>
+        <td>5 – 50 kT</td>
+        <td>A</td>
+        <td class="verdict">недоказано</td>
+        <td>Cooke &amp; Deserno 2005, arXiv:cond-mat/0509218</td>
+        <td>из спектра ундуляций; окно подгонки по q выбирается ПО ДАННЫМ (растёт от наименьшей оболочки |q|, пока наклон log-log остаётся в допуске ±1 от -4, минимум 4 независимых оболочки), а не фиксированным потолком в 8 мод — в этом прогоне окно вышло на 4 оболочки до q_max ≈ 0.18</td>
+      </tr>
+
+      <tr class="unproven">
+        <td>Замкнутая полость<br><span class="id">closure</span></td>
+        <td>1284.8750 sigma^3</td>
+        <td>&gt; 1 sigma^3</td>
+        <td>D</td>
+        <td class="verdict">недоказано</td>
+        <td>детектор заливкой снаружи проверен на синтетической тестовой оболочке (шар из бидов, построенный вручную в verify/run.ts) — движок ЕЩЁ НЕ ПОКАЗАЛ самособранную замкнутую везикулу; спецификация раздел 7</td>
+        <td>сетка 0.5 sigma, радиус бида 0.6 sigma; значение — полость СИНТЕТИЧЕСКОЙ проверочной оболочки самого детектора, а не измеренный объём мембраны</td>
+      </tr>
+
+      <tr class="unproven">
+        <td>Соответствие числа атомов углерода числу бидов<br><span class="id">chain-to-bead-mapping</span></td>
+        <td>3.0000 -</td>
+        <td>нет коридора (принимается только через другие ворота)</td>
+        <td>D</td>
+        <td class="verdict">недоказано</td>
+        <td>наше допущение, спецификация раздел 7</td>
+        <td>принимается только через ворота площади и толщины</td>
+      </tr>
+  </tbody>
+</table>
+
+    <section class="kappa">
+      <h2>Модуль изгиба κ — почему «недоказано»</h2>
+      <p>Изгибная мода релаксирует со скоростью порядка q⁻³…q⁻⁴, поэтому подгонка нуждается именно
+      в самых медленных, наименее сошедшихся оболочках q. У оболочек, которые требует окно подгонки,
+      наблюдается разброс 15.7–41.2% между модами, которые по симметрии решётки обязаны совпадать —
+      прямое, не требующее эталона доказательство того, что эти оболочки ещё не сошлись.</p>
+      <table class="meta-table">
+        <tr><td>наклон log-log подгонки</td><td>-1.5273</td></tr>
+        <tr><td>число мод в окне подгонки</td><td>20</td></tr>
+        <tr><td>число оболочек в окне подгонки</td><td>4</td></tr>
+        <tr><td>q_max окна</td><td>0.1802</td></tr>
+        <tr><td>окно валидно</td><td>нет</td></tr>
+      </table>
+      <table>
+        <thead>
+          <tr><th>q, σ⁻¹</th><th>вырождение</th><th>⟨|h_q|²⟩</th><th>разброс между вырожденными модами</th><th>в окне подгонки</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>0.0806</td><td>4</td><td>2.486e-2</td><td>29.6%</td><td>да</td></tr>
+<tr><td>0.1140</td><td>4</td><td>2.667e-2</td><td>15.7%</td><td>да</td></tr>
+<tr><td>0.1612</td><td>4</td><td>1.737e-2</td><td>41.2%</td><td>да</td></tr>
+<tr><td>0.1802</td><td>8</td><td>7.520e-3</td><td>36.8%</td><td>нет</td></tr>
+<tr><td>0.2280</td><td>4</td><td>1.097e-2</td><td>42.4%</td><td>нет</td></tr>
+<tr><td>0.2418</td><td>4</td><td>4.012e-3</td><td>5.2%</td><td>нет</td></tr>
+<tr><td>0.2549</td><td>8</td><td>3.055e-3</td><td>81.7%</td><td>нет</td></tr>
+<tr><td>0.2906</td><td>8</td><td>2.994e-3</td><td>23.0%</td><td>нет</td></tr>
+<tr><td>0.3224</td><td>4</td><td>2.129e-3</td><td>66.5%</td><td>нет</td></tr>
+<tr><td>0.3324</td><td>8</td><td>1.154e-3</td><td>36.5%</td><td>нет</td></tr>
+<tr><td>0.3420</td><td>4</td><td>1.196e-3</td><td>23.2%</td><td>нет</td></tr>
+<tr><td>0.3605</td><td>8</td><td>4.765e-4</td><td>19.5%</td><td>нет</td></tr>
+<tr><td>0.4030</td><td>12</td><td>3.783e-4</td><td>23.4%</td><td>нет</td></tr>
+<tr><td>0.4110</td><td>8</td><td>4.451e-4</td><td>47.6%</td><td>нет</td></tr>
+<tr><td>0.4341</td><td>8</td><td>2.858e-4</td><td>20.5%</td><td>нет</td></tr>
+<tr><td>0.4560</td><td>4</td><td>2.360e-4</td><td>14.8%</td><td>нет</td></tr>
+<tr><td>0.4700</td><td>8</td><td>2.444e-4</td><td>21.6%</td><td>нет</td></tr>
+<tr><td>0.4837</td><td>4</td><td>2.889e-4</td><td>0.7%</td><td>нет</td></tr>
+<tr><td>0.4903</td><td>8</td><td>2.045e-4</td><td>35.3%</td><td>нет</td></tr>
+<tr><td>0.5098</td><td>8</td><td>1.869e-4</td><td>21.6%</td><td>нет</td></tr>
+<tr><td>0.5162</td><td>8</td><td>1.933e-4</td><td>26.0%</td><td>нет</td></tr>
+<tr><td>0.5407</td><td>8</td><td>1.751e-4</td><td>27.3%</td><td>нет</td></tr>
+<tr><td>0.5643</td><td>4</td><td>1.145e-4</td><td>3.8%</td><td>нет</td></tr>
+<tr><td>0.5700</td><td>12</td><td>1.371e-4</td><td>19.8%</td><td>нет</td></tr>
+<tr><td>0.5813</td><td>8</td><td>9.758e-5</td><td>16.2%</td><td>нет</td></tr>
+<tr><td>0.5868</td><td>8</td><td>1.449e-4</td><td>13.4%</td><td>нет</td></tr>
+<tr><td>0.6139</td><td>8</td><td>1.077e-4</td><td>15.8%</td><td>нет</td></tr>
+<tr><td>0.6296</td><td>8</td><td>8.067e-5</td><td>20.8%</td><td>нет</td></tr>
+<tr><td>0.6449</td><td>4</td><td>1.040e-4</td><td>3.2%</td><td>нет</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="closure-note">
+      <p><strong>О числе замкнутой полости:</strong> объём полости синтетической проверочной оболочки детектора (радиус 8σ, толщина 1.5σ, 40000 бидов, seed 2026) = 1284.875 σ³ — это свойство
+      синтетической проверочной раскладки самого детектора заливкой, а не измеренный объём внутренней
+      полости мембраны.</p>
+    </section>
+
+    <section class="performance">
+      <h2>Производительность</h2>
+      <table class="meta-table">
+        <tr><td>шагов в секунду</td><td>3627.3</td></tr>
+        <tr><td>бидов в системе</td><td>3600</td></tr>
+        <tr><td>время перестройки сетки соседей, мс (отдельный замер)</td><td>0.400</td></tr>
+        <tr><td>сценарий</td><td>lipids=1200 (3600 бидов), box=[28,28,28], layout=bilayer, 20000 шагов</td></tr>
+      </table>
+    </section>
+
+    <section class="caveats">
+      <h2>Оговорки</h2>
+      <ul>
+        <li>Движок не бит-воспроизводим от запуска к запуску: сетка соседей раскладывает бидов по ячейкам через atomicAdd, порядок суммирования сил внутри ячейки меняется, а система (~3600 тел) хаотична и усиливает эту микроскопическую разницу до качественно разных траекторий.</li>
+<li>Порог самосборки (largest-cluster fraction &gt; 0.8) выполнен с эмпирическим запасом на 1 000 000 шагов, а не доказан как гарантия: один прогон на 400 000 шагах застрял на доле 0.53 с двумя не слившимися агрегатами.</li>
+<li>`areaPerLipid` делит площадь бокса на СОЗДАННОЕ, а не выжившее число липидов — это смещает оценку на очень длинных прогонах, откуда часть бидов уходит по z и перестаёт быть частью бислоя.</li>
+<li>Плато площади на липид (≈1.208 σ²) лежит в нижней половине литературного коридора 1.1–1.5 σ², а не в его середине.</li>
+<li>Перетянутый бислой, запущенный из состояния около 1.9 σ² на липид, иногда рвётся; после разрыва «площадь на липид» не является содержательной величиной, так как её знаменатель предполагает один целый лист мембраны, покрывающий весь бокс.</li>
+<li>Динамика фактически термостатируется к kT ≈ 1.1355 (дискретизационное смещение ~3.2% над номинальным значением, измерено в tests/sim.test.ts: Euler–Maruyama трения + жёсткая FENE-связь под velocity-Verlet), тогда как критерий Метрополиса в areaMove и префактор κ = kT/(A·exp(intercept)) в подгонке спектра используют номинальное data/params.json kT=1.1 — расхождение около 3%, не устранённое в этом прогоне.</li>
+      </ul>
+    </section>
+<footer>verify/report.ts только форматирует; данные подаёт verify/run.ts из ОДНОГО прогона измерения в этом же процессе (runId выше) — verify/out/gates.json и verify/out/kappa-measurement.json пишутся ИЗ ТОГО ЖЕ измерения, а не читаются этим отчётом с диска, и не наоборот.</footer>
+</body>
+</html>

@@ -1,0 +1,54 @@
+{
+  "gates": [
+    {
+      "id": "area-per-lipid",
+      "title": "Площадь на липид",
+      "metric": "areaPerLipid",
+      "unit": "sigma^2",
+      "target": { "min": 1.1, "max": 1.5 },
+      "rank": "A",
+      "source": "Cooke & Deserno 2005, arXiv:cond-mat/0509218",
+      "conditions": "kT/eps = 1.1, w_c = 1.6 sigma, нулевое натяжение"
+    },
+    {
+      "id": "bilayer-thickness",
+      "title": "Толщина бислоя",
+      "metric": "thickness",
+      "unit": "sigma",
+      "target": { "min": 4.0, "max": 6.0 },
+      "rank": "A",
+      "source": "Cooke & Deserno 2005, arXiv:cond-mat/0509218",
+      "conditions": "по максимумам плотности головных бидов"
+    },
+    {
+      "id": "bending-modulus",
+      "title": "Модуль изгиба",
+      "metric": "bendingModulus",
+      "unit": "kT",
+      "target": { "min": 5, "max": 50 },
+      "rank": "A",
+      "source": "Cooke & Deserno 2005, arXiv:cond-mat/0509218",
+      "conditions": "из спектра ундуляций; окно подгонки по q выбирается ПО ДАННЫМ (растёт от наименьшей оболочки |q|, пока наклон log-log остаётся в допуске ±1 от -4, минимум 4 независимых оболочки), а не фиксированным потолком в 8 мод — в этом прогоне окно вышло на 4 оболочки до q_max ≈ 0.18"
+    },
+    {
+      "id": "closure",
+      "title": "Замкнутая полость",
+      "metric": "enclosedVolume",
+      "unit": "sigma^3",
+      "target": { "min": 1 },
+      "rank": "D",
+      "source": "детектор заливкой снаружи проверен на синтетической тестовой оболочке (шар из бидов, построенный вручную в verify/run.ts) — движок ЕЩЁ НЕ ПОКАЗАЛ самособранную замкнутую везикулу; спецификация раздел 7",
+      "conditions": "сетка 0.5 sigma, радиус бида 0.6 sigma; значение — полость СИНТЕТИЧЕСКОЙ проверочной оболочки самого детектора, а не измеренный объём мембраны"
+    },
+    {
+      "id": "chain-to-bead-mapping",
+      "title": "Соответствие числа атомов углерода числу бидов",
+      "metric": "chainToBeadMapping",
+      "unit": "-",
+      "target": {},
+      "rank": "D",
+      "source": "наше допущение, спецификация раздел 7",
+      "conditions": "принимается только через ворота площади и толщины"
+    }
+  ]
+}
