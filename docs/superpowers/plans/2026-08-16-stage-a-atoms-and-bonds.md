@@ -692,6 +692,96 @@ git commit -m "feat: stage A gates in the verification report"
 
 ---
 
+### Task 8: Мембрана из настоящих молекул (обратное отображение)
+
+Выполняется ВНЕ очереди, сразу после задачи 1, потому что опирается только на неё и на готовую ступень C.
+
+**Files:**
+- Create: `chem/src/backmap.ts`, `viewer/molecular.ts`, `viewer/molecular.html`
+- Test: `tests/chem-backmap.test.ts`
+
+**Interfaces:**
+- Consumes: `buildAlkanoicAcid`, `loadSpecies` из задачи 1; `createSystem`, `System.positions()` из ступени C (`engine/src/sim.ts`); `data/atoms.json`.
+- Produces: `backmapLipid(head: [number,number,number], tail1: [number,number,number], tail2: [number,number,number], carbons: number, sigmaNm: number): {atoms: {element: string, position: [number,number,number]}[], bonds: [number,number][]}` — разворачивает три бида в поатомную молекулу кислоты, ориентируя её ось по направлению голова→хвост и укладывая зигзаг в плоскости, содержащей эту ось; `backmapSystem(positions: Float32Array, opts: {carbons: number, sigmaNm: number}): {atoms: …, bonds: …}` — то же для всей мембраны; страница `/viewer/molecular.html`, публикующая `window.molecular = {frames: number, molecules: number, atoms: number, bonds: number, reconstructionBadge: string}`.
+
+- [ ] **Step 1: Написать падающие тесты**
+
+`tests/chem-backmap.test.ts`:
+
+```ts
+import { expect, test } from 'vitest'
+import { backmapLipid } from '../chem/src/backmap'
+
+const d = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
+
+test('развёрнутая молекула сохраняет состав и длины связей', () => {
+  const m = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 12, 0.8)
+  const cs = m.atoms.filter((a) => a.element === 'C').map((a) => a.position)
+  expect(cs.length).toBe(12)
+  expect(m.atoms.filter((a) => a.element === 'O').length).toBe(2)
+  for (let i = 1; i < cs.length; i++) expect(d(cs[i - 1], cs[i])).toBeCloseTo(0.154, 4)
+  expect(m.bonds.length).toBeGreaterThan(cs.length)
+})
+
+test('ось молекулы совпадает с направлением голова-хвост', () => {
+  const m = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 12, 0.8)
+  const cs = m.atoms.filter((a) => a.element === 'C').map((a) => a.position)
+  const axis = [cs[cs.length - 1][0] - cs[0][0], cs[cs.length - 1][1] - cs[0][1], cs[cs.length - 1][2] - cs[0][2]]
+  const len = Math.hypot(...axis)
+  expect(Math.abs(axis[2] / len)).toBeGreaterThan(0.9)
+})
+
+test('карбоксильная группа сидит на головном конце, а не на хвостовом', () => {
+  const m = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 12, 0.8)
+  const os = m.atoms.filter((a) => a.element === 'O').map((a) => a.position)
+  const cs = m.atoms.filter((a) => a.element === 'C').map((a) => a.position)
+  for (const o of os) expect(d(o, cs[0])).toBeLessThan(d(o, cs[cs.length - 1]))
+})
+
+test('масштаб бида в нанометры задаётся явно и меняет размер молекулы', () => {
+  const a = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 12, 0.8)
+  const b = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 16, 0.8)
+  const span = (m: typeof a) => {
+    const cs = m.atoms.filter((x) => x.element === 'C').map((x) => x.position)
+    return d(cs[0], cs[cs.length - 1])
+  }
+  expect(span(b)).toBeGreaterThan(span(a))
+})
+```
+
+- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+
+Run: `npx vitest run tests/chem-backmap.test.ts`
+Expected: FAIL — `chem/src/backmap` не найден.
+
+- [ ] **Step 3: Реализовать обратное отображение**
+
+`chem/src/backmap.ts` строит молекулу через `buildAlkanoicAcid(carbons)` в её собственной системе координат, затем поворачивает так, чтобы ось цепи легла на направление от головного бида к последнему хвостовому, и переносит так, чтобы карбоксильный углерод оказался в позиции головного бида, переведённой в нанометры множителем `sigmaNm`. Число углеродов и `sigmaNm` — параметры вызова, не константы в коде.
+
+- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+
+Run: `npx vitest run tests/chem-backmap.test.ts`
+Expected: PASS все четыре.
+
+- [ ] **Step 5: Написать падающий тест сцены**
+
+`tests/chem-backmap.test.ts` дополняется проверкой страницы: открыть `/viewer/molecular.html`, дождаться `window.molecular.frames > 5`, убедиться что `atoms > molecules * 10`, `bonds > atoms`, и что `reconstructionBadge` содержит слова о восстановленной атомной детализации.
+
+- [ ] **Step 6: Реализовать сцену**
+
+`viewer/molecular.ts` берёт координаты бидов из живой системы ступени C, разворачивает каждый липид в молекулу и рисует шар-стержень: сферы с радиусами Ван-дер-Ваальса и цветами CPK из `data/atoms.json`, цилиндры по связям. Чтобы кадр оставался живым, при большом числе липидов разворачивать поатомно только те, что попали в срез или в окно вокруг камеры, а остальные рисовать бидами — и говорить об этом на экране числом: сколько молекул показано поатомно из общего числа.
+
+Бейдж обязан сказать прямо: положения тяжёлого скелета взяты из проверенной огрублённой динамики, атомная детализация **восстановлена по справочной геометрии**, а не досчитана независимо; и что это та же мембрана, чьи площадь на липид и толщина сверены с литературой.
+
+- [ ] **Step 7: Коммит**
+
+```bash
+git add chem/src/backmap.ts viewer/molecular.ts viewer/molecular.html tests/chem-backmap.test.ts
+git commit -m "feat: atomistic backmapping of the coarse-grained membrane"
+```
+
+---
+
 ## Что план сознательно не делает
 
 Термодинамика (`thermo/` на pyCHNOSZ, ворота 1), эталонные решатели (`ref/` с ОДУ и Gillespie, ворота 3), квантовые барьеры (`qm/`, повышение рангов до B), ворота агрегации (CMC и pH, ворота 4 и 5) и шов со ступенью C — предмет отдельных планов. Этот план заканчивается тем, что в кадре есть настоящие атомы, они движутся по проверенному закону, реагируют с проверенной скоростью, и из них на стенке вырастает молекула алкановой кислоты.
