@@ -82,6 +82,10 @@ const CAVEATS: string[] = [
 export function renderReport(results: GateResult[], meta: Record<string, unknown>): string {
   const commit = typeof meta.commit === 'string' ? meta.commit : 'unknown'
   const generatedAt = typeof meta.generatedAt === 'string' ? meta.generatedAt : new Date().toISOString()
+  // Rendered visibly so a reader can compare it against the same field verify/run.ts stamps onto
+  // gates.json and kappa-measurement.json -- a mismatch here would mean the three artifacts came
+  // from different runs (the exact staleness class a review caught once already).
+  const runId = typeof meta.runId === 'string' ? meta.runId : 'unknown'
   const performance = (meta.performance ?? {}) as Partial<PerformanceMeta>
   const kappaDetail = meta.kappaDetail as KappaDetail | undefined
   const closureDetail = meta.closureDetail as ClosureMeta | undefined
@@ -192,7 +196,8 @@ export function renderReport(results: GateResult[], meta: Record<string, unknown
 </head>
 <body>
 <h1>protocell-genesis — отчёт проверки (Ступень C, ворота 6)</h1>
-<p>Сгенерировано ${escapeHtml(generatedAt)}, коммит <code>${escapeHtml(commit)}</code>.</p>
+<p>Сгенерировано ${escapeHtml(generatedAt)}, коммит <code>${escapeHtml(commit)}</code>, run <code>${escapeHtml(runId)}</code>
+(тот же идентификатор проставлен на gates.json и kappa-measurement.json — расхождение означало бы, что артефакты из разных прогонов).</p>
 <table>
   <thead>
     <tr><th>ворота</th><th>значение</th><th>коридор</th><th>ранг</th><th>вердикт</th><th>источник</th><th>условия</th></tr>

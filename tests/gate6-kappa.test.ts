@@ -34,7 +34,12 @@ const MODES_CEILING = 8 // grid=16's own Nyquist index -- a generous search ceil
 const SAMPLES = 200
 
 const OUT_DIR = 'verify/out'
-const OUT_FILE = `${OUT_DIR}/kappa-measurement.json`
+// This test's own artifact, DELIBERATELY a different path from verify/out/kappa-measurement.json:
+// verify/run.ts now runs this same measurement itself and writes that path from its own in-memory
+// result, so two processes writing the same file was the exact staleness bug a review caught (the
+// report rendering from one run while the file on disk was already the next run's). This test's
+// pass/fail contract and artifact are unaffected -- only where it lands changed.
+const OUT_FILE = `${OUT_DIR}/kappa-test-run.json`
 
 test('модуль изгиба бислоя: валидированное окно -> κ в 5-50 kT, иначе самоописывающийся BLOCKED', async () => {
   const page = await gpuPage()

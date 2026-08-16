@@ -2,20 +2,30 @@
 // vitest suite uses -- results are read via page.evaluate(), never --dump-dom, per the measured
 // trap that --dump-dom serialises the page before its async GPU work has finished) through the
 // measurement scenarios for gate 6's literature-checked numbers, evaluates the gates against
-// data/literature.json (verify/gates.ts), and writes the two artifacts this task's brief asks for:
-// verify/out/gates.json (machine-readable) and verify/out/report.html (the honesty surface a human
-// reads). The bending-modulus measurement is NOT re-run here -- it is read from the artifact
-// tests/gate6-kappa.test.ts already wrote (verify/out/kappa-measurement.json), per the brief: that
-// fit is 200 samples x 100 steps (~3 minutes) and its outcome (UNPROVEN, by design -- see
-// task-7-report.md) does not change by running it again.
+// data/literature.json (verify/gates.ts), and writes the artifacts this task's brief asks for:
+// verify/out/gates.json, verify/out/report.html and verify/out/kappa-measurement.json.
+//
+// The bending-modulus measurement IS run here, in this same process, deliberately -- an earlier
+// version read tests/gate6-kappa.test.ts's own kappa-measurement.json off disk instead, which is a
+// file ANOTHER process (vitest) can rewrite between this process rendering the report and writing
+// that file, or between two `npm run verify` invocations racing a test run: a review caught exactly
+// that (report showing a 58-75% spread, the same file on disk already at 2.8-64.3%; timestamps five
+// seconds apart proved two different runs). Fix: obtain the measurement as ONE in-memory value in
+// this process (runKappaScenario), and render the report AND write kappa-measurement.json from that
+// SAME object, so the published pair is self-consistent by construction, not by luck. Every artifact
+// this file writes is stamped with one runId/generatedAt pair generated once at the very top of
+// main(), so any future mismatch would be visible to a reader instead of invisible.
+// tests/gate6-kappa.test.ts still runs its own copy of this measurement (for its own strict pass/
+// fail assertions) and writes it to a DIFFERENT path (verify/out/kappa-test-run.json) so the two
+// writers can never collide on the same file again.
+import { randomUUID } from 'node:crypto'
 import { execSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { gpuPage, shutdownGpu } from '../tests/helpers/gpu'
 import { evaluateGates, type GateResult } from './gates'
 import { renderReport } from './report'
 
 const OUT_DIR = 'verify/out'
-const KAPPA_FILE = `${OUT_DIR}/kappa-measurement.json`
 
 function gitCommit(): string {
   try {
@@ -173,6 +183,9 @@ async function runClosureScenario(): Promise<ClosureScenarioResult> {
 }
 
 interface KappaArtifact {
+  gate: string
+  runId: string
+  generatedAt: string
   valid: boolean
   kappa: number | null
   kappaSd: number
@@ -181,6 +194,14 @@ interface KappaArtifact {
   fitShells: number
   qMax: number
   ceilingQMax: number
+  literatureRange: [number, number]
+  heightFieldDefinition: string
+  grid: number
+  system: { lipids: number; box: [number, number, number]; seed: number; layout: string }
+  samples: number
+  stepsPerSample: number
+  wallClockMs: number
+  noiseFloor: { predictedOldAllBeads32x32: unknown; predictedNewTailEndSameGrid: unknown }
   spectrumTable: Array<{
     q: number
     degeneracy: number
@@ -189,34 +210,145 @@ interface KappaArtifact {
     degenerateSpreadRel: number
     inFitWindow: boolean
   }>
-  wallClockMs: number
-  samples: number
-  stepsPerSample: number
-  grid: number
-  system: { lipids: number; box: [number, number, number]; seed: number; layout: string }
-  heightFieldDefinition: string
 }
 
-function loadKappaArtifact(): KappaArtifact | undefined {
-  if (!existsSync(KAPPA_FILE)) {
-    console.warn(
-      `KAPPA: ${KAPPA_FILE} не найден -- модуль изгиба не измерялся в этом чекауте. Task 9 сам не ` +
-        `перезапускает это измерение (см. бриф); выполните один раз ` +
-        `"npx vitest run tests/gate6-kappa.test.ts" (~3-4 минуты), затем повторите "npm run verify".`,
-    )
-    return undefined
+// Same measurement tests/gate6-kappa.test.ts runs (same system, same warm-up, same
+// measureBendingModulusDetailed call, same per-shell degenerate-spread table construction) --
+// duplicated rather than imported because vitest test files are not meant to be imported as
+// modules, and run here (not read from that test's artifact) so the report renders from the exact
+// value it also persists. Passed to page.evaluate() as a source STRING, not a function reference,
+// for the same reason the closure scenario above is: tsx's esbuild `keepNames` transform wraps
+// named function/const-arrow bindings (this scenario needs several, for the spectrum grouping) in
+// calls to a `__name` helper invisible to a serialised function argument.
+async function runKappaScenario(runId: string, generatedAt: string): Promise<KappaArtifact> {
+  const LIPIDS = 10_000
+  const BOX: [number, number, number] = [78, 78, 40]
+  const SEED = 17
+  const GRID = 16
+  const MODES_CEILING = 8 // grid=16's own Nyquist index -- a generous search ceiling, not the window
+  const SAMPLES = 200
+
+  const page = await gpuPage()
+  page.on('console', (msg) => console.log(`[kappa] ${msg.text()}`))
+  const source = `(async () => {
+    const api = window.api
+    const sys = await api.createSystem({ lipids: ${LIPIDS}, box: ${JSON.stringify(BOX)}, seed: ${SEED}, layout: 'bilayer' })
+    for (let i = 0; i < 300; i++) {
+      await sys.step(200)
+      await sys.areaMove(1)
+    }
+    const raw = await sys.positions()
+    const liveBox = sys.box
+    const oldStats = api.columnNoiseStats(raw, liveBox, 32)
+    const midBeads = api.tailEndBeads(raw)
+    const newStats = api.columnNoiseStats(midBeads, liveBox, ${GRID})
+    const detailed = await api.measureBendingModulusDetailed(sys, { grid: ${GRID}, modes: ${MODES_CEILING}, samples: ${SAMPLES} })
+
+    const upToCeiling = detailed.spectrum.q
+      .map((q, i) => ({ q, hq2: detailed.spectrum.hq2[i] }))
+      .filter((e) => e.q <= detailed.ceilingQMax)
+    const byQ = new Map()
+    for (const e of upToCeiling) {
+      const key = e.q.toFixed(6)
+      if (!byQ.has(key)) byQ.set(key, [])
+      byQ.get(key).push(e.hq2)
+    }
+    const spectrumTable = [...byQ.entries()]
+      .map(([q, vals]) => {
+        const mean = vals.reduce((a, b) => a + b, 0) / vals.length
+        const sd = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length)
+        return {
+          q: +q,
+          degeneracy: vals.length,
+          mean,
+          degenerateSpreadSd: sd,
+          degenerateSpreadRel: sd / mean,
+          inFitWindow: +q <= detailed.qMax,
+        }
+      })
+      .sort((a, b) => a.q - b.q)
+
+    return {
+      valid: detailed.valid,
+      kappa: detailed.valid ? detailed.kappa : null,
+      kappaSd: detailed.kappaSd,
+      slope: detailed.slope,
+      fitModes: detailed.fitModes,
+      fitShells: detailed.fitShells,
+      qMax: detailed.qMax,
+      ceilingQMax: detailed.ceilingQMax,
+      samples: detailed.samples,
+      stepsPerSample: detailed.stepsPerSample,
+      oldStats,
+      newStats,
+      spectrumTable,
+    }
+  })()`
+
+  const wallClockStart = Date.now()
+  const r = (await page.evaluate(source)) as {
+    valid: boolean
+    kappa: number | null
+    kappaSd: number
+    slope: number
+    fitModes: number
+    fitShells: number
+    qMax: number
+    ceilingQMax: number
+    samples: number
+    stepsPerSample: number
+    oldStats: unknown
+    newStats: unknown
+    spectrumTable: KappaArtifact['spectrumTable']
   }
-  return JSON.parse(readFileSync(KAPPA_FILE, 'utf8')) as KappaArtifact
+  const wallClockMs = Date.now() - wallClockStart
+
+  console.log(
+    `KAPPA-SCENARIO valid=${r.valid} kappa=${r.kappa ?? 'NaN'} slope=${r.slope.toFixed(4)} ` +
+      `fitModes=${r.fitModes} fitShells=${r.fitShells} qMax=${r.qMax.toFixed(4)} wallClockMs=${wallClockMs}`,
+  )
+
+  return {
+    gate: 'bending-modulus-kappa',
+    runId,
+    generatedAt,
+    valid: r.valid,
+    kappa: r.kappa,
+    kappaSd: r.kappaSd,
+    slope: r.slope,
+    fitModes: r.fitModes,
+    fitShells: r.fitShells,
+    qMax: r.qMax,
+    ceilingQMax: r.ceilingQMax,
+    literatureRange: [5, 50],
+    heightFieldDefinition: 'tailEndBeads (tail2, the midplane-proximal bead of each lipid by construction)',
+    grid: GRID,
+    system: { lipids: LIPIDS, box: BOX, seed: SEED, layout: 'bilayer' },
+    samples: r.samples,
+    stepsPerSample: r.stepsPerSample,
+    wallClockMs,
+    noiseFloor: { predictedOldAllBeads32x32: r.oldStats, predictedNewTailEndSameGrid: r.newStats },
+    spectrumTable: r.spectrumTable,
+  }
 }
 
 async function main() {
   mkdirSync(OUT_DIR, { recursive: true })
 
-  const kappaArtifact = loadKappaArtifact()
+  // Generated ONCE, before any scenario runs, and stamped onto every artifact this process writes
+  // (gates.json, report.html, kappa-measurement.json) -- so if any future change reintroduces a
+  // second writer for one of these paths, a mismatched runId/generatedAt makes that visible to a
+  // reader instead of silently publishing two different runs as one.
+  const runId = randomUUID()
+  const generatedAt = new Date().toISOString()
+  const commit = gitCommit()
 
   const bilayer = await runBilayerScenario()
   const throughput = await runThroughputScenario()
   const closure = await runClosureScenario()
+  // Run LAST among the measurements (it is the slowest, ~3 minutes) but its result is used
+  // identically by both writers below -- one in-memory object, no intervening read from disk.
+  const kappaArtifact = await runKappaScenario(runId, generatedAt)
 
   const metrics: Record<string, number> = {
     areaPerLipid: bilayer.areaPerLipid,
@@ -224,18 +356,16 @@ async function main() {
     enclosedVolume: closure.volume,
     chainToBeadMapping: throughput.chainToBeadMapping,
   }
-  // bendingModulus is intentionally OMITTED rather than set to NaN/null when the artifact has no
-  // valid fit: evaluateGates already treats an absent metric as unproven with value:null, which is
-  // exactly the honest outcome here -- no measurement exists to report, so none is smuggled through
-  // the metrics record as a sentinel.
-  if (kappaArtifact?.valid && kappaArtifact.kappa !== null) {
+  // bendingModulus is intentionally OMITTED rather than set to NaN/null when this run's own fit is
+  // invalid: evaluateGates already treats an absent metric as unproven with value:null, which is
+  // exactly the honest outcome here -- no valid measurement exists to report, so none is smuggled
+  // through the metrics record as a sentinel.
+  if (kappaArtifact.valid && kappaArtifact.kappa !== null) {
     metrics.bendingModulus = kappaArtifact.kappa
   }
 
   const results: GateResult[] = evaluateGates(metrics)
 
-  const commit = gitCommit()
-  const generatedAt = new Date().toISOString()
   const performance = {
     stepsPerSecond: throughput.stepsPerSecond,
     beads: throughput.beads,
@@ -244,6 +374,7 @@ async function main() {
   }
 
   const gatesJson = {
+    runId,
     generatedAt,
     commit,
     gates: results,
@@ -260,12 +391,21 @@ async function main() {
       steps: bilayer.steps,
     },
     closure,
-    kappa: kappaArtifact ?? null,
+    kappa: kappaArtifact,
   }
+
+  // All three artifacts written from the SAME in-memory values (kappaArtifact, results, closure,
+  // performance), one after another with nothing async in between -- no other process can rewrite
+  // any of these three specific paths (tests/gate6-kappa.test.ts now writes elsewhere), so there is
+  // no window left for the report and the on-disk kappa artifact to disagree.
+  writeFileSync(`${OUT_DIR}/kappa-measurement.json`, JSON.stringify(kappaArtifact, null, 2))
+  console.log(`WROTE ${OUT_DIR}/kappa-measurement.json`)
+
   writeFileSync(`${OUT_DIR}/gates.json`, JSON.stringify(gatesJson, null, 2))
   console.log(`WROTE ${OUT_DIR}/gates.json`)
 
   const html = renderReport(results, {
+    runId,
     commit,
     generatedAt,
     performance,
