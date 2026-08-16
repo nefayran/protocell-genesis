@@ -162,7 +162,10 @@ function main(): void {
   }
   sizeSelect.value = DEFAULT_SIZE_KEY
 
-  for (const stage of STAGES) {
+  // `monomers` is the state every run STARTS in, so offering it as a target makes the run
+  // declare success on its first sample. Only stages that require the physics to do something
+  // are selectable; the ladder below still shows all five.
+  for (const stage of STAGES.filter((s) => s !== 'monomers')) {
     const opt = document.createElement('option')
     opt.value = stage
     opt.textContent = STAGE_LABEL[stage]
@@ -613,8 +616,14 @@ function main(): void {
 
         paintProgress()
 
-        if (stage === targetStage) {
-          finishRun(`целевая стадия «${STAGE_LABEL[targetStage]}» достигнута`)
+        // Compare positions on the ladder, not identity: a sample can jump two stages at once
+        // (aggregation is fast once amphiphiles exist), and an identity check would miss the stop.
+        if (STAGES.indexOf(stage) >= STAGES.indexOf(targetStage)) {
+          finishRun(
+            stage === targetStage
+              ? `целевая стадия «${STAGE_LABEL[targetStage]}» достигнута`
+              : `стадия «${STAGE_LABEL[stage]}» достигнута, это не ниже цели «${STAGE_LABEL[targetStage]}»`,
+          )
           return
         }
       }
