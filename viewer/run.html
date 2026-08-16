@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<title>protocell-genesis — управление прогоном</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0d10; color: #e7e9ec; font-family: system-ui, sans-serif; overflow: hidden; }
+  #scene { position: absolute; inset: 0; display: block; }
+  #controls {
+    position: absolute; top: 12px; left: 12px; z-index: 2;
+    background: rgba(15, 17, 20, 0.9); border: 1px solid #333; border-radius: 8px;
+    padding: 12px 14px; width: 260px; font-size: 13px;
+  }
+  #controls .title { font-weight: 600; margin-bottom: 6px; }
+  #controls label { display: block; margin-top: 8px; }
+  #controls select, #controls input { width: 100%; margin-top: 2px; box-sizing: border-box; }
+  #controls .buttons { display: flex; gap: 6px; margin-top: 10px; }
+  #controls button { flex: 1; padding: 6px 4px; cursor: pointer; }
+  #controls button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+  #progress {
+    position: absolute; top: 12px; right: 12px; z-index: 2; width: 320px;
+    background: rgba(15, 17, 20, 0.9); border: 1px solid #333; border-radius: 8px;
+    padding: 12px 14px; font-size: 12px; line-height: 1.5;
+  }
+  #progress .row { display: flex; justify-content: space-between; }
+  #ladder { display: flex; gap: 4px; margin: 8px 0; }
+  #ladder .stage {
+    flex: 1; text-align: center; padding: 3px 2px; border-radius: 4px; border: 1px solid #444;
+    background: #1a1d22; color: #777; font-size: 10px;
+  }
+  #ladder .stage.reached { background: #2e7d32; border-color: #4caf50; color: #eafbea; }
+  #ladder .stage.current { border-color: #ffb300; box-shadow: 0 0 0 1px #ffb300 inset; }
+  #evidence { margin-top: 6px; border-top: 1px solid #333; padding-top: 6px; }
+  #trace-log {
+    margin-top: 8px; border-top: 1px solid #333; padding-top: 6px;
+    height: 120px; overflow-y: auto; font-family: ui-monospace, monospace; font-size: 10px; color: #9aa;
+    white-space: pre;
+  }
+
+  /* Honesty note and visibility note: same treatment as every other viewer's honesty badge --
+     always visible, never a tooltip. */
+  #honesty-note, #visibility-note {
+    position: absolute; left: 12px; right: 12px; z-index: 2;
+    border-radius: 8px; padding: 8px 12px; font-size: 12px; line-height: 1.4; font-weight: 600;
+  }
+  #honesty-note { bottom: 12px; background: rgba(120, 20, 20, 0.9); border: 1px solid #a33; }
+  #visibility-note { bottom: 70px; background: rgba(20, 60, 90, 0.9); border: 1px solid #2b6f9e; }
+  #visibility-note.active { background: rgba(140, 100, 10, 0.92); border-color: #d69a1a; }
+  #atom-badge {
+    position: absolute; left: 12px; bottom: 128px; right: 12px; z-index: 2; font-size: 11px; color: #9aa;
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div id="controls">
+  <div class="title">Управление прогоном</div>
+  <label>Размер прогона
+    <select id="size-select"></select>
+  </label>
+  <label>Целевая стадия
+    <select id="stage-select"></select>
+  </label>
+  <label>Предел шагов
+    <input id="step-cap" type="number" min="100" step="100" />
+  </label>
+  <div class="buttons">
+    <button id="start-btn">СТАРТ</button>
+    <button id="pause-btn" disabled>ПАУЗА</button>
+    <button id="stop-btn" disabled>СТОП</button>
+  </div>
+</div>
+
+<div id="progress">
+  <div class="row"><span>статус</span><span id="state-value">простой</span></div>
+  <div class="row"><span>шагов</span><span id="steps-value">0</span></div>
+  <div class="row"><span>шагов/с (изм.)</span><span id="sps-value">–</span></div>
+  <div class="row"><span>прошло (реал.)</span><span id="elapsed-value">0:00</span></div>
+  <div class="row"><span>осталось (оцен.)</span><span id="eta-value">–</span></div>
+  <div class="row"><span>стадия</span><span id="stage-value">monomers</span></div>
+  <div id="ladder"></div>
+  <div id="evidence"></div>
+  <div id="trace-log"></div>
+</div>
+
+<div id="visibility-note">Пока эта заметка синяя — вкладка видима, счёт идёт. Как только вкладка уходит из
+  видимости (переключение окна/таба), прогон автоматически ставится на паузу и не грузит GPU в фоне;
+  при возврате на вкладку он сам продолжается — но только если это была автопауза, а не ручная.</div>
+<div id="honesty-note"></div>
+<div id="atom-badge"></div>
+
+<script type="module" src="./run.ts"></script>
+</body>
+</html>
