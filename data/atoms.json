@@ -1,0 +1,12 @@
+{
+  "source": "массы IUPAC 2021; радиусы Ван-дер-Ваальса Bondi 1964; цвета CPK",
+  "rank": "A",
+  "elements": {
+    "H":  { "mass": 1.008,  "vdw": 0.120, "covalent": 0.031, "color": "#ffffff" },
+    "C":  { "mass": 12.011, "vdw": 0.170, "covalent": 0.076, "color": "#4d4d4d" },
+    "N":  { "mass": 14.007, "vdw": 0.155, "covalent": 0.071, "color": "#3050f8" },
+    "O":  { "mass": 15.999, "vdw": 0.152, "covalent": 0.066, "color": "#ff0d0d" },
+    "Na": { "mass": 22.990, "vdw": 0.227, "covalent": 0.166, "color": "#ab5cf2" },
+    "Cl": { "mass": 35.45,  "vdw": 0.175, "covalent": 0.102, "color": "#1ff01f" }
+  }
+}

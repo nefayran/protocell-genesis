@@ -8,5 +8,5 @@
     "types": ["@webgpu/types", "vitest/globals"],
     "noEmit": true
   },
-  "include": ["engine", "viewer", "verify", "tests"]
+  "include": ["engine", "viewer", "verify", "tests", "chem"]
 }

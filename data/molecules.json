@@ -1,0 +1,37 @@
+{
+  "rank": "A",
+  "bondLengths": {
+    "CO_triple": 0.1128, "H2": 0.0741, "OH_water": 0.09572,
+    "CO2_double": 0.1160, "CC_single": 0.154, "CH": 0.109,
+    "C_O_carboxyl_double": 0.121, "C_O_carboxyl_single": 0.136, "OH_carboxyl": 0.097,
+    "C_O_formate": 0.127
+  },
+  "angles": { "water_HOH": 104.52, "tetrahedral": 109.47, "formate_OCO": 126.0, "trigonal": 120.0 },
+  "sources": {
+    "CO_triple": "CRC Handbook, 97th ed.",
+    "H2": "CRC Handbook, 97th ed.",
+    "OH_water": "Benedict, Gailar & Plyler 1956",
+    "CO2_double": "CRC Handbook, 97th ed.",
+    "CC_single": "стандартная длина одинарной связи C-C в алканах",
+    "CH": "стандартная длина связи C-H в алканах",
+    "C_O_carboxyl_double": "стандартная карбонильная связь карбоновых кислот",
+    "C_O_carboxyl_single": "стандартная гидроксильная связь карбоновых кислот",
+    "OH_carboxyl": "стандартная связь O-H",
+    "C_O_formate": "делокализованная связь в формиат-ионе",
+    "water_HOH": "Benedict, Gailar & Plyler 1956",
+    "tetrahedral": "идеальная sp3-геометрия",
+    "formate_OCO": "экспериментальная геометрия формиат-иона",
+    "trigonal": "идеальная sp2-геометрия — добавлено для Task 1: карбоксильному углероду (sp2, 3 заместителя: цепь, =O, -OH) нужен угол, а бриф даёт для него только длины связей"
+  },
+  "species": [
+    { "id": "CO",    "formula": "CO",    "charge": 0,  "kind": "diatomic", "bond": "CO_triple" },
+    { "id": "H2",    "formula": "H2",    "charge": 0,  "kind": "diatomic", "bond": "H2" },
+    { "id": "H2O",   "formula": "H2O",   "charge": 0,  "kind": "bent",     "bond": "OH_water", "angle": "water_HOH" },
+    { "id": "CO2",   "formula": "CO2",   "charge": 0,  "kind": "linear3",  "bond": "CO2_double" },
+    { "id": "HCOO-", "formula": "CHO2",  "charge": -1, "kind": "formate" },
+    { "id": "H+",    "formula": "H",     "charge": 1,  "kind": "single" },
+    { "id": "OH-",   "formula": "HO",    "charge": -1, "kind": "diatomic", "bond": "OH_carboxyl" },
+    { "id": "Na+",   "formula": "Na",    "charge": 1,  "kind": "single" },
+    { "id": "Cl-",   "formula": "Cl",    "charge": -1, "kind": "single" }
+  ]
+}
