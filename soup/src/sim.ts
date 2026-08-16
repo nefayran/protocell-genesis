@@ -341,14 +341,25 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // acceptanceProbability(rule, kT) -- the same function tests/soup-rules.test.ts checks against
   // forwardBackwardRatio -- and attemptProbForm/attemptProbBreak from its attemptProbability(rule,
   // dt), so this is a straight upload of Task 1's own numbers, not a re-derivation.
+  //
+  // Perf fix (b), perf-report.md: bond_form_main/bond_break_main are only DISPATCHED every
+  // bondAttemptInterval.steps real steps (see encodeOneIntegrationStep below), so the dt this
+  // uniform is built from is multiplied by that interval -- attemptProbability's own formula
+  // (attemptRate*dt) is linear in dt, so attemptRate*(dt*k) is exactly k independent per-step
+  // attempts' worth of probability folded into one (Poisson thinning), keeping the average attempt
+  // rate per REAL step unchanged. acceptanceProbability below is untouched -- it depends only on
+  // energyKT/kT, never on dt, so this has no effect on the forward/backward ratio detailed balance
+  // is carried by.
   const dt = p.integrator.dt
+  const bondAttemptInterval = soup.bondAttemptInterval.steps
+  const bondDt = dt * bondAttemptInterval
   const eventRuleIds: [string, string][] = rules.map((r) => [r.bond.id, r.brk.id])
   const bondParamsUniform = device.createBuffer({ size: 160, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
   {
     const kindA = packVec4(rules.map((r) => r.kindA))
     const kindB = packVec4(rules.map((r) => r.kindB))
-    const attemptProbForm = packVec4(rules.map((r) => attemptProbability(r.bond, dt)))
-    const attemptProbBreak = packVec4(rules.map((r) => attemptProbability(r.brk, dt)))
+    const attemptProbForm = packVec4(rules.map((r) => attemptProbability(r.bond, bondDt)))
+    const attemptProbBreak = packVec4(rules.map((r) => attemptProbability(r.brk, bondDt)))
     const acceptProbForm = packVec4(rules.map((r) => acceptanceProbability(r.bond, opts.kT)))
     const acceptProbBreak = packVec4(rules.map((r) => acceptanceProbability(r.brk, opts.kT)))
     const requiresCatalyst = packVec4(rules.map((r) => (r.bond.requiresCatalyst ? 1 : 0)))
@@ -483,7 +494,17 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     device.queue.submit([enc.finish()])
   }
 
-  function encodeOneIntegrationStep(pass: GPUComputePassEncoder) {
+  // doBonds: perf fix (b), perf-report.md. bond_form_main/bond_break_main measured ~42% of a full
+  // step's cost (0.69 of 1.64ms at N=13100, 30^3 box) while the events they exist to catch are
+  // rare (attemptProbability per real step is 0.0005 at this rule set's attemptRate/dt) -- most of
+  // that cost is the 3x3x3 neighbour walk run for nothing, every step, whether or not this step is
+  // one of the rare ones that actually attempts anything. Dispatching the pair only every
+  // bondAttemptInterval.steps real steps (data/soup.json, with attemptProbForm/attemptProbBreak
+  // already built from dt*bondAttemptInterval above) cuts that cost by ~bondAttemptInterval.steps
+  // while leaving the average attempt rate per real step, and therefore the equilibrium bond count
+  // detailed balance sets, unchanged (see bondAttemptInterval's basis and
+  // tests/soup-bonds.test.ts's before/after equilibrium check).
+  function encodeOneIntegrationStep(pass: GPUComputePassEncoder, doBonds: boolean) {
     // First Verlet half-kick + drift + 3-axis periodic wrap, fused into one dispatch (see
     // soup/wgsl/step.wgsl's kick_drift_wrap_main header) -- exactly kick_main+drift_main+a
     // 3-axis wrap from engine/wgsl/integrate.wgsl's own formulas, not a new integrator.
@@ -495,19 +516,21 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     encodeGridRebuild(pass)
     encodeSoupForce(pass)
 
-    // Bond Monte Carlo: formation then breaking, on the freshly rebuilt grid/positions. Two
-    // separate, ordered dispatches within the same pass -- never concurrent with each other,
-    // see bond.wgsl's header for why that ordering is what makes the i<j dedupe race-free.
-    pass.setPipeline(pipe.bondForm)
-    pass.setBindGroup(0, bondFormGroup0)
-    pass.setBindGroup(1, bondFormGroup1)
-    pass.setBindGroup(2, bondFormGroup2)
-    pass.dispatchWorkgroups(wgN)
+    if (doBonds) {
+      // Bond Monte Carlo: formation then breaking, on the freshly rebuilt grid/positions. Two
+      // separate, ordered dispatches within the same pass -- never concurrent with each other,
+      // see bond.wgsl's header for why that ordering is what makes the i<j dedupe race-free.
+      pass.setPipeline(pipe.bondForm)
+      pass.setBindGroup(0, bondFormGroup0)
+      pass.setBindGroup(1, bondFormGroup1)
+      pass.setBindGroup(2, bondFormGroup2)
+      pass.dispatchWorkgroups(wgN)
 
-    pass.setPipeline(pipe.bondBreak)
-    pass.setBindGroup(1, bondBreakGroup1)
-    pass.setBindGroup(2, bondBreakGroup2)
-    pass.dispatchWorkgroups(wgN)
+      pass.setPipeline(pipe.bondBreak)
+      pass.setBindGroup(1, bondBreakGroup1)
+      pass.setBindGroup(2, bondBreakGroup2)
+      pass.dispatchWorkgroups(wgN)
+    }
 
     // Second Verlet half-kick + Langevin thermostat, fused into one dispatch.
     pass.setPipeline(pipe.kickThermostat)
@@ -533,13 +556,21 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // and changes nothing about what gets computed.
   const STEP_CHUNK = 1000
 
+  // Runs continuously across separate step(n) calls (not reset per call) so the
+  // bondAttemptInterval schedule stays regular regardless of how a caller chunks its own n's --
+  // e.g. step(30) then step(70) attempts bonds on the same global step indices step(100) would.
+  let globalStep = 0
+
   async function step(n: number): Promise<void> {
     let done = 0
     while (done < n) {
       const chunk = Math.min(STEP_CHUNK, n - done)
       const enc = device.createCommandEncoder()
       const pass = enc.beginComputePass()
-      for (let k = 0; k < chunk; k++) encodeOneIntegrationStep(pass)
+      for (let k = 0; k < chunk; k++) {
+        encodeOneIntegrationStep(pass, globalStep % bondAttemptInterval === 0)
+        globalStep++
+      }
       pass.end()
       device.queue.submit([enc.finish()])
       await device.queue.onSubmittedWorkDone()
@@ -547,6 +578,43 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     }
   }
 
+  // Profiling helper for the perf task (report:
+  // .superpowers/sdd/2026-08-16-soup-to-vesicle/perf-report.md). No timestamp-query use even
+  // though the adapter supports the feature: WebGPU only exposes timestampWrites at COMPUTE-PASS
+  // granularity, and this engine deliberately fuses all 9 dispatches of one integration step into
+  // ONE pass (see this file's header and step.wgsl's -- interleaving many small
+  // dispatches/passes measurably dominated wall time before that fuse). Splitting per-stage
+  // passes to get per-stage GPU timestamps would reintroduce exactly the overhead the fuse
+  // removed, so it would not be measuring the thing production actually runs. Uses the
+  // difference-of-variants method instead, exactly as the task brief's fallback describes.
+  //
+  // A first, buggy version of this ran EACH stage alone for n steps in sequence on one shared
+  // system, in an order (kickDriftWrap first) that let one unsafe isolation corrupt every
+  // measurement after it: kickDriftWrap alone applies +0.5*dt*F from a force that is NEVER
+  // recomputed (soupForce is a separate phase), so velocity grows by a fixed increment every
+  // single iteration with nothing to damp it -- after 3000 iterations that is a large,
+  // accumulating, UNBOUNDED drift, and every phase measured afterward (including the final
+  // "fullStepEquivalent") inherited that already-deranged state. Measured symptom: the isolated
+  // stages summed to ~0.9ms/step but "fullStepEquivalent" (the very same 9 dispatches, just
+  // bundled) came out at 21.4ms/step -- 23x its own parts, and 10x the documented ~2.1ms/step
+  // (480 steps/s) baseline for this exact configuration. That gap is the corruption, not a real
+  // cost; it never got used for anything.
+  //
+  // Fix: only ever isolate GROUPS that stay physically bounded no matter how large n is.
+  //  - 'full': the real, unmodified per-step dispatch sequence, timed FIRST (before anything else
+  //    touches the buffers) -- this is just step()'s own physics, proven stable over 50_000 steps,
+  //    and is the number this whole profile is checked against.
+  //  - 'gridBuild', 'force': read positions, WRITE only their own output buffer (cellStart/cells,
+  //    forceBuf) -- positions never move during these, so running either alone for any n computes
+  //    the identical answer every iteration. No corruption possible.
+  //  - 'bondAttempts' (form+break together): mutates only bondSlots/events, never positions or
+  //    velocities, and valence is capped at 3 -- self-limiting, not unbounded.
+  //  - 'integration' (kickDriftWrap+kickThermostat together, exactly as they alternate in a real
+  //    step): unlike kickDriftWrap ALONE, this pairs every kick with the thermostat's own
+  //    Ornstein-Uhlenbeck damping (v -= gamma*dt*v, before adding noise) in the SAME iteration, so
+  //    velocity relaxes to a stationary distribution instead of growing linearly -- bounded for
+  //    any n, even though the force it integrates against is a stale snapshot (not recomputed
+  //    inside this isolated group, same as every other bucket here).
   async function stepPhasesDEBUG(n: number): Promise<Record<string, number>> {
     async function timePhase(label: string, fn: (pass: GPUComputePassEncoder) => void): Promise<[string, number]> {
       const enc = device.createCommandEncoder()
@@ -559,70 +627,36 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
       return [label, (performance.now() - t0) / n]
     }
     const out: Record<string, number> = {}
+    const encodeIntegration = (pass: GPUComputePassEncoder) => {
+      pass.setPipeline(pipe.kickDriftWrap)
+      pass.setBindGroup(0, kickDriftWrapGroup0)
+      pass.setBindGroup(1, kickDriftWrapGroup1)
+      pass.dispatchWorkgroups(wgN)
+      pass.setPipeline(pipe.kickThermostat)
+      pass.setBindGroup(0, kickThermostatGroup0)
+      pass.setBindGroup(1, kickThermostatGroup1)
+      pass.dispatchWorkgroups(wgN)
+    }
+    const encodeBondAttempts = (pass: GPUComputePassEncoder) => {
+      pass.setPipeline(pipe.bondForm)
+      pass.setBindGroup(0, bondFormGroup0)
+      pass.setBindGroup(1, bondFormGroup1)
+      pass.setBindGroup(2, bondFormGroup2)
+      pass.dispatchWorkgroups(wgN)
+      pass.setPipeline(pipe.bondBreak)
+      pass.setBindGroup(1, bondBreakGroup1)
+      pass.setBindGroup(2, bondBreakGroup2)
+      pass.dispatchWorkgroups(wgN)
+    }
     const phases: [string, (pass: GPUComputePassEncoder) => void][] = [
-      [
-        'kickDriftWrap',
-        (pass) => {
-          pass.setPipeline(pipe.kickDriftWrap)
-          pass.setBindGroup(0, kickDriftWrapGroup0)
-          pass.setBindGroup(1, kickDriftWrapGroup1)
-          pass.dispatchWorkgroups(wgN)
-        },
-      ],
-      ['gridRebuild', (pass) => encodeGridRebuild(pass)],
-      ['soupForce', (pass) => encodeSoupForce(pass)],
-      [
-        'bondForm',
-        (pass) => {
-          pass.setPipeline(pipe.bondForm)
-          pass.setBindGroup(0, bondFormGroup0)
-          pass.setBindGroup(1, bondFormGroup1)
-          pass.setBindGroup(2, bondFormGroup2)
-          pass.dispatchWorkgroups(wgN)
-        },
-      ],
-      [
-        'bondBreak',
-        (pass) => {
-          pass.setPipeline(pipe.bondBreak)
-          pass.setBindGroup(1, bondBreakGroup1)
-          pass.setBindGroup(2, bondBreakGroup2)
-          pass.dispatchWorkgroups(wgN)
-        },
-      ],
-      [
-        'kickThermostat',
-        (pass) => {
-          pass.setPipeline(pipe.kickThermostat)
-          pass.setBindGroup(0, kickThermostatGroup0)
-          pass.setBindGroup(1, kickThermostatGroup1)
-          pass.dispatchWorkgroups(wgN)
-        },
-      ],
-      [
-        'fullStepEquivalent',
-        (pass) => {
-          pass.setPipeline(pipe.kickDriftWrap)
-          pass.setBindGroup(0, kickDriftWrapGroup0)
-          pass.setBindGroup(1, kickDriftWrapGroup1)
-          pass.dispatchWorkgroups(wgN)
-          encodeGridRebuild(pass)
-          encodeSoupForce(pass)
-          pass.setPipeline(pipe.bondForm)
-          pass.setBindGroup(0, bondFormGroup0)
-          pass.setBindGroup(1, bondFormGroup1)
-          pass.setBindGroup(2, bondFormGroup2)
-          pass.dispatchWorkgroups(wgN)
-          pass.setPipeline(pipe.bondBreak)
-          pass.setBindGroup(1, bondBreakGroup1)
-          pass.setBindGroup(2, bondBreakGroup2)
-          pass.dispatchWorkgroups(wgN)
-          pass.setPipeline(pipe.kickThermostat)
-          pass.setBindGroup(0, kickThermostatGroup0)
-          pass.setBindGroup(1, kickThermostatGroup1)
-          pass.dispatchWorkgroups(wgN)
-        },
-      ],
+      // Worst case (every step does bonds too) -- the number to compare against gridBuild/
+      // force/bondAttempts/integration's sum; the REAL amortized cost (bonds only every
+      // bondAttemptInterval.steps steps) is what step()'s own timing reports.
+      ['full', (pass) => encodeOneIntegrationStep(pass, true)],
+      ['gridBuild', (pass) => encodeGridRebuild(pass)],
+      ['force', (pass) => encodeSoupForce(pass)],
+      ['bondAttempts', encodeBondAttempts],
+      ['integration', encodeIntegration],
     ]
     for (const [label, fn] of phases) {
       const [l, ms] = await timePhase(label, fn)

@@ -32,6 +32,18 @@ export interface Sweep {
   catalystCount: number[]
 }
 
+/**
+ * Performance-only batching of the bond Monte Carlo (perf-report.md, candidate fix (b)):
+ * bond_form_main/bond_break_main run every `steps` integration steps instead of every step, with
+ * attemptProbability's dt multiplied by `steps` to keep the average attempt rate per real step
+ * unchanged (Poisson thinning) -- acceptanceProbability (the one number carrying detailed balance)
+ * is untouched by this. Not a physical rate, so no `rank`/energy field the way Rule has.
+ */
+export interface BondAttemptInterval {
+  steps: number
+  basis: string
+}
+
 export interface Soup {
   /** Единственная явная калибровка временнóй шкалы модели (kappa_t на экране в отчётах). */
   kappaT: number
@@ -39,11 +51,12 @@ export interface Soup {
   rules: Rule[]
   start: Record<string, number>
   sweep: Sweep
+  bondAttemptInterval: BondAttemptInterval
 }
 
 const ALLOWED_MONOMER_KINDS = new Set<Monomer['kind']>(['carbon', 'head', 'donor', 'catalyst'])
 
-const REQUIRED = ['kappaT', 'monomers', 'rules', 'start', 'sweep'] as const
+const REQUIRED = ['kappaT', 'monomers', 'rules', 'start', 'sweep', 'bondAttemptInterval'] as const
 
 export function loadSoup(): Soup {
   const s = raw as unknown as Soup
@@ -136,5 +149,13 @@ export function assertRulesConsistent(s: Soup): void {
         `data/soup.json: стартовый состав ссылается на "${k}", который не объявлен как мономер — это может быть готовый амфифил, а не строительный блок`,
       )
     }
+  }
+
+  const bai = s.bondAttemptInterval
+  if (!Number.isInteger(bai.steps) || bai.steps < 1) {
+    throw new Error(`data/soup.json: bondAttemptInterval.steps=${bai.steps} должен быть целым числом >= 1`)
+  }
+  if (!bai.basis || bai.basis.trim().length <= 10) {
+    throw new Error('data/soup.json: bondAttemptInterval не имеет содержательного обоснования (basis)')
   }
 }
