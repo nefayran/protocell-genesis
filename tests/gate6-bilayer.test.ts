@@ -67,14 +67,20 @@ test('готовый бислой при нулевом натяжении де�
 // outside it" — measured failures at exactly that boundary (1.6327... > 1.5) with a 700-move budget,
 // on ~1/3 of runs. Instead each side runs SAMPLING moves (step(100) + areaMove(3), identical to the
 // budget this test always used — no move-size tuning, nothing in sim.ts touched) in a loop that
-// keeps going, up to a hard cap, until a trailing window of TAIL samples both (a) sits entirely
-// inside the literature corridor and (b) has a block-averaged ln(area) drift statistically
+// keeps going, up to a hard cap, until a NON-OVERLAPPING window of TAIL samples both (a) sits
+// entirely inside the literature corridor and (b) has a block-averaged ln(area) drift statistically
 // indistinguishable from zero — the same block-drift statistic (block-mean OLS regression) that
 // measureBilayerAveraged/blockDrift in engine/src/index.ts uses for the gate above, reimplemented
-// here because it is not exported, not a different statistic. If the cap is reached without that
-// criterion being met, the run is marked unconverged and the test FAILS below with the full
-// trajectory printed — the corridor and the checked-sample count are not touched to make that
-// harder or easier.
+// here because it is not exported, not a different statistic. The criterion is tested only once per
+// full TAIL-sized window (checkpoints at move 200, 400, 600, ...), not on every sliding step:
+// re-testing the same statistic on every move as the window slides is an uncorrected sequential
+// test — with hundreds of peeks at a nominal |t| < 2 threshold, the chance that SOME window along
+// the way looks flat by pure chance is far above the 5% the threshold implies. Testing once per
+// independent, non-overlapping window is the discipline the sibling gate already uses (it computes
+// the statistic exactly once, on one fixed window) applied to this test's open-ended search.  If the
+// cap is reached without that criterion being met, the run is marked unconverged and the test FAILS
+// below with the full trajectory printed — the corridor and the checked-sample count are not touched
+// to make that harder or easier.
 //
 // There is no equilibration-phase move-size tuning here: AREA_MOVE_LOG_DELTA (sim.ts) is a fixed
 // internal constant, not exposed to callers, and this test does not add a tuning knob for it — the
@@ -181,6 +187,7 @@ test('площадь сходится в литературный коридор
         let movesUsed = -1
         let outcome: 'converged' | 'ruptured' | 'cap' = 'cap'
         let structuralAtStop: { intact: boolean; clusterFraction: number; peaksOk: boolean } | null = null
+        let checkpointsChecked = 0 // number of independent (non-overlapping) corridor+drift tests actually performed this run
         for (let i = 0; i < CAP; i++) {
           await sys.step(100)
           accepted += (await sys.areaMove(3)) * 3
@@ -200,27 +207,39 @@ test('площадь сходится в литературный коридор
             }
           }
 
-          const tail = series.slice(-TAIL)
-          const tailMin = Math.min(...tail)
-          const tailMax = Math.max(...tail)
-          const insideCorridor = tailMin > 1.1 && tailMax < 1.5
-          const drift = blockDrift(
-            tail.map((a) => Math.log(a)),
-            BLOCKS,
-          )
-          // "Statistically indistinguishable from zero": |t| < 2 (~95% two-sided). Also bounded in
-          // absolute magnitude by the same 0.05 ln-A-over-the-window threshold the gate test above
-          // asserts, so a long, barely-significant creep cannot pass just because the block noise
-          // is large — same spirit as the gate's existing drift check, not a looser one.
-          const driftNegligible = Math.abs(drift.t) < 2 && Math.abs(drift.perStep) * TAIL < 0.05
-          if (insideCorridor && driftNegligible) {
-            // Before judging the corridor met, confirm the structure that produced these numbers is
-            // still one intact sheet — a corridor-shaped number from a torn membrane is not a pass.
-            const structural = await structuralCheck(sys)
-            structuralAtStop = structural
-            movesUsed = idx
-            outcome = structural.intact ? 'converged' : 'ruptured'
-            break
+          // Evaluate the corridor+drift stopping criterion only at NON-OVERLAPPING checkpoints —
+          // once every TAIL moves, not every move. Re-testing the same block-drift statistic on
+          // every move as the window slides is an uncorrected sequential test: with hundreds of
+          // peeks at a nominal |t| < 2 threshold, the chance of some window along the way looking
+          // "flat enough" by chance is far above the 5% the threshold implies (review finding). The
+          // sibling gate in engine/src/index.ts computes this statistic exactly once on a fixed
+          // window; testing once per full, non-overlapping window is the same discipline applied to
+          // an open-ended search. checkpointsChecked counts how many independent tests this run
+          // actually performed, so the multiple-testing burden is a stated number, not an unknown.
+          if (idx % TAIL === 0) {
+            checkpointsChecked++
+            const tail = series.slice(-TAIL)
+            const tailMin = Math.min(...tail)
+            const tailMax = Math.max(...tail)
+            const insideCorridor = tailMin > 1.1 && tailMax < 1.5
+            const drift = blockDrift(
+              tail.map((a) => Math.log(a)),
+              BLOCKS,
+            )
+            // "Statistically indistinguishable from zero": |t| < 2 (~95% two-sided). Also bounded in
+            // absolute magnitude by the same 0.05 ln-A-over-the-window threshold the gate test above
+            // asserts, so a long, barely-significant creep cannot pass just because the block noise
+            // is large — same spirit as the gate's existing drift check, not a looser one.
+            const driftNegligible = Math.abs(drift.t) < 2 && Math.abs(drift.perStep) * TAIL < 0.05
+            if (insideCorridor && driftNegligible) {
+              // Before judging the corridor met, confirm the structure that produced these numbers is
+              // still one intact sheet — a corridor-shaped number from a torn membrane is not a pass.
+              const structural = await structuralCheck(sys)
+              structuralAtStop = structural
+              movesUsed = idx
+              outcome = structural.intact ? 'converged' : 'ruptured'
+              break
+            }
           }
         }
 
@@ -239,6 +258,7 @@ test('площадь сходится в литературный коридор
           series,
           movesUsed,
           outcome,
+          checkpointsChecked,
           converged: outcome === 'converged',
           clusterFraction: structuralAtStop.clusterFraction,
           peaksOk: structuralAtStop.peaksOk,
@@ -265,7 +285,7 @@ test('площадь сходится в литературный коридор
       `CONVERGE start ${r.startArea} (first sample ${r.start.toFixed(3)})  ${label}  ` +
         `tail mean ${r.tailMean.toFixed(4)} min ${r.tailMin.toFixed(4)} max ${r.tailMax.toFixed(4)}  ` +
         `lnA drift t=${r.driftT.toFixed(2)} (${r.driftPerMove.toExponential(2)}/move)  accepted ${r.acceptedFraction.toFixed(3)}  ` +
-        `clusterFraction ${r.clusterFraction.toFixed(4)}  peaksOk ${r.peaksOk}`,
+        `clusterFraction ${r.clusterFraction.toFixed(4)}  peaksOk ${r.peaksOk}  checkpoints ${r.checkpointsChecked}`,
     )
     if (!r.converged) {
       console.log(
