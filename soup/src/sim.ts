@@ -49,6 +49,13 @@ export interface SoupSystem {
   step(n: number): Promise<void>
   /** 4 floats per particle: x, y, z, kind index (position into data/soup.json's `monomers`). */
   particles(): Promise<Float32Array>
+  /** Per-particle force from the grid path (rebuilds the grid for current positions first).
+   * perf2-report.md correctness gate: compared against forcesBruteForce() to floating-point
+   * tolerance, mirroring engine/src/sim.ts's own forces()/forcesBruteForce() pair. */
+  forces(): Promise<Float32Array>
+  /** Same physics as forces(), computed by an O(N^2) pair loop with no neighbour grid at all --
+   * the reference implementation forces() is checked against. */
+  forcesBruteForce(): Promise<Float32Array>
   /** Pairs of particle indices [i0, j0, i1, j1, ...], one entry per currently active bond. */
   bonds(): Promise<Uint32Array>
   /** Cumulative event counts since creation, keyed by data/soup.json rule id (e.g. "cc_bond"). */
@@ -159,7 +166,11 @@ function packVec4(values: number[]): number[] {
 
 interface SoupPipelines {
   device: GPUDevice
+  sortedGather: boolean
   soupForce: GPUComputePipeline
+  /** perf2-report.md correctness gate: O(N^2) reference force, no grid -- see forces()/
+   * forcesBruteForce() below, mirroring engine/src/sim.ts's own pair. */
+  soupForceBrute: GPUComputePipeline
   kickDriftWrap: GPUComputePipeline
   kickThermostat: GPUComputePipeline
   bondForm: GPUComputePipeline
@@ -168,28 +179,61 @@ interface SoupPipelines {
   count: GPUComputePipeline
   prefix: GPUComputePipeline
   fill: GPUComputePipeline
+  /** perf2-report.md, candidate (b): gathers positions into cell-sorted order (using the same
+   * permutation fill_main already produces in `cellIdx`) so the O(candidates) neighbour walk in
+   * soup_force_main/bond_form_main reads a contiguous array instead of scattering through `pos2`
+   * at arbitrary original indices. */
+  gatherSorted: GPUComputePipeline
+  /** perf2-report.md, STEP 1 diagnosis: counts candidates examined and pairs within the actual
+   * interaction range for one dispatch of the SAME cell walk soup_force_main runs -- never used in
+   * the real step loop, only by forceCandidateStatsDEBUG below. */
+  forceStats: GPUComputePipeline
+  /** perf2-report.md, candidate (c): Verlet list build/maintenance kernels -- only ever dispatched
+   * when verletList.enabled is true. */
+  buildVerletList: GPUComputePipeline
+  snapshotPositions: GPUComputePipeline
+  resetMaxDrift: GPUComputePipeline
+  maxDrift: GPUComputePipeline
+  soupForceList: GPUComputePipeline
+  bondFormList: GPUComputePipeline
 }
 
 let cached: SoupPipelines | undefined
 
-function getSoupPipelines(device: GPUDevice): SoupPipelines {
-  if (cached && cached.device === device) return cached
+// perf2-report.md, candidate (b): which entry point to compile for the force/bond-form kernels --
+// see NeighborGrid.sortedGather's doc comment (soup/src/rules.ts) for why this is a pipeline
+// choice, not a runtime branch. Threaded into the (device-keyed) pipeline cache key too: this
+// engine only ever runs with ONE data/soup.json per process (loaded once at module import), so in
+// practice the cache is never asked for the other variant on the same device, but keying on it
+// explicitly documents that dependency rather than leaving it implicit.
+function getSoupPipelines(device: GPUDevice, sortedGather: boolean): SoupPipelines {
+  if (cached && cached.device === device && cached.sortedGather === sortedGather) return cached
   const forceModule = device.createShaderModule({ code: `${forcesWgsl}\n${stepWgsl}` })
   const bondModule = device.createShaderModule({ code: `${forcesWgsl}\n${bondWgsl}` })
   const neighborModule = device.createShaderModule({ code: neighborWgsl })
   const cp = (module: GPUShaderModule, entryPoint: string) =>
-    device.createComputePipeline({ layout: 'auto', compute: { module, entryPoint } })
+    device.createComputePipeline({ label: entryPoint, layout: 'auto', compute: { module, entryPoint } })
   cached = {
     device,
-    soupForce: cp(forceModule, 'soup_force_main'),
+    sortedGather,
+    soupForce: cp(forceModule, sortedGather ? 'soup_force_main' : 'soup_force_main_unsorted'),
+    soupForceBrute: cp(forceModule, 'soup_force_brute_main'),
     kickDriftWrap: cp(forceModule, 'kick_drift_wrap_main'),
     kickThermostat: cp(forceModule, 'kick_thermostat_main'),
-    bondForm: cp(bondModule, 'bond_form_main'),
+    bondForm: cp(bondModule, sortedGather ? 'bond_form_main' : 'bond_form_main_unsorted'),
     bondBreak: cp(bondModule, 'bond_break_main'),
     clearCounts: cp(neighborModule, 'clear_counts_main'),
     count: cp(neighborModule, 'count_main'),
     prefix: cp(neighborModule, 'prefix_main'),
     fill: cp(neighborModule, 'fill_main'),
+    gatherSorted: cp(forceModule, 'soup_gather_sorted_main'),
+    forceStats: cp(forceModule, 'soup_force_stats_main'),
+    buildVerletList: cp(forceModule, 'soup_build_verlet_list_main'),
+    snapshotPositions: cp(forceModule, 'soup_snapshot_positions_main'),
+    resetMaxDrift: cp(forceModule, 'soup_reset_max_drift_main'),
+    maxDrift: cp(forceModule, 'soup_max_drift_main'),
+    soupForceList: cp(forceModule, 'soup_force_list_main'),
+    bondFormList: cp(bondModule, 'bond_form_list_main'),
   }
   return cached
 }
@@ -217,46 +261,104 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   const box = opts.box
   const rng = mulberry32(opts.seed)
 
-  // Cell size: at least the largest interaction reach (WCA contact for the largest pairwise size,
-  // plus the tail-tail attraction's outer cutoff w_c) so any pair within range of each other is
-  // guaranteed to land in the same cell or one of its 26 neighbours -- same reasoning
+  // Interaction range: at least the largest interaction reach (WCA contact for the largest
+  // pairwise size, plus the tail-tail attraction's outer cutoff w_c) so any pair within range of
+  // each other is guaranteed to land within `walkRadius` cells of each other -- same reasoning
   // engine/src/sim.ts's own `cellSize` comment gives, generalised from a fixed lipid pair to
   // whichever two of the soup's own species (by data/soup.json's radiusSigma) are largest.
+  //
+  // perf2-report.md, candidate (a): the ORIGINAL grid set cellSize = interactionRange and walked
+  // 3x3x3 (walkRadius=1), which searches a cube of side 3*interactionRange for pairs that only
+  // ever lie within a sphere of radius interactionRange -- diagnosed and measured (candidates
+  // examined vs pairs within range, forceCandidateStatsDEBUG below) before this was touched.
+  // `neighborGrid.cellDivisor` (data/soup.json, with a written basis) divides the cell side by
+  // that many; the walk radius needed to keep the SAME completeness guarantee is derived, not
+  // assumed, and ASSERTED right below rather than trusted to fall out of the arithmetic.
+  // cellDivisor=1 reproduces the original cellSize/walkRadius exactly (bit-identical 3x3x3 walk),
+  // the honest A/B control point for this change.
   const maxRadiusSigma = Math.max(...soup.monomers.map((m) => m.radiusSigma))
   const maxB = p.sigma * maxRadiusSigma
-  const cellSize = wcaCutoff(maxB) + p.attraction.wc
+  const interactionRange = wcaCutoff(maxB) + p.attraction.wc
+  const cellDivisor = soup.neighborGrid.cellDivisor
+  const cellSize = interactionRange / cellDivisor
+  const walkRadius = Math.ceil(interactionRange / cellSize)
+  if (walkRadius * cellSize < interactionRange - 1e-6) {
+    throw new Error(
+      `сетка соседей: walkRadius=${walkRadius} * cellSize=${cellSize.toFixed(6)} = ${(walkRadius * cellSize).toFixed(6)} ` +
+        `не покрывает interactionRange=${interactionRange.toFixed(6)} — гарантия полноты обхода нарушена`,
+    )
+  }
+
+  // perf2-report.md, candidate (c): a Verlet list, built every `rebuildEvery` real steps on the
+  // SAME (unshrunk) grid above, with a wider walk radius that covers interactionRange+skin instead
+  // of just interactionRange -- the skin margin is what lets the list stay complete for
+  // `rebuildEvery` steps without re-walking. Derived and asserted the same way walkRadius is above,
+  // never assumed. When verlet.enabled is false, GB.dims.w (written below) carries the ORIGINAL
+  // walkRadius instead, and the *_list_main kernels are never compiled/dispatched at all -- see
+  // getSoupPipelines and encodeOneIntegrationStep.
+  const verlet = soup.verletList
+  const listRange = interactionRange + verlet.skin
+  const listBuildWalkRadius = Math.ceil(listRange / cellSize)
+  if (listBuildWalkRadius * cellSize < listRange - 1e-6) {
+    throw new Error(
+      `список Верле: listBuildWalkRadius=${listBuildWalkRadius} * cellSize=${cellSize.toFixed(6)} = ` +
+        `${(listBuildWalkRadius * cellSize).toFixed(6)} не покрывает listRange=${listRange.toFixed(6)} (interactionRange+skin) — гарантия полноты обхода нарушена`,
+    )
+  }
+  // Drift-safety condition (perf-report.md's own rejected-candidate-(a) analysis, generalised from
+  // one step to `rebuildEvery` steps): a 2x-RMS-3D-speed worst-case outlier bound, evaluated for
+  // THIS system's own kT (not a fixed assumed worst case) -- a particle drifting at that bound for
+  // the WHOLE rebuild interval must still land within skin/2 of where the list last saw it, or the
+  // list could be missing a real neighbour by the next rebuild. soup_max_drift_main backs this
+  // analytical bound up with a REAL per-step measurement, checked by step() below.
+  if (verlet.enabled) {
+    const vBound = 2 * Math.sqrt(3 * opts.kT)
+    const driftBound = 2 * verlet.rebuildEvery * p.integrator.dt * vBound
+    if (driftBound > verlet.skin) {
+      throw new Error(
+        `список Верле: 2*rebuildEvery*dt*vBound=${driftBound.toFixed(4)} превышает skin=${verlet.skin} ` +
+          `при kT=${opts.kT} — перестройка недостаточно частая (или skin недостаточен) для этой температуры`,
+      )
+    }
+  }
+  const effectiveWalkRadius = verlet.enabled ? listBuildWalkRadius : walkRadius
 
   function computeDims(b: [number, number, number]): [number, number, number] {
     return [Math.max(1, Math.floor(b[0] / cellSize)), Math.max(1, Math.floor(b[1] / cellSize)), Math.max(1, Math.floor(b[2] / cellSize))]
   }
 
   // Full 3-axis periodicity here (unlike engine/src/sim.ts's membrane, which leaves z open for a
-  // bilayer in vacuum) -- a bulk soup has no preferred axis, so the ±1 neighbour-cell walk wraps
-  // z too (soup/wgsl/step.wgsl, soup/wgsl/bond.wgsl), and needs dims>=3 on z as well as x,y for
-  // the same reason engine/src/sim.ts's gridInvariantsHold needs it on x,y: with fewer than 3
-  // cells on a periodic axis the ±1 wrap revisits a cell 2x or 3x, silently doubling or tripling
-  // every force/bond-attempt contribution from it. min(box)/2 > bend.r0 guards the minimum-image
-  // convention (mi3) the same way, generalised to all three axes.
+  // bilayer in vacuum) -- a bulk soup has no preferred axis, so the ±effectiveWalkRadius
+  // neighbour-cell walk wraps z too (soup/wgsl/step.wgsl, soup/wgsl/bond.wgsl), and needs
+  // dims>=2*effectiveWalkRadius+1 on every axis for the same reason engine/src/sim.ts's
+  // gridInvariantsHold needs dims>=3 on x,y for its own ±1 walk: with fewer than
+  // 2*effectiveWalkRadius+1 cells on a periodic axis, the wrap revisits a cell more than once,
+  // silently multiplying every force/bond-attempt/list-build contribution from it. min(box)/2 >
+  // bend.r0 guards the minimum-image convention (mi3) the same way, generalised to all three axes
+  // and unaffected by walkRadius (it is about the bond's own reach, not the neighbour grid).
   function gridInvariantsHold(b: [number, number, number], d: [number, number, number]): boolean {
+    const minCells = 2 * effectiveWalkRadius + 1
     return (
-      d[0] >= 3 &&
-      d[1] >= 3 &&
-      d[2] >= 3 &&
+      d[0] >= minCells &&
+      d[1] >= minCells &&
+      d[2] >= minCells &&
       Math.min(b[0], b[1], b[2]) / 2 > p.bend.r0
     )
   }
 
   const dims = computeDims(box)
   if (!gridInvariantsHold(box, dims)) {
+    const minCells = 2 * effectiveWalkRadius + 1
     throw new Error(
       `сетка соседей: box=[${box[0]},${box[1]},${box[2]}] даёт cellSize=${cellSize.toFixed(4)}, dims=[${dims[0]},${dims[1]},${dims[2]}] ` +
-        `и min(box)/2=${(Math.min(box[0], box[1], box[2]) / 2).toFixed(4)} — нужно dims>=3 на всех трёх осях и min(box)/2 > bend.r0=${p.bend.r0}`,
+        `и min(box)/2=${(Math.min(box[0], box[1], box[2]) / 2).toFixed(4)} — нужно dims>=${minCells} (2*effectiveWalkRadius+1) на всех трёх осях и min(box)/2 > bend.r0=${p.bend.r0}`,
     )
   }
   const ncells = dims[0] * dims[1] * dims[2]
 
   const { device } = await getGpu()
-  const pipe = getSoupPipelines(device)
+  const sortedGather = soup.neighborGrid.sortedGather
+  const pipe = getSoupPipelines(device, sortedGather)
 
   // --- initial state: a jittered lattice, not independent uniform placement -----------------------
   // Independent uniform placement has no minimum-separation guarantee: at data/soup.json's default
@@ -317,6 +419,47 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   const countsBuf = storageBuffer(device, new Float32Array(ncells))
   const cellStartBuf = storageBuffer(device, new Float32Array(ncells + 1))
   const cursorBuf = storageBuffer(device, new Float32Array(ncells))
+  // perf2-report.md, candidate (b): cell-sorted GATHER of positions, rebuilt every grid rebuild
+  // (i.e. every step) from the SAME cellIdx permutation fill_main already produces -- see
+  // soup_gather_sorted_main in soup/wgsl/step.wgsl. Positions/velocities/bondSlots themselves stay
+  // in ORIGINAL index space (never physically reordered), so bond bookkeeping is untouched by
+  // construction -- see this file's header note on why that choice was made over a full resort.
+  const posSortedBuf = storageBuffer(device, new Float32Array(N * 4))
+  // perf2-report.md, STEP 1 diagnosis: [candidatesExamined, pairsWithinRange], read back once per
+  // forceCandidateStatsDEBUG call, never touched by the real step loop.
+  const statsBuf = device.createBuffer({
+    size: 8,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+  })
+
+  // perf2-report.md, candidate (c): Verlet list buffers. verletListBuf is a flat N*listCapacity
+  // array (soup_build_verlet_list_main/soup_force_list_main/bond_form_list_main all index it as
+  // i*listCapacity+slot); verletCountBuf is the per-particle count actually found this rebuild;
+  // verletOverflowBuf is a single flag the build kernel sets (never clears) if any particle found
+  // more than listCapacity candidates -- soup/src/sim.ts asserts it stays clear after every
+  // rebuild rather than silently trusting listCapacity was big enough. posAtRebuildBuf/
+  // maxDriftSqBuf implement the drift-safety guard: a snapshot taken at every rebuild and the
+  // running max squared-drift since it, read back and checked after every step() call.
+  const verletListBuf = device.createBuffer({
+    size: N * verlet.listCapacity * 4,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+  })
+  const verletCountBuf = device.createBuffer({ size: Math.max(4, N * 4), usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST })
+  const verletOverflowBuf = device.createBuffer({
+    size: 4,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+  })
+  device.queue.writeBuffer(verletOverflowBuf, 0, new Uint32Array([0]))
+  const posAtRebuildBuf = storageBuffer(device, new Float32Array(N * 4))
+  const maxDriftSqBuf = device.createBuffer({
+    size: 4,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+  })
+  device.queue.writeBuffer(maxDriftSqBuf, 0, new Uint32Array([0]))
+  // VL: x=listRange (interactionRange+skin), y=listCapacity (as f32, cast to u32 in WGSL) -- see
+  // step.wgsl/bond.wgsl's own VL declarations.
+  const verletUniform = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
+  device.queue.writeBuffer(verletUniform, 0, new Float32Array([listRange, verlet.listCapacity, 0, 0]))
 
   const bondSlotsBuf = device.createBuffer({
     size: bondSlots0.byteLength,
@@ -342,7 +485,11 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   const gridUniform = device.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
   {
     const bytes = new ArrayBuffer(32)
-    new Uint32Array(bytes, 0, 4).set([dims[0], dims[1], dims[2], 0])
+    // dims.w carries walkRadius (perf2-report.md, candidate (a)) -- unused by engine/wgsl/
+    // neighbor.wgsl (its cell_of()/clear_counts_main only ever read dims.xyz), read by
+    // soup/wgsl/step.wgsl's soup_force_main and soup/wgsl/bond.wgsl's bond_form_main to drive the
+    // ±walkRadius cell walk instead of a hardcoded ±1.
+    new Uint32Array(bytes, 0, 4).set([dims[0], dims[1], dims[2], effectiveWalkRadius])
     new Float32Array(bytes, 16, 4).set([box[0], box[1], box[2], 0])
     device.queue.writeBuffer(gridUniform, 0, bytes)
   }
@@ -404,7 +551,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   }
 
   const bind = (pipeline: GPUComputePipeline, group: number, entries: GPUBindGroupEntry[]) =>
-    device.createBindGroup({ layout: pipeline.getBindGroupLayout(group), entries })
+    device.createBindGroup({ label: `${pipeline.label}@${group}`, layout: pipeline.getBindGroupLayout(group), entries })
   const buf = (b: GPUBuffer) => ({ buffer: b })
 
   // --- grid rebuild (engine/wgsl/neighbor.wgsl, unchanged) ---------------------------------------
@@ -431,6 +578,14 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   ])
   const wgCells = Math.ceil(ncells / 64)
 
+  // perf2-report.md, candidate (b): gather bind group, only group 1 (no Params uniform needed for
+  // a plain copy) -- pos2 (read) + cellIdx (read, the permutation) + posSortedRW (write target).
+  const gatherSortedBind = bind(pipe.gatherSorted, 1, [
+    { binding: 0, resource: buf(posBuf) },
+    { binding: 5, resource: buf(cellsBuf) },
+    { binding: 13, resource: buf(posSortedBuf) },
+  ])
+
   // --- soup force + wrap (forces.wgsl + step.wgsl) -----------------------------------------------
   const soupForceGroup0 = bind(pipe.soupForce, 0, [{ binding: 0, resource: buf(paramsUniform) }])
   const soupForceGroup1 = bind(pipe.soupForce, 1, [
@@ -439,6 +594,19 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     { binding: 3, resource: buf(gridUniform) },
     { binding: 4, resource: buf(cellStartBuf) },
     { binding: 5, resource: buf(cellsBuf) },
+    { binding: 7, resource: buf(bondSlotsBuf) },
+    { binding: 8, resource: buf(speciesUniform) },
+    { binding: 13, resource: buf(posSortedBuf) },
+  ])
+  // perf2-report.md correctness gate: O(N^2) reference, no grid buffers needed at all. Its own
+  // group0 -- NOT soupForceGroup0 -- because 'layout: auto' gives every pipeline a DISTINCT layout
+  // object even when the referenced uniform is identical; reusing another pipeline's bind group
+  // fails WebGPU validation (caught via a page-console listener, not silently -- see perf2-report.md).
+  const soupForceBruteGroup0 = bind(pipe.soupForceBrute, 0, [{ binding: 0, resource: buf(paramsUniform) }])
+  const soupForceBruteGroup1 = bind(pipe.soupForceBrute, 1, [
+    { binding: 0, resource: buf(posBuf) },
+    { binding: 1, resource: buf(forceBuf) },
+    { binding: 3, resource: buf(gridUniform) },
     { binding: 7, resource: buf(bondSlotsBuf) },
     { binding: 8, resource: buf(speciesUniform) },
   ])
@@ -467,6 +635,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     { binding: 7, resource: buf(speciesUniform) },
     { binding: 8, resource: buf(eventsBuf) },
     { binding: 9, resource: buf(bondRngBuf) },
+    { binding: 13, resource: buf(posSortedBuf) },
   ])
   const bondFormGroup2 = bind(pipe.bondForm, 2, [{ binding: 0, resource: buf(bondParamsUniform) }])
   const bondBreakGroup1 = bind(pipe.bondBreak, 1, [
@@ -476,6 +645,68 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     { binding: 9, resource: buf(bondRngBuf) },
   ])
   const bondBreakGroup2 = bind(pipe.bondBreak, 2, [{ binding: 0, resource: buf(bondParamsUniform) }])
+
+  // perf2-report.md, STEP 1 diagnosis: bind groups for soup_force_stats_main -- reuses exactly the
+  // same buffers soup_force_main's group0/1 do (it needs P.sigma/P.b_tt/P.wc via Params and the
+  // same grid), plus its own group 3 output.
+  const forceStatsGroup0 = bind(pipe.forceStats, 0, [{ binding: 0, resource: buf(paramsUniform) }])
+  const forceStatsGroup1 = bind(pipe.forceStats, 1, [
+    { binding: 0, resource: buf(posBuf) },
+    { binding: 3, resource: buf(gridUniform) },
+    { binding: 4, resource: buf(cellStartBuf) },
+    { binding: 5, resource: buf(cellsBuf) },
+    { binding: 8, resource: buf(speciesUniform) },
+  ])
+  const forceStatsGroup3 = bind(pipe.forceStats, 3, [{ binding: 0, resource: buf(statsBuf) }])
+
+  // perf2-report.md, candidate (c): Verlet list bind groups. buildVerletList/snapshotPositions/
+  // resetMaxDrift/maxDrift never reference P (no group 0 needed) -- only the geometry/positions
+  // and their own list buffers.
+  const buildVerletListBind = bind(pipe.buildVerletList, 1, [
+    { binding: 0, resource: buf(posBuf) },
+    { binding: 3, resource: buf(gridUniform) },
+    { binding: 4, resource: buf(cellStartBuf) },
+    { binding: 5, resource: buf(cellsBuf) },
+    { binding: 14, resource: buf(verletListBuf) },
+    { binding: 15, resource: buf(verletCountBuf) },
+    { binding: 16, resource: buf(verletOverflowBuf) },
+    { binding: 19, resource: buf(verletUniform) },
+  ])
+  const snapshotPositionsBind = bind(pipe.snapshotPositions, 1, [
+    { binding: 0, resource: buf(posBuf) },
+    { binding: 17, resource: buf(posAtRebuildBuf) },
+  ])
+  const resetMaxDriftBind = bind(pipe.resetMaxDrift, 1, [{ binding: 18, resource: buf(maxDriftSqBuf) }])
+  const maxDriftBind = bind(pipe.maxDrift, 1, [
+    { binding: 0, resource: buf(posBuf) },
+    { binding: 3, resource: buf(gridUniform) },
+    { binding: 17, resource: buf(posAtRebuildBuf) },
+    { binding: 18, resource: buf(maxDriftSqBuf) },
+  ])
+  const soupForceListGroup0 = bind(pipe.soupForceList, 0, [{ binding: 0, resource: buf(paramsUniform) }])
+  const soupForceListGroup1 = bind(pipe.soupForceList, 1, [
+    { binding: 0, resource: buf(posBuf) },
+    { binding: 1, resource: buf(forceBuf) },
+    { binding: 3, resource: buf(gridUniform) },
+    { binding: 7, resource: buf(bondSlotsBuf) },
+    { binding: 8, resource: buf(speciesUniform) },
+    { binding: 14, resource: buf(verletListBuf) },
+    { binding: 15, resource: buf(verletCountBuf) },
+    { binding: 19, resource: buf(verletUniform) },
+  ])
+  const bondFormListGroup0 = bind(pipe.bondFormList, 0, [{ binding: 0, resource: buf(paramsUniform) }])
+  const bondFormListGroup1 = bind(pipe.bondFormList, 1, [
+    { binding: 0, resource: buf(posBuf) },
+    { binding: 3, resource: buf(gridUniform) },
+    { binding: 6, resource: buf(bondSlotsBuf) },
+    { binding: 7, resource: buf(speciesUniform) },
+    { binding: 8, resource: buf(eventsBuf) },
+    { binding: 9, resource: buf(bondRngBuf) },
+    { binding: 14, resource: buf(verletListBuf) },
+    { binding: 15, resource: buf(verletCountBuf) },
+    { binding: 19, resource: buf(verletUniform) },
+  ])
+  const bondFormListGroup2 = bind(pipe.bondFormList, 2, [{ binding: 0, resource: buf(bondParamsUniform) }])
 
   const wgN = Math.ceil(N / 64)
 
@@ -492,6 +723,17 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     pass.setPipeline(pipe.fill)
     pass.setBindGroup(0, fillBind)
     pass.dispatchWorkgroups(wgN)
+    // perf2-report.md, candidate (b): gather positions into cell-sorted order right after `fill`
+    // finalises `cellsBuf` (the permutation) for this step -- must run before soup_force_main/
+    // bond_form_main (both read posSortedRW/posSortedRO this same step) and after fill (its own
+    // permutation is this gather's input). Skipped entirely when sortedGather=false -- the
+    // *_unsorted pipeline variants never read posSortedRW/posSortedRO, so this dispatch would be
+    // pure waste (and its own cost must not be charged against the (a)-only measurement).
+    if (sortedGather) {
+      pass.setPipeline(pipe.gatherSorted)
+      pass.setBindGroup(1, gatherSortedBind)
+      pass.dispatchWorkgroups(wgN)
+    }
   }
 
   function encodeSoupForce(pass: GPUComputePassEncoder) {
@@ -501,12 +743,71 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     pass.dispatchWorkgroups(wgN)
   }
 
-  // Initial grid + force, needed as F(x0) for the first kick.
+  function encodeSoupForceBrute(pass: GPUComputePassEncoder) {
+    pass.setPipeline(pipe.soupForceBrute)
+    pass.setBindGroup(0, soupForceBruteGroup0)
+    pass.setBindGroup(1, soupForceBruteGroup1)
+    pass.dispatchWorkgroups(wgN)
+  }
+
+  // perf2-report.md, candidate (c): rebuild the coarse grid (unchanged, cheap -- cellDivisor is
+  // independent of this candidate) THEN the Verlet list from it, snapshot the positions this
+  // rebuild used (the drift-safety reference point), and zero the running max-drift counter --
+  // ORDER matters: snapshot/reset must follow the list build that just consumed the CURRENT
+  // positions, not precede it.
+  function encodeVerletRebuild(pass: GPUComputePassEncoder) {
+    encodeGridRebuild(pass)
+    pass.setPipeline(pipe.buildVerletList)
+    pass.setBindGroup(1, buildVerletListBind)
+    pass.dispatchWorkgroups(wgN)
+    pass.setPipeline(pipe.snapshotPositions)
+    pass.setBindGroup(1, snapshotPositionsBind)
+    pass.dispatchWorkgroups(wgN)
+    pass.setPipeline(pipe.resetMaxDrift)
+    pass.setBindGroup(1, resetMaxDriftBind)
+    pass.dispatchWorkgroups(1)
+  }
+
+  function encodeSoupForceList(pass: GPUComputePassEncoder) {
+    pass.setPipeline(pipe.soupForceList)
+    pass.setBindGroup(0, soupForceListGroup0)
+    pass.setBindGroup(1, soupForceListGroup1)
+    pass.dispatchWorkgroups(wgN)
+  }
+
+  // O(N), same order of cost as kick_drift_wrap_main -- see soup_max_drift_main's own header for
+  // why this per-step cost is acceptable (it is what lets the drift-safety guard be checked for
+  // real, not just trusted from the analytical bound above).
+  function encodeMaxDrift(pass: GPUComputePassEncoder) {
+    pass.setPipeline(pipe.maxDrift)
+    pass.setBindGroup(1, maxDriftBind)
+    pass.dispatchWorkgroups(wgN)
+  }
+
+  function encodeBondFormList(pass: GPUComputePassEncoder) {
+    pass.setPipeline(pipe.bondFormList)
+    pass.setBindGroup(0, bondFormListGroup0)
+    pass.setBindGroup(1, bondFormListGroup1)
+    pass.setBindGroup(2, bondFormListGroup2)
+    pass.dispatchWorkgroups(wgN)
+  }
+
+  // Initial grid + force, needed as F(x0) for the first kick. perf2-report.md, candidate (c): when
+  // verlet.enabled, this ALSO builds the first Verlet list and takes the first drift-safety
+  // snapshot -- step()'s own per-step rebuild schedule (globalStep % rebuildEvery === 0) will
+  // rebuild again at globalStep=0 using the post-first-kick positions, exactly mirroring how the
+  // non-verlet path already always rebuilds fresh every step; this priming block's own job is only
+  // to produce a valid F(x0) for that very first kick.
   {
     const enc = device.createCommandEncoder()
     const pass = enc.beginComputePass()
-    encodeGridRebuild(pass)
-    encodeSoupForce(pass)
+    if (verlet.enabled) {
+      encodeVerletRebuild(pass)
+      encodeSoupForceList(pass)
+    } else {
+      encodeGridRebuild(pass)
+      encodeSoupForce(pass)
+    }
     pass.end()
     device.queue.submit([enc.finish()])
   }
@@ -521,7 +822,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // while leaving the average attempt rate per real step, and therefore the equilibrium bond count
   // detailed balance sets, unchanged (see bondAttemptInterval's basis and
   // tests/soup-bonds.test.ts's before/after equilibrium check).
-  function encodeOneIntegrationStep(pass: GPUComputePassEncoder, doBonds: boolean) {
+  function encodeOneIntegrationStep(pass: GPUComputePassEncoder, doBonds: boolean, doListRebuild: boolean) {
     // First Verlet half-kick + drift + 3-axis periodic wrap, fused into one dispatch (see
     // soup/wgsl/step.wgsl's kick_drift_wrap_main header) -- exactly kick_main+drift_main+a
     // 3-axis wrap from engine/wgsl/integrate.wgsl's own formulas, not a new integrator.
@@ -530,18 +831,32 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     pass.setBindGroup(1, kickDriftWrapGroup1)
     pass.dispatchWorkgroups(wgN)
 
-    encodeGridRebuild(pass)
-    encodeSoupForce(pass)
+    // perf2-report.md, candidate (c): when enabled, the cell walk that dominates both force and
+    // bond-attempt cost runs only on scheduled rebuild steps (doListRebuild); every other step
+    // reads the list built at the last rebuild instead of re-walking cells at all.
+    if (verlet.enabled) {
+      if (doListRebuild) encodeVerletRebuild(pass)
+      encodeSoupForceList(pass)
+      encodeMaxDrift(pass)
+    } else {
+      encodeGridRebuild(pass)
+      encodeSoupForce(pass)
+    }
 
     if (doBonds) {
-      // Bond Monte Carlo: formation then breaking, on the freshly rebuilt grid/positions. Two
-      // separate, ordered dispatches within the same pass -- never concurrent with each other,
-      // see bond.wgsl's header for why that ordering is what makes the i<j dedupe race-free.
-      pass.setPipeline(pipe.bondForm)
-      pass.setBindGroup(0, bondFormGroup0)
-      pass.setBindGroup(1, bondFormGroup1)
-      pass.setBindGroup(2, bondFormGroup2)
-      pass.dispatchWorkgroups(wgN)
+      // Bond Monte Carlo: formation then breaking, on the freshly rebuilt grid/positions (or the
+      // current Verlet list). Two separate, ordered dispatches within the same pass -- never
+      // concurrent with each other, see bond.wgsl's header for why that ordering is what makes the
+      // i<j dedupe race-free.
+      if (verlet.enabled) {
+        encodeBondFormList(pass)
+      } else {
+        pass.setPipeline(pipe.bondForm)
+        pass.setBindGroup(0, bondFormGroup0)
+        pass.setBindGroup(1, bondFormGroup1)
+        pass.setBindGroup(2, bondFormGroup2)
+        pass.dispatchWorkgroups(wgN)
+      }
 
       pass.setPipeline(pipe.bondBreak)
       pass.setBindGroup(1, bondBreakGroup1)
@@ -578,6 +893,33 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // e.g. step(30) then step(70) attempts bonds on the same global step indices step(100) would.
   let globalStep = 0
 
+  // perf2-report.md, candidate (c): checked once per chunk (not once per step -- the whole point
+  // of STEP_CHUNK is to keep the GPU timeline free of per-step CPU round trips, and a live
+  // per-step drift-triggered rebuild would reintroduce exactly that), at the natural
+  // onSubmittedWorkDone() sync point step() already has. Throws immediately and does not continue
+  // if either the drift bound or the list capacity was ever violated -- this candidate's whole
+  // completeness guarantee rests on catching that for real, not trusting the analytical bound
+  // computed at creation time.
+  async function assertVerletSafety(): Promise<void> {
+    const rawOverflow = await readBack(device, verletOverflowBuf, 4)
+    const overflow = new Uint32Array(rawOverflow.buffer, rawOverflow.byteOffset, 1)[0]
+    if (overflow !== 0) {
+      throw new Error(
+        `список Верле: verletList.listCapacity=${verlet.listCapacity} было недостаточно -- ` +
+          `хотя бы одна частица нашла больше кандидатов, чем вмещает список (данные могли быть тихо отброшены)`,
+      )
+    }
+    const rawDrift = await readBack(device, maxDriftSqBuf, 4)
+    const drift = Math.sqrt(Math.max(0, rawDrift[0]))
+    const bound = verlet.skin / 2
+    if (drift > bound + 1e-6) {
+      throw new Error(
+        `список Верле: измеренный дрейф ${drift.toFixed(4)} превышает skin/2=${bound.toFixed(4)} -- ` +
+          `аналитическая граница (verletList.basis) не сработала для реальной траектории, перестройка была недостаточно частой`,
+      )
+    }
+  }
+
   async function step(n: number): Promise<void> {
     let done = 0
     while (done < n) {
@@ -585,12 +927,17 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
       const enc = device.createCommandEncoder()
       const pass = enc.beginComputePass()
       for (let k = 0; k < chunk; k++) {
-        encodeOneIntegrationStep(pass, globalStep % bondAttemptInterval === 0)
+        encodeOneIntegrationStep(
+          pass,
+          globalStep % bondAttemptInterval === 0,
+          verlet.enabled && globalStep % verlet.rebuildEvery === 0,
+        )
         globalStep++
       }
       pass.end()
       device.queue.submit([enc.finish()])
       await device.queue.onSubmittedWorkDone()
+      if (verlet.enabled) await assertVerletSafety()
       done += chunk
     }
   }
@@ -669,7 +1016,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
       // Worst case (every step does bonds too) -- the number to compare against gridBuild/
       // force/bondAttempts/integration's sum; the REAL amortized cost (bonds only every
       // bondAttemptInterval.steps steps) is what step()'s own timing reports.
-      ['full', (pass) => encodeOneIntegrationStep(pass, true)],
+      ['full', (pass) => encodeOneIntegrationStep(pass, true, true)],
       ['gridBuild', (pass) => encodeGridRebuild(pass)],
       ['force', (pass) => encodeSoupForce(pass)],
       ['bondAttempts', encodeBondAttempts],
@@ -682,8 +1029,65 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     return out
   }
 
+  // perf2-report.md, STEP 1 diagnosis (and re-checked after each grid change): rebuilds the grid
+  // for the CURRENT position state (so counts describe the config this call sees, not a stale
+  // one), zeroes the stats buffer, then runs soup_force_stats_main -- the exact same ±walkRadius
+  // cell walk soup_force_main runs -- once, and reads its two counters back. Never part of the
+  // real step loop; a diagnostic only, same role stepPhasesDEBUG plays for timing.
+  async function forceCandidateStatsDEBUG(): Promise<{ candidatesExamined: number; pairsWithinRange: number; ratio: number }> {
+    device.queue.writeBuffer(statsBuf, 0, new Uint32Array([0, 0]))
+    const enc = device.createCommandEncoder()
+    const pass = enc.beginComputePass()
+    encodeGridRebuild(pass)
+    pass.setPipeline(pipe.forceStats)
+    pass.setBindGroup(0, forceStatsGroup0)
+    pass.setBindGroup(1, forceStatsGroup1)
+    pass.setBindGroup(3, forceStatsGroup3)
+    pass.dispatchWorkgroups(wgN)
+    pass.end()
+    device.queue.submit([enc.finish()])
+    const raw = await readBack(device, statsBuf, 8)
+    const u32 = new Uint32Array(raw.buffer, raw.byteOffset, 2)
+    const candidatesExamined = u32[0]
+    const pairsWithinRange = u32[1]
+    return { candidatesExamined, pairsWithinRange, ratio: candidatesExamined / Math.max(1, pairsWithinRange) }
+  }
+
   async function particles(): Promise<Float32Array> {
     return readBack(device, posBuf, N * 16)
+  }
+
+  // perf2-report.md correctness gate: mirrors engine/src/sim.ts's forces()/forcesBruteForce() pair
+  // (checked by tests/sim.test.ts's "сетка соседей даёт те же силы, что и полный перебор") for the
+  // soup's own dynamic-topology force kernel. forces() rebuilds fresh for the CURRENT positions
+  // first -- when verlet.enabled, a FULL Verlet rebuild (never relying on a possibly-stale list
+  // from whatever step count the caller happens to be at) then the list-based force kernel;
+  // otherwise the same encodeGridRebuild/encodeSoupForce cell walk every real step already uses
+  // (candidate (a)'s walk radius and candidate (b)'s gather both feed through it).
+  // forcesBruteForce() needs neither -- it is the O(N^2) reference soup_force_brute_main runs
+  // directly off pos2/bondSlots.
+  async function forces(): Promise<Float32Array> {
+    const enc = device.createCommandEncoder()
+    const pass = enc.beginComputePass()
+    if (verlet.enabled) {
+      encodeVerletRebuild(pass)
+      encodeSoupForceList(pass)
+    } else {
+      encodeGridRebuild(pass)
+      encodeSoupForce(pass)
+    }
+    pass.end()
+    device.queue.submit([enc.finish()])
+    return readBack(device, forceBuf, N * 16)
+  }
+
+  async function forcesBruteForce(): Promise<Float32Array> {
+    const enc = device.createCommandEncoder()
+    const pass = enc.beginComputePass()
+    encodeSoupForceBrute(pass)
+    pass.end()
+    device.queue.submit([enc.finish()])
+    return readBack(device, forceBuf, N * 16)
   }
 
   async function readBondSlots(): Promise<Uint32Array> {
@@ -764,6 +1168,18 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   }
 
   let sys!: SoupSystem
-  sys = { step, particles, bonds, events, invariants, box, runUntil, stepPhasesDEBUG: stepPhasesDEBUG as any }
+  sys = {
+    step,
+    particles,
+    forces,
+    forcesBruteForce,
+    bonds,
+    events,
+    invariants,
+    box,
+    runUntil,
+    stepPhasesDEBUG: stepPhasesDEBUG as any,
+    forceCandidateStatsDEBUG: forceCandidateStatsDEBUG as any,
+  }
   return sys
 }

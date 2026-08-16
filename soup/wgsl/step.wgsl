@@ -26,6 +26,15 @@ const SOUP_NONE: u32 = 0xFFFFFFFFu;
 @group(1) @binding(6) var<storage, read_write> posRW: array<vec4<f32>>;
 @group(1) @binding(7) var<storage, read> bondSlotsRO: array<u32>;
 
+// perf2-report.md, candidate (b): cell-sorted gather of `pos2` (forces.wgsl), rebuilt every grid
+// rebuild by soup_gather_sorted_main below, using the SAME permutation `cellIdx` (fill_main,
+// engine/wgsl/neighbor.wgsl) already produces. soup_force_main's O(candidates) neighbour walk
+// reads posSortedRW[k] directly (k = the walk's own cell-contiguous cursor) instead of
+// pos2[cellIdx[k]] (a scattered read at an arbitrary original index) -- read_write because this
+// same declaration is both the gather's write target and the force kernel's read source within
+// one shader module.
+@group(1) @binding(13) var<storage, read_write> posSortedRW: array<vec4<f32>>;
+
 struct Species { radius: vec4<f32>, polar: vec4<f32> };
 @group(1) @binding(8) var<uniform> SP: Species;
 
@@ -164,11 +173,25 @@ fn nonbondedSoup(xi: vec3<f32>, xj: vec3<f32>, ti: f32, tj: f32, box: vec3<f32>)
   return f;
 }
 
+// perf2-report.md, candidate (b). Rebuilt every grid rebuild (soup/src/sim.ts's
+// encodeGridRebuild), right after fill_main -- see that file's header for why this specific
+// ordering matters (posSortedRW must be populated before soup_force_main/bond_form_main run, and
+// AFTER cellIdx is final for this step).
 @compute @workgroup_size(64)
-fn soup_force_main(@builtin(global_invocation_id) gid: vec3<u32>) {
-  let i = gid.x;
-  let n = arrayLength(&pos2);
-  if (i >= n) { return; }
+fn soup_gather_sorted_main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let k = gid.x;
+  if (k >= arrayLength(&posSortedRW)) { return; }
+  posSortedRW[k] = pos2[cellIdx[k]];
+}
+
+// perf2-report.md, candidates (a)+(b), factored so both can be A/B-measured independently on ONE
+// implementation instead of two hand-maintained copies: `useSorted=true` reads posSortedRW[k]
+// (candidate (b)), `useSorted=false` reads pos2[cellIdx[k]] (the pre-(b) scattered read) --
+// candidate (a)'s walk radius (GB.dims.w) applies identically either way, since it is orthogonal
+// to which position array backs the read. soup_force_main/soup_force_main_unsorted below are thin
+// entry-point wrappers so JS picks the pipeline (soup/src/sim.ts reads
+// neighborGrid.sortedGather), never a runtime branch inside the hot loop.
+fn soupForceWalk(i: u32, useSorted: bool) -> vec3<f32> {
   let box = GB.box.xyz;
   let dims = vec3<i32>(GB.dims.xyz);
   let xi = pos2[i].xyz;
@@ -176,12 +199,16 @@ fn soup_force_main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
   var f = bondedForce(i, xi, box);
 
+  // perf2-report.md, candidate (a): walk radius comes from GB.dims.w (soup/src/sim.ts derives and
+  // asserts it from neighborGrid.cellDivisor -- data/soup.json), not a hardcoded ±1. cellDivisor=1
+  // reproduces walkRadius=1, the original 3x3x3 walk, bit-identical.
+  let R = i32(GB.dims.w);
   let c = cell_coord(xi, GB.dims.xyz, box);
-  for (var dz = -1; dz <= 1; dz = dz + 1) {
+  for (var dz = -R; dz <= R; dz = dz + 1) {
     let cz = wrap_axis(c.z + dz, dims.z);
-    for (var dy = -1; dy <= 1; dy = dy + 1) {
+    for (var dy = -R; dy <= R; dy = dy + 1) {
       let cy = wrap_axis(c.y + dy, dims.y);
-      for (var dx = -1; dx <= 1; dx = dx + 1) {
+      for (var dx = -R; dx <= R; dx = dx + 1) {
         let cx = wrap_axis(c.x + dx, dims.x);
         let nc = u32(cx) + GB.dims.x * (u32(cy) + GB.dims.y * u32(cz));
         let start = cellStart[nc];
@@ -189,12 +216,111 @@ fn soup_force_main(@builtin(global_invocation_id) gid: vec3<u32>) {
         for (var k = start; k < end; k = k + 1u) {
           let j = cellIdx[k];
           if (j == i) { continue; }
-          f = f + nonbondedSoup(xi, pos2[j].xyz, ti, pos2[j].w, box);
+          var xj: vec3<f32>;
+          var tj: f32;
+          if (useSorted) {
+            // candidate (b): cell-contiguous read, no indirection through `j`.
+            xj = posSortedRW[k].xyz;
+            tj = posSortedRW[k].w;
+          } else {
+            // pre-(b): scattered read at an arbitrary original index.
+            xj = pos2[j].xyz;
+            tj = pos2[j].w;
+          }
+          f = f + nonbondedSoup(xi, xj, ti, tj, box);
         }
       }
     }
   }
+  return f;
+}
+
+@compute @workgroup_size(64)
+fn soup_force_main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let i = gid.x;
+  if (i >= arrayLength(&pos2)) { return; }
+  outForce[i] = vec4<f32>(soupForceWalk(i, true), 0.0);
+}
+
+@compute @workgroup_size(64)
+fn soup_force_main_unsorted(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let i = gid.x;
+  if (i >= arrayLength(&pos2)) { return; }
+  outForce[i] = vec4<f32>(soupForceWalk(i, false), 0.0);
+}
+
+// perf2-report.md correctness gate: same physics as soup_force_main, without the neighbour grid --
+// an O(N^2) pair loop used only to cross-check the grid result, mirroring engine/wgsl/forces.wgsl's
+// own force_main/force_brute_main pattern (that file's header: "Same physics as force_main, without
+// the neighbor grid"). Reads pos2 directly (not posSortedRW) -- correctness reference, not a
+// performance path, so it has no reason to depend on candidate (b)'s gather at all.
+@compute @workgroup_size(64)
+fn soup_force_brute_main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let i = gid.x;
+  let n = arrayLength(&pos2);
+  if (i >= n) { return; }
+  let box = GB.box.xyz;
+  let xi = pos2[i].xyz;
+  let ti = pos2[i].w;
+  var f = bondedForce(i, xi, box);
+  for (var j = 0u; j < n; j = j + 1u) {
+    if (j == i) { continue; }
+    f = f + nonbondedSoup(xi, pos2[j].xyz, ti, pos2[j].w, box);
+  }
   outForce[i] = vec4<f32>(f, 0.0);
+}
+
+// perf2-report.md, STEP 1 diagnosis. Runs the SAME cell walk soup_force_main runs (identical
+// radius, identical cell coordinates), but instead of accumulating force, counts every candidate
+// examined and, of those, how many actually lie within the interaction range that
+// nonbondedSoup would apply a nonzero force over (WCA core OR, for a non-polar pair, the
+// tail-tail attraction band) -- mirroring nonbondedSoup's own gates exactly rather than
+// re-deriving an approximate geometric threshold that could silently drift from the real physics.
+// Never called from the real step loop -- see forceCandidateStatsDEBUG in soup/src/sim.ts, the
+// only caller. Counts are double (each unordered pair counted once from i's walk and once from
+// j's), matching soup_force_main's own real per-step workload; the RATIO reported is unaffected by
+// that doubling since numerator and denominator both carry it.
+@group(3) @binding(0) var<storage, read_write> statsOut: array<atomic<u32>>;
+
+@compute @workgroup_size(64)
+fn soup_force_stats_main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let i = gid.x;
+  let n = arrayLength(&pos2);
+  if (i >= n) { return; }
+  let box = GB.box.xyz;
+  let dims = vec3<i32>(GB.dims.xyz);
+  let xi = pos2[i].xyz;
+  let ti = pos2[i].w;
+  let R = i32(GB.dims.w);
+  let c = cell_coord(xi, GB.dims.xyz, box);
+  let rcAttr = wca_cut(P.b_tt);
+  for (var dz = -R; dz <= R; dz = dz + 1) {
+    let cz = wrap_axis(c.z + dz, dims.z);
+    for (var dy = -R; dy <= R; dy = dy + 1) {
+      let cy = wrap_axis(c.y + dy, dims.y);
+      for (var dx = -R; dx <= R; dx = dx + 1) {
+        let cx = wrap_axis(c.x + dx, dims.x);
+        let nc = u32(cx) + GB.dims.x * (u32(cy) + GB.dims.y * u32(cz));
+        let start = cellStart[nc];
+        let end = cellStart[nc + 1u];
+        for (var k = start; k < end; k = k + 1u) {
+          let j = cellIdx[k];
+          if (j == i) { continue; }
+          atomicAdd(&statsOut[0], 1u);
+          let tj = pos2[j].w;
+          let d = mi3(xi - pos2[j].xyz, box);
+          let r = length(d);
+          let b = pairB(ti, tj);
+          let withinWca = r < wca_cut(b);
+          let bothNonpolar = !speciesPolar(ti) && !speciesPolar(tj);
+          let withinAttr = bothNonpolar && r >= rcAttr && r <= rcAttr + P.wc;
+          if (withinWca || withinAttr) {
+            atomicAdd(&statsOut[1], 1u);
+          }
+        }
+      }
+    }
+  }
 }
 
 @compute @workgroup_size(64)
@@ -205,4 +331,136 @@ fn soup_wrap_main(@builtin(global_invocation_id) gid: vec3<u32>) {
   var x = posRW[i].xyz;
   x = x - floor(x / box) * box;
   posRW[i] = vec4<f32>(x, posRW[i].w);
+}
+
+// perf2-report.md, candidate (c): a Verlet neighbour list. Candidate (a) (smaller cells, wider
+// walk) was measured a NET LOSS -- ncells grew with the cell-shrink and the grid rebuild's own
+// serial prefix-sum cost grew right along with it, cancelling the candidate-count savings almost
+// exactly (perf2-report.md has the phase breakdown). Candidate (b) (sorted gather) was measured
+// negligible. Both leave the ±walkRadius cell walk running EVERY step, which the STEP 1 diagnosis
+// showed visits ~11x more candidates than real neighbours -- still the dominant cost. A Verlet
+// list amortises that walk over `verletList.rebuildEvery` real steps instead of paying it every
+// step: soup/src/sim.ts derives listRange = interactionRange + skin and the walk radius needed to
+// cover it at the ORIGINAL (undivided) cell size, and asserts both the geometric coverage and (at
+// system-creation time, from THIS system's own kT) the drift-safety condition
+// 2*rebuildEvery*dt*vBound <= skin before ever running -- the same worst-case-outlier-speed
+// argument perf-report.md's rejected candidate (a) already used, just to size a list instead of a
+// per-step cell size. The empirical guard soup_max_drift_main below backs that analytical bound up
+// with a REAL measurement every step, checked by soup/src/sim.ts after every step() call.
+
+// VL: x = listRange (interactionRange + skin, the geometric superset radius the list is built to,
+// always >= the radius soupForceWalk/bondFormWalk would need), y = list capacity per particle (as
+// f32, cast to u32 here) -- both from data/soup.json's verletList config via soup/src/sim.ts, never
+// a WGSL literal.
+@group(1) @binding(19) var<uniform> VL: vec4<f32>;
+@group(1) @binding(14) var<storage, read_write> verletList: array<u32>;
+@group(1) @binding(15) var<storage, read_write> verletCount: array<u32>;
+@group(1) @binding(16) var<storage, read_write> verletOverflow: array<atomic<u32>>;
+@group(1) @binding(17) var<storage, read_write> posAtRebuildRW: array<vec4<f32>>;
+@group(1) @binding(18) var<storage, read_write> maxDriftSqRW: array<atomic<u32>>;
+
+// Walks ±walkRadius cells (GB.dims.w, sized by soup/src/sim.ts to cover VL.x = interactionRange +
+// skin at the grid's OWN cell size -- not shrunk the way rejected candidate (a) shrunk it, so this
+// walk's own ncells stays at the cheap, unshrunk count) ONCE per rebuild and records every
+// candidate within VL.x, not just the ones within the raw interaction range -- the skin margin is
+// exactly what lets soup_force_list_main/bond_form_list_main below trust the list for
+// `rebuildEvery` steps without re-walking. Overflow (more geometric candidates than VL.y allows)
+// sets a flag rather than silently truncating -- soup/src/sim.ts asserts that flag is clear after
+// every rebuild; it must NEVER silently drop a real neighbour the way a completeness violation
+// would.
+@compute @workgroup_size(64)
+fn soup_build_verlet_list_main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let i = gid.x;
+  let n = arrayLength(&pos2);
+  if (i >= n) { return; }
+  let box = GB.box.xyz;
+  let dims = vec3<i32>(GB.dims.xyz);
+  let xi = pos2[i].xyz;
+  let listRange = VL.x;
+  let cap = u32(VL.y);
+  let R = i32(GB.dims.w);
+  let c = cell_coord(xi, GB.dims.xyz, box);
+  var count = 0u;
+  for (var dz = -R; dz <= R; dz = dz + 1) {
+    let cz = wrap_axis(c.z + dz, dims.z);
+    for (var dy = -R; dy <= R; dy = dy + 1) {
+      let cy = wrap_axis(c.y + dy, dims.y);
+      for (var dx = -R; dx <= R; dx = dx + 1) {
+        let cx = wrap_axis(c.x + dx, dims.x);
+        let nc = u32(cx) + GB.dims.x * (u32(cy) + GB.dims.y * u32(cz));
+        let start = cellStart[nc];
+        let end = cellStart[nc + 1u];
+        for (var k = start; k < end; k = k + 1u) {
+          let j = cellIdx[k];
+          if (j == i) { continue; }
+          let d = mi3(xi - pos2[j].xyz, box);
+          if (length(d) < listRange) {
+            if (count < cap) {
+              verletList[i * cap + count] = j;
+              count = count + 1u;
+            } else {
+              atomicStore(&verletOverflow[0], 1u);
+            }
+          }
+        }
+      }
+    }
+  }
+  verletCount[i] = count;
+}
+
+@compute @workgroup_size(64)
+fn soup_snapshot_positions_main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let i = gid.x;
+  if (i >= arrayLength(&posAtRebuildRW)) { return; }
+  posAtRebuildRW[i] = pos2[i];
+}
+
+@compute @workgroup_size(1)
+fn soup_reset_max_drift_main() {
+  atomicStore(&maxDriftSqRW[0], 0u);
+}
+
+// Per-step, O(N) (cheap -- one minimum-image distance and one atomic max per particle, the same
+// order of cost as kick_drift_wrap_main, not the O(candidates) walk this whole candidate exists to
+// avoid): tracks how far each particle has moved since the snapshot soup_snapshot_positions_main
+// took at the last rebuild. atomicMax on the BIT PATTERN of a non-negative f32 (driftSq >= 0
+// always) is safe because IEEE-754's bit pattern is monotonically increasing over non-negative
+// floats -- a standard trick for float atomicMax where the hardware/WGSL has no native
+// atomic<f32>. soup/src/sim.ts reads this back (via bitcast<f32>, done on the JS side by
+// reinterpreting the u32) once per step() call and asserts sqrt(driftSq) <= skin/2, the exact
+// guarantee this candidate's header promises.
+@compute @workgroup_size(64)
+fn soup_max_drift_main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let i = gid.x;
+  if (i >= arrayLength(&pos2)) { return; }
+  let box = GB.box.xyz;
+  let d = mi3(pos2[i].xyz - posAtRebuildRW[i].xyz, box);
+  let driftSq = dot(d, d);
+  atomicMax(&maxDriftSqRW[0], bitcast<u32>(driftSq));
+}
+
+// Per-step force from the Verlet list instead of any cell walk: O(realNeighbours), not
+// O(candidates). Same bonded contribution (bondedForce, untouched) plus nonbondedSoup summed over
+// exactly the particles soup_build_verlet_list_main found within VL.x of i at the last rebuild --
+// a strict SUPERSET of the ones within the real interaction range (the skin margin), so this
+// never drops a force contribution; it may include a few now-just-outside-range candidates for
+// which nonbondedSoup itself correctly evaluates to zero (its own r<wca_cut/attraction gates,
+// unchanged), which is exactly the point of a skin.
+@compute @workgroup_size(64)
+fn soup_force_list_main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let i = gid.x;
+  let n = arrayLength(&pos2);
+  if (i >= n) { return; }
+  let box = GB.box.xyz;
+  let xi = pos2[i].xyz;
+  let ti = pos2[i].w;
+  var f = bondedForce(i, xi, box);
+  let cap = u32(VL.y);
+  let count = verletCount[i];
+  for (var s = 0u; s < count; s = s + 1u) {
+    let j = verletList[i * cap + s];
+    f = f + nonbondedSoup(xi, pos2[j].xyz, ti, pos2[j].w, box);
+  }
+  outForce[i] = vec4<f32>(f, 0.0);
 }

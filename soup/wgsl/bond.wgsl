@@ -51,6 +51,13 @@ struct BondParams {
 @group(1) @binding(8) var<storage, read_write> bondEvents: array<atomic<u32>>;
 @group(1) @binding(9) var<storage, read_write> bondRng: array<u32>;
 
+// perf2-report.md, candidate (b): the SAME cell-sorted position gather soup/wgsl/step.wgsl's
+// soup_force_main reads (populated once per step, before both force and bond attempts run --
+// soup/src/sim.ts's encodeOneIntegrationStep order). Read-only here: this module never gathers,
+// only reads what the force module's soup_gather_sorted_main already wrote into the same physical
+// buffer this step.
+@group(1) @binding(13) var<storage, read> posSortedRO: array<vec4<f32>>;
+
 fn vget(v: vec4<f32>, idx: u32) -> f32 {
   if (idx == 0u) { return v.x; }
   else if (idx == 1u) { return v.y; }
@@ -157,32 +164,29 @@ fn releasePartnerSlot(partner: u32, me: u32) {
 // which candidates get dropped does not depend on outcome.
 const CANDIDATE_CAP: u32 = 6u;
 
-@compute @workgroup_size(64)
-fn bond_form_main(@builtin(global_invocation_id) gid: vec3<u32>) {
-  let i = gid.x;
-  let n = arrayLength(&pos2);
-  if (i >= n) { return; }
-  let box = GB.box.xyz;
-  let dims = vec3<i32>(GB.dims.xyz);
-  let xi = pos2[i].xyz;
-  let ti = pos2[i].w;
-  var rng = bondRng[i];
-  let c = cell_coord(xi, GB.dims.xyz, box);
+struct BondWalkResult {
+  catalystNear: u32, // bool as u32: WGSL struct members used across a function return are fine
+                      // either way, u32 keeps this struct trivially copyable like its array members.
+  nCand: u32,
+  candJ: array<u32, CANDIDATE_CAP>,
+  candRule: array<u32, CANDIDATE_CAP>,
+};
 
-  // Single walk of the 3x3x3 neighbourhood: tallies catalyst proximity AND collects up to
-  // CANDIDATE_CAP geometrically-eligible (rule-matched, in contact, not already bonded) partners
-  // -- the requiresCatalyst gate is deferred to AFTER this walk (below), so its answer never
-  // depends on which cell happened to be visited first relative to a candidate, only on whether a
-  // catalyst is anywhere in range by the time the walk finishes.
-  var catalystNear = false;
-  var candJ = array<u32, CANDIDATE_CAP>();
-  var candRule = array<u32, CANDIDATE_CAP>();
-  var nCand = 0u;
-  for (var dz = -1; dz <= 1; dz = dz + 1) {
+// perf2-report.md, candidates (a)+(b), factored the same way soup/wgsl/step.wgsl's soupForceWalk
+// is: `useSorted=true` reads posSortedRO[k] (candidate (b)), `useSorted=false` reads
+// pos2[cellIdx[k]] (the pre-(b) scattered read), so both can be A/B-measured on ONE
+// implementation. Candidate (a)'s walk radius (GB.dims.w) applies identically either way.
+fn bondFormWalk(i: u32, xi: vec3<f32>, ti: f32, box: vec3<f32>, dims: vec3<i32>, useSorted: bool) -> BondWalkResult {
+  var result: BondWalkResult;
+  result.catalystNear = 0u;
+  result.nCand = 0u;
+  let c = cell_coord(xi, GB.dims.xyz, box);
+  let R = i32(GB.dims.w);
+  for (var dz = -R; dz <= R; dz = dz + 1) {
     let cz = wrap_axis(c.z + dz, dims.z);
-    for (var dy = -1; dy <= 1; dy = dy + 1) {
+    for (var dy = -R; dy <= R; dy = dy + 1) {
       let cy = wrap_axis(c.y + dy, dims.y);
-      for (var dx = -1; dx <= 1; dx = dx + 1) {
+      for (var dx = -R; dx <= R; dx = dx + 1) {
         let cx = wrap_axis(c.x + dx, dims.x);
         let nc = u32(cx) + GB.dims.x * (u32(cy) + GB.dims.y * u32(cz));
         let start = cellStart[nc];
@@ -190,19 +194,27 @@ fn bond_form_main(@builtin(global_invocation_id) gid: vec3<u32>) {
         for (var k = start; k < end; k = k + 1u) {
           let j = cellIdx[k];
           if (j == i) { continue; }
-          let tj = pos2[j].w;
-          if (!catalystNear && tj == BP.catalystKind) {
-            let dc = bMi3(xi - pos2[j].xyz, box);
-            if (length(dc) < wca_cut(bPairB(ti, BP.catalystKind))) { catalystNear = true; }
+          var xj: vec3<f32>;
+          var tj: f32;
+          if (useSorted) {
+            xj = posSortedRO[k].xyz;
+            tj = posSortedRO[k].w;
+          } else {
+            xj = pos2[j].xyz;
+            tj = pos2[j].w;
           }
-          if (j > i && nCand < CANDIDATE_CAP) {
+          if (result.catalystNear == 0u && tj == BP.catalystKind) {
+            let dc = bMi3(xi - xj, box);
+            if (length(dc) < wca_cut(bPairB(ti, BP.catalystKind))) { result.catalystNear = 1u; }
+          }
+          if (j > i && result.nCand < CANDIDATE_CAP) {
             let ruleIdx = matchRule(ti, tj);
             if (ruleIdx >= 0 && !hasBondTo(i, j)) {
-              let d = bMi3(xi - pos2[j].xyz, box);
+              let d = bMi3(xi - xj, box);
               if (length(d) < wca_cut(bPairB(ti, tj))) {
-                candJ[nCand] = j;
-                candRule[nCand] = u32(ruleIdx);
-                nCand = nCand + 1u;
+                result.candJ[result.nCand] = j;
+                result.candRule[result.nCand] = u32(ruleIdx);
+                result.nCand = result.nCand + 1u;
               }
             }
           }
@@ -210,14 +222,20 @@ fn bond_form_main(@builtin(global_invocation_id) gid: vec3<u32>) {
       }
     }
   }
+  return result;
+}
 
-  // Deferred decision pass: the requiresCatalyst gate and the two Metropolis draws only run now,
-  // once catalystNear is fully resolved.
-  for (var ci = 0u; ci < nCand; ci = ci + 1u) {
-    let j = candJ[ci];
-    let r = candRule[ci];
+// Deferred decision pass shared by both entry points below: the requiresCatalyst gate and the two
+// Metropolis draws only run once catalystNear is fully resolved by bondFormWalk, exactly as
+// before -- this function does no neighbour-cell walk of its own, so it needs no useSorted
+// parameter.
+fn bondFormDecide(i: u32, ti: f32, rngIn: u32, w: BondWalkResult) {
+  var rng = rngIn;
+  for (var ci = 0u; ci < w.nCand; ci = ci + 1u) {
+    let j = w.candJ[ci];
+    let r = w.candRule[ci];
     let tj = pos2[j].w;
-    if (vget(BP.requiresCatalyst, r) > 0.5 && !catalystNear) { continue; }
+    if (vget(BP.requiresCatalyst, r) > 0.5 && w.catalystNear == 0u) { continue; }
     rng = bondPcg(rng);
     if (bondUniform01(rng) >= vget(BP.attemptProbForm, r)) { continue; }
     rng = bondPcg(rng);
@@ -234,6 +252,32 @@ fn bond_form_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     atomicAdd(&bondEvents[r * 2u + 0u], 1u);
   }
   bondRng[i] = rng;
+}
+
+@compute @workgroup_size(64)
+fn bond_form_main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let i = gid.x;
+  let n = arrayLength(&pos2);
+  if (i >= n) { return; }
+  let box = GB.box.xyz;
+  let dims = vec3<i32>(GB.dims.xyz);
+  let xi = pos2[i].xyz;
+  let ti = pos2[i].w;
+  let w = bondFormWalk(i, xi, ti, box, dims, true);
+  bondFormDecide(i, ti, bondRng[i], w);
+}
+
+@compute @workgroup_size(64)
+fn bond_form_main_unsorted(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let i = gid.x;
+  let n = arrayLength(&pos2);
+  if (i >= n) { return; }
+  let box = GB.box.xyz;
+  let dims = vec3<i32>(GB.dims.xyz);
+  let xi = pos2[i].xyz;
+  let ti = pos2[i].w;
+  let w = bondFormWalk(i, xi, ti, box, dims, false);
+  bondFormDecide(i, ti, bondRng[i], w);
 }
 
 @compute @workgroup_size(64)
@@ -266,4 +310,54 @@ fn bond_break_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     atomicAdd(&bondEvents[r * 2u + 1u], 1u);
   }
   bondRng[i] = rng;
+}
+
+// perf2-report.md, candidate (c): the SAME Verlet list soup/wgsl/step.wgsl's soup_force_list_main
+// reads (built by soup_build_verlet_list_main, a geometric superset of the raw interaction range
+// including the requiresCatalyst check's own reach and every rule's wca_cut(pairB) reach -- both
+// bounded by interactionRange, which the list's own VL.x=interactionRange+skin always covers) --
+// so bond formation candidate collection can iterate the list instead of re-walking cells too, one
+// fewer O(candidates) walk per step, not two.
+@group(1) @binding(19) var<uniform> VL: vec4<f32>;
+@group(1) @binding(14) var<storage, read> verletList: array<u32>;
+@group(1) @binding(15) var<storage, read> verletCount: array<u32>;
+
+fn bondFormWalkList(i: u32, xi: vec3<f32>, ti: f32, box: vec3<f32>) -> BondWalkResult {
+  var result: BondWalkResult;
+  result.catalystNear = 0u;
+  result.nCand = 0u;
+  let cap = u32(VL.y);
+  let count = verletCount[i];
+  for (var s = 0u; s < count; s = s + 1u) {
+    let j = verletList[i * cap + s];
+    let tj = pos2[j].w;
+    if (result.catalystNear == 0u && tj == BP.catalystKind) {
+      let dc = bMi3(xi - pos2[j].xyz, box);
+      if (length(dc) < wca_cut(bPairB(ti, BP.catalystKind))) { result.catalystNear = 1u; }
+    }
+    if (j > i && result.nCand < CANDIDATE_CAP) {
+      let ruleIdx = matchRule(ti, tj);
+      if (ruleIdx >= 0 && !hasBondTo(i, j)) {
+        let d = bMi3(xi - pos2[j].xyz, box);
+        if (length(d) < wca_cut(bPairB(ti, tj))) {
+          result.candJ[result.nCand] = j;
+          result.candRule[result.nCand] = u32(ruleIdx);
+          result.nCand = result.nCand + 1u;
+        }
+      }
+    }
+  }
+  return result;
+}
+
+@compute @workgroup_size(64)
+fn bond_form_list_main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let i = gid.x;
+  let n = arrayLength(&pos2);
+  if (i >= n) { return; }
+  let box = GB.box.xyz;
+  let xi = pos2[i].xyz;
+  let ti = pos2[i].w;
+  let w = bondFormWalkList(i, xi, ti, box);
+  bondFormDecide(i, ti, bondRng[i], w);
 }

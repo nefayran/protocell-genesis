@@ -44,6 +44,46 @@ export interface BondAttemptInterval {
   basis: string
 }
 
+/**
+ * Performance-only sizing of the neighbour grid (perf2-report.md, candidate (a)): the cell side is
+ * the interaction range divided by `cellDivisor`, and the walk radius (in cells) is derived from
+ * it and asserted, never assumed -- see soup/src/sim.ts's own assertion right after this value is
+ * read. `cellDivisor=1` reproduces the original 3x3x3 walk exactly (same cell side, walk radius 1)
+ * and is the honest A/B control point for this change, the same role
+ * `bondAttemptInterval.steps=1` plays for perf-report.md's fix (b).
+ */
+export interface NeighborGrid {
+  cellDivisor: number
+  /** Selects which shader entry point soup/src/sim.ts compiles for the force/bond-form kernels --
+   * `soup_force_main`/`bond_form_main` (read the cell-sorted gather) when true,
+   * `soup_force_main_unsorted`/`bond_form_main_unsorted` (read positions at the original,
+   * scattered index directly) when false. Both are one WGSL implementation parametrised by a
+   * `useSorted` argument (soup/wgsl/step.wgsl's soupForceWalk, soup/wgsl/bond.wgsl's
+   * bondFormWalk) picked at pipeline-creation time, not a runtime branch in the hot loop -- see
+   * perf2-report.md, candidate (b), for why this flag exists (an honest, code-identical A/B).
+   */
+  sortedGather: boolean
+  basis: string
+}
+
+/**
+ * Performance-only Verlet neighbour list (perf2-report.md, candidate (c)): built every
+ * `rebuildEvery` real steps instead of every step, with a `skin` margin so it stays complete
+ * between rebuilds. `enabled=false` reproduces the pre-(c) behaviour (cell walk every step,
+ * unmodified) exactly, the honest A/B control point for this candidate -- the same role
+ * `bondAttemptInterval.steps=1` and `neighborGrid.cellDivisor=1` play for their own candidates.
+ * See soup/src/sim.ts for the drift-safety assertion this pair (skin, rebuildEvery) must satisfy
+ * at system-creation time, and soup/wgsl/step.wgsl's soup_max_drift_main for the per-step empirical
+ * check backing that analytical bound up.
+ */
+export interface VerletList {
+  enabled: boolean
+  skin: number
+  rebuildEvery: number
+  listCapacity: number
+  basis: string
+}
+
 export interface Soup {
   /** Единственная явная калибровка временнóй шкалы модели (kappa_t на экране в отчётах). */
   kappaT: number
@@ -51,12 +91,16 @@ export interface Soup {
   rules: Rule[]
   start: Record<string, number>
   sweep: Sweep
+  neighborGrid: NeighborGrid
+  verletList: VerletList
   bondAttemptInterval: BondAttemptInterval
 }
 
 const ALLOWED_MONOMER_KINDS = new Set<Monomer['kind']>(['carbon', 'head', 'donor', 'catalyst'])
 
-const REQUIRED = ['kappaT', 'monomers', 'rules', 'start', 'sweep', 'bondAttemptInterval'] as const
+const REQUIRED = [
+  'kappaT', 'monomers', 'rules', 'start', 'sweep', 'neighborGrid', 'verletList', 'bondAttemptInterval',
+] as const
 
 export function loadSoup(): Soup {
   const s = raw as unknown as Soup
@@ -157,5 +201,33 @@ export function assertRulesConsistent(s: Soup): void {
   }
   if (!bai.basis || bai.basis.trim().length <= 10) {
     throw new Error('data/soup.json: bondAttemptInterval не имеет содержательного обоснования (basis)')
+  }
+
+  const ng = s.neighborGrid
+  if (!Number.isInteger(ng.cellDivisor) || ng.cellDivisor < 1) {
+    throw new Error(`data/soup.json: neighborGrid.cellDivisor=${ng.cellDivisor} должен быть целым числом >= 1`)
+  }
+  if (typeof ng.sortedGather !== 'boolean') {
+    throw new Error('data/soup.json: neighborGrid.sortedGather должен быть булевым значением')
+  }
+  if (!ng.basis || ng.basis.trim().length <= 10) {
+    throw new Error('data/soup.json: neighborGrid не имеет содержательного обоснования (basis)')
+  }
+
+  const vl = s.verletList
+  if (typeof vl.enabled !== 'boolean') {
+    throw new Error('data/soup.json: verletList.enabled должен быть булевым значением')
+  }
+  if (!(vl.skin > 0)) {
+    throw new Error(`data/soup.json: verletList.skin=${vl.skin} должен быть положительным числом`)
+  }
+  if (!Number.isInteger(vl.rebuildEvery) || vl.rebuildEvery < 1) {
+    throw new Error(`data/soup.json: verletList.rebuildEvery=${vl.rebuildEvery} должен быть целым числом >= 1`)
+  }
+  if (!Number.isInteger(vl.listCapacity) || vl.listCapacity < 1) {
+    throw new Error(`data/soup.json: verletList.listCapacity=${vl.listCapacity} должен быть целым числом >= 1`)
+  }
+  if (!vl.basis || vl.basis.trim().length <= 10) {
+    throw new Error('data/soup.json: verletList не имеет содержательного обоснования (basis)')
   }
 }
