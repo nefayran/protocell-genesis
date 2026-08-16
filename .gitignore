@@ -3,5 +3,4 @@ dist/
 .venv/
 __pycache__/
 *.pyc
-verify/out/
 .superpowers/

@@ -27,11 +27,26 @@ import { renderReport } from './report'
 
 const OUT_DIR = 'verify/out'
 
-function gitCommit(): string {
+interface CommitStamp {
+  sha: string
+  /** True iff `git status --porcelain` is non-empty at the moment this ran -- i.e. the working
+   * tree that produced these artifacts differs from `sha`. This is normal, not a bug: this run is
+   * meant to happen with the fix's code changes staged but not yet committed, and the final commit
+   * packages the code together with the artifacts it produced -- a commit cannot contain its own
+   * hash, so the honest stamp is "the last real commit, plus a flag that says more has changed
+   * since". Silently reporting `sha` alone (as a previous version of this function did) reads as
+   * "these numbers belong to this commit", which is false the moment the tree is dirty; the report
+   * (verify/report.ts) surfaces this flag to the reader instead of hiding it. */
+  dirty: boolean
+}
+
+function gitCommit(): CommitStamp {
   try {
-    return execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim()
+    const sha = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim()
+    const status = execSync('git status --porcelain', { encoding: 'utf8' }).trim()
+    return { sha, dirty: status.length > 0 }
   } catch {
-    return 'unknown'
+    return { sha: 'unknown', dirty: false }
   }
 }
 
@@ -188,7 +203,11 @@ interface KappaArtifact {
   generatedAt: string
   valid: boolean
   kappa: number | null
-  kappaSd: number
+  /** Omitted (not just left present-but-meaningless) when `kappa` is null: a standard deviation
+   * describes the scatter of a number that exists. When the fit window is invalid there is no
+   * kappa to have a spread around, so publishing kappaSd next to kappa:null would dress up a
+   * non-measurement with a false air of quantified uncertainty. */
+  kappaSd?: number
   slope: number
   fitModes: number
   fitShells: number
@@ -314,7 +333,10 @@ async function runKappaScenario(runId: string, generatedAt: string): Promise<Kap
     generatedAt,
     valid: r.valid,
     kappa: r.kappa,
-    kappaSd: r.kappaSd,
+    // Present only alongside an actual kappa -- see KappaArtifact.kappaSd's doc comment above.
+    // `undefined` (not 0, not null) so JSON.stringify drops the key entirely rather than
+    // publishing a false zero or a null that still visually implies "we tried to measure this".
+    kappaSd: r.valid && r.kappa !== null ? r.kappaSd : undefined,
     slope: r.slope,
     fitModes: r.fitModes,
     fitShells: r.fitShells,

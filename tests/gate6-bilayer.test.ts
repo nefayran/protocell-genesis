@@ -1,5 +1,18 @@
 import { afterAll, expect, test } from 'vitest'
+import literature from '../data/literature.json'
 import { gpuPage, shutdownGpu } from './helpers/gpu'
+
+// Read straight from data/literature.json rather than re-typing 1.1/1.5/4.0/6.0 as literals here:
+// this file's whole job is checking the engine against THAT corridor, so a literal copy could
+// silently drift from it (or, worse, get "fixed" independently the day the corridor is ever
+// revisited) with no test anywhere to catch the mismatch. tests/gates.test.ts separately pins
+// literature.json's own numbers to the spec, so this file only needs to trust the JSON, not
+// re-derive it.
+const gates = (literature as { gates: Array<{ id: string; target: { min?: number; max?: number } }> }).gates
+const AREA_MIN = gates.find((g) => g.id === 'area-per-lipid')!.target.min!
+const AREA_MAX = gates.find((g) => g.id === 'area-per-lipid')!.target.max!
+const THICKNESS_MIN = gates.find((g) => g.id === 'bilayer-thickness')!.target.min!
+const THICKNESS_MAX = gates.find((g) => g.id === 'bilayer-thickness')!.target.max!
 
 afterAll(shutdownGpu)
 
@@ -38,16 +51,17 @@ test('готовый бислой при нулевом натяжении де�
       `accepted ${m.acceptedFraction.toFixed(3)}  escapedMax ${m.escapedMax}  box ${m.box[0].toFixed(3)}  steps ${m.steps}`,
   )
 
-  // The literature bounds (Cooke & Deserno 2005): area per lipid 1.1-1.5 sigma^2, thickness 4-6 sigma.
-  expect(m.areaPerLipid).toBeGreaterThan(1.1)
-  expect(m.areaPerLipid).toBeLessThan(1.5)
-  expect(m.thickness).toBeGreaterThan(4.0)
-  expect(m.thickness).toBeLessThan(6.0)
+  // The literature bounds (Cooke & Deserno 2005), read from data/literature.json above rather than
+  // retyped here: area per lipid 1.1-1.5 sigma^2, thickness 4-6 sigma.
+  expect(m.areaPerLipid).toBeGreaterThan(AREA_MIN)
+  expect(m.areaPerLipid).toBeLessThan(AREA_MAX)
+  expect(m.thickness).toBeGreaterThan(THICKNESS_MIN)
+  expect(m.thickness).toBeLessThan(THICKNESS_MAX)
 
   // Equilibrium, demonstrated rather than asserted: the area stays inside the corridor for EVERY
   // sample of the window, not just on average, and its drift is not a straight slide toward a bound.
-  expect(m.areaPerLipidMin).toBeGreaterThan(1.1)
-  expect(m.areaPerLipidMax).toBeLessThan(1.5)
+  expect(m.areaPerLipidMin).toBeGreaterThan(AREA_MIN)
+  expect(m.areaPerLipidMax).toBeLessThan(AREA_MAX)
   expect(Math.abs(m.lnADriftPerMove) * m.samples).toBeLessThan(0.05)
 
   // The profile must be built from essentially the whole membrane: evaporated lipids are dropped
@@ -111,7 +125,15 @@ test('площадь сходится в литературный коридор
   const STRUCTURE_CHECK_EVERY = 50 // cadence for the intact-bilayer check, to bail out of a ruptured run well before CAP
   const INTACT_CLUSTER_FRACTION = 0.95 // "essentially all beads" — self-assembly's own bar for a GROWING aggregate is 0.8; an already-formed sheet merely surviving should clear that easily
   const runs = await page.evaluate(
-    async (CAP: number, TAIL: number, BLOCKS: number, STRUCTURE_CHECK_EVERY: number, INTACT_CLUSTER_FRACTION: number) => {
+    async (
+      CAP: number,
+      TAIL: number,
+      BLOCKS: number,
+      STRUCTURE_CHECK_EVERY: number,
+      INTACT_CLUSTER_FRACTION: number,
+      AREA_MIN: number,
+      AREA_MAX: number,
+    ) => {
       const api = (window as any).api
       const lipids = 400
       const out: any[] = []
@@ -221,7 +243,7 @@ test('площадь сходится в литературный коридор
             const tail = series.slice(-TAIL)
             const tailMin = Math.min(...tail)
             const tailMax = Math.max(...tail)
-            const insideCorridor = tailMin > 1.1 && tailMax < 1.5
+            const insideCorridor = tailMin > AREA_MIN && tailMax < AREA_MAX
             const drift = blockDrift(
               tail.map((a) => Math.log(a)),
               BLOCKS,
@@ -277,6 +299,8 @@ test('площадь сходится в литературный коридор
     BLOCKS,
     STRUCTURE_CHECK_EVERY,
     INTACT_CLUSTER_FRACTION,
+    AREA_MIN,
+    AREA_MAX,
   )
 
   for (const r of runs) {
@@ -298,8 +322,8 @@ test('площадь сходится в литературный коридор
   const big = runs[0]
   const small = runs[1]
   // Started outside the corridor on the correct side...
-  expect(big.start).toBeGreaterThan(1.5)
-  expect(small.start).toBeLessThan(1.1)
+  expect(big.start).toBeGreaterThan(AREA_MAX)
+  expect(small.start).toBeLessThan(AREA_MIN)
   // ...each side must have demonstrably CONVERGED within the cap as one intact sheet — never
   // skipped, never softened. A rupture gets its own explicit message, not a bare "false".
   expect(
@@ -315,10 +339,10 @@ test('площадь сходится в литературный коридор
       : `small-box side did not converge within ${CAP} moves`,
   ).toBe(true)
   // ...and its converged trailing window sits inside the corridor — entering AND staying, from both sides.
-  expect(big.tailMin).toBeGreaterThan(1.1)
-  expect(big.tailMax).toBeLessThan(1.5)
-  expect(small.tailMin).toBeGreaterThan(1.1)
-  expect(small.tailMax).toBeLessThan(1.5)
+  expect(big.tailMin).toBeGreaterThan(AREA_MIN)
+  expect(big.tailMax).toBeLessThan(AREA_MAX)
+  expect(small.tailMin).toBeGreaterThan(AREA_MIN)
+  expect(small.tailMax).toBeLessThan(AREA_MAX)
   // ...with a drift statistically indistinguishable from zero, not a slide that happened to be inside
   // the corridor at cap time.
   expect(Math.abs(big.driftT)).toBeLessThan(2)

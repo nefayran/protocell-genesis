@@ -164,5 +164,21 @@ test('модуль изгиба бислоя: валидированное ок�
     expect(typeof detailed.fitShells).toBe('number')
     expect(spectrumTable.length).toBeGreaterThan(0)
     expect(spectrumTable[0]).toHaveProperty('degenerateSpreadRel')
+
+    // The shape-only checks above would ALSO pass for a completely broken spectrum pipeline --
+    // wrong height field, wrong normalisation, all-zero modes would just as happily produce
+    // valid=false, kappa=null, and a present (all-zero or NaN) spectrumTable. Pin the actual
+    // DIAGNOSIS this gate exists to document -- slow, under-converged low-q shells, not a broken
+    // measurement -- with two independent, reference-free numbers:
+    //  - the degenerate-mode spread INSIDE the fit window must be large: modes lattice symmetry
+    //    requires to be equal in the true ensemble average are still tens of percent apart. A
+    //    converged spectrum (or a silently-broken all-zero/constant one) could not produce this.
+    //  - the fitted slope must sit clearly on the SHALLOW side of the -4 Helfrich prediction, not
+    //    merely fail to equal -4: under-converged low-q modes carry excess power relative to q^-4,
+    //    which flattens the fit toward 0 (greater than -3), not steepens it past -5.
+    const inWindowSpreads = spectrumTable.filter((r) => r.inFitWindow).map((r) => r.degenerateSpreadRel)
+    expect(inWindowSpreads.length).toBeGreaterThan(0)
+    expect(Math.max(...inWindowSpreads)).toBeGreaterThan(0.15)
+    expect(detailed.slope).toBeGreaterThan(-3)
   }
 }, 1_800_000)

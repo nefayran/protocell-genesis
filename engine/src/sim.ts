@@ -899,7 +899,12 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
       // toward smaller area — see task-5-report.md for the measurement that showed this term is
       // required (its absence produces a monotonic collapse with a perfectly healthy aggregate
       // acceptance fraction, not a near-zero one).
-      const acceptProb = Math.min(1, Math.exp(opts.lipids * u - dU / p.thermostat.kT))
+      // livep.thermostat.kT, not p.thermostat.kT: p is fixed at creation time, but setLiveParams()
+      // can retune kT on a running system (viewer/'s slider), rewriting the GPU-side thermostat's
+      // uniform buffer without recreating the system. Using the creation-time p here would judge
+      // every proposal against a kT the dynamics no longer sample at, silently decoupling this
+      // Metropolis criterion from the physics it is supposed to match the moment a caller retunes.
+      const acceptProb = Math.min(1, Math.exp(opts.lipids * u - dU / livep.thermostat.kT))
       if (rng() < acceptProb) {
         accepted++
         // Proposed state kept; forceBuf/potentialBuf/grid already reflect it from the

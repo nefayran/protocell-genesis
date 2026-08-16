@@ -1,10 +1,17 @@
 // Task 9: turns measured numbers into literature-referenced gate verdicts. Reads the corridor
 // definitions from data/literature.json (never hardcodes a target here) and applies three rules,
 // in this order of precedence:
-//   1. rank D is ALWAYS unproven, whatever the metric's value -- our own chain-length-to-bead-count
-//      mapping (spec section 7) has no independent literature corridor to check against, so no
-//      value can ever make it "pass"; it is accepted only indirectly, through the area/thickness
-//      gates it is folded into.
+//   1. rank D is ALWAYS unproven, whatever the metric's value. Two gates currently carry it, for
+//      two different reasons:
+//      - chain-to-bead-mapping (spec section 7) has no independent literature corridor to check
+//        against at all; it is accepted only indirectly, through the area/thickness gates it is
+//        folded into.
+//      - closure: its corridor (>1 sigma^3) is real, but the only enclosedVolume this engine has
+//        ever produced is the cavity of a hand-built SYNTHETIC test shell (verify/run.ts's
+//        runClosureScenario) -- proof the flood-fill detector works, not proof the engine
+//        self-assembles a closed vesicle. Letting that value pass a rank-A gate would publish the
+//        detector's own test fixture as a measured membrane property; rank D keeps the distinction
+//        in the verdict column itself -- see verify/report.ts's closure note for the full account.
 //   2. a metric that is missing (undefined) or not a finite number (NaN -- fitBendingModulus
 //      returns NaN when selectFitWindow never finds a valid fit window, see spectrum.ts) is
 //      unproven with value:null -- never silently passed, never silently dropped from the report.

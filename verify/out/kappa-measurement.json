@@ -1,0 +1,277 @@
+{
+  "gate": "bending-modulus-kappa",
+  "runId": "890cc8d0-e85b-41ba-ab5d-47853c2015c4",
+  "generatedAt": "2026-08-16T02:26:11.531Z",
+  "valid": false,
+  "kappa": null,
+  "slope": -1.332639133127794,
+  "fitModes": 20,
+  "fitShells": 4,
+  "qMax": 0.1800876210234065,
+  "ceilingQMax": 0.6443010600232915,
+  "literatureRange": [
+    5,
+    50
+  ],
+  "heightFieldDefinition": "tailEndBeads (tail2, the midplane-proximal bead of each lipid by construction)",
+  "grid": 16,
+  "system": {
+    "lipids": 10000,
+    "box": [
+      78,
+      78,
+      40
+    ],
+    "seed": 17,
+    "layout": "bilayer"
+  },
+  "samples": 200,
+  "stepsPerSample": 100,
+  "wallClockMs": 135808,
+  "noiseFloor": {
+    "predictedOldAllBeads32x32": {
+      "meanBeadsPerColumn": 29.296875,
+      "meanColumnVariance": 3.0137200888274194,
+      "predictedFloor": 0.00010045733629424731
+    },
+    "predictedNewTailEndSameGrid": {
+      "meanBeadsPerColumn": 39.0625,
+      "meanColumnVariance": 1.0390255112026932,
+      "predictedFloor": 0.00010390255112026932
+    }
+  },
+  "spectrumTable": [
+    {
+      "q": 0.080538,
+      "degeneracy": 4,
+      "mean": 0.022796879135202754,
+      "degenerateSpreadSd": 0.015174291580382747,
+      "degenerateSpreadRel": 0.6656302158899781,
+      "inFitWindow": true
+    },
+    {
+      "q": 0.113897,
+      "degeneracy": 4,
+      "mean": 0.02503768271354529,
+      "degenerateSpreadSd": 0.007045799269154433,
+      "degenerateSpreadRel": 0.28140780238191465,
+      "inFitWindow": true
+    },
+    {
+      "q": 0.161075,
+      "degeneracy": 4,
+      "mean": 0.008772834502226233,
+      "degenerateSpreadSd": 0.003327968402690205,
+      "degenerateSpreadRel": 0.3793492743816933,
+      "inFitWindow": true
+    },
+    {
+      "q": 0.180088,
+      "degeneracy": 8,
+      "mean": 0.009465275740938358,
+      "degenerateSpreadSd": 0.006031199965523577,
+      "degenerateSpreadRel": 0.6371922097776798,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.227795,
+      "degeneracy": 4,
+      "mean": 0.002415232266229168,
+      "degenerateSpreadSd": 0.000968531249483125,
+      "degenerateSpreadRel": 0.40100956873819216,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.241613,
+      "degeneracy": 4,
+      "mean": 0.0021664643959911057,
+      "degenerateSpreadSd": 0.00033110852392245413,
+      "degenerateSpreadRel": 0.15283358661935448,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.254682,
+      "degeneracy": 8,
+      "mean": 0.001595427403338705,
+      "degenerateSpreadSd": 0.0007243302494763551,
+      "degenerateSpreadRel": 0.4540038913463377,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.290383,
+      "degeneracy": 8,
+      "mean": 0.0020085443525983885,
+      "degenerateSpreadSd": 0.0009758951068565662,
+      "degenerateSpreadRel": 0.48587182334016293,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.322151,
+      "degeneracy": 4,
+      "mean": 0.0019699889788732574,
+      "degenerateSpreadSd": 0.0007562800758219331,
+      "degenerateSpreadRel": 0.3839006633704572,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.332065,
+      "degeneracy": 8,
+      "mean": 0.0009719417961206495,
+      "degenerateSpreadSd": 0.00016672446341803684,
+      "degenerateSpreadRel": 0.17153749749572547,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.341692,
+      "degeneracy": 4,
+      "mean": 0.0004899825618976329,
+      "degenerateSpreadSd": 0.000013653831914796924,
+      "degenerateSpreadRel": 0.027865954784018376,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.360175,
+      "degeneracy": 8,
+      "mean": 0.000716148731894182,
+      "degenerateSpreadSd": 0.00025938390568852566,
+      "degenerateSpreadRel": 0.3621927878060562,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.402688,
+      "degeneracy": 12,
+      "mean": 0.0005035404846514581,
+      "degenerateSpreadSd": 0.00017040902590941505,
+      "degenerateSpreadRel": 0.33842169816269924,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.410663,
+      "degeneracy": 8,
+      "mean": 0.0004662768992316896,
+      "degenerateSpreadSd": 0.0001592756377501954,
+      "degenerateSpreadRel": 0.3415902396465335,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.433708,
+      "degeneracy": 8,
+      "mean": 0.0004204344496589877,
+      "degenerateSpreadSd": 0.0001661876638033112,
+      "degenerateSpreadRel": 0.39527603872162514,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.45559,
+      "degeneracy": 4,
+      "mean": 0.0003061568254612147,
+      "degenerateSpreadSd": 0.00004952171214446508,
+      "degenerateSpreadRel": 0.16175276206846712,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.469611,
+      "degeneracy": 8,
+      "mean": 0.00032101752863720545,
+      "degenerateSpreadSd": 0.00005843791744266261,
+      "degenerateSpreadRel": 0.18203964652879,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.483226,
+      "degeneracy": 4,
+      "mean": 0.00038126552564002217,
+      "degenerateSpreadSd": 0.00005707974515131752,
+      "degenerateSpreadRel": 0.14971126764083637,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.489891,
+      "degeneracy": 8,
+      "mean": 0.0002769894477991507,
+      "degenerateSpreadSd": 0.00006445236362231323,
+      "degenerateSpreadRel": 0.23268887726383222,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.509365,
+      "degeneracy": 8,
+      "mean": 0.0002260180470724553,
+      "degenerateSpreadSd": 0.00001931779394750141,
+      "degenerateSpreadRel": 0.08547013921108983,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.515692,
+      "degeneracy": 8,
+      "mean": 0.00024219125718072629,
+      "degenerateSpreadSd": 0.000023187700504888606,
+      "degenerateSpreadRel": 0.09574127809075139,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.540263,
+      "degeneracy": 8,
+      "mean": 0.00019602609100945434,
+      "degenerateSpreadSd": 0.00004930329451565795,
+      "degenerateSpreadRel": 0.2515139401176961,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.563763,
+      "degeneracy": 4,
+      "mean": 0.00019208697421731186,
+      "degenerateSpreadSd": 0.000007013132426277635,
+      "degenerateSpreadRel": 0.03651019260860206,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.569487,
+      "degeneracy": 12,
+      "mean": 0.0002156619922388622,
+      "degenerateSpreadSd": 0.00002783560122042444,
+      "degenerateSpreadRel": 0.12907050023721553,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.580765,
+      "degeneracy": 8,
+      "mean": 0.0001812737936819689,
+      "degenerateSpreadSd": 0.000013896457524124942,
+      "degenerateSpreadRel": 0.07666004689296248,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.586323,
+      "degeneracy": 8,
+      "mean": 0.0001757090685920495,
+      "degenerateSpreadSd": 0.000022263326484677625,
+      "degenerateSpreadRel": 0.12670562005178712,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.613356,
+      "degeneracy": 8,
+      "mean": 0.00021596774221967617,
+      "degenerateSpreadSd": 0.00003227677299900221,
+      "degenerateSpreadRel": 0.14945182399587809,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.629019,
+      "degeneracy": 8,
+      "mean": 0.00015639471537586049,
+      "degenerateSpreadSd": 0.000016784887646849728,
+      "degenerateSpreadRel": 0.10732387987989826,
+      "inFitWindow": false
+    },
+    {
+      "q": 0.644301,
+      "degeneracy": 4,
+      "mean": 0.0002017828565415158,
+      "degenerateSpreadSd": 0.00007582033386806398,
+      "degenerateSpreadRel": 0.37575210881437954,
+      "inFitWindow": false
+    }
+  ]
+}

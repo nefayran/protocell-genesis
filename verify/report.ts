@@ -66,21 +66,31 @@ function corridorText(target: GateResult['target'], unit: string): string {
   return 'нет коридора (принимается только через другие ворота)'
 }
 
-// Rule 4's five caveats, verbatim in substance: facts already established and documented in the
-// engine's own source/tests (sim.ts's non-reproducibility note, index.ts's measureBilayer doc
-// comment, self-assembly.test.ts's stall record, task-5/5b/6-report.md's measured plateau and
-// rupture behaviour) -- true regardless of which particular numbers this run's own scenarios land
-// on, so they are carried as fixed prose rather than re-derived from this run's artifact.
+// Rule 4's caveats, verbatim in substance: facts already established and documented in the
+// engine's own source/tests (sim.ts's non-reproducibility note, index.ts's measureBilayerAveraged
+// doc comment, self-assembly.test.ts's stall record, tests/sim.test.ts's thermostat-bias
+// measurement, task-5/5b/6-report.md's measured plateau and rupture behaviour) -- true regardless
+// of which particular numbers this run's own scenarios land on, so they are carried as fixed prose
+// rather than re-derived from this run's artifact.
 const CAVEATS: string[] = [
   'Движок не бит-воспроизводим от запуска к запуску: сетка соседей раскладывает бидов по ячейкам через atomicAdd, порядок суммирования сил внутри ячейки меняется, а система (~3600 тел) хаотична и усиливает эту микроскопическую разницу до качественно разных траекторий.',
   'Порог самосборки (largest-cluster fraction > 0.8) выполнен с эмпирическим запасом на 1 000 000 шагов, а не доказан как гарантия: один прогон на 400 000 шагах застрял на доле 0.53 с двумя не слившимися агрегатами.',
   '`areaPerLipid` делит площадь бокса на СОЗДАННОЕ, а не выжившее число липидов — это смещает оценку на очень длинных прогонах, откуда часть бидов уходит по z и перестаёт быть частью бислоя.',
   'Плато площади на липид (≈1.208 σ²) лежит в нижней половине литературного коридора 1.1–1.5 σ², а не в его середине.',
   'Перетянутый бислой, запущенный из состояния около 1.9 σ² на липид, иногда рвётся; после разрыва «площадь на липид» не является содержательной величиной, так как её знаменатель предполагает один целый лист мембраны, покрывающий весь бокс.',
+  'Динамика фактически термостатируется к kT ≈ 1.1355 (дискретизационное смещение ~3.2% над номинальным значением, измерено в tests/sim.test.ts: Euler–Maruyama трения + жёсткая FENE-связь под velocity-Verlet), тогда как критерий Метрополиса в areaMove и префактор κ = kT/(A·exp(intercept)) в подгонке спектра используют номинальное data/params.json kT=1.1 — расхождение около 3%, не устранённое в этом прогоне.',
 ]
 
 export function renderReport(results: GateResult[], meta: Record<string, unknown>): string {
-  const commit = typeof meta.commit === 'string' ? meta.commit : 'unknown'
+  // meta.commit is a {sha, dirty} stamp (verify/run.ts's gitCommit()), not a bare string: a run's
+  // artifacts are committed TOGETHER with the code changes that produced them, so at the moment
+  // this renders, HEAD is still the PARENT of the commit that will contain this very file -- a
+  // commit cannot name its own hash before it exists. `dirty` records that the working tree
+  // differed from `sha` when this ran, and the sentence below says so out loud instead of quietly
+  // publishing a commit hash that reads as "these numbers belong to this commit" when they do not.
+  const commitMeta = (meta.commit ?? {}) as Partial<{ sha: string; dirty: boolean }>
+  const commitSha = commitMeta.sha ?? 'unknown'
+  const commitDirty = commitMeta.dirty === true
   const generatedAt = typeof meta.generatedAt === 'string' ? meta.generatedAt : new Date().toISOString()
   // Rendered visibly so a reader can compare it against the same field verify/run.ts stamps onto
   // gates.json and kappa-measurement.json -- a mismatch here would mean the three artifacts came
@@ -196,7 +206,11 @@ export function renderReport(results: GateResult[], meta: Record<string, unknown
 </head>
 <body>
 <h1>protocell-genesis — отчёт проверки (Ступень C, ворота 6)</h1>
-<p>Сгенерировано ${escapeHtml(generatedAt)}, коммит <code>${escapeHtml(commit)}</code>, run <code>${escapeHtml(runId)}</code>
+<p>Сгенерировано ${escapeHtml(generatedAt)}, коммит <code>${escapeHtml(commitSha)}</code>${
+    commitDirty
+      ? ' <strong>(рабочее дерево на момент генерации было НЕ чистым — эти артефакты сгенерированы ДО коммита, который их содержит; указанный коммит — последний реальный, а не тот, что упаковывает этот файл)</strong>'
+      : ' (рабочее дерево было чистым — коммит выше действительно содержит код, который дал эти числа)'
+  }, run <code>${escapeHtml(runId)}</code>
 (тот же идентификатор проставлен на gates.json и kappa-measurement.json — расхождение означало бы, что артефакты из разных прогонов).</p>
 <table>
   <thead>
@@ -210,7 +224,7 @@ ${kappaSection}
 ${closureSection}
 ${perfSection}
 ${caveatsSection}
-<footer>verify/report.ts — данные читаются из verify/out/gates.json и verify/out/kappa-measurement.json; ничего не подставлено вручную.</footer>
+<footer>verify/report.ts только форматирует; данные подаёт verify/run.ts из ОДНОГО прогона измерения в этом же процессе (runId выше) — verify/out/gates.json и verify/out/kappa-measurement.json пишутся ИЗ ТОГО ЖЕ измерения, а не читаются этим отчётом с диска, и не наоборот.</footer>
 </body>
 </html>`
 }

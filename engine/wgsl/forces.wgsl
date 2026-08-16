@@ -121,12 +121,17 @@ struct Pair { f: vec3<f32>, u: f32 };
 // WCA is applied here to EVERY pair, including the two FENE-bonded pairs and the 1-3 bend pair
 // (sameLipid = true for those) — this replaces the Task 4 exclusion rule, which reasoned WCA would
 // "fight the bond" and excluded it for bonded/1-3 pairs. That reasoning was backwards: FENE
-// (-0.5*k*r_inf^2*ln(1-(r/r_inf)^2)) is purely attractive with its minimum at r=0 and no repulsive
-// core of its own; in the standard bead-spring construction WCA IS the bonded pair's repulsive
-// core, FENE only caps the maximum extension. Excluding WCA there left nothing to stop a bonded
-// pair collapsing, and the bend spring's permanent pull (r0=4, unreachable by two capped FENE
-// bonds, so it pulls monotonically) compressed the bonds down to well under one bead diameter,
-// measured as a ~3.2sigma bilayer against the ~5sigma literature value (task-5-report.md). The
+// (-0.5*k*r_inf^2*ln(1-(r/r_inf)^2)) is purely attractive, with its minimum at zero separation and
+// no repulsive core of its own -- FENE ITSELF is what collapses a bonded pair once WCA is
+// excluded, not the bend spring. The bend spring's target head-tail2 separation is unreachable by
+// the two FENE bonds in between it, so rather than settling near that target it pulls head and
+// tail2 monotonically apart -- it was the only force resisting the collapse on that pair, not the
+// cause of it. In the standard bead-spring construction WCA IS the bonded pair's repulsive core,
+// FENE only caps the maximum extension; excluding WCA left the two FENE bonds (head-tail1,
+// tail1-tail2) with nothing opposing their own collapse toward FENE's zero-separation minimum,
+// which roughly HALVES the resulting bilayer thickness relative to the published target -- see the
+// spec and task-5-report.md (Addendum 3) for the measured bond lengths and thickness this produced,
+// not quoted here. The
 // cos^2 attraction stays excluded within a lipid: it is a tail-tail-only effect, and its force is
 // identically zero below its own cutoff r_c anyway for the range spanned by a taut lipid, so
 // excluding it only avoids reporting a meaningless constant plateau in the same-lipid energy.

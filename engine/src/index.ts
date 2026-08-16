@@ -96,29 +96,6 @@ export async function enclosedVolumeGpu(sys: System, opts: { cell: number; radiu
   return result.volume
 }
 
-/** Facade for Task 5's structural gate: current area per lipid and bilayer thickness (200-bin
- * z-density profile of head beads), plus enough bookkeeping (box, lipids, cumulative steps) for
- * a caller to report a full trajectory without re-deriving it from raw positions each time. */
-export async function measureBilayer(sys: System): Promise<{
-  areaPerLipid: number
-  thickness: number
-  box: [number, number, number]
-  lipids: number
-  steps: number
-}> {
-  const pos = await sys.positions()
-  const box = sys.box
-  const lipids = sys.lipids
-  const profile = densityProfileZ(pos, box, 200)
-  return {
-    areaPerLipid: areaPerLipid(box, lipids),
-    thickness: bilayerThickness(profile),
-    box,
-    lipids,
-    steps: sys.steps,
-  }
-}
-
 /** Ordinary-least-squares slope of `ys` against index, with the standard error taken from BLOCK
  * means rather than the raw series. A Monte Carlo trajectory of ln A is strongly autocorrelated —
  * consecutive moves change it by at most the proposal width — so a naive OLS standard error is
@@ -151,8 +128,8 @@ function blockDrift(ys: number[], blocks: number): { perStep: number; stdErr: nu
   return { perStep: slope, stdErr, t: slope / stdErr }
 }
 
-/** Ensemble measurement of the same two structural numbers `measureBilayer` reads off one frame:
- * area per lipid and bilayer thickness, sampled over many configurations while the area coordinate
+/** Ensemble measurement of the two structural numbers a single frame would read off directly --
+ * area per lipid and bilayer thickness -- sampled over many configurations while the area coordinate
  * keeps moving. Advances the system — `samples` rounds of `stepsPerSample` integration steps plus
  * `areaTrialsPerSample` area moves — and returns
  *  - area per lipid averaged over samples, with its scatter and its extremes over the window,

@@ -338,12 +338,38 @@ export async function enclosedVolumeGpuDetailed(
   dispatch(pipe.seed, bindSeed, wgCells)
 
   let iterations = 0
+  let converged = false
   while (iterations < maxIterations) {
     dispatch(pipe.clearChanged, bindClearChanged, 1)
     dispatch(pipe.propagate, bindPropagate, wgCells)
     const changed = await readBackU32(device, changedBuf, 4)
     iterations++
-    if (changed[0] === 0) break
+    if (changed[0] === 0) {
+      converged = true
+      break
+    }
+  }
+
+  // A flood that hits maxIterations without a dispatch reporting "nothing changed" has not
+  // actually finished propagating "outside" from the boundary -- some cells that are truly outside
+  // are still marked as not-yet-reached. Reading `outside` off in that state and computing volume
+  // from it anyway would silently count those still-unreached-but-actually-outside cells as
+  // enclosed cavity, INFLATING the reported volume rather than failing loudly. maxIterations is
+  // already a generous cap (the grid's own diagonal length in cells, see the doc comment above) --
+  // hitting it without convergence means something is actually wrong (a bug, or a geometry this
+  // detector's 6-connected boundary flood cannot reach in that many hops), not merely a slow case
+  // that would have converged with more patience, so this is a real failure, not a warning.
+  if (!converged) {
+    posBuf.destroy()
+    occBuf.destroy()
+    outsideBuf.destroy()
+    changedBuf.destroy()
+    gridUniform.destroy()
+    throw new Error(
+      `enclosedVolumeGpuDetailed: outside-flood did not converge within maxIterations=${maxIterations} ` +
+        `dispatches -- the reported volume would silently count still-unreached cells as enclosed ` +
+        `cavity, inflating it, so this is a hard failure rather than a best-effort number`,
+    )
   }
 
   const [outsideHost, occHost] = await Promise.all([
