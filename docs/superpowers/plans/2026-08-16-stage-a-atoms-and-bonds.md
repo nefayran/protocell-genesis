@@ -294,7 +294,7 @@ git commit -m "feat: reaction network with exact mass and charge invariants"
 
 **Interfaces:**
 - Consumes: `getGpu`, `readBack`, `storageBuffer` из `engine/src/gpu.ts`; `loadSpecies` из задачи 1.
-- Produces: `stokesEinstein(radiusNm: number, tempK: number, viscosityPaS: number): number` — коэффициент диффузии в нм²/нс; `smoluchowski(dA: number, dB: number, rContactNm: number): number` — константа в нм³/нс; `createChemSystem(opts: {box: [number,number,number], counts: Record<string, number>, seed: number, dtNs: number, kappaT: number}): Promise<ChemSystem>`; `ChemSystem.step(n: number): Promise<void>`; `ChemSystem.positions(): Promise<Float32Array>` — по 4 float на молекулу (x, y, z, индекс вида); `ChemSystem.msd(): Promise<number>` — среднеквадратичное смещение с начала прогона в нм²; `ChemSystem.elapsedNs: number`.
+- Produces: `stokesEinstein(radiusNm: number, tempK: number, viscosityPaS: number): number` — коэффициент диффузии в нм²/нс; `smoluchowski(dA: number, dB: number, rContactNm: number): number` — константа в нм³/нс; `createChemSystem(opts: ChemOpts): Promise<ChemSystem>` где `ChemOpts = {box: [number,number,number], counts: Record<string, number>, seed: number, dtNs: number, kappaT: number, contactProbability?: number, wall?: {z: number, sites: number}}` — `contactProbability` по умолчанию 1 и используется задачей 4, `wall` добавляется задачей 5 и без него стенки нет; `ChemSystem.step(n: number): Promise<void>`; `ChemSystem.positions(): Promise<Float32Array>` — по 4 float на молекулу (x, y, z, индекс вида); `ChemSystem.msd(): Promise<number>` — среднеквадратичное смещение с начала прогона в нм²; `ChemSystem.elapsedNs: number`. Фасады в `engine/src/index.ts`: `diffusionOf(speciesId: string): number` — коэффициент диффузии вида в нм²/нс.
 
 - [ ] **Step 1: Написать падающие тесты**
 
@@ -369,7 +369,7 @@ git commit -m "feat: Brownian dynamics verified against the 6Dt law"
 
 **Interfaces:**
 - Consumes: `ChemSystem` из задачи 3, `loadNetwork` из задачи 2.
-- Produces: `ChemSystem.counts(): Promise<Record<string, number>>`; `ChemSystem.events(): Promise<Record<string, number>>` — сколько раз сработала каждая реакция; `ChemSystem.measureSecondOrderRate(reactionId: string): Promise<number>` — наблюдаемая константа в нм³/нс из убыли реагентов.
+- Produces: `ChemSystem.counts(): Promise<Record<string, number>>`; `ChemSystem.events(): Promise<Record<string, number>>` — сколько раз сработала каждая реакция; `ChemSystem.measureSecondOrderRate(reactionId: string): Promise<number>` — наблюдаемая константа в нм³/нс из убыли реагентов. Фасады в `engine/src/index.ts`: `smoluchowskiOf(reactionId: string): number` — предсказанный диффузионный предел для этой реакции; `invariantsOf(sys: ChemSystem): Promise<{elements: Record<string, number>, charge: number}>` — атомы по элементам и суммарный заряд из текущих численностей.
 
 - [ ] **Step 1: Написать падающий тест**
 
@@ -447,7 +447,7 @@ git commit -m "feat: contact reactions verified against the Smoluchowski limit"
 
 **Interfaces:**
 - Consumes: `ChemSystem`, `loadNetwork`.
-- Produces: `ChemSystem.sites(): Promise<{index: number, occupant: string, chainLength: number}[]>`; `ChemSystem.chainHistogram(): Promise<Record<number, number>>` — сколько молекул кислоты каждой длины получено; `alphaFromRates(net: Network): number` — `k_grow/(k_grow + k_terminate)`; `alphaFromHistogram(h: Record<number, number>): {alpha: number, r2: number}` — оценка по наклону `ln N_n` против `n`.
+- Produces: `ChemSystem.sites(): Promise<{index: number, occupant: string, chainLength: number}[]>`; `ChemSystem.chainHistogram(): Promise<Record<number, number>>` — сколько молекул кислоты каждой длины получено; `alphaFromRates(net: Network): number` — `k_grow/(k_grow + k_terminate)`; `alphaFromHistogram(h: Record<number, number>): {alpha: number, r2: number}` — оценка по наклону `ln N_n` против `n`. Фасад в `engine/src/index.ts`: `longestAcid(sys: ChemSystem): Promise<{carbons: number, atoms: AtomRef[]}>` — самая длинная полученная кислота с поатомной геометрией из `buildAlkanoicAcid`.
 
 - [ ] **Step 1: Написать падающие тесты**
 
