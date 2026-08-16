@@ -31,6 +31,11 @@ export type { CreateSystemOpts, Layout, System } from './sim'
 // reaches createSystem.
 export { createSoup } from '../../soup/src/sim'
 export type { CreateSoupOpts, SoupSystem } from '../../soup/src/sim'
+// Task 3: amphiphile/stage recognition, published as window.api.stageOf for tests and the scene
+// (soup/src/stages.ts's own detectStage takes `box` as an explicit second argument -- SoupSystem
+// has no box field, see stages.ts's header for why -- so stageOf carries that through unchanged).
+export { detectStage as stageOf } from '../../soup/src/stages'
+export type { Stage, StageEvidence } from '../../soup/src/stages'
 export {
   areaPerLipid,
   bilayerPeaks,
