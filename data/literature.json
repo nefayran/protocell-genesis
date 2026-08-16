@@ -1,0 +1,54 @@
+{
+  "gates": [
+    {
+      "id": "area-per-lipid",
+      "title": "Площадь на липид",
+      "metric": "areaPerLipid",
+      "unit": "sigma^2",
+      "target": { "min": 1.1, "max": 1.5 },
+      "rank": "A",
+      "source": "Cooke & Deserno 2005, arXiv:cond-mat/0509218",
+      "conditions": "kT/eps = 1.1, w_c = 1.6 sigma, нулевое натяжение"
+    },
+    {
+      "id": "bilayer-thickness",
+      "title": "Толщина бислоя",
+      "metric": "thickness",
+      "unit": "sigma",
+      "target": { "min": 4.0, "max": 6.0 },
+      "rank": "A",
+      "source": "Cooke & Deserno 2005, arXiv:cond-mat/0509218",
+      "conditions": "по максимумам плотности головных бидов"
+    },
+    {
+      "id": "bending-modulus",
+      "title": "Модуль изгиба",
+      "metric": "bendingModulus",
+      "unit": "kT",
+      "target": { "min": 5, "max": 50 },
+      "rank": "A",
+      "source": "Cooke & Deserno 2005, arXiv:cond-mat/0509218",
+      "conditions": "из спектра ундуляций при q <= 8 мод"
+    },
+    {
+      "id": "closure",
+      "title": "Замкнутая полость",
+      "metric": "enclosedVolume",
+      "unit": "sigma^3",
+      "target": { "min": 1 },
+      "rank": "A",
+      "source": "детектор заливкой снаружи, спецификация раздел 7",
+      "conditions": "сетка 0.5 sigma, радиус бида 0.6 sigma"
+    },
+    {
+      "id": "chain-to-bead-mapping",
+      "title": "Соответствие числа атомов углерода числу бидов",
+      "metric": "chainToBeadMapping",
+      "unit": "-",
+      "target": {},
+      "rank": "D",
+      "source": "наше допущение, спецификация раздел 7",
+      "conditions": "принимается только через ворота площади и толщины"
+    }
+  ]
+}
