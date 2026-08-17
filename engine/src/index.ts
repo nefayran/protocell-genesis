@@ -42,6 +42,11 @@ export type { Stage, StageEvidence, StageThresholds } from '../../soup/src/stage
 // established escape hatch every other facade call already uses instead).
 export { loadSoup } from '../../soup/src/rules'
 export { findAmphiphiles, amphiphileHistogram } from '../../soup/src/amphiphile'
+// Energy calibration (2026-08-17): rate-free rigor checks over the bond graph, re-exported for
+// window.api the same way findAmphiphiles/loadSoup already are -- see soup/src/equilibrium.ts's
+// own header for why this reads the carbon-only C-C subgraph directly rather than going through
+// the (head-conditioned) amphiphile recogniser.
+export { carbonChainLengths, ccBondFraction } from '../../soup/src/equilibrium'
 export {
   areaPerLipid,
   bilayerPeaks,
