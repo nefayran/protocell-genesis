@@ -42,11 +42,31 @@ export interface CreateSoupOpts {
    * future rename of the id would not silently stop working). Takes precedence over `start` for
    * that one id. */
   catalystCount?: number
+  /** Convenience override for data/soup.json's dryWetCycle.enabled, mirroring `catalystCount`'s own
+   * pattern: `true` forces cycling on for THIS system regardless of the file's own default (the file
+   * defaults to `false` precisely so no existing caller sees a behaviour change without asking for
+   * it); `false`/`undefined` defers to the file. The schedule itself (cycles/periodSteps/dryFraction/
+   * targetDryDensity/rampSteps/rampRelaxSteps) always comes from data/soup.json -- this override is a
+   * plain boolean switch, never a number. */
+  dryWetCycle?: boolean
 }
 
 export interface SoupSystem {
   /** Advances n Langevin + bond-Monte-Carlo steps, encoded as one command buffer. */
   step(n: number): Promise<void>
+  /** Advances n real steps exactly like step(), EXCEPT that when this system was created with dry-
+   * wet cycling enabled (CreateSoupOpts.dryWetCycle / data/soup.json's dryWetCycle.enabled), a wet<->
+   * dry box transition landing inside this call is applied at the right global step (via
+   * applyBoxScale, not step() itself -- step() is untouched by this task, so every existing caller's
+   * behaviour is unchanged byte for byte) before continuing. When cycling is NOT enabled this is
+   * `step(n)` exactly, nothing else -- soup/src/sim.ts's runUntil() below always calls this one
+   * (never step() directly) so cycling "just works" through the same trace-producing loop every
+   * other run already uses, without a second stepping path to keep in sync. Because a transition
+   * ramp injects its own `rampRelaxSteps` between increments (data/soup.json's dryWetCycle.basis),
+   * the number of real steps actually taken by one call CAN exceed `n` when a transition falls
+   * inside it -- callers that need an exact step count should check `steps` before/after, not assume
+   * n was taken verbatim. */
+  stepCycled(n: number): Promise<void>
   /** 4 floats per particle: x, y, z, kind index (position into data/soup.json's `monomers`). */
   particles(): Promise<Float32Array>
   /** Per-particle force from the grid path (rebuilds the grid for current positions first).
@@ -80,11 +100,32 @@ export interface SoupSystem {
    * must be EXACTLY unchanged (nothing here ever creates or destroys a particle), bonds must be
    * able to change (that is the whole point of this task). */
   invariants(): Promise<{ monomers: Record<string, number>; bonds: number; charge: number }>
-  /** The box this system was created with (`CreateSoupOpts.box`), fixed for the system's lifetime.
-   * Task 4's reconciliation of the deviation Task 3 flagged: soup/src/stages.ts's detectStage
-   * reads this instead of taking box as a second parameter, so `stageOf(sys)` (and this file's own
-   * runUntil, below) never has to re-thread it. */
-  box: [number, number, number]
+  /** The system's CURRENT box -- a live snapshot, mirroring engine/src/sim.ts's own `System.box`
+   * getter (its doc comment: "a live snapshot, since areaMove() mutates L_x, L_y in place"). Equal
+   * to `CreateSoupOpts.box` for the system's whole lifetime UNLESS dry-wet cycling is enabled, in
+   * which case applyBoxScale (driven by stepCycled()) mutates it between the system's own wet box
+   * and its derived dry box (computeDryBox). Task 4's reconciliation of the deviation Task 3
+   * flagged: soup/src/stages.ts's detectStage reads this instead of taking box as a second
+   * parameter, so `stageOf(sys)` (and this file's own runUntil, below) never has to re-thread it --
+   * and, since detectStage reads it live, a sample taken mid-cycle correctly measures against
+   * whichever box that sample's snapshot actually sits in. */
+  readonly box: [number, number, number]
+  /** 'wet' | 'dry' | 'none' -- 'none' when dry-wet cycling is not enabled for this system (the
+   * default), otherwise which segment of its current cycle the box is presently at (or was last set
+   * to; a ramp's own intermediate increments do not change this label, only which BOUNDARY they are
+   * walking toward does -- see data/soup.json's dryWetCycle.basis on why the transition itself is
+   * spread over several small steps). Read live, like `box` above. */
+  readonly cyclePhase: 'wet' | 'dry' | 'none'
+  /** 1-based index of the cycle currently in progress, or 0 when cycling is not enabled OR every
+   * configured cycle has already completed (settled back to wet -- see cyclePhaseAt's own doc
+   * comment for why 0 specifically means "over", not "cycle zero"). */
+  readonly cycleIndex: number
+  /** Cumulative real integration steps taken so far via step()/stepCycled(), across all calls --
+   * mirrors engine/src/sim.ts's own `System.steps`. Needed by a stepCycled() caller that wants to
+   * know exactly how many real steps a call actually took, since a call spanning a wet<->dry
+   * transition takes MORE than the `n` it was asked for (the ramp's own relax steps) -- see
+   * stepCycled's own doc comment. */
+  readonly steps: number
   /** Steps in batches of `sampleEvery`, running detectStage after each batch and appending
    * `{steps, stage, evidence}` to a trace (also logged one line at a time, via console.log, so a
    * long run is diagnosable while it is still in progress). Stops early the first batch whose
@@ -95,7 +136,11 @@ export interface SoupSystem {
   runUntil(
     stage: Stage,
     opts: { maxSteps: number; sampleEvery: number },
-  ): Promise<{ reached: boolean; steps: number; trace: { steps: number; stage: Stage; evidence: StageEvidence }[] }>
+  ): Promise<{
+    reached: boolean
+    steps: number
+    trace: { steps: number; stage: Stage; evidence: StageEvidence; cyclePhase: 'wet' | 'dry' | 'none'; cycleIndex: number }[]
+  }>
   /** Destroys every GPUBuffer this system owns. getGpu() memoizes ONE device for the whole page,
    * so a caller that creates a second SoupSystem in the same page (viewer/run.ts's "start a new
    * run" button, tests/run-ui.test.ts's second-run regression) leaves the FIRST system's buffers
@@ -130,6 +175,199 @@ function gaussian(rng: () => number): number {
   const u1 = Math.max(rng(), 1e-9)
   const u2 = rng()
   return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
+}
+
+// --- dry-wet cycling (task 'wet-dry-cycle'): pure, GPU-free coordinate map + schedule -------------
+//
+// Deamer's dry-wet cycling forces closure by changing the BOX, not the membrane's own physics --
+// see data/soup.json's dryWetCycle.basis for the experimental motivation and this task's amplitude/
+// period reasoning. The coordinate map below reuses the discipline engine/src/sim.ts's
+// scaleLateralRigid established for the membrane's fixed 3-bead lipids (its own doc comment: "cost
+// four review rounds"): scale each MOLECULE's center of mass, rebuild every bead around that scaled
+// center from its UNCHANGED internal offset, never rescale a bead directly. Generalised here from a
+// fixed head/tail1/tail2 triple to the soup's dynamic topology (bond graph connected components,
+// including singleton unbonded monomers as size-1 "molecules") and from a lateral (x,y only) scale
+// to a full 3-axis isotropic one -- a bulk soup has no vacuum-facing axis the way a membrane patch
+// does (soup/src/sim.ts's own header, above), so "drying" contracts every periodic axis together.
+
+// Minimum-image displacement of a scalar coordinate difference -- same role as engine/src/sim.ts's
+// private mi1(), duplicated rather than imported (that one is a module-private helper, not exported,
+// and this file's own step.wgsl/bond.wgsl mi3() is a GPU-side twin of the same formula).
+function mi1(d: number, box: number): number {
+  return d - Math.round(d / box) * box
+}
+
+// Wraps one coordinate into [0, box) -- the scalar form of engine/src/sim.ts's wrapXY(), generalised
+// to all three axes by being called per-axis below (this soup has no open axis to skip).
+function wrap1(v: number, box: number): number {
+  return v - Math.floor(v / box) * box
+}
+
+/** Pure per-molecule rigid coordinate map for a box change: groups particles into connected
+ * components of the COVALENT bond graph (`bonds`, matching SoupSystem.bonds()'s own pair layout --
+ * an unbonded monomer is its own size-1 component), scales each component's center of mass by
+ * `newBox/oldBox` per axis, and rebuilds every member bead around that scaled center from its
+ * UNCHANGED internal offset. No bead is ever rescaled directly, so every intramolecular (bonded)
+ * distance survives the move exactly -- tests/soup-boxcycle.test.ts checks this property on
+ * synthetic topologies with no GPU. The adsorption tether (soup/wgsl/bond.wgsl's centerLink) is
+ * deliberately NOT one of these edges: it is a soft, desorbable association, not a covalent bond,
+ * and its own length is ALLOWED to change by this move (data/soup.json's adsorption.basis already
+ * gives it a desorption valve for exactly this kind of stretch) -- see soup/src/sim.ts's
+ * applyBoxScaleOnce for how that is exercised for real.
+ *
+ * Offsets are accumulated by WALKING THE BOND GRAPH edge by edge (BFS from an arbitrary root in
+ * each component), not by taking one minimum-image reading against a single fixed reference bead --
+ * a real bug, caught by applyBoxScaleOnce's own runtime self-check on a live 250000-step run
+ * (wet-dry-cycle-report.md): this project's cc_bond has no length cap, and at the elevated dry-phase
+ * density this task's own cycle deliberately targets, a real carbon chain grew long/coiled enough
+ * that ITS OWN two ends sat more than half the (already-shrunk) box apart -- exactly the case a
+ * single-reference mi1() reading aliases (engine/src/aggregate.ts's unwrapAggregate has the SAME
+ * known limitation, for the same reason, on a spatial-proximity cluster that has no explicit
+ * topology to walk instead). Every individual COVALENT BOND, by construction, forms only at
+ * reaction-contact distance (a couple sigma at most, soup/wgsl/bond.wgsl) -- far under half of ANY box this
+ * system ever runs at -- so accumulating one mi1() step per EDGE, never against a bead that might be
+ * many bonds and sigma away, cannot alias regardless of how long or coiled the chain is. */
+export function scaleMoleculesRigid(
+  positions: Float32Array,
+  bonds: Uint32Array,
+  oldBox: [number, number, number],
+  newBox: [number, number, number],
+): Float32Array {
+  const n = positions.length / 4
+  const sx = newBox[0] / oldBox[0]
+  const sy = newBox[1] / oldBox[1]
+  const sz = newBox[2] / oldBox[2]
+
+  const adjacency: number[][] = Array.from({ length: n }, () => [])
+  for (let k = 0; k < bonds.length; k += 2) {
+    const i = bonds[k]
+    const j = bonds[k + 1]
+    adjacency[i].push(j)
+    adjacency[j].push(i)
+  }
+
+  const visited = new Uint8Array(n)
+  const ox = new Float64Array(n)
+  const oy = new Float64Array(n)
+  const oz = new Float64Array(n)
+  const out = new Float32Array(positions.length)
+
+  for (let root = 0; root < n; root++) {
+    if (visited[root]) continue
+    // BFS from `root`: ox/oy/oz[member] ends up as that member's offset relative to `root`'s own
+    // (wrapped) position, accumulated one bond-length hop at a time -- see this function's own doc
+    // comment for why that is the property a single-reference reading cannot guarantee.
+    visited[root] = 1
+    ox[root] = 0
+    oy[root] = 0
+    oz[root] = 0
+    const queue = [root]
+    const members = [root]
+    let qi = 0
+    while (qi < queue.length) {
+      const p = queue[qi++]
+      for (const c of adjacency[p]) {
+        if (visited[c]) continue
+        visited[c] = 1
+        ox[c] = ox[p] + mi1(positions[c * 4] - positions[p * 4], oldBox[0])
+        oy[c] = oy[p] + mi1(positions[c * 4 + 1] - positions[p * 4 + 1], oldBox[1])
+        oz[c] = oz[p] + mi1(positions[c * 4 + 2] - positions[p * 4 + 2], oldBox[2])
+        queue.push(c)
+        members.push(c)
+      }
+    }
+
+    let sumx = 0
+    let sumy = 0
+    let sumz = 0
+    for (const b of members) {
+      sumx += ox[b]
+      sumy += oy[b]
+      sumz += oz[b]
+    }
+    const cx = sumx / members.length
+    const cy = sumy / members.length
+    const cz = sumz / members.length
+    const rx = positions[root * 4]
+    const ry = positions[root * 4 + 1]
+    const rz = positions[root * 4 + 2]
+    const comX = wrap1(rx + cx, oldBox[0]) * sx
+    const comY = wrap1(ry + cy, oldBox[1]) * sy
+    const comZ = wrap1(rz + cz, oldBox[2]) * sz
+    for (const b of members) {
+      out[b * 4] = wrap1(comX + (ox[b] - cx), newBox[0])
+      out[b * 4 + 1] = wrap1(comY + (oy[b] - cy), newBox[1])
+      out[b * 4 + 2] = wrap1(comZ + (oz[b] - cz), newBox[2])
+      out[b * 4 + 3] = positions[b * 4 + 3]
+    }
+  }
+  return out
+}
+
+/** The dry box a wet `box`/`N` pair maps to under data/soup.json's dryWetCycle.targetDryDensity --
+ * isotropic (volume scales as N/targetDryDensity, every axis scales by the same cube-root factor),
+ * pulled out as its own pure function so a caller (createSoup below, tests/soup-boxcycle.test.ts) can
+ * check the density it actually produces without a GPU. */
+export function computeDryBox(box: [number, number, number], N: number, targetDryDensity: number): [number, number, number] {
+  const wetVolume = box[0] * box[1] * box[2]
+  const dryVolume = N / targetDryDensity
+  const scale = Math.cbrt(dryVolume / wetVolume)
+  return [box[0] * scale, box[1] * scale, box[2] * scale]
+}
+
+/** The wet/dry schedule a running system needs to know nothing about except "what step am I at" --
+ * pure functions of a step count so tests/soup-boxcycle.test.ts can check the schedule with no GPU.
+ * One cycle = a WET segment (this system's own creation box, `1-dryFraction` of `periodSteps`) THEN
+ * a DRY segment (`dryFraction` of `periodSteps`) -- wet first because step 0 IS already the wet box
+ * (CreateSoupOpts.box), so cycle 1 needs no box change at all until its own dry segment starts.
+ * After `cycles` full cycles, the schedule settles at (and stays at) wet -- `cycleIndex` reports 0
+ * once cycling is over, matching "did any cavity survive rehydration" needing a well-defined final
+ * wet state to check, not an indefinitely repeating cycle. */
+export interface CycleSchedule {
+  periodSteps: number
+  dryFraction: number
+  cycles: number
+}
+
+function cycleTransitionSteps(cfg: CycleSchedule): number[] {
+  const wetLen = cfg.periodSteps * (1 - cfg.dryFraction)
+  const out: number[] = []
+  for (let k = 0; k < cfg.cycles; k++) {
+    out.push(k * cfg.periodSteps + wetLen) // wet -> dry, this cycle's own dry segment starts
+    out.push((k + 1) * cfg.periodSteps) // dry -> wet (the LAST one is final rehydration, cycling ends)
+  }
+  return out
+}
+
+/** The phase ('wet'/'dry') and 1-based cycle number a given real-step count falls in -- `cycleIndex`
+ * is 0 once `step` has passed every configured cycle (settled wet, cycling over). */
+export function cyclePhaseAt(step: number, cfg: CycleSchedule): { phase: 'wet' | 'dry'; cycleIndex: number } {
+  const total = cfg.periodSteps * cfg.cycles
+  if (step >= total) return { phase: 'wet', cycleIndex: 0 }
+  const within = step % cfg.periodSteps
+  const wetLen = cfg.periodSteps * (1 - cfg.dryFraction)
+  return { phase: within < wetLen ? 'wet' : 'dry', cycleIndex: Math.floor(step / cfg.periodSteps) + 1 }
+}
+
+/** The smallest transition step strictly AFTER `step` -- `Infinity` once cycling is over, the
+ * sentinel soup/src/sim.ts's stepCycled() uses to fall through to a plain, unbounded step(). */
+export function nextCycleTransition(step: number, cfg: CycleSchedule): number {
+  let best = Infinity
+  for (const t of cycleTransitionSteps(cfg)) {
+    if (t > step && t < best) best = t
+  }
+  return best
+}
+
+// 3-axis minimum-image distance -- the same formula soup/wgsl/forces.wgsl's mi3() encodes on the
+// GPU side, needed here only for applyBoxScaleOnce's own runtime self-check (below): a plain CPU
+// re-check that every covalent bond's length really did survive a box change, independent of and in
+// addition to tests/soup-boxcycle.test.ts's own pure-function check on synthetic topologies.
+function mi3Distance(positions: Float32Array, box: [number, number, number], i: number, j: number): number {
+  const dx = mi1(positions[i * 4] - positions[j * 4], box[0])
+  const dy = mi1(positions[i * 4 + 1] - positions[j * 4 + 1], box[1])
+  const dz = mi1(positions[i * 4 + 2] - positions[j * 4 + 2], box[2])
+  return Math.sqrt(dx * dx + dy * dy + dz * dz)
 }
 
 // --- rule resolution: data/soup.json's symbolic (id, id) rules -> numeric kind-index uniforms ----
@@ -436,6 +674,53 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   if (!plan.valid) throw new Error(plan.reason!)
   const dims = plan.dims
   const ncells = plan.ncells
+
+  // Dry-wet cycling (task 'wet-dry-cycle', data/soup.json's dryWetCycle.basis): resolved ONCE here,
+  // at creation time, from the file's own schedule plus this call's box/N -- never touched again
+  // unless applyBoxScale below changes liveBox. `cycleCfg` stays undefined (the guard every use
+  // site below checks) when cycling is not requested, so this whole feature costs nothing when off.
+  const cycleEnabled = opts.dryWetCycle ?? soup.dryWetCycle.enabled
+  let cycleCfg: CycleSchedule | undefined
+  let dryBox: [number, number, number] = box
+  if (cycleEnabled) {
+    const dwc = soup.dryWetCycle
+    const wetVolume = box[0] * box[1] * box[2]
+    const wetDensity = N / wetVolume
+    if (dwc.targetDryDensity <= wetDensity) {
+      throw new Error(
+        `data/soup.json: dryWetCycle.targetDryDensity=${dwc.targetDryDensity} не превышает текущую ` +
+          `плотность бульона ${wetDensity.toFixed(4)} (N=${N}, box=[${box}]) -- сухая фаза обязана концентрировать, не разбавлять`,
+      )
+    }
+    dryBox = computeDryBox(box, N, dwc.targetDryDensity)
+    // Guard (task requirement 3): the neighbour grid must stay valid at the SMALLEST box in the
+    // cycle, AND -- since this implementation only rewrites gridUniform's box floats on a box
+    // change, never reallocating countsBuf/cellStartBuf/cursorBuf/verletListBuf (all sized from
+    // `dims`/`ncells` ONCE, above) -- the dry box must fall in the SAME cell-count bracket as the
+    // wet one, or those fixed-size buffers would silently stop matching the live grid. Both
+    // conditions are checked for real (not assumed from the density gap alone): throws, naming the
+    // actual dims on each side, rather than truncating anything.
+    const dryPlan = planSoupGrid(dryBox, startCounts)
+    if (!dryPlan.valid) throw new Error(dryPlan.reason!)
+    if (dryPlan.dims[0] !== dims[0] || dryPlan.dims[1] !== dims[1] || dryPlan.dims[2] !== dims[2]) {
+      throw new Error(
+        `data/soup.json: dryWetCycle.targetDryDensity=${dwc.targetDryDensity} сжимает box до [${dryBox.map((x) => x.toFixed(4))}], ` +
+          `меняя число ячеек сетки соседей (влажный dims=[${dims}] -> сухой dims=[${dryPlan.dims}]) -- этот механизм переписывает только ` +
+          `box-униформ, не перестраивает буферы сетки/списка Верле, поэтому смена dims здесь -- ошибка выбора амплитуды/box, не то, что ` +
+          `можно тихо пережить; уменьшите targetDryDensity или увеличьте box так, чтобы влажный и сухой box остались в одной ячеечной корзине`,
+      )
+    }
+    cycleCfg = { periodSteps: dwc.periodSteps, dryFraction: dwc.dryFraction, cycles: dwc.cycles }
+  }
+
+  // Live box, mutated only by applyBoxScale (dry-wet cycling) -- mirrors engine/src/sim.ts's own
+  // liveBox/areaMove split exactly: `box` above stays the immutable value opts was created with (the
+  // initial layout/grid-size derivation above all use it, once, correctly), `liveBox` is what the
+  // `box`/`cyclePhase`/`cycleIndex` getters report and what every GPU-side box reference (gridUniform's
+  // own float4 at byte offset 16) is kept in sync with after every applied box change.
+  let liveBox: [number, number, number] = [box[0], box[1], box[2]]
+  let cyclePhaseState: 'wet' | 'dry' | 'none' = cycleCfg ? cyclePhaseAt(0, cycleCfg).phase : 'none'
+  let cycleIndexState = cycleCfg ? cyclePhaseAt(0, cycleCfg).cycleIndex : 0
 
   const { device } = await getGpu()
   const sortedGather = soup.neighborGrid.sortedGather
@@ -1097,6 +1382,119 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     }
   }
 
+  // Dry-wet cycling (task 'wet-dry-cycle'): applies ONE box change (liveBox -> targetBox), rebuilding
+  // and re-scaling every molecule's center of mass -- see scaleMoleculesRigid's own doc comment for
+  // the discipline this reuses from engine/src/sim.ts's areaMove. Never called directly by a public
+  // API; only applyBoxScale (below, the ramped wrapper) and, through it, stepCycled call this.
+  async function applyBoxScaleOnce(targetBox: [number, number, number]): Promise<void> {
+    const before = await particles()
+    const bondPairs = await bonds()
+
+    // Runtime self-check (task requirement 2: "assert intramolecular distances are unchanged by a
+    // box change") -- not only the pure-function unit test on synthetic topologies
+    // (tests/soup-boxcycle.test.ts), but every real application, on the real bond graph this call
+    // actually sees. Cheap: O(bonds), a tiny fraction of O(N).
+    const distBefore = new Float64Array(bondPairs.length / 2)
+    for (let k = 0; k < bondPairs.length; k += 2) {
+      distBefore[k / 2] = mi3Distance(before, liveBox, bondPairs[k], bondPairs[k + 1])
+    }
+    const after = scaleMoleculesRigid(before, bondPairs, liveBox, targetBox)
+    for (let k = 0; k < bondPairs.length; k += 2) {
+      const d = mi3Distance(after, targetBox, bondPairs[k], bondPairs[k + 1])
+      const beforeD = distBefore[k / 2]
+      if (Math.abs(d - beforeD) > 1e-3) {
+        throw new Error(
+          `applyBoxScale: внутримолекулярное расстояние изменилось (${beforeD.toFixed(6)} -> ${d.toFixed(6)}) ` +
+            `для связи ${bondPairs[k]}-${bondPairs[k + 1]} при box [${liveBox}] -> [${targetBox}] -- scaleMoleculesRigid нарушен`,
+        )
+      }
+    }
+
+    device.queue.writeBuffer(posBuf, 0, after)
+    liveBox = targetBox
+    device.queue.writeBuffer(gridUniform, 16, new Float32Array([targetBox[0], targetBox[1], targetBox[2], 0]))
+
+    // Force an immediate rebuild (and, when the Verlet list is enabled, a fresh drift-safety
+    // snapshot) so the NEXT real step's force/bond-attempt pass sees the density this call just
+    // applied, and so the drift-safety guard measures real diffusive drift afterward, not the
+    // artificial jump this rescale itself made -- exactly why engine/src/sim.ts's own areaMove
+    // rebuilds the grid after every trial, accepted or not (its own comment: "the box the grid's
+    // cell/box uniform refers to may have changed"). Also where the Verlet list overflow guard
+    // (task requirement 3) gets its first chance to fire for this box, immediately rather than
+    // waiting up to `verletList.rebuildEvery` real steps for the next scheduled rebuild.
+    const enc = device.createCommandEncoder()
+    const pass = enc.beginComputePass()
+    if (verlet.enabled) {
+      encodeVerletRebuild(pass)
+    } else {
+      encodeGridRebuild(pass)
+    }
+    pass.end()
+    device.queue.submit([enc.finish()])
+    await device.queue.onSubmittedWorkDone()
+    if (verlet.enabled) await assertVerletSafety()
+  }
+
+  /** Spreads one wet<->dry box change over `cycleCfg.rampSteps` log-linear increments, each followed
+   * by `cycleCfg.rampRelaxSteps` of ordinary dynamics -- data/soup.json's dryWetCycle.basis gives the
+   * physical reasoning (the same "keep each proposed change small" discipline engine/src/sim.ts's
+   * areaMove already applies to its own MC trials, generalised to a forced mechanical move that has
+   * no Metropolis rejection to fall back on if one increment were too large). Only ever called from
+   * stepCycled, which has already established `cycleCfg` is defined. */
+  async function applyBoxScale(targetBox: [number, number, number], cfg: CycleSchedule & { rampSteps: number; rampRelaxSteps: number }): Promise<void> {
+    const fromBox = liveBox
+    const lnRatio: [number, number, number] = [
+      Math.log(targetBox[0] / fromBox[0]),
+      Math.log(targetBox[1] / fromBox[1]),
+      Math.log(targetBox[2] / fromBox[2]),
+    ]
+    for (let s = 1; s <= cfg.rampSteps; s++) {
+      // The FINAL increment lands on the exact target box (not a geometric-interpolation rounding of
+      // it) -- liveBox after a full ramp must equal targetBox bit for bit, since the next ramp's own
+      // `fromBox` (and the guard's own dims check at creation time) both reason about the EXACT wet/
+      // dry box pair, not an accumulated floating-point drift of it.
+      const interp: [number, number, number] =
+        s === cfg.rampSteps
+          ? targetBox
+          : [
+              fromBox[0] * Math.exp((lnRatio[0] * s) / cfg.rampSteps),
+              fromBox[1] * Math.exp((lnRatio[1] * s) / cfg.rampSteps),
+              fromBox[2] * Math.exp((lnRatio[2] * s) / cfg.rampSteps),
+            ]
+      await applyBoxScaleOnce(interp)
+      if (s < cfg.rampSteps && cfg.rampRelaxSteps > 0) await step(cfg.rampRelaxSteps)
+    }
+  }
+
+  async function stepCycled(n: number): Promise<void> {
+    if (!cycleCfg) {
+      await step(n)
+      return
+    }
+    const cfg = { ...cycleCfg, rampSteps: soup.dryWetCycle.rampSteps, rampRelaxSteps: soup.dryWetCycle.rampRelaxSteps }
+    let remaining = n
+    while (remaining > 0) {
+      const next = nextCycleTransition(globalStep, cfg)
+      const advance = next === Infinity ? remaining : Math.min(remaining, next - globalStep)
+      if (advance > 0) {
+        await step(advance)
+        remaining -= advance
+      }
+      if (next !== Infinity && globalStep === next) {
+        const { phase, cycleIndex } = cyclePhaseAt(globalStep, cfg)
+        await applyBoxScale(phase === 'dry' ? dryBox : box, cfg)
+        cyclePhaseState = phase
+        cycleIndexState = cycleIndex
+      } else if (advance === 0 && remaining > 0) {
+        // Defensive: advance===0 with steps still remaining and no transition to apply would spin
+        // forever -- cannot happen given nextCycleTransition's own contract (it only ever returns a
+        // step strictly greater than the current one, or Infinity), kept as a hard stop rather than
+        // a silent infinite loop if that contract is ever violated by a future edit.
+        throw new Error('stepCycled: расписание циклов зациклилось -- nextCycleTransition вернул текущий globalStep')
+      }
+    }
+  }
+
   // Profiling helper for the perf task (report:
   // .superpowers/sdd/2026-08-16-soup-to-vesicle/perf-report.md). No timestamp-query use even
   // though the adapter supports the feature: WebGPU only exposes timestampWrites at COMPUTE-PASS
@@ -1306,21 +1704,28 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   async function runUntil(
     stage: Stage,
     opts: { maxSteps: number; sampleEvery: number },
-  ): Promise<{ reached: boolean; steps: number; trace: { steps: number; stage: Stage; evidence: StageEvidence }[] }> {
-    const trace: { steps: number; stage: Stage; evidence: StageEvidence }[] = []
+  ): Promise<{
+    reached: boolean
+    steps: number
+    trace: { steps: number; stage: Stage; evidence: StageEvidence; cyclePhase: 'wet' | 'dry' | 'none'; cycleIndex: number }[]
+  }> {
+    const trace: { steps: number; stage: Stage; evidence: StageEvidence; cyclePhase: 'wet' | 'dry' | 'none'; cycleIndex: number }[] = []
     let steps = 0
     let reached = false
     while (steps < opts.maxSteps) {
       const chunk = Math.min(opts.sampleEvery, opts.maxSteps - steps)
-      await sys.step(chunk)
+      // stepCycled, not step directly (task requirement 4: "record the cycle phase and count in the
+      // trace"): identical to step() when this system was not created with dry-wet cycling, so every
+      // caller without cycling sees no difference -- see stepCycled's own doc comment.
+      await sys.stepCycled(chunk)
       steps += chunk
       const { stage: currentStage, evidence } = await detectStage(sys)
-      trace.push({ steps, stage: currentStage, evidence })
+      trace.push({ steps, stage: currentStage, evidence, cyclePhase: sys.cyclePhase, cycleIndex: sys.cycleIndex })
       // Printed AS IT HAPPENS (not buffered to the end) -- the whole point per this task's brief:
       // a run long enough to matter (the pilot is minutes, the full-scale run tens of minutes) must
       // be diagnosable while it is still running, not only from the return value after the fact.
       console.log(
-        `[runUntil] steps=${steps} stage=${currentStage} ` +
+        `[runUntil] steps=${steps} stage=${currentStage} cyclePhase=${sys.cyclePhase} cycleIndex=${sys.cycleIndex} ` +
           `amphiphileFraction=${evidence.amphiphileFraction.toFixed(4)} ` +
           `largestAggregateFraction=${evidence.largestAggregateFraction.toFixed(4)} ` +
           `headPeaks=${evidence.headPeaks} enclosedVolume=${evidence.enclosedVolume.toFixed(4)}`,
@@ -1368,6 +1773,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   let sys!: SoupSystem
   sys = {
     step,
+    stepCycled,
     particles,
     forces,
     forcesBruteForce,
@@ -1376,7 +1782,18 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     desorbEvents,
     events,
     invariants,
-    box,
+    get box(): [number, number, number] {
+      return [liveBox[0], liveBox[1], liveBox[2]]
+    },
+    get cyclePhase(): 'wet' | 'dry' | 'none' {
+      return cyclePhaseState
+    },
+    get cycleIndex(): number {
+      return cycleIndexState
+    },
+    get steps(): number {
+      return globalStep
+    },
     runUntil,
     dispose,
     stepPhasesDEBUG: stepPhasesDEBUG as any,

@@ -134,6 +134,47 @@ export interface Adsorption {
   basis: string
 }
 
+/**
+ * Dry-wet cycling (task 'wet-dry-cycle', 2026-08-17,
+ * .superpowers/sdd/2026-08-16-soup-to-vesicle/wet-dry-cycle-report.md): the experimentally
+ * demonstrated route to closed vesicles (Deamer and co-workers, dry-wet cycling of fatty-acid
+ * amphiphiles) that every prior run in this project did NOT have access to -- every earlier run held
+ * volume/temperature/concentration fixed for its whole duration. Rank D like every other model choice
+ * in this file: the SCHEDULE (period, amplitude, ramp) is an engineering choice this task made from
+ * the density regime this project itself already measured (0.45 sigma^-3 single-cup, 0.72
+ * runaway-polymerisation), not a literature rate constant. `enabled=false` is the file's own default
+ * -- soup/src/sim.ts's createSoup() only cycles the box when this is true OR its own
+ * CreateSoupOpts.dryWetCycle override says so, so every existing run/test/viewer session that never
+ * asks for cycling sees IDENTICAL behaviour to before this task, byte for byte.
+ */
+export interface DryWetCycle {
+  enabled: boolean
+  /** How many full wet-then-dry cycles to run before settling back to (and staying at) the wet box. */
+  cycles: number
+  /** Real integration steps per full cycle (wet segment + dry segment together). */
+  periodSteps: number
+  /** Fraction of `periodSteps` spent DRY (contracted) -- the remaining `1-dryFraction` is spent WET
+   * (at the box this system was created with). */
+  dryFraction: number
+  /** The box-average particle density (sigma^-3) the dry segment's box is sized to reach -- the
+   * cycle's "amplitude". soup/src/sim.ts's createSoup() derives the dry box from THIS system's own
+   * N and starting box (dryVolume = N/targetDryDensity), not from a literal box size, so the same
+   * config value reproduces the same physical density regardless of which box/composition a caller
+   * requests. */
+  targetDryDensity: number
+  /** The wet<->dry transition is NOT one instantaneous jump: it is spread over this many discrete
+   * log-linear box increments (see soup/src/sim.ts's applyBoxScale), each one immediately followed by
+   * `rampRelaxSteps` of ordinary dynamics before the next increment -- the same discipline
+   * engine/src/sim.ts's own area move keeps each proposed step small (AREA_MOVE_LOG_DELTA) rather
+   * than jumping straight to a target area, generalised from a stochastic MC step to a forced
+   * mechanical one. */
+  rampSteps: number
+  /** Real dynamics steps run between two consecutive ramp increments, letting WCA overlaps introduced
+   * by that increment's compression relax before the next one lands -- see rampSteps' own comment. */
+  rampRelaxSteps: number
+  basis: string
+}
+
 export interface Soup {
   /** Единственная явная калибровка временнóй шкалы модели (kappa_t на экране в отчётах). */
   kappaT: number
@@ -146,13 +187,14 @@ export interface Soup {
   bondAttemptInterval: BondAttemptInterval
   headPlacement: HeadPlacement
   adsorption: Adsorption
+  dryWetCycle: DryWetCycle
 }
 
 const ALLOWED_MONOMER_KINDS = new Set<Monomer['kind']>(['carbon', 'head', 'donor', 'catalyst'])
 
 const REQUIRED = [
   'kappaT', 'monomers', 'rules', 'start', 'sweep', 'neighborGrid', 'verletList', 'bondAttemptInterval',
-  'headPlacement', 'adsorption',
+  'headPlacement', 'adsorption', 'dryWetCycle',
 ] as const
 
 export function loadSoup(): Soup {
@@ -320,5 +362,31 @@ export function assertRulesConsistent(s: Soup): void {
   }
   if (!ad.basis || ad.basis.trim().length <= 10) {
     throw new Error('data/soup.json: adsorption не имеет содержательного обоснования (basis)')
+  }
+
+  const dwc = s.dryWetCycle
+  if (typeof dwc.enabled !== 'boolean') {
+    throw new Error('data/soup.json: dryWetCycle.enabled должен быть булевым значением')
+  }
+  if (!Number.isInteger(dwc.cycles) || dwc.cycles < 1) {
+    throw new Error(`data/soup.json: dryWetCycle.cycles=${dwc.cycles} должен быть целым числом >= 1`)
+  }
+  if (!Number.isInteger(dwc.periodSteps) || dwc.periodSteps < 1) {
+    throw new Error(`data/soup.json: dryWetCycle.periodSteps=${dwc.periodSteps} должен быть целым числом >= 1`)
+  }
+  if (!(dwc.dryFraction > 0) || !(dwc.dryFraction < 1)) {
+    throw new Error(`data/soup.json: dryWetCycle.dryFraction=${dwc.dryFraction} должен лежать строго между 0 и 1`)
+  }
+  if (!(dwc.targetDryDensity > 0)) {
+    throw new Error(`data/soup.json: dryWetCycle.targetDryDensity=${dwc.targetDryDensity} должен быть положительным числом`)
+  }
+  if (!Number.isInteger(dwc.rampSteps) || dwc.rampSteps < 1) {
+    throw new Error(`data/soup.json: dryWetCycle.rampSteps=${dwc.rampSteps} должен быть целым числом >= 1`)
+  }
+  if (!Number.isInteger(dwc.rampRelaxSteps) || dwc.rampRelaxSteps < 0) {
+    throw new Error(`data/soup.json: dryWetCycle.rampRelaxSteps=${dwc.rampRelaxSteps} должен быть целым числом >= 0`)
+  }
+  if (!dwc.basis || dwc.basis.trim().length <= 10) {
+    throw new Error('data/soup.json: dryWetCycle не имеет содержательного обоснования (basis)')
   }
 }
