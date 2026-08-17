@@ -58,6 +58,12 @@ export interface SoupSystem {
   forcesBruteForce(): Promise<Float32Array>
   /** Pairs of particle indices [i0, j0, i1, j1, ...], one entry per currently active bond. */
   bonds(): Promise<Uint32Array>
+  /** Surface growth (surface-growth-report.md): the mutual catalyst<->tip association buffer,
+   * `soup/wgsl/bond.wgsl`'s `centerLink` -- one entry per particle, `0xFFFFFFFF` (unassociated) or
+   * the id of the particle it is currently linked to (a catalyst's currently-held chain-tip carbon,
+   * or a carbon's currently-owning catalyst). Debug/verification readback only, mirroring
+   * `bonds()`'s own role for `bondSlots` -- never read by the real step loop. */
+  centerLinks(): Promise<Uint32Array>
   /** Cumulative event counts since creation, keyed by data/soup.json rule id (e.g. "cc_bond"). */
   events(): Promise<Record<string, number>>
   /** Per-monomer-id particle counts, active bond count, and total charge (sum of each monomer's
@@ -475,6 +481,10 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   }
 
   const bondSlots0 = new Uint32Array(N * 3).fill(NONE_U32)
+  // Surface growth (surface-growth-report.md): one association slot per particle -- see
+  // soup/wgsl/bond.wgsl's own header ("Surface growth") for what a catalyst vs a carbon stores in
+  // it. All-unassociated at creation, exactly like bondSlots0.
+  const centerLink0 = new Uint32Array(N).fill(NONE_U32)
   const bondRng0 = new Uint32Array(N)
   for (let i = 0; i < N; i++) bondRng0[i] = (opts.seed >>> 0) ^ Math.imul(i + 1, 2654435761) ^ 0x9e3779b9
   const thermoRng0 = new Uint32Array(N)
@@ -534,6 +544,16 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
   })
   device.queue.writeBuffer(bondSlotsBuf, 0, bondSlots0)
+
+  // Surface growth (surface-growth-report.md): centerLink, bound at group1 binding20
+  // (soup/wgsl/bond.wgsl) into both bond-form bind groups below (cell-walk and Verlet-list
+  // variants) -- bond_break_main never references it (co_break/cc_break's own reversal is
+  // deliberately orthogonal to this bookkeeping, see that task's own report).
+  const centerLinkBuf = device.createBuffer({
+    size: centerLink0.byteLength,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+  })
+  device.queue.writeBuffer(centerLinkBuf, 0, centerLink0)
 
   const bondRngBuf = device.createBuffer({ size: bondRng0.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST })
   device.queue.writeBuffer(bondRngBuf, 0, bondRng0)
@@ -716,6 +736,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     { binding: 8, resource: buf(eventsBuf) },
     { binding: 9, resource: buf(bondRngBuf) },
     { binding: 13, resource: buf(posSortedBuf) },
+    { binding: 20, resource: buf(centerLinkBuf) },
   ])
   const bondFormGroup2 = bind(pipe.bondForm, 2, [{ binding: 0, resource: buf(bondParamsUniform) }])
   const bondBreakGroup1 = bind(pipe.bondBreak, 1, [
@@ -785,6 +806,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     { binding: 14, resource: buf(verletListBuf) },
     { binding: 15, resource: buf(verletCountBuf) },
     { binding: 19, resource: buf(verletUniform) },
+    { binding: 20, resource: buf(centerLinkBuf) },
   ])
   const bondFormListGroup2 = bind(pipe.bondFormList, 2, [{ binding: 0, resource: buf(bondParamsUniform) }])
 
@@ -1187,6 +1209,11 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     return new Uint32Array(out)
   }
 
+  async function centerLinks(): Promise<Uint32Array> {
+    const raw = await readBack(device, centerLinkBuf, N * 4)
+    return new Uint32Array(raw.buffer, raw.byteOffset, N)
+  }
+
   async function events(): Promise<Record<string, number>> {
     const raw = await readBack(device, eventsBuf, eventsInit.byteLength)
     const u32 = new Uint32Array(raw.buffer, raw.byteOffset, rules.length * 2)
@@ -1267,6 +1294,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     maxDriftSqBuf.destroy()
     verletUniform.destroy()
     bondSlotsBuf.destroy()
+    centerLinkBuf.destroy()
     bondRngBuf.destroy()
     thermoRngBuf.destroy()
     eventsBuf.destroy()
@@ -1283,6 +1311,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     forces,
     forcesBruteForce,
     bonds,
+    centerLinks,
     events,
     invariants,
     box,

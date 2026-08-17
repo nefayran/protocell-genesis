@@ -54,6 +54,30 @@
 // so raising the number of slots a head may claim adds newly REACHABLE forward transitions (a second
 // tail attaching) without touching the accept/reject ratio of any single bond attempt -- nothing this
 // change makes formable is left without its own always-available reverse.
+//
+// Surface growth (task 'surface-growth', 2026-08-17, surface-growth-report.md, diagnosis in
+// kinetic-growth-report.md): that report measured a 9-10 point undershoot between the CONFIGURED
+// propagation:termination ratio (data/soup.json's cc_bond/co_bond attemptRate ratio) and the alpha
+// actually RECOVERED from the measured chain-length histogram, plus ~53% of carbon sitting in
+// length-1 chains. Root cause: cc_bond already required a catalyst (`requiresCatalyst`, the
+// `catalystNear`/`catalystId` check below) but co_bond did not -- termination could fire on ANY
+// carbon anywhere in the bulk while propagation was throttled to the sparse catalyst population, so
+// the realised ratio was not the configured one. Fischer-Tropsch-type chemistry does not do this: a
+// growing chain stays ADSORBED on the one catalytic centre that started it, and BOTH propagation and
+// termination happen there, on that centre, until the finished amphiphile desorbs and the centre is
+// free again.
+//
+// This is carried by ONE new buffer, `centerLink` (declared below, next to `bondSlots`): a single
+// slot per particle, mirroring bondSlots' own mutual-pointer discipline (compareExchange, never a
+// blind store) but crossing KINDS instead of joining same-kind neighbours -- for a catalyst it holds
+// the carbon id of the chain tip it currently anchors (or BOND_NONE if free); for a carbon it holds
+// the catalyst id anchoring it AS THE ACTIVE GROWING TIP (or BOND_NONE if this carbon is not
+// currently a tip: it never nucleated, it is the permanently-inert distal end of an already-started
+// chain -- real amphiphile chains grow from and are capped at ONE end only, the other stays a plain
+// terminus exactly like a real fatty acid's tail -- or its chain has already been terminated and
+// released). See propagateOnCenter/terminateOnCenter below for how propagation/termination read and
+// update it, and this task's own basis text in data/soup.json's cc_bond/co_bond entries for the
+// physical argument in full.
 
 const BOND_NONE: u32 = 0xFFFFFFFFu;
 const BOND_RULES: u32 = 2u;
@@ -86,6 +110,9 @@ struct BondParams {
 @group(1) @binding(6) var<storage, read_write> bondSlots: array<atomic<u32>>;
 @group(1) @binding(8) var<storage, read_write> bondEvents: array<atomic<u32>>;
 @group(1) @binding(9) var<storage, read_write> bondRng: array<u32>;
+// Surface growth (this file's header, "Surface growth"): one slot per particle, crossing kinds --
+// see the header for exactly what it holds for a catalyst vs a carbon.
+@group(1) @binding(20) var<storage, read_write> centerLink: array<atomic<u32>>;
 
 // perf2-report.md, candidate (b): the SAME cell-sorted position gather soup/wgsl/step.wgsl's
 // soup_force_main reads (populated once per step, before both force and bond attempts run --
@@ -234,6 +261,115 @@ fn releasePartnerSlot(partner: u32, me: u32) {
   }
 }
 
+// Surface growth (this file's header): centerLink's own compareExchange primitive, the exact same
+// discipline tryClaimSlot/releasePartnerSlot already use, generalised to the single-slot
+// catalyst<->tip buffer. `particle` is either a catalyst (holding a tip carbon id) or a carbon
+// (holding its owning catalyst id) -- the two kinds never collide since a rule never matches
+// catalyst-catalyst or catalyst-carbon, so this same function safely serves both directions.
+fn centerCas(particle: u32, expected: u32, newVal: u32) -> bool {
+  let r = atomicCompareExchangeWeak(&centerLink[particle], expected, newVal);
+  return r.exchanged;
+}
+
+fn centerOf(particle: u32) -> u32 { return atomicLoad(&centerLink[particle]); }
+
+// Propagation (cc_bond): i and j are both carbons, roleI==roleJ==0 (chain pool). Called only AFTER
+// tryClaimSlot has already succeeded for both -- slotI/slotJ are its return values, which classify
+// this pair for free: this pool always fills slot 0 before slot 1 (tryClaimSlot's role==0 branch),
+// so a particle returned slot 0 had ZERO existing chain bonds (a bare monomer) and one returned
+// slot 1 had EXACTLY ONE (a chain end -- the active tip, if it has an owner, or a permanently inert
+// unanchored end if it does not). Returns whether the centre bookkeeping accepts this bond; on
+// false the caller must roll back the two valence claims tryClaimSlot already made, exactly the
+// existing slotJ<0 rollback path already does for a plain valence failure.
+fn propagateOnCenter(i: u32, j: u32, slotI: i32, slotJ: i32, catalystId: u32) -> bool {
+  if (slotI == 0 && slotJ == 0) {
+    // Nucleation: both bare. Needs a FREE catalyst this dispatch's own neighbour walk already found
+    // near particle i (catalystId, BOND_NONE if none was within range) to adopt the new tip -- the
+    // CAS below is simultaneously the "is it free" check and the claim, so a catalyst already
+    // holding some OTHER tip simply fails here rather than needing a separate read-then-claim (the
+    // same race-free reasoning tryClaimSlot's own atomics already rest on). j is the arbitrary but
+    // deterministic choice of which bare carbon becomes the new tip -- which one does not matter
+    // physically, only that both sides of this function agree, and they do (same i/j the valence
+    // claims above just used).
+    if (catalystId == BOND_NONE) { return false; }
+    if (!centerCas(catalystId, BOND_NONE, j)) { return false; }
+    if (!centerCas(j, BOND_NONE, catalystId)) {
+      // The tip side's own claim lost a race (some other thread claimed j's centerLink first,
+      // impossible for j itself under the i<j dedupe but not for a DIFFERENT rule's event touching
+      // j concurrently) -- undo the catalyst claim rather than leave it pointing at a tip that does
+      // not point back, the same both-or-neither discipline tryClaimSlot's own rollback embodies.
+      centerCas(catalystId, j, BOND_NONE);
+      return false;
+    }
+    return true;
+  }
+  var tipOld: u32;
+  var tipNew: u32;
+  if (slotI == 1 && slotJ == 0) { tipOld = i; tipNew = j; }
+  else if (slotI == 0 && slotJ == 1) { tipOld = j; tipNew = i; }
+  else {
+    // Both already existing chain ends (slotI==1 && slotJ==1): two independently-growing chains
+    // meeting mid-bulk. Deliberately disallowed, not merely unhandled -- see data/soup.json's
+    // cc_bond basis for why (reassigning an entire chain's ownership would need an O(chain length)
+    // walk this per-pair kernel has no way to do locally; FTT growth is monomer insertion, not
+    // chain-chain coupling, so refusing this is not a physics loss).
+    return false;
+  }
+  let owner = centerOf(tipOld);
+  if (owner == BOND_NONE) {
+    // tipOld is the permanently-inert distal end of an already-started chain -- see this file's
+    // header for why that is the CORRECT amphiphile structure (one growing/cappable end, one plain
+    // terminus), not a gap.
+    return false;
+  }
+  // Growth must happen ON that owner specifically, not merely near SOME catalyst -- checked by
+  // direct distance to the owner's OWN current position, stronger than the generic
+  // catalystNear/catalystId (which only proves *a* catalyst is near, not that it is this chain's
+  // own). Reach is wca_cut(bPairB(...))+P.wc, NOT the bare wca_cut reaction-contact distance a
+  // fresh nucleation candidate is found within: a catalyst and its tip are not held together by
+  // any bond (that would consume a real bondSlots valence slot and corrupt findAmphiphiles'
+  // degree bookkeeping, see this task's own report) -- once formed, nothing keeps them at
+  // reaction-contact distance except the SAME reversible, already-untouched Cooke-Deserno
+  // attraction every non-polar pair (carbon is polar=false, catalyst is polar=false too,
+  // soup/wgsl/step.wgsl's nonbondedSoup) already exerts out to wca_cut+wc -- checking only the
+  // narrower reaction-contact distance here (measured: this WAS tried first) made the pair drift
+  // beyond it within a handful of integration steps with nothing to pull it back, freezing almost
+  // every chain at length ~1-2 the instant its one catalyst was claimed. Checking the wider,
+  // already-existing attraction reach instead is not a new interaction -- it is the reach that
+  // interaction was already given the moment BOTH species (carbon, catalyst) were declared
+  // `polar: false` in data/soup.json.
+  let dOwner = bMi3(pos2[tipOld].xyz - pos2[owner].xyz, GB.box.xyz);
+  if (length(dOwner) >= wca_cut(bPairB(pos2[tipOld].w, BP.catalystKind)) + P.wc) { return false; }
+  // Move the tip: both re-points go through the catalyst's OWN slot as the single arbitration
+  // point -- whichever of possibly several racing bare monomers gets here first for this exact
+  // owner wins (its CAS on centerLink[owner] succeeds), every loser's CAS simply fails and its own
+  // bond attempt is rejected, not corrupted.
+  if (!centerCas(owner, tipOld, tipNew)) { return false; }
+  if (!centerCas(tipNew, BOND_NONE, owner)) {
+    centerCas(owner, tipNew, tipOld);
+    return false;
+  }
+  centerCas(tipOld, owner, BOND_NONE);
+  return true;
+}
+
+// Termination (co_bond): `carbon` is the candidate chain end (role 1, the head-slot claim already
+// succeeded). May only succeed on the SAME centre that has been holding this carbon as its active
+// tip since nucleation -- an un-anchored carbon (never nucleated, or already the inert distal end of
+// a longer chain, see propagateOnCenter's own comment) cannot be capped at all, which is exactly the
+// fix for kinetic-growth-report.md's "a lone carbon capped before it ever reaches a centre" finding.
+// On success the centre is freed for a new chain.
+fn terminateOnCenter(carbon: u32) -> bool {
+  let owner = centerOf(carbon);
+  if (owner == BOND_NONE) { return false; }
+  // Same reach as propagateOnCenter's own owner-proximity check -- see that function's comment.
+  let d = bMi3(pos2[carbon].xyz - pos2[owner].xyz, GB.box.xyz);
+  if (length(d) >= wca_cut(bPairB(pos2[carbon].w, BP.catalystKind)) + P.wc) { return false; }
+  if (!centerCas(carbon, owner, BOND_NONE)) { return false; }
+  centerCas(owner, carbon, BOND_NONE);
+  return true;
+}
+
 // Capacity of the deferred-candidate buffer bond_form_main fills during its single neighbour-cell
 // walk. A carbon's own valence caps it at 3 live bonds ever, so needing more than this many
 // GEOMETRICALLY-eligible candidates within one contact shell in one step to find its next bond is
@@ -245,6 +381,12 @@ const CANDIDATE_CAP: u32 = 6u;
 struct BondWalkResult {
   catalystNear: u32, // bool as u32: WGSL struct members used across a function return are fine
                       // either way, u32 keeps this struct trivially copyable like its array members.
+  // Surface growth (this file's header): the specific id of the (first-found, same policy as
+  // catalystNear) catalyst within range of particle i, BOND_NONE if catalystNear==0 -- used ONLY by
+  // propagateOnCenter's nucleation branch (which needs a specific catalyst to claim), never as a
+  // substitute for the owner-proximity checks propagateOnCenter/terminateOnCenter do for an
+  // ALREADY-anchored tip.
+  catalystId: u32,
   nCand: u32,
   candJ: array<u32, CANDIDATE_CAP>,
   candRule: array<u32, CANDIDATE_CAP>,
@@ -257,6 +399,7 @@ struct BondWalkResult {
 fn bondFormWalk(i: u32, xi: vec3<f32>, ti: f32, box: vec3<f32>, dims: vec3<i32>, useSorted: bool) -> BondWalkResult {
   var result: BondWalkResult;
   result.catalystNear = 0u;
+  result.catalystId = BOND_NONE;
   result.nCand = 0u;
   let c = cell_coord(xi, GB.dims.xyz, box);
   let R = i32(GB.dims.w);
@@ -283,7 +426,10 @@ fn bondFormWalk(i: u32, xi: vec3<f32>, ti: f32, box: vec3<f32>, dims: vec3<i32>,
           }
           if (result.catalystNear == 0u && tj == BP.catalystKind) {
             let dc = bMi3(xi - xj, box);
-            if (length(dc) < wca_cut(bPairB(ti, BP.catalystKind))) { result.catalystNear = 1u; }
+            if (length(dc) < wca_cut(bPairB(ti, BP.catalystKind))) {
+              result.catalystNear = 1u;
+              result.catalystId = j;
+            }
           }
           if (j > i && result.nCand < CANDIDATE_CAP) {
             let ruleIdx = matchRule(ti, tj);
@@ -325,6 +471,23 @@ fn bondFormDecide(i: u32, ti: f32, rngIn: u32, w: BondWalkResult) {
     let slotJ = tryClaimSlot(j, roleJ, i);
     if (slotJ < 0) {
       releaseSlot(i, slotI);
+      continue;
+    }
+    // Surface growth (this file's header): valence alone is not enough any more -- cc_bond
+    // (propagation, roleI==roleJ==0) and co_bond (termination, one side role 1 the carbon, the
+    // other role 2 the head) must also clear the centre-ownership gate below. A failure here rolls
+    // back the two valence claims exactly like a plain slotJ<0 valence failure would.
+    var centerOk: bool;
+    if (roleI == 0u && roleJ == 0u) {
+      centerOk = propagateOnCenter(i, j, slotI, slotJ, w.catalystId);
+    } else if (roleI == 1u) {
+      centerOk = terminateOnCenter(i);
+    } else {
+      centerOk = terminateOnCenter(j);
+    }
+    if (!centerOk) {
+      releaseSlot(i, slotI);
+      releaseSlot(j, slotJ);
       continue;
     }
     atomicAdd(&bondEvents[r * 2u + 0u], 1u);
@@ -403,6 +566,7 @@ fn bond_break_main(@builtin(global_invocation_id) gid: vec3<u32>) {
 fn bondFormWalkList(i: u32, xi: vec3<f32>, ti: f32, box: vec3<f32>) -> BondWalkResult {
   var result: BondWalkResult;
   result.catalystNear = 0u;
+  result.catalystId = BOND_NONE;
   result.nCand = 0u;
   let cap = u32(VL.y);
   let count = verletCount[i];
@@ -411,7 +575,10 @@ fn bondFormWalkList(i: u32, xi: vec3<f32>, ti: f32, box: vec3<f32>) -> BondWalkR
     let tj = pos2[j].w;
     if (result.catalystNear == 0u && tj == BP.catalystKind) {
       let dc = bMi3(xi - pos2[j].xyz, box);
-      if (length(dc) < wca_cut(bPairB(ti, BP.catalystKind))) { result.catalystNear = 1u; }
+      if (length(dc) < wca_cut(bPairB(ti, BP.catalystKind))) {
+        result.catalystNear = 1u;
+        result.catalystId = j;
+      }
     }
     if (j > i && result.nCand < CANDIDATE_CAP) {
       let ruleIdx = matchRule(ti, tj);
