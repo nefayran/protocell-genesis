@@ -21,6 +21,44 @@ test('цепь без головы и цепь с двумя головами а
   expect(twoHeads.length).toBe(0)
 })
 
+// --- "two-tails" task: the recogniser must accept a head with TWO tails (data/soup.json's
+// headPlacement.chainCapacity, now up to 2) as a Y whose branch point IS the head, while still
+// rejecting a branch anywhere else (a genuinely branched tail) and a head buried mid-chain (which
+// is a carbon carrying 2 chain bonds + 1 head bond, degree 3) -- these last two are exactly the
+// configurations the recogniser's per-particle degree check exists to keep out.
+
+test('голова с двумя хвостами (Y, точка ветвления — сама голова) распознаётся как один амфифил', () => {
+  const m = loadSoup().monomers
+  // O(0) bonded to C(1) and C(2); C(1) further bonded to C(3) -- a 2-carbon tail and a 1-carbon
+  // tail hanging off the same head, the two-tailed amphiphile's own topology.
+  const parts = P([[0,0,0,1],[1,0,0,0],[2,0,0,0],[3,0,0,0]])
+  const bonds = new Uint32Array([0,1, 0,2, 1,3])
+  const a = findAmphiphiles(parts, bonds, m)
+  expect(a.length).toBe(1)
+  expect(a[0].headIndex).toBe(0)
+  expect(a[0].length).toBe(3) // total non-polar count across BOTH tails
+  expect([...a[0].tailLengths].sort((x, y) => x - y)).toEqual([1, 2]) // the two tails, reported separately
+  expect(new Set(a[0].chain)).toEqual(new Set([1, 2, 3])) // both tails' particles, for aggregate membership
+})
+
+test('ветвящийся хвост (T-развилка НЕ на голове) амфифилом не считается', () => {
+  const m = loadSoup().monomers
+  // O(0)-C(1)-C(2), then C(2) branches into C(3) AND C(4) -- a genuine T-branch on a tail carbon,
+  // nothing to do with the head, which still sits cleanly at one end (degree 1).
+  const parts = P([[0,0,0,1],[1,0,0,0],[2,0,0,0],[3,0,0,0],[4,0,0,0]])
+  const bonds = new Uint32Array([0,1, 1,2, 2,3, 2,4])
+  expect(findAmphiphiles(parts, bonds, m).length).toBe(0)
+})
+
+test('голова, зарытая в середине цепи (степень 3 у углерода), амфифилом не считается', () => {
+  const m = loadSoup().monomers
+  // C(0)-C(1)-C(2)-C(3), with the head O(4) attached to C(1) -- a carbon in the MIDDLE of the
+  // chain, already holding 2 chain bonds, also carrying the head: degree 3, not a chain end.
+  const parts = P([[0,0,0,0],[1,0,0,0],[2,0,0,0],[3,0,0,0],[4,0,0,1]])
+  const bonds = new Uint32Array([0,1, 1,2, 2,3, 1,4])
+  expect(findAmphiphiles(parts, bonds, m).length).toBe(0)
+})
+
 test('гистограмма длин считает цепи по числу углеродов', () => {
   const m = loadSoup().monomers
   const parts = P([[0,0,0,1],[1,0,0,0],[2,0,0,0], [10,0,0,1],[11,0,0,0]])

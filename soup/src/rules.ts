@@ -100,6 +100,15 @@ export interface VerletList {
  */
 export interface HeadPlacement {
   terminalOnly: boolean
+  /** How many chain (C-O) bonds a head may hold at once -- soup/wgsl/bond.wgsl's tryClaimSlot
+   * (role==2) claims slots 0..chainCapacity-1 on the head's own bondSlots row, the same
+   * claim-then-rollback discipline the 2-slot carbon chain pool already uses, just generalised to
+   * a configurable count instead of two hardcoded branches. Bounded by the architectural per-
+   * particle slot count (3, soup/src/sim.ts's bondSlots0) regardless of kind -- see
+   * assertRulesConsistent below. Raised from 1 to 2 (data/soup.json's own basis, "two-tails" task)
+   * so a head can carry two tails, the packing-parameter geometry real membrane lipids use.
+   */
+  chainCapacity: number
   basis: string
 }
 
@@ -255,6 +264,15 @@ export function assertRulesConsistent(s: Soup): void {
   const hp = s.headPlacement
   if (typeof hp.terminalOnly !== 'boolean') {
     throw new Error('data/soup.json: headPlacement.terminalOnly должен быть булевым значением')
+  }
+  // Architectural ceiling, not a physics one: every particle (any kind) owns exactly 3 bondSlots
+  // rows (soup/src/sim.ts's bondSlots0 -- N*3, uniform across kinds), so a head literally cannot
+  // claim a 4th chain slot regardless of what data/soup.json asks for.
+  const MAX_ARCHITECTURAL_SLOTS = 3
+  if (!Number.isInteger(hp.chainCapacity) || hp.chainCapacity < 1 || hp.chainCapacity > MAX_ARCHITECTURAL_SLOTS) {
+    throw new Error(
+      `data/soup.json: headPlacement.chainCapacity=${hp.chainCapacity} должен быть целым числом от 1 до ${MAX_ARCHITECTURAL_SLOTS} (soup/src/sim.ts's per-particle bondSlots row)`,
+    )
   }
   if (!hp.basis || hp.basis.trim().length <= 10) {
     throw new Error('data/soup.json: headPlacement не имеет содержательного обоснования (basis)')

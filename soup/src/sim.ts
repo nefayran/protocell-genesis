@@ -602,6 +602,13 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     // as a 1/0 float the same way requiresCatalyst already is -- the flag is data, not a constant
     // written into soup/src or soup/wgsl.
     const headTerminalOnly = soup.headPlacement.terminalOnly ? 1 : 0
+    // data/soup.json's headPlacement.chainCapacity (rank D, basis in that file): how many chain
+    // slots a head's own claim (soup/wgsl/bond.wgsl's tryClaimSlot, role==2) may try -- uploaded as
+    // a plain float the same way headTerminalOnly already is, replacing that struct's former
+    // bpPad1 padding slot (see BondParams's own comment in bond.wgsl). assertRulesConsistent
+    // (soup/src/rules.ts) has already checked this is an integer within the architectural 1..3
+    // range by the time loadSoup() returns it here.
+    const headChainCapacity = soup.headPlacement.chainCapacity
     device.queue.writeBuffer(
       bondParamsUniform,
       0,
@@ -617,7 +624,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
         ...slotRoleB,
         catalystKind,
         headTerminalOnly,
-        0,
+        headChainCapacity,
         0,
       ]),
     )

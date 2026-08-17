@@ -2,36 +2,50 @@
 // numeric model constants (data/params.json / data/soup.json own those; params.test.ts's literal
 // scanner covers this directory).
 //
-// AN AMPHIPHILE IS A CHAIN WITH EXACTLY ONE POLAR END, nothing looser: the whole point of this
-// project's claim is that amphiphiles EMERGED from soup/src/rules.ts's bonding rules, so a
-// recogniser that also accepts branched clusters, two-headed chains, or headless chains would let
-// the phase map (Task 6) count assembly that never happened. Three checks per connected component
-// of the bond graph, all of them necessary:
-//  - simple path: no particle has more than two bonds (a branch means it is not a chain at all --
-//    caught by maxDegree>2 below), and the component has exactly (size-1) edges (a component with
-//    max degree <=2 but size edges is a CYCLE, not a path, and a ring has no ends for a polar
-//    particle to sit at -- caught by the edgeCount==size-1 check, which a maxDegree check alone
-//    would miss).
+// AN AMPHIPHILE IS A COMPONENT WITH EXACTLY ONE POLAR PARTICLE AND NO BRANCHING ANYWHERE ELSE,
+// nothing looser: the whole point of this project's claim is that amphiphiles EMERGED from
+// soup/src/rules.ts's bonding rules, so a recogniser that also accepts branched clusters,
+// two-headed chains, or headless chains would let the phase map (Task 6) count assembly that never
+// happened. Since "two-tails" (data/soup.json's headPlacement.chainCapacity, now up to 2) a head
+// may legitimately sit with degree 2 -- one bond to EACH tail -- so the polar particle is now
+// allowed to be a BRANCH POINT, but only that one particle: every non-polar (carbon) particle keeps
+// the same degree<=2 cap it always had (soup/wgsl/bond.wgsl's chain pool is still exactly 2 slots
+// per carbon), so the only shape a valid component can take, once the polar particle's own degree
+// is bounded the same way, is a PATH -- either the head sits at one end (a single tail, degree 1)
+// or in the interior (two tails, degree 2, i.e. a "Y" whose branch point IS the head, one arm per
+// tail). No other branch point is possible: a carbon with degree 3 (two chain bonds plus a head, or
+// three chain bonds) is rejected outright, which is exactly what catches a head buried mid-chain or
+// a genuinely branched tail. Checks per connected component of the bond graph, all necessary:
 //  - exactly one polar particle in the component (soup/src/rules.ts's Monomer.polar) -- zero heads
 //    (a bare carbon chain) or two heads (a chain capped at both ends) are both explicitly rejected
 //    by tests/soup-amphiphile.test.ts, and both are real configurations this soup's C-C/C-O rules
 //    can and do produce.
-//  - that one polar particle sits AT AN END of the path (degree <= 1 within the component), not
-//    partway along it -- a head grafted onto the middle of a carbon chain is not "one polar end",
-//    it is a T-branch through the head, which the maxDegree check already independently excludes,
-//    but this check is the one that states the requirement directly rather than as a side effect.
+//  - every NON-polar particle has degree <= 2 -- a branch anywhere but the head (a T-branch through
+//    a carbon, or a head buried mid-chain, which gives that carbon 2 chain bonds + 1 head bond =
+//    degree 3) is rejected here, independently of what the head's own degree is.
+//  - the one polar particle has degree 1 or 2 -- 0 (a bare, unbonded head) or >2 (more tails than
+//    data/soup.json's own chainCapacity should ever let form) are both rejected.
+//  - the component has exactly (size-1) edges -- a tree, not a cycle: with every degree already
+//    bounded at <=2, a cycle is the only OTHER shape those bounds would allow (a ring has no free
+//    ends for a tail to terminate at), so this check is what turns "degree-bounded" into "a path or
+//    a Y with the head at the fork", not merely "no vertex of degree >2".
 
 import type { Monomer } from './rules'
 
 /** One recognised amphiphile: `headIndex` is the polar particle's index into the `particles`
- * array findAmphiphiles was given; `chain` is the ordered sequence of non-polar particle indices
- * walked outward from the head to the chain's free end; `length` is chain.length -- the number of
- * non-polar (carbon) units, which is what soup/src/rules.ts's chemistry and the Flory-style length
- * distribution (a later task) both count by. */
+ * array findAmphiphiles was given; `chain` is every non-polar particle index in the component,
+ * ordered as tail 1 walked outward from the head followed by tail 2 (empty for a single-tailed
+ * amphiphile) -- the concatenation is what soup/src/aggregates.ts's memberIndicesOf() needs to
+ * attribute the WHOLE molecule (both tails) to one aggregate; `length` is chain.length, the total
+ * non-polar (carbon) unit count across both tails, which is what soup/src/rules.ts's chemistry and
+ * the Flory-style length distribution (a later task) both count by; `tailLengths` reports each
+ * tail's own length separately (one entry for a single-tailed amphiphile, two for a two-tailed one,
+ * in the same order as `chain`'s own concatenation) since asymmetric tails matter for shape. */
 export interface Amphiphile {
   headIndex: number
   chain: number[]
   length: number
+  tailLengths: number[]
 }
 
 /** Finds every amphiphile in a snapshot's bond graph. `particles` is the engine's flat
@@ -82,38 +96,45 @@ export function findAmphiphiles(particles: Float32Array, bonds: Uint32Array, mon
   const result: Amphiphile[] = []
   for (const members of components.values()) {
     let sumDegree = 0
-    let maxDegree = 0
     let polarCount = 0
     let polarIdx = -1
+    let violated = false
     for (const idx of members) {
       const degree = adjacency[idx].length
       sumDegree += degree
-      if (degree > maxDegree) maxDegree = degree
       if (isPolar(idx)) {
         polarCount++
         polarIdx = idx
+        if (degree < 1 || degree > 2) violated = true // bare head, or more tails than any cap allows
+      } else if (degree > 2) {
+        violated = true // branch anywhere but the head -- a T-branch, or a head buried mid-chain
       }
     }
-    if (maxDegree > 2) continue // branch -- not a chain at all
-    const edgeCount = sumDegree / 2 // each edge counted from both its endpoints above
-    if (edgeCount !== members.length - 1) continue // a ring: max degree <=2 but no free end
+    if (violated) continue
     if (polarCount !== 1) continue // no head, or more than one -- both rejected by design
-    if (adjacency[polarIdx].length > 1) continue // the one polar particle must sit at an END
-    if (members.length - 1 < 1) continue // a bare, unbonded polar particle is not a "chain"
+    const edgeCount = sumDegree / 2 // each edge counted from both its endpoints above
+    if (edgeCount !== members.length - 1) continue // a ring, the only other shape degree<=2 allows
 
-    // Walk the path outward from the polar end to build the ordered non-polar chain.
-    const chain: number[] = []
-    let prev = -1
-    let cur = polarIdx
-    for (;;) {
-      const next = adjacency[cur].find((x) => x !== prev)
-      if (next === undefined) break
-      chain.push(next)
-      prev = cur
-      cur = next
+    // Walk each of the head's own branches (one for a single tail, two for a two-tailed "Y") outward
+    // to its free end -- with every non-head degree already bounded at <=2, each branch is a simple
+    // path with no further forking, so a linear walk per branch is exhaustive.
+    const tails: number[][] = []
+    for (const start of adjacency[polarIdx]) {
+      const tail: number[] = []
+      let prev = polarIdx
+      let cur = start
+      for (;;) {
+        tail.push(cur)
+        const next = adjacency[cur].find((x) => x !== prev)
+        if (next === undefined) break
+        prev = cur
+        cur = next
+      }
+      tails.push(tail)
     }
 
-    result.push({ headIndex: polarIdx, chain, length: chain.length })
+    const chain = tails.flat()
+    result.push({ headIndex: polarIdx, chain, length: chain.length, tailLengths: tails.map((t) => t.length) })
   }
 
   return result

@@ -41,6 +41,19 @@
 // so detailed balance for co_bond/co_break is undisturbed; a C-C bond this rule forbids can never
 // have formed in the first place, so its reverse (a cc_break of a bond that never existed) never
 // needs to fire -- there is no realised transition this rule makes irreversible.
+//
+// Two tails per head (data/soup.json's headPlacement.chainCapacity, "two-tails" task, packing-
+// parameter reasoning in that file's own basis): a head's own slot claim (role==2 below) used to
+// try ONLY slot 0 -- a hardcoded single-tail cap. It now loops over BP.headChainCapacity slots
+// (0..cap-1), the exact same claim-then-rollback idiom the carbon chain pool (role==0, slots 0/1)
+// already uses for its own 2-slot cap, just driven by a uniform instead of two hand-written
+// branches. Reversibility is unchanged by this generalisation: releasePartnerSlot (below) already
+// scans all 3 of a particle's slots for the one naming the breaking partner, so breaking EITHER a
+// head's first or second tail finds and clears the right slot the same way; every C-O bond, whichever
+// slot it landed in, still has exactly one paired co_break at the same energyKT (assertRulesConsistent),
+// so raising the number of slots a head may claim adds newly REACHABLE forward transitions (a second
+// tail attaching) without touching the accept/reject ratio of any single bond attempt -- nothing this
+// change makes formable is left without its own always-available reverse.
 
 const BOND_NONE: u32 = 0xFFFFFFFFu;
 const BOND_RULES: u32 = 2u;
@@ -60,9 +73,13 @@ struct BondParams {
   slotRoleB: vec4<f32>,
   catalystKind: f32,
   // data/soup.json's headPlacement.terminalOnly, 1.0/0.0 the same way requiresCatalyst's flags are
-  // -- see tryClaimSlot() below for what it gates and why. bpPad1/bpPad2 remain unused padding.
+  // -- see tryClaimSlot() below for what it gates and why.
   headTerminalOnly: f32,
-  bpPad1: f32, bpPad2: f32,
+  // data/soup.json's headPlacement.chainCapacity -- how many chain-pool slots (0..cap-1) a head's
+  // OWN claim (tryClaimSlot's role==2 branch) may try, uploaded once from soup/src/sim.ts exactly
+  // as headTerminalOnly already is. Replaces the former bpPad1 padding float. bpPad2 remains unused.
+  headChainCapacity: f32,
+  bpPad2: f32,
 };
 @group(2) @binding(0) var<uniform> BP: BondParams;
 
@@ -122,7 +139,8 @@ fn matchRule(ti: f32, tj: f32) -> i32 {
 
 // Slot role this particle plays in rule `ruleIdx`, given its OWN kind: 0 = chain pool (try slots
 // 0,1 -- a carbon's up-to-two chain-growth bonds), 1 = head slot (slot 2 fixed -- a carbon's
-// single bond to a polar head), 2 = single slot (slot 0 fixed -- a head's own single bond). Which
+// single bond to a polar head), 2 = head's own chain pool (try slots 0..headChainCapacity-1 -- a
+// head's own up-to-`chainCapacity` tails, data/soup.json's headPlacement.chainCapacity). Which
 // code applies to which side is resolved once on the CPU from data/soup.json's monomer kinds (see
 // soup/src/sim.ts) and simply looked up here.
 fn roleOf(ruleIdx: u32, kind: f32) -> u32 {
@@ -183,8 +201,17 @@ fn tryClaimSlot(particle: u32, role: u32, partner: u32) -> i32 {
     }
     return -1;
   } else {
-    let r0 = atomicCompareExchangeWeak(&bondSlots[base + 0u], BOND_NONE, partner);
-    if (r0.exchanged) { return 0; }
+    // Head's own claim (the O side of a C-O bond). data/soup.json's headPlacement.chainCapacity:
+    // try each of this head's own slots in turn (0..cap-1) until one is free -- the same
+    // claim-via-compareExchange discipline the chain pool (role==0 above) already uses for its own
+    // fixed 2-slot cap, generalised to a runtime count instead of two hardcoded branches, so a head
+    // may end up holding up to `cap` tails (cap=2: two-tailed amphiphile, the packing-parameter
+    // geometry data/soup.json's own basis argues for).
+    let cap = u32(BP.headChainCapacity);
+    for (var s = 0u; s < cap; s = s + 1u) {
+      let r = atomicCompareExchangeWeak(&bondSlots[base + s], BOND_NONE, partner);
+      if (r.exchanged) { return i32(s); }
+    }
     return -1;
   }
 }
