@@ -230,6 +230,7 @@ function main(): void {
   const sizeSelect = document.getElementById('size-select') as HTMLSelectElement
   const boxSideInput = document.getElementById('box-side-input') as HTMLInputElement
   const particleScaleInput = document.getElementById('particle-scale-input') as HTMLInputElement
+  const headCountInput = document.getElementById('head-count-input') as HTMLInputElement
   const sizePreviewEl = document.getElementById('size-preview') as HTMLElement
   const sizeErrorEl = document.getElementById('size-error') as HTMLElement
   const stageSelect = document.getElementById('stage-select') as HTMLSelectElement
@@ -299,26 +300,54 @@ function main(): void {
   let baseStart: Record<string, number> = SIZE_PRESETS[DEFAULT_SIZE_KEY].start ?? soup.start
   boxSideInput.value = String(SIZE_PRESETS[DEFAULT_SIZE_KEY].box[0])
   particleScaleInput.value = '1'
+  headCountInput.value = String(baseStart.O)
 
   /** `baseStart` scaled by `scale` and rounded to whole particles per species -- the "particle
    * scale" control's own effect. Never negative (a scale below what rounds to 0 for every species
    * is caught by planSoupGrid's own N===0 downstream check in createSoup, not specially guarded
-   * here). */
+   * here). Its own `O` entry is only the FALLBACK default for the head-count field below -- the
+   * actual composition control overrides it, see currentSizeSelection(). */
   function scaledStart(scale: number): Record<string, number> {
     return Object.fromEntries(Object.entries(baseStart).map(([id, n]) => [id, Math.max(0, Math.round(n * scale))]))
+  }
+
+  /** Composition control: the head count (data/soup.json's monomer `O`) is exposed DIRECTLY as its
+   * own field, independent of `particleScaleInput`, rather than as a carbon-to-head RATIO. Chosen
+   * over a ratio because it reads unambiguously as a count of molecules -- the same unit the
+   * particle-count preview already shows -- with no division the reader has to do in their head to
+   * find out what a change means, and because the measurement this control exists to support (see
+   * this task's own brief) is itself phrased directly in heads ("a third and a quarter of the
+   * heads"), which maps onto this field with zero arithmetic. `particleScaleInput` still scales
+   * C/H/M together (unchanged); this field scales O on its own, so the carbon:head RATIO (what the
+   * task also offered as an alternative control) is exactly `startCounts.C / startCounts.O`, freely
+   * choosable by moving this field independently of the other two -- the ratio is a derived
+   * reading of these two direct counts, not a second control a user would have to reconcile with
+   * this one. */
+  function currentHeadCount(scaledDefault: number): number {
+    const raw = Number(headCountInput.value)
+    return Number.isFinite(raw) ? Math.round(raw) : scaledDefault
   }
 
   /** The box/startCounts the CURRENT form fields describe, regardless of whether a run has ever
    * started -- read fresh from the inputs every time (never the run's own `box`/`stepCap` state
    * below, which only updates on START) so the preview always reflects what the user is looking
    * at right now. Falls back to the tiny preset's own numbers for anything that fails to parse
-   * (empty field, non-numeric typing mid-edit) rather than propagating NaN into the preview/guard. */
+   * (empty field, non-numeric typing mid-edit) rather than propagating NaN into the preview/guard.
+   * `startCounts.O` may come back NEGATIVE here on purpose: currentHeadCount() only falls back to
+   * the scaled default for input Number() cannot parse into a finite value at all (e.g. mid-typing
+   * a bare "-" or letters) -- an empty field or a literal "0" is a genuine, valid head count of
+   * zero (not a fallback trigger), and a genuinely-typed negative number is passed through
+   * unclamped. validateSizeSelection() is what turns a negative count into a refusal, not a silent
+   * clamp, so a deliberately invalid composition is rejected with a message rather than quietly
+   * reinterpreted as something the user didn't type. */
   function currentSizeSelection(): { box: [number, number, number]; startCounts: Record<string, number> } {
     const side = Number(boxSideInput.value)
     const scale = Number(particleScaleInput.value)
     const boxSide = Number.isFinite(side) && side > 0 ? side : SIZE_PRESETS[DEFAULT_SIZE_KEY].box[0]
     const particleScale = Number.isFinite(scale) && scale > 0 ? scale : 1
-    return { box: [boxSide, boxSide, boxSide], startCounts: scaledStart(particleScale) }
+    const startCounts = scaledStart(particleScale)
+    startCounts.O = currentHeadCount(startCounts.O)
+    return { box: [boxSide, boxSide, boxSide], startCounts }
   }
 
   /** Item 3's other guard, alongside planSoupGrid's neighbour-grid check: the vesicle-closure
@@ -341,6 +370,22 @@ function main(): void {
    * flagged, no matter how fast the user clicks past the live preview). */
   function validateSizeSelection(boxNow: [number, number, number], startCounts: Record<string, number>): string | null {
     const reasons: string[] = []
+    // Composition guards, ahead of the box/grid guards below (cheap, no dependence on `box` at
+    // all, and the more directly "the user just typed something nonsensical" of the two failure
+    // classes this function reports). Both are refused rather than silently clamped/ignored --
+    // createSoup() itself would otherwise either throw a much less specific error (`startCounts.O`
+    // negative propagating into a GPU buffer size) or, for N===0, its own already-existing
+    // 'стартовый состав пуст' throw -- refusing here, before createSoup is ever called, gives the
+    // SAME guarantee this task's other two guards already have: a clear message, never a crash.
+    if (startCounts.O < 0) {
+      reasons.push(
+        `число голов (O)=${startCounts.O} — состав не может быть отрицательным; введите 0 или больше`,
+      )
+    }
+    const totalN = Object.values(startCounts).reduce((a, b) => a + b, 0)
+    if (totalN <= 0) {
+      reasons.push(`стартовый состав пуст: суммарное число частиц по всем видам равно ${totalN}`)
+    }
     const plan = planSoupGrid(boxNow, startCounts)
     if (!plan.valid) reasons.push(plan.reason!)
     const minSide = closureMinBoxSide()
@@ -363,8 +408,13 @@ function main(): void {
   function refreshSizePreview(): void {
     const { box: boxNow, startCounts } = currentSizeSelection()
     const plan = planSoupGrid(boxNow, startCounts)
+    // Per-species breakdown alongside the existing total/grid preview -- so the composition
+    // control's own effect (and the cost it implies) is visible BEFORE start, same requirement the
+    // total/grid numbers already satisfy. Order follows data/soup.json's own monomer list, not this
+    // object's insertion order, so it reads the same regardless of which field the user touched last.
+    const perSpecies = soup.monomers.map((m) => `${m.id}:${startCounts[m.id] ?? 0}`).join(' ')
     sizePreviewEl.textContent =
-      `частиц: ${plan.N} · сетка соседей: ${plan.dims[0]}×${plan.dims[1]}×${plan.dims[2]} = ${plan.ncells} ячеек`
+      `частиц: ${plan.N} (${perSpecies}) · сетка соседей: ${plan.dims[0]}×${plan.dims[1]}×${plan.dims[2]} = ${plan.ncells} ячеек`
     const reason = validateSizeSelection(boxNow, startCounts)
     sizeErrorEl.hidden = reason === null
     sizeErrorEl.textContent = reason ?? ''
@@ -375,10 +425,15 @@ function main(): void {
     baseStart = preset.start ?? soup.start
     boxSideInput.value = String(preset.box[0])
     particleScaleInput.value = '1'
+    // Presets stay the default composition too, per this task's own requirement: picking a preset
+    // resets the head-count field back to that preset's own O count, exactly like it already resets
+    // box side and particle scale -- the user can move it independently again afterward.
+    headCountInput.value = String(baseStart.O)
     refreshSizePreview()
   })
   boxSideInput.addEventListener('input', refreshSizePreview)
   particleScaleInput.addEventListener('input', refreshSizePreview)
+  headCountInput.addEventListener('input', refreshSizePreview)
   refreshSizePreview()
 
   // `monomers` is the state every run STARTS in, so offering it as a target makes the run
@@ -854,6 +909,7 @@ function main(): void {
     sizeSelect.disabled = controlsLocked
     boxSideInput.disabled = controlsLocked
     particleScaleInput.disabled = controlsLocked
+    headCountInput.disabled = controlsLocked
     stageSelect.disabled = controlsLocked
     stepCapInput.disabled = controlsLocked
   }

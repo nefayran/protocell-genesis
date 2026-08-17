@@ -48,9 +48,10 @@
      this panel silently overlap #controls' own START/PAUSE/STOP buttons (same z-index, painted on
      top since it comes later in the DOM), which doesn't just look wrong -- it eats every click
      meant for those buttons. Bumped with real headroom for the taller panel, including #size-error
-     when a refused selection makes it visible. */
+     when a refused selection makes it visible. Item "composition control" (2026-08-17) added one
+     more label/input row (#head-count-input) -- bumped again by the same one-row increment. */
   #cavity {
-    position: absolute; top: 460px; left: 12px; z-index: 2; width: 260px;
+    position: absolute; top: 495px; left: 12px; z-index: 2; width: 260px;
     background: rgba(15, 17, 20, 0.92); border: 1px solid #2b6f5e; border-radius: 8px;
     padding: 10px 14px; font-size: 12px; line-height: 1.5;
   }
@@ -66,7 +67,7 @@
      file's honesty notes for the same "show numbers, not narrative" convention every other panel
      here already follows. Positioned below #cavity, same left column. */
   #aggregates {
-    position: absolute; top: 700px; left: 12px; z-index: 2; width: 260px; max-height: 260px; overflow-y: auto;
+    position: absolute; top: 735px; left: 12px; z-index: 2; width: 260px; max-height: 260px; overflow-y: auto;
     background: rgba(15, 17, 20, 0.92); border: 1px solid #5a4a8a; border-radius: 8px;
     padding: 10px 14px; font-size: 12px; line-height: 1.5;
   }
@@ -115,8 +116,11 @@
   <label>Сторона бокса, σ
     <input id="box-side-input" type="number" min="1" step="1" />
   </label>
-  <label>Масштаб числа частиц, ×
+  <label>Масштаб числа частиц (C/H/M), ×
     <input id="particle-scale-input" type="number" min="0.1" step="0.1" />
+  </label>
+  <label>Число голов (O) — состав, не масштаб
+    <input id="head-count-input" type="number" min="0" step="1" />
   </label>
   <div id="size-preview" class="size-note"></div>
   <div id="size-error" class="size-note error" hidden></div>

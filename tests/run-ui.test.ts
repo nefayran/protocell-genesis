@@ -302,3 +302,101 @@ test('слишком малый бокс отклоняется с понятн�
   await page.click('#start-btn')
   await page.waitForFunction('window.runUI.steps > 0 && window.runUI.state === "running"')
 })
+
+// --- composition control (soup-to-vesicle, tail-length task, 2026-08-17) -------------------------
+// The user can now set the composition -- specifically the head count (data/soup.json's monomer
+// `O`) -- directly, not just box side and a global particle scale. Two things to prove: (a) a
+// composition choice actually reaches the preview and a real run (exercised, not just parsed), and
+// (b) an invalid composition (a negative head count) is refused with a clear message, the same
+// "refuse, don't crash" discipline item 3's box-size guard above already established, rather than
+// falling through to createSoup()'s own much less specific throw.
+test('состав: число голов задаётся напрямую, видно в предпросмотре и реально уменьшает бульон (item "composition")', async () => {
+  const page = await gpuPage()
+  await page.goto(new URL('/viewer/run.html', page.url()).href, { waitUntil: 'load' })
+
+  for (const id of ['head-count-input']) {
+    const handle = await page.$(`#${id}`)
+    expect(handle, `#${id} должен существовать`).not.toBeNull()
+  }
+
+  // Default (tiny preset, its own default composition) shows O:50 in the preview, per the task's
+  // own requirement that presets stay the defaults.
+  const defaultPreview = await page.evaluate(() => document.getElementById('size-preview')?.textContent ?? '')
+  expect(defaultPreview).toContain('O:50')
+
+  // A quarter of the default heads (Task Two's own reduced-head-count measurement, exercised here
+  // through the real control instead of a script bypassing it) -- the preview must show the new O
+  // count and the new (smaller) total, before anything is started.
+  await page.$eval('#head-count-input', (el) => {
+    ;(el as HTMLInputElement).value = '12'
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  const reducedPreview = await page.evaluate(() => document.getElementById('size-preview')?.textContent ?? '')
+  expect(reducedPreview).toContain('O:12')
+  expect(reducedPreview).not.toContain('O:50')
+  const errorHiddenAfterReduce = await page.evaluate(() => (document.getElementById('size-error') as HTMLElement).hidden)
+  expect(errorHiddenAfterReduce).toBe(true) // a valid, smaller head count is not a refusal
+
+  // C/H/M are untouched by this control -- only O moved (particle-scale still scales those three).
+  expect(reducedPreview).toContain('C:200')
+  expect(reducedPreview).toContain('H:200')
+  expect(reducedPreview).toContain('M:20')
+
+  // The reduced composition actually starts and runs -- not just accepted by the preview.
+  await page.$eval('#step-cap', (el) => {
+    ;(el as HTMLInputElement).value = '500'
+  })
+  await page.click('#start-btn')
+  await page.waitForFunction('window.runUI.steps > 0 && window.runUI.state === "running"')
+  await page.waitForFunction('window.runUI.state === "stopped"', { timeout: 30_000 })
+  const final = await page.evaluate(() => ({ steps: (window as any).runUI.steps, error: (window as any).runUI.error }))
+  expect(final.error).toBeNull()
+  expect(final.steps).toBe(500)
+})
+
+test('состав: отрицательное число голов отклоняется с понятным сообщением, а не рушит прогон (item "composition")', async () => {
+  const page = await gpuPage()
+  const consoleErrors: string[] = []
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text())
+  })
+  page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e.message}`))
+  await page.goto(new URL('/viewer/run.html', page.url()).href, { waitUntil: 'load' })
+
+  await page.$eval('#head-count-input', (el) => {
+    ;(el as HTMLInputElement).value = '-5'
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  const preview = await page.evaluate(() => ({
+    errorHidden: (document.getElementById('size-error') as HTMLElement).hidden,
+    errorText: document.getElementById('size-error')?.textContent ?? '',
+  }))
+  expect(preview.errorHidden).toBe(false) // refused already visible in the live preview, before any click
+  expect(preview.errorText).toContain('отрицательным')
+
+  await page.click('#start-btn')
+  // Give any (incorrect) async start path a moment to misbehave before asserting nothing happened.
+  await new Promise((r) => setTimeout(r, 500))
+  const after = await page.evaluate(() => ({
+    state: (window as any).runUI.state,
+    steps: (window as any).runUI.steps,
+    errorHidden: (document.getElementById('size-error') as HTMLElement).hidden,
+  }))
+  expect(after.state).toBe('idle') // refused before starting -- not 'error', not 'running'
+  expect(after.steps).toBe(0)
+  expect(after.errorHidden).toBe(false)
+  expect(consoleErrors).toEqual([]) // refused cleanly -- no uncaught exception anywhere
+
+  // Recovery: a valid head count clears the refusal and a run starts fine.
+  await page.$eval('#head-count-input', (el) => {
+    ;(el as HTMLInputElement).value = '10'
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  const cleared = await page.evaluate(() => (document.getElementById('size-error') as HTMLElement).hidden)
+  expect(cleared).toBe(true)
+  await page.$eval('#step-cap', (el) => {
+    ;(el as HTMLInputElement).value = '500'
+  })
+  await page.click('#start-btn')
+  await page.waitForFunction('window.runUI.steps > 0 && window.runUI.state === "running"')
+})
