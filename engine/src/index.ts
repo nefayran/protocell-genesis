@@ -24,7 +24,7 @@ import {
 } from './spectrum'
 
 export { probeForces } from './forces'
-export { createSystem } from './sim'
+export { createSystem, scaleLateralRigid } from './sim'
 export type { CreateSystemOpts, Layout, System } from './sim'
 // Task 2: the soup's own bond-forming/breaking dynamics, re-exported here so tests/runner.html's
 // `window.api` (a straight `import * as api from './index.ts'`) can reach it the same way it
