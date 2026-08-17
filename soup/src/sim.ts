@@ -672,8 +672,14 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // before calling this function at all, not a second copy that could drift from this one.
   const plan = planSoupGrid(box, startCounts)
   if (!plan.valid) throw new Error(plan.reason!)
-  const dims = plan.dims
-  const ncells = plan.ncells
+  // `dims`/`ncells` are NOT fixed for the system's lifetime: resizeSoupGrid() (defined once the GPU
+  // buffers/bind groups it touches exist, below) recomputes and reallocates them whenever a dry-wet
+  // box change (applyBoxScaleOnce) crosses a cell-count bracket -- mirrors engine/src/sim.ts's own
+  // dims/ncells, which areaMove()'s resizeGrid recomputes the same way for the membrane's area move.
+  // `cellSize`/`effectiveWalkRadius` above stay fixed for the system's lifetime (they depend only on
+  // data/soup.json's species/neighborGrid/verletList settings, never on the box).
+  let dims = plan.dims
+  let ncells = plan.ncells
 
   // Dry-wet cycling (task 'wet-dry-cycle', data/soup.json's dryWetCycle.basis): resolved ONCE here,
   // at creation time, from the file's own schedule plus this call's box/N -- never touched again
@@ -693,23 +699,19 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
       )
     }
     dryBox = computeDryBox(box, N, dwc.targetDryDensity)
-    // Guard (task requirement 3): the neighbour grid must stay valid at the SMALLEST box in the
-    // cycle, AND -- since this implementation only rewrites gridUniform's box floats on a box
-    // change, never reallocating countsBuf/cellStartBuf/cursorBuf/verletListBuf (all sized from
-    // `dims`/`ncells` ONCE, above) -- the dry box must fall in the SAME cell-count bracket as the
-    // wet one, or those fixed-size buffers would silently stop matching the live grid. Both
-    // conditions are checked for real (not assumed from the density gap alone): throws, naming the
-    // actual dims on each side, rather than truncating anything.
+    // Guard: the neighbour grid must stay VALID (task requirement 2 -- "fewer than three cells on a
+    // periodic axis, or a box too small for the minimum-image convention" -- exactly planSoupGrid's
+    // own `valid`, generalised from a fixed "3" to this soup's own minCells=2*effectiveWalkRadius+1)
+    // at the smallest box the cycle visits. A box change that merely CHANGES the cell count (wet
+    // dims != dry dims) is deliberately NOT rejected here any more: resizeSoupGrid (below, used by
+    // applyBoxScaleOnce) now destroys and reallocates the ncells-sized buffers and rebuilds every
+    // bind group that references them whenever dims actually changes, mirroring
+    // engine/src/sim.ts's own resizeGrid -- the SAME capability this task adds, generalised from the
+    // membrane's area move to the soup's dry-wet cycle. planSoupGrid's `valid` is the one thing a
+    // reallocation cannot fix (a genuinely invalid geometry, not a merely-different-but-legal cell
+    // count), so it remains the sole guard here.
     const dryPlan = planSoupGrid(dryBox, startCounts)
     if (!dryPlan.valid) throw new Error(dryPlan.reason!)
-    if (dryPlan.dims[0] !== dims[0] || dryPlan.dims[1] !== dims[1] || dryPlan.dims[2] !== dims[2]) {
-      throw new Error(
-        `data/soup.json: dryWetCycle.targetDryDensity=${dwc.targetDryDensity} сжимает box до [${dryBox.map((x) => x.toFixed(4))}], ` +
-          `меняя число ячеек сетки соседей (влажный dims=[${dims}] -> сухой dims=[${dryPlan.dims}]) -- этот механизм переписывает только ` +
-          `box-униформ, не перестраивает буферы сетки/списка Верле, поэтому смена dims здесь -- ошибка выбора амплитуды/box, не то, что ` +
-          `можно тихо пережить; уменьшите targetDryDensity или увеличьте box так, чтобы влажный и сухой box остались в одной ячеечной корзине`,
-      )
-    }
     cycleCfg = { periodSteps: dwc.periodSteps, dryFraction: dwc.dryFraction, cycles: dwc.cycles }
   }
 
@@ -793,9 +795,12 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   const velBuf = storageBuffer(device, velocities0)
   const forceBuf = storageBuffer(device, new Float32Array(N * 4))
   const cellsBuf = storageBuffer(device, new Float32Array(N))
-  const countsBuf = storageBuffer(device, new Float32Array(ncells))
-  const cellStartBuf = storageBuffer(device, new Float32Array(ncells + 1))
-  const cursorBuf = storageBuffer(device, new Float32Array(ncells))
+  // Sized ncells (not N) -- reallocated by resizeSoupGrid() below whenever a dry-wet box change
+  // moves dims to a different cell-count bracket, exactly like engine/src/sim.ts's own
+  // countsBuf/cellStartBuf/cursorBuf under areaMove()'s resizeGrid.
+  let countsBuf = storageBuffer(device, new Float32Array(ncells))
+  let cellStartBuf = storageBuffer(device, new Float32Array(ncells + 1))
+  let cursorBuf = storageBuffer(device, new Float32Array(ncells))
   // perf2-report.md, candidate (b): cell-sorted GATHER of positions, rebuilt every grid rebuild
   // (i.e. every step) from the SAME cellIdx permutation fill_main already produces -- see
   // soup_gather_sorted_main in soup/wgsl/step.wgsl. Positions/velocities/bondSlots themselves stay
@@ -983,32 +988,150 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     device.createBindGroup({ label: `${pipeline.label}@${group}`, layout: pipeline.getBindGroupLayout(group), entries })
   const buf = (b: GPUBuffer) => ({ buffer: b })
 
-  // --- grid rebuild (engine/wgsl/neighbor.wgsl, unchanged) ---------------------------------------
-  const clearCountsBind = bind(pipe.clearCounts, 0, [
-    { binding: 0, resource: buf(gridUniform) },
-    { binding: 2, resource: buf(countsBuf) },
-  ])
-  const countBind = bind(pipe.count, 0, [
-    { binding: 0, resource: buf(gridUniform) },
-    { binding: 1, resource: buf(posBuf) },
-    { binding: 2, resource: buf(countsBuf) },
-  ])
-  const prefixBind = bind(pipe.prefix, 0, [
-    { binding: 0, resource: buf(gridUniform) },
-    { binding: 2, resource: buf(countsBuf) },
-    { binding: 4, resource: buf(cellStartBuf) },
-    { binding: 5, resource: buf(cursorBuf) },
-  ])
-  const fillBind = bind(pipe.fill, 0, [
-    { binding: 0, resource: buf(gridUniform) },
-    { binding: 1, resource: buf(posBuf) },
-    { binding: 3, resource: buf(cellsBuf) },
-    { binding: 5, resource: buf(cursorBuf) },
-  ])
-  const wgCells = Math.ceil(ncells / 64)
+  // --- bind groups that reference the ncells-sized buffers (countsBuf/cellStartBuf/cursorBuf) ----
+  // Grouped together here -- even though they belong to several different kernels (grid rebuild,
+  // soup force, bond formation, the perf2 diagnostic, the Verlet-list build) -- because ALL of them
+  // must be rebuilt together by resizeSoupGrid() (below) whenever countsBuf/cellStartBuf/cursorBuf
+  // are reallocated: a WebGPU bind group is a fixed reference to specific buffer OBJECTS, so
+  // reassigning the `let` that holds a buffer does nothing to a bind group already created against
+  // the old one. Exactly the discipline engine/src/sim.ts's own rebindGridDependent()/resizeGrid()
+  // established for the membrane's area move, generalised here to this soup's own larger set of
+  // grid-dependent kernels (it has bond formation and a Verlet-list build the membrane engine does
+  // not). soupForceBruteGroup1/soupForceListGroup1/bondFormListGroup1 (below, NOT here) reference
+  // NEITHER buffer -- the brute-force kernel walks no grid at all, and the two *List kernels walk
+  // the Verlet list (sized N*listCapacity, independent of ncells) instead of the coarse grid -- so
+  // none of those three ever need rebinding on a resize.
+  let clearCountsBind!: GPUBindGroup
+  let countBind!: GPUBindGroup
+  let prefixBind!: GPUBindGroup
+  let fillBind!: GPUBindGroup
+  let soupForceGroup1!: GPUBindGroup
+  let bondFormGroup1!: GPUBindGroup
+  let forceStatsGroup1!: GPUBindGroup
+  let buildVerletListBind!: GPUBindGroup
+  let wgCells = 0
+
+  function rebindGridDependent(): void {
+    // --- grid rebuild (engine/wgsl/neighbor.wgsl, unchanged) --------------------------------------
+    clearCountsBind = bind(pipe.clearCounts, 0, [
+      { binding: 0, resource: buf(gridUniform) },
+      { binding: 2, resource: buf(countsBuf) },
+    ])
+    countBind = bind(pipe.count, 0, [
+      { binding: 0, resource: buf(gridUniform) },
+      { binding: 1, resource: buf(posBuf) },
+      { binding: 2, resource: buf(countsBuf) },
+    ])
+    prefixBind = bind(pipe.prefix, 0, [
+      { binding: 0, resource: buf(gridUniform) },
+      { binding: 2, resource: buf(countsBuf) },
+      { binding: 4, resource: buf(cellStartBuf) },
+      { binding: 5, resource: buf(cursorBuf) },
+    ])
+    fillBind = bind(pipe.fill, 0, [
+      { binding: 0, resource: buf(gridUniform) },
+      { binding: 1, resource: buf(posBuf) },
+      { binding: 3, resource: buf(cellsBuf) },
+      { binding: 5, resource: buf(cursorBuf) },
+    ])
+    // --- soup force (forces.wgsl + step.wgsl), grid-walk variant ----------------------------------
+    soupForceGroup1 = bind(pipe.soupForce, 1, [
+      { binding: 0, resource: buf(posBuf) },
+      { binding: 1, resource: buf(forceBuf) },
+      { binding: 3, resource: buf(gridUniform) },
+      { binding: 4, resource: buf(cellStartBuf) },
+      { binding: 5, resource: buf(cellsBuf) },
+      { binding: 7, resource: buf(bondSlotsBuf) },
+      { binding: 8, resource: buf(speciesUniform) },
+      { binding: 13, resource: buf(posSortedBuf) },
+      // Surface growth / adsorption (adsorption-report.md): centerLink, read-only here
+      // (soup/wgsl/step.wgsl's centerLinkRO) for the adsorption tether's own FENE contribution.
+      { binding: 20, resource: buf(centerLinkBuf) },
+    ])
+    // --- bond formation (forces.wgsl + bond.wgsl), grid-walk variant -----------------------------
+    bondFormGroup1 = bind(pipe.bondForm, 1, [
+      { binding: 0, resource: buf(posBuf) },
+      { binding: 3, resource: buf(gridUniform) },
+      { binding: 4, resource: buf(cellStartBuf) },
+      { binding: 5, resource: buf(cellsBuf) },
+      { binding: 6, resource: buf(bondSlotsBuf) },
+      { binding: 7, resource: buf(speciesUniform) },
+      { binding: 8, resource: buf(eventsBuf) },
+      { binding: 9, resource: buf(bondRngBuf) },
+      { binding: 13, resource: buf(posSortedBuf) },
+      { binding: 20, resource: buf(centerLinkBuf) },
+      { binding: 21, resource: buf(centerHeldStepsBuf) },
+      { binding: 22, resource: buf(desorbEventsBuf) },
+    ])
+    // perf2-report.md, STEP 1 diagnosis: soup_force_stats_main's own group1 -- same grid buffers as
+    // soup_force_main's group1 above.
+    forceStatsGroup1 = bind(pipe.forceStats, 1, [
+      { binding: 0, resource: buf(posBuf) },
+      { binding: 3, resource: buf(gridUniform) },
+      { binding: 4, resource: buf(cellStartBuf) },
+      { binding: 5, resource: buf(cellsBuf) },
+      { binding: 8, resource: buf(speciesUniform) },
+    ])
+    // perf2-report.md, candidate (c): builds the Verlet list FROM the coarse grid (cellStartBuf) --
+    // must be rebuilt whenever that grid's own buffers are.
+    buildVerletListBind = bind(pipe.buildVerletList, 1, [
+      { binding: 0, resource: buf(posBuf) },
+      { binding: 3, resource: buf(gridUniform) },
+      { binding: 4, resource: buf(cellStartBuf) },
+      { binding: 5, resource: buf(cellsBuf) },
+      { binding: 14, resource: buf(verletListBuf) },
+      { binding: 15, resource: buf(verletCountBuf) },
+      { binding: 16, resource: buf(verletOverflowBuf) },
+      { binding: 19, resource: buf(verletUniform) },
+    ])
+    wgCells = Math.ceil(ncells / 64)
+  }
+  rebindGridDependent()
+
+  /** Dry-wet cycling's own grid-rebuild capability (task 'grid-rebuild'), generalising
+   * engine/src/sim.ts's own resizeGrid() (added there for the membrane's area move, reviewed) to the
+   * soup engine: recomputes dims for `newBox` via planSoupGrid -- the single source of truth for
+   * grid validity, the SAME derivation createSoup used at construction time -- and, if the cell
+   * count actually changed, destroys and reallocates countsBuf/cellStartBuf/cursorBuf and rebuilds
+   * every bind group referencing them (rebindGridDependent, above), then rewrites the grid uniform
+   * (dims + box) unconditionally. Called by applyBoxScaleOnce after every dry-wet transition
+   * increment -- this is what removes the blocker wet-dry-cycle-report.md measured: a box change
+   * that moves dims into a different cell-count bracket (the FULL-scale case at box 46,
+   * targetDryDensity=0.6: wet dims=[15,15,15] -> dry dims=[14,14,14]) no longer desyncs the
+   * fixed-size grid buffers from the live box, it reallocates them to match. planSoupGrid's own
+   * `valid` is the ONLY thing this cannot paper over -- a box with fewer than minCells cells on some
+   * axis, or one that violates the minimum-image convention, is a genuinely invalid geometry, not a
+   * cell-count change a reallocation can fix, so it still throws (task requirement 2: "let it fire
+   * only on a genuinely invalid geometry ... not on a legal change of cell count"). The Verlet list
+   * itself (verletListBuf, sized N*listCapacity -- independent of ncells) is never touched here; its
+   * own rebuild (needed because neighbourhoods move under any box change) is the caller's job, done
+   * immediately afterward by applyBoxScaleOnce's own encodeVerletRebuild call, whose
+   * assertVerletSafety check afterward is what keeps task requirement 3 (the overflow guard "must
+   * stay in force") true across a resize. */
+  function resizeSoupGrid(newBox: [number, number, number]): void {
+    const newPlan = planSoupGrid(newBox, startCounts)
+    if (!newPlan.valid) throw new Error(newPlan.reason!)
+    if (newPlan.dims[0] !== dims[0] || newPlan.dims[1] !== dims[1] || newPlan.dims[2] !== dims[2]) {
+      countsBuf.destroy()
+      cellStartBuf.destroy()
+      cursorBuf.destroy()
+      dims = newPlan.dims
+      ncells = newPlan.ncells
+      countsBuf = storageBuffer(device, new Float32Array(ncells))
+      cellStartBuf = storageBuffer(device, new Float32Array(ncells + 1))
+      cursorBuf = storageBuffer(device, new Float32Array(ncells))
+      rebindGridDependent()
+    }
+    const bytes = new ArrayBuffer(32)
+    new Uint32Array(bytes, 0, 4).set([dims[0], dims[1], dims[2], effectiveWalkRadius])
+    new Float32Array(bytes, 16, 4).set([newBox[0], newBox[1], newBox[2], 0])
+    device.queue.writeBuffer(gridUniform, 0, bytes)
+  }
 
   // perf2-report.md, candidate (b): gather bind group, only group 1 (no Params uniform needed for
   // a plain copy) -- pos2 (read) + cellIdx (read, the permutation) + posSortedRW (write target).
+  // cellsBuf is sized N (the permutation, one slot per bead), never reallocated by resizeSoupGrid --
+  // this bind group is unaffected by ncells and does not need rebinding.
   const gatherSortedBind = bind(pipe.gatherSorted, 1, [
     { binding: 0, resource: buf(posBuf) },
     { binding: 5, resource: buf(cellsBuf) },
@@ -1017,19 +1140,6 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
 
   // --- soup force + wrap (forces.wgsl + step.wgsl) -----------------------------------------------
   const soupForceGroup0 = bind(pipe.soupForce, 0, [{ binding: 0, resource: buf(paramsUniform) }])
-  const soupForceGroup1 = bind(pipe.soupForce, 1, [
-    { binding: 0, resource: buf(posBuf) },
-    { binding: 1, resource: buf(forceBuf) },
-    { binding: 3, resource: buf(gridUniform) },
-    { binding: 4, resource: buf(cellStartBuf) },
-    { binding: 5, resource: buf(cellsBuf) },
-    { binding: 7, resource: buf(bondSlotsBuf) },
-    { binding: 8, resource: buf(speciesUniform) },
-    { binding: 13, resource: buf(posSortedBuf) },
-    // Surface growth / adsorption (adsorption-report.md): centerLink, read-only here
-    // (soup/wgsl/step.wgsl's centerLinkRO) for the adsorption tether's own FENE contribution.
-    { binding: 20, resource: buf(centerLinkBuf) },
-  ])
   // perf2-report.md correctness gate: O(N^2) reference, no grid buffers needed at all. Its own
   // group0 -- NOT soupForceGroup0 -- because 'layout: auto' gives every pipeline a DISTINCT layout
   // object even when the referenced uniform is identical; reusing another pipeline's bind group
@@ -1059,20 +1169,6 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
 
   // --- bond formation/breaking (forces.wgsl + bond.wgsl) -----------------------------------------
   const bondFormGroup0 = bind(pipe.bondForm, 0, [{ binding: 0, resource: buf(paramsUniform) }])
-  const bondFormGroup1 = bind(pipe.bondForm, 1, [
-    { binding: 0, resource: buf(posBuf) },
-    { binding: 3, resource: buf(gridUniform) },
-    { binding: 4, resource: buf(cellStartBuf) },
-    { binding: 5, resource: buf(cellsBuf) },
-    { binding: 6, resource: buf(bondSlotsBuf) },
-    { binding: 7, resource: buf(speciesUniform) },
-    { binding: 8, resource: buf(eventsBuf) },
-    { binding: 9, resource: buf(bondRngBuf) },
-    { binding: 13, resource: buf(posSortedBuf) },
-    { binding: 20, resource: buf(centerLinkBuf) },
-    { binding: 21, resource: buf(centerHeldStepsBuf) },
-    { binding: 22, resource: buf(desorbEventsBuf) },
-  ])
   const bondFormGroup2 = bind(pipe.bondForm, 2, [{ binding: 0, resource: buf(bondParamsUniform) }])
   const bondBreakGroup1 = bind(pipe.bondBreak, 1, [
     { binding: 0, resource: buf(posBuf) },
@@ -1084,30 +1180,15 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
 
   // perf2-report.md, STEP 1 diagnosis: bind groups for soup_force_stats_main -- reuses exactly the
   // same buffers soup_force_main's group0/1 do (it needs P.sigma/P.b_tt/P.wc via Params and the
-  // same grid), plus its own group 3 output.
+  // same grid), plus its own group 3 output. forceStatsGroup1 itself lives in rebindGridDependent
+  // above (it references cellStartBuf).
   const forceStatsGroup0 = bind(pipe.forceStats, 0, [{ binding: 0, resource: buf(paramsUniform) }])
-  const forceStatsGroup1 = bind(pipe.forceStats, 1, [
-    { binding: 0, resource: buf(posBuf) },
-    { binding: 3, resource: buf(gridUniform) },
-    { binding: 4, resource: buf(cellStartBuf) },
-    { binding: 5, resource: buf(cellsBuf) },
-    { binding: 8, resource: buf(speciesUniform) },
-  ])
   const forceStatsGroup3 = bind(pipe.forceStats, 3, [{ binding: 0, resource: buf(statsBuf) }])
 
-  // perf2-report.md, candidate (c): Verlet list bind groups. buildVerletList/snapshotPositions/
-  // resetMaxDrift/maxDrift never reference P (no group 0 needed) -- only the geometry/positions
-  // and their own list buffers.
-  const buildVerletListBind = bind(pipe.buildVerletList, 1, [
-    { binding: 0, resource: buf(posBuf) },
-    { binding: 3, resource: buf(gridUniform) },
-    { binding: 4, resource: buf(cellStartBuf) },
-    { binding: 5, resource: buf(cellsBuf) },
-    { binding: 14, resource: buf(verletListBuf) },
-    { binding: 15, resource: buf(verletCountBuf) },
-    { binding: 16, resource: buf(verletOverflowBuf) },
-    { binding: 19, resource: buf(verletUniform) },
-  ])
+  // perf2-report.md, candidate (c): Verlet list bind groups. buildVerletListBind itself lives in
+  // rebindGridDependent above (it references cellStartBuf); snapshotPositions/resetMaxDrift/
+  // maxDrift never reference P (no group 0 needed) -- only the geometry/positions and their own list
+  // buffers, none of them ncells-sized, so none need rebinding on a resize.
   const snapshotPositionsBind = bind(pipe.snapshotPositions, 1, [
     { binding: 0, resource: buf(posBuf) },
     { binding: 17, resource: buf(posAtRebuildBuf) },
@@ -1412,7 +1493,13 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
 
     device.queue.writeBuffer(posBuf, 0, after)
     liveBox = targetBox
-    device.queue.writeBuffer(gridUniform, 16, new Float32Array([targetBox[0], targetBox[1], targetBox[2], 0]))
+    // resizeSoupGrid (task 'grid-rebuild', generalising engine/src/sim.ts's own resizeGrid):
+    // recomputes dims for targetBox and, if the cell count changed, destroys/reallocates
+    // countsBuf/cellStartBuf/cursorBuf and rebuilds every bind group referencing them, THEN rewrites
+    // gridUniform's dims+box -- replaces this call's former bare `writeBuffer(gridUniform, 16, ...)`
+    // (box floats only), which is exactly what let a dims change silently desync the fixed-size grid
+    // buffers from the live box (wet-dry-cycle-report.md's own measured blocker at box 46).
+    resizeSoupGrid(targetBox)
 
     // Force an immediate rebuild (and, when the Verlet list is enabled, a fresh drift-safety
     // snapshot) so the NEXT real step's force/bond-attempt pass sees the density this call just
@@ -1421,7 +1508,9 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     // rebuilds the grid after every trial, accepted or not (its own comment: "the box the grid's
     // cell/box uniform refers to may have changed"). Also where the Verlet list overflow guard
     // (task requirement 3) gets its first chance to fire for this box, immediately rather than
-    // waiting up to `verletList.rebuildEvery` real steps for the next scheduled rebuild.
+    // waiting up to `verletList.rebuildEvery` real steps for the next scheduled rebuild -- now ALSO
+    // exercised against a freshly reallocated grid, not merely a rewritten uniform, whenever this
+    // box change actually crossed a cell-count bracket.
     const enc = device.createCommandEncoder()
     const pass = enc.beginComputePass()
     if (verlet.enabled) {

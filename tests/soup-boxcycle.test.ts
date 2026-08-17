@@ -6,6 +6,7 @@ import {
   scaleMoleculesRigid,
   type CycleSchedule,
 } from '../soup/src/sim'
+import { findBracketCrossingBox } from './helpers/gridSearch'
 
 // Task 'wet-dry-cycle': pure, GPU-free checks that a box change (the dry-wet cycle's own mechanism)
 // preserves every intramolecular distance exactly -- the discipline this project's engine/src/sim.ts
@@ -177,4 +178,54 @@ test('cyclePhaseAt/nextCycleTransition: расписание wet-first-then-dry 
   expect(nextCycleTransition(24999, cfg)).toBe(25000)
   expect(nextCycleTransition(249999, cfg)).toBe(250000)
   expect(nextCycleTransition(250000, cfg)).toBe(Infinity) // cycling is over -- no further transitions
+})
+
+// Task 'grid-rebuild': the property that motivated the whole task -- a box change which moves the
+// neighbour grid's cell count into a DIFFERENT bracket (exactly the class createSoup's own guard
+// used to reject outright, wet-dry-cycle-report.md's measured blocker at box 46) must STILL leave
+// every intramolecular distance exactly unchanged and lose no particle, the same guarantee
+// scaleMoleculesRigid already gives for a box change that keeps the SAME bracket (the tests above).
+// scaleMoleculesRigid itself is grid-agnostic (a pure coordinate map -- it never reads dims/ncells),
+// so this test's job is only to confirm a REAL bracket-crossing pair exists and that the guarantee
+// holds across it, not to re-derive scaleMoleculesRigid's own correctness a second time.
+test('box, реально меняющий число ячеек сетки соседей (findBracketCrossingBox), не портит внутримолекулярные расстояния и число частиц', () => {
+  const { box, dryBox, wetDims, dryDims } = findBracketCrossingBox()
+  // Sanity: this really is a bracket crossing, not a vacuous case that would let a broken fixture
+  // pass silently.
+  expect(dryDims).not.toEqual(wetDims)
+
+  // Same topology mix as buildFixture() above (branch point, plain chain, unbonded singleton,
+  // boundary-straddling pair), but parameterised on the REAL box findBracketCrossingBox found
+  // (buildFixture's own [20,20,20] would not fit inside a smaller wet box) -- every bonded pair is
+  // placed ~1 sigma apart, matching a real covalent bond and staying far under half of even the
+  // smallest box this search range (side>=12) can return, exactly the discipline this map depends
+  // on (see the file header's own diagnosis of the single-reference aliasing bug).
+  const n = 10
+  const positions = new Float32Array(n * 4)
+  const set = (i: number, x: number, y: number, z: number) => {
+    positions[i * 4] = x
+    positions[i * 4 + 1] = y
+    positions[i * 4 + 2] = z
+    positions[i * 4 + 3] = 0
+  }
+  set(0, 5.0, 5.0, 5.0) // tail 1
+  set(1, 6.0, 5.0, 5.0) // head (branch point)
+  set(2, 6.0, 6.0, 5.0) // tail 2
+  set(3, box[0] - 8.0, box[1] - 8.0, box[2] - 8.0)
+  set(4, box[0] - 7.0, box[1] - 8.0, box[2] - 8.0)
+  set(5, box[0] - 7.0, box[1] - 7.0, box[2] - 8.0)
+  set(6, box[0] - 7.0, box[1] - 7.0, box[2] - 7.0)
+  set(7, 2.0, box[1] - 3.0, 3.0) // unbonded singleton
+  set(8, 0.4, 8.0, 8.0) // straddles x=0
+  set(9, box[0] - 0.4, 8.0, 8.0) // straddles x=box[0] -- mi(8-9) is short, the raw difference is not
+  const bonds = new Uint32Array([0, 1, 1, 2, 3, 4, 4, 5, 5, 6, 8, 9])
+  const before = allBondDistances(positions, box, bonds)
+
+  const after = scaleMoleculesRigid(positions, bonds, box, dryBox)
+
+  expect(after.length).toBe(positions.length) // no particle created or destroyed by the resize
+  const afterDist = allBondDistances(after, dryBox, bonds)
+  for (let k = 0; k < before.length; k++) {
+    expect(afterDist[k]).toBeCloseTo(before[k], 5)
+  }
 })
