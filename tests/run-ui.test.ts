@@ -400,3 +400,42 @@ test('состав: отрицательное число голов откло�
   await page.click('#start-btn')
   await page.waitForFunction('window.runUI.steps > 0 && window.runUI.state === "running"')
 })
+
+// --- ocean-look task (2026-08) --------------------------------------------------------------------
+// The scene got a depth-graded background, water-like lighting/materials and a drifting caustic
+// backdrop (all in viewer/run.ts, see paintOceanBackdrop/frameCamera/buildMeshes there). None of
+// that is allowed to break what already worked: the run still starts and advances real rendered
+// frames (sceneDebug.renderedFrameCount, the same counter used for this task's own before/after
+// frame-rate measurement), and every honesty note (#honesty-note, #cavity-honesty inside #cavity,
+// #atom-badge) is still present in the DOM -- only the background/material styling changed, never
+// their text or existence. A screenshot proves something real (not a blank canvas) is on screen.
+test('океанский фон: прогон стартует и рисует кадры, заметки честности на месте, скриншот нетривиален (ocean-look)', async () => {
+  const page = await gpuPage()
+  await page.goto(new URL('/viewer/run.html', page.url()).href, { waitUntil: 'load' })
+
+  // Honesty notes still exist in the DOM, unchanged by the new background/material styling.
+  for (const id of ['honesty-note', 'cavity-honesty', 'atom-badge']) {
+    const handle = await page.$(`#${id}`)
+    expect(handle, `#${id} должен существовать`).not.toBeNull()
+  }
+
+  await page.$eval('#step-cap', (el) => {
+    ;(el as HTMLInputElement).value = '500'
+  })
+  await page.click('#start-btn')
+  await page.waitForFunction('window.runUI.steps > 0 && window.runUI.state === "running"')
+
+  // Real rendered frames are still being produced with the new background in place.
+  const frames0 = await page.evaluate(() => (window as any).sceneDebug.renderedFrameCount)
+  await page.waitForFunction(`window.sceneDebug.renderedFrameCount > ${frames0}`)
+
+  // A screenshot is non-trivial (not a blank/solid canvas) -- same size floor as tests/viewer.test.ts
+  // uses for the same purpose.
+  const shot = await page.screenshot({ encoding: 'binary' })
+  expect(shot.length).toBeGreaterThan(5000)
+
+  await page.waitForFunction('window.runUI.state === "stopped"', { timeout: 30_000 })
+  const final = await page.evaluate(() => ({ steps: (window as any).runUI.steps, error: (window as any).runUI.error }))
+  expect(final.error).toBeNull()
+  expect(final.steps).toBe(500)
+})

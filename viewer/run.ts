@@ -478,16 +478,68 @@ function main(): void {
   renderer.setSize(window.innerWidth, window.innerHeight)
 
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x0b0d10)
+
+  // --- ocean backdrop: depth-graded gradient + drifting caustic bands, BACKGROUND ONLY -----------
+  // scene.background is set to a small CanvasTexture (32x256 -- three.js always stretches a plain
+  // Texture background to cover the whole canvas, so the SOURCE image can be tiny and cheap to
+  // redraw) instead of a flat colour. paintOceanBackdrop() below is the only thing that ever writes
+  // into this canvas/texture; it never reaches into `scene`'s real content, `particles`, or any
+  // InstancedMesh -- the vertical gradient (lighter near the top of the texture = "toward the
+  // surface", darker toward the bottom = "deeper") and the faint sine-driven bands standing in for
+  // caustic ripples/light shafts are the WHOLE effect, and they live only on this texture's pixels.
+  // Redrawn once per rendered frame (same RENDER_INTERVAL_MS cadence as everything else -- see the
+  // render loop), which is where the "gentle ambient motion" comes from; the canvas itself is far
+  // too small for that redraw to register against the actual per-particle cost of a frame.
+  const bgCanvas = document.createElement('canvas')
+  bgCanvas.width = 32
+  bgCanvas.height = 256
+  const bgCtx = bgCanvas.getContext('2d') as CanvasRenderingContext2D
+  const bgTexture = new THREE.CanvasTexture(bgCanvas)
+  scene.background = bgTexture
+
+  const OCEAN_SURFACE_RGB = [26, 66, 74] as const
+  const OCEAN_DEEP_RGB = [4, 9, 18] as const
+  function paintOceanBackdrop(tMs: number): void {
+    const w = bgCanvas.width
+    const h = bgCanvas.height
+    const grad = bgCtx.createLinearGradient(0, 0, 0, h)
+    grad.addColorStop(0, `rgb(${OCEAN_SURFACE_RGB.join(',')})`)
+    grad.addColorStop(1, `rgb(${OCEAN_DEEP_RGB.join(',')})`)
+    bgCtx.fillStyle = grad
+    bgCtx.fillRect(0, 0, w, h)
+
+    // Faint drifting bands standing in for caustic ripples/light shafts -- decoration on this
+    // texture alone, never mistakable for a monomer/bond/atom (those are drawn as actual 3D
+    // geometry elsewhere; this is flat, blurred, and always sits behind everything else).
+    const t = tMs / 1000
+    bgCtx.globalCompositeOperation = 'lighter'
+    for (let i = 0; i < 3; i++) {
+      const y = ((Math.sin(t * 0.12 + i * 2.1) * 0.5 + 0.5) * 0.75 + 0.05) * h
+      const alpha = 0.05 + 0.03 * Math.sin(t * 0.35 + i * 1.3)
+      bgCtx.fillStyle = `rgba(150, 220, 210, ${Math.max(0, alpha)})`
+      bgCtx.fillRect(0, y, w, Math.max(2, h * 0.03))
+    }
+    bgCtx.globalCompositeOperation = 'source-over'
+    bgTexture.needsUpdate = true
+  }
+  paintOceanBackdrop(0)
 
   const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000)
   const controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.7))
-  const sun = new THREE.DirectionalLight(0xffffff, 0.9)
-  sun.position.set(1, 1.4, 1)
-  scene.add(sun)
+  // Light from above (soft key, slightly warm-white like sunlight filtered through water) plus a
+  // cooler, dimmer fill from below (as if bounced back up through the water column) -- replaces the
+  // old single flat ambient+sun pair. Three light objects total, still a fixed, particle-count-
+  // independent shading cost. scene.fog (set in frameCamera below, since it depends on the box's own
+  // size) gives distant particles the same water-haze falloff on top of this.
+  scene.add(new THREE.AmbientLight(0xbfe4ff, 0.35))
+  const keyLight = new THREE.DirectionalLight(0xeaf7ff, 0.85)
+  keyLight.position.set(0.6, 1.6, 0.5)
+  scene.add(keyLight)
+  const fillLight = new THREE.DirectionalLight(0x2f7a92, 0.3)
+  fillLight.position.set(-0.4, -1.3, -0.3)
+  scene.add(fillLight)
 
   /** Item 2 (2026-08 UI-fixes task): the near/far planes used to be fixed (0.1/1000) -- sized for
    * the two old hardcoded presets (box 16/30), so they never had to move. Item 3 lets the user pick
@@ -503,6 +555,12 @@ function main(): void {
     camera.near = Math.max(diag / 1000, 1e-3)
     camera.far = diag * 20
     camera.updateProjectionMatrix()
+    // Water-haze distance fade on the particles themselves: standard THREE.Fog blends each
+    // fragment toward this colour by distance from the camera -- it is shading, computed at draw
+    // time from the camera's own depth, and never touches a single position/instanceMatrix/
+    // instanceColor value. Sized off the box's own diagonal (same basis as near/far above) so it
+    // scales with whichever preset/box side the user picked, same as everywhere else in this file.
+    scene.fog = new THREE.Fog(0x061018, diag * 0.6, diag * 2.4)
     camera.position.set(box[0] * 1.6, box[1] * 1.2, box[2] * 1.4)
     camera.lookAt(center)
     controls.target.copy(center)
@@ -558,7 +616,17 @@ function main(): void {
     for (const m of soup.monomers) {
       const element = MONOMER_ELEMENT[m.id]
       const geo = new THREE.SphereGeometry(elementRadius(element), 10, 8)
-      const mat = new THREE.MeshStandardMaterial({ color: elementColor(element) })
+      // Water-like response, applied uniformly to the WHOLE material (never per-instance): lower
+      // roughness gives the soft specular highlight a wet sphere shows under the key light above;
+      // opacity just under 1 is the "slight translucency" -- the base colour is still exactly
+      // elementColor(element) from data/atoms.json, untouched.
+      const mat = new THREE.MeshStandardMaterial({
+        color: elementColor(element),
+        roughness: 0.35,
+        metalness: 0.05,
+        transparent: true,
+        opacity: 0.94,
+      })
       const mesh = new THREE.InstancedMesh(geo, mat, n)
       mesh.count = 0
       mesh.frustumCulled = false
@@ -574,7 +642,9 @@ function main(): void {
 
     const atomCap = Math.max(1, n * ATOMS_PER_CARBON_ESTIMATE)
     const atomGeo = new THREE.SphereGeometry(1, 10, 8)
-    const atomMat = new THREE.MeshStandardMaterial({ color: 0xffffff })
+    // Same wet-look tuning as the coarse monomer spheres above; per-instance colour is still set
+    // by setColorAt(ai, elementColor(a.element)) in draw() below, untouched by this.
+    const atomMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, metalness: 0.05, transparent: true, opacity: 0.94 })
     const atomMesh = new THREE.InstancedMesh(atomGeo, atomMat, atomCap)
     atomMesh.count = 0
     atomMesh.frustumCulled = false
@@ -802,12 +872,27 @@ function main(): void {
      * then renders one frame immediately so nonBackgroundPixelFraction() below has something fresh
      * to read. */
     setCameraOrbit(distanceScale: number, thetaDeg: number, phiDeg: number): void
-    /** Fraction of the canvas's own pixels that differ from the scene's background colour
-     * (0x0b0d10) by more than a small tolerance (float/antialiasing noise) -- 0 means "the canvas
-     * shows nothing but empty background", which is exactly the item-2 symptom this guards. */
+    /** Fraction of the canvas's own pixels that differ from what the ocean backdrop ALONE would
+     * render at this exact camera pose/instant -- 0 means "the canvas shows nothing but the
+     * backdrop", which is exactly the item-2 symptom this guards. Rewritten for the ocean-look task
+     * (2026-08): the backdrop used to be a flat colour (0x0b0d10) so comparing against that constant
+     * was enough, but it is now an animated gradient+caustic CanvasTexture (see paintOceanBackdrop),
+     * so a fixed reference colour would call almost every pixel "non-background" regardless of
+     * whether any instance actually drew anything -- silently defeating this exact regression guard.
+     * Instead this renders the SAME camera pose twice, once as normal and once with every
+     * InstancedMesh hidden, and diffs the two readbacks; whatever the backdrop happens to look like
+     * at this instant cancels out identically in both, so only real content shows up as a
+     * difference. Visibility is restored and a normal frame re-rendered before returning. */
     nonBackgroundPixelFraction(): number
+    /** Count of frames actually rendered (i.e. that passed renderLoop's RENDER_INTERVAL_MS gate),
+     * incremented once per such frame -- a plain counter, not a computed rate, so a caller can
+     * sample it twice around a real wall-clock delay and divide, the same honest measured-not-
+     * guessed convention runUI.stepsPerSecond already uses for the sim side. Added for the
+     * ocean-look task's own frame-rate-before/after requirement; harmless to leave in place. */
+    renderedFrameCount: number
   }
   const sceneDebug: SceneDebugHooks = {
+    renderedFrameCount: 0,
     setCameraOrbit(distanceScale, thetaDeg, phiDeg) {
       const center = new THREE.Vector3(box[0] / 2, box[1] / 2, box[2] / 2)
       const diag = Math.sqrt(box[0] ** 2 + box[1] ** 2 + box[2] ** 2)
@@ -829,12 +914,28 @@ function main(): void {
       const gl = renderer.getContext()
       const w = canvas.width
       const h = canvas.height
-      const buf = new Uint8Array(w * h * 4)
-      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf)
-      const bg = [0x0b, 0x0d, 0x10]
+      const withContent = new Uint8Array(w * h * 4)
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, withContent)
+
+      const toggled: THREE.InstancedMesh[] = meshes
+        ? [meshes.bondMesh, meshes.atomMesh, meshes.atomBondMesh, meshes.cavityMesh, ...Object.values(meshes.monomerMesh)]
+        : []
+      const prevVisible = toggled.map((m) => m.visible)
+      for (const m of toggled) m.visible = false
+      renderer.render(scene, camera)
+      const backdropOnly = new Uint8Array(w * h * 4)
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, backdropOnly)
+      toggled.forEach((m, i) => (m.visible = prevVisible[i]))
+      renderer.render(scene, camera) // restore the real frame
+
       let diff = 0
-      for (let i = 0; i < buf.length; i += 4) {
-        if (Math.abs(buf[i] - bg[0]) > 6 || Math.abs(buf[i + 1] - bg[1]) > 6 || Math.abs(buf[i + 2] - bg[2]) > 6) diff++
+      for (let i = 0; i < withContent.length; i += 4) {
+        if (
+          Math.abs(withContent[i] - backdropOnly[i]) > 6 ||
+          Math.abs(withContent[i + 1] - backdropOnly[i + 1]) > 6 ||
+          Math.abs(withContent[i + 2] - backdropOnly[i + 2]) > 6
+        )
+          diff++
       }
       return diff / (w * h)
     },
@@ -1367,6 +1468,8 @@ function main(): void {
     requestAnimationFrame(renderLoop)
     if (now - lastRenderAt < RENDER_INTERVAL_MS) return
     lastRenderAt = now
+    paintOceanBackdrop(now) // background-only redraw; see its own doc comment -- never touches particles
+    sceneDebug.renderedFrameCount++
     if (latestSnapshot) draw(latestSnapshot)
     else {
       controls.update()
