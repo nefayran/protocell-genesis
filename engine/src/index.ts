@@ -47,6 +47,11 @@ export { findAmphiphiles, amphiphileHistogram } from '../../soup/src/amphiphile'
 // own header for why this reads the carbon-only C-C subgraph directly rather than going through
 // the (head-conditioned) amphiphile recogniser.
 export { carbonChainLengths, ccBondFraction } from '../../soup/src/equilibrium'
+// kinetic-growth (2026-08-17): re-exported so the assembly-vs-temperature check (tests/
+// soup-bonds.test.ts) can build the SAME WCA+attraction cutoff loadStageThresholds' own
+// aggregate-clustering already uses, from inside page.evaluate, without duplicating the formula --
+// same escape-hatch reasoning as loadSoup/carbonChainLengths above.
+export { loadParams, wcaCutoff } from './params'
 export {
   areaPerLipid,
   bilayerPeaks,

@@ -1,5 +1,12 @@
 import { expect, test } from 'vitest'
-import { carbonChainLengths, ccBondFraction, floryPrediction, vanHoffSlope } from '../soup/src/equilibrium'
+import {
+  asfPrediction,
+  carbonChainLengths,
+  ccBondFraction,
+  floryPrediction,
+  recoverAlphaFromChainLengths,
+  vanHoffSlope,
+} from '../soup/src/equilibrium'
 import type { Monomer } from '../soup/src/rules'
 
 // Pure math only -- no GPU, no browser -- mirroring tests/params.test.ts's own no-GPU discipline
@@ -122,4 +129,47 @@ test('ccBondFraction: связи C-O не считаются связями C-C'
   const particles = particlesOf([0, 1]) // one carbon, one head, bonded
   const bonds = new Uint32Array([0, 1])
   expect(ccBondFraction(particles, bonds, MONOMERS)).toBe(0)
+})
+
+// --- ASF (kinetic-growth, 2026-08-17): same log-linear regression discipline as vanHoffSlope's own
+// tests above, just against chain length instead of 1/kT -- see soup/src/equilibrium.ts's own doc
+// comments for why alpha here is a KINETIC branching ratio, not floryPrediction's equilibrium x.
+
+test('asfPrediction нормирована и убывает геометрически, отношение соседних членов = alpha', () => {
+  const p = asfPrediction(14 / 15, 400)
+  const vals = Object.values(p)
+  expect(vals.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 6)
+  for (let n = 3; n <= 20; n++) expect(p[n] / p[n - 1]).toBeCloseTo(p[3] / p[2], 6)
+  expect(p[3] / p[2]).toBeCloseTo(14 / 15, 6)
+})
+
+test('asfPrediction: mean = 1/(1-alpha), проверено суммированием по широкому окну', () => {
+  const alpha = 14 / 15
+  const p = asfPrediction(alpha, 400)
+  let mean = 0
+  for (let n = 1; n <= 400; n++) mean += n * p[n]
+  expect(mean).toBeCloseTo(1 / (1 - alpha), 1)
+})
+
+test('recoverAlphaFromChainLengths восстанавливает заложенное alpha на синтетическом ASF-ансамбле', () => {
+  const alpha = 14 / 15
+  const p = asfPrediction(alpha, 60)
+  // Deterministic synthetic population (expected counts, not random draws) -- exactly the same
+  // discipline soup-equilibrium's own vanHoffSlope test above uses for its synthetic points: this
+  // checks the REGRESSION machinery recovers a KNOWN alpha exactly, independent of any GPU sampling
+  // noise (that check lives in the report, not a committed test -- same reasoning as this file's own
+  // header for why the GPU-dependent calibration checks are not committed here).
+  const bigN = 1_000_000
+  const lengths: number[] = []
+  for (let n = 1; n <= 60; n++) {
+    const count = Math.round(p[n] * bigN)
+    for (let k = 0; k < count; k++) lengths.push(n)
+  }
+  const r = recoverAlphaFromChainLengths(lengths)
+  expect(r.alpha).toBeCloseTo(alpha, 3)
+  expect(r.r2).toBeGreaterThan(0.999)
+})
+
+test('recoverAlphaFromChainLengths: меньше двух различных длин -- бросает, а не тихо считает по одной точке', () => {
+  expect(() => recoverAlphaFromChainLengths([5, 5, 5])).toThrow(/меньше двух/)
 })

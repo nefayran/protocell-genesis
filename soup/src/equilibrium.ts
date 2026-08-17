@@ -120,6 +120,75 @@ export function floryPrediction(
   return out
 }
 
+/** Anderson-Schulz-Flory (ASF) prediction for a chain-growth polymerisation under KINETIC control
+ * (task 'kinetic-growth', 2026-08-17, kinetic-growth-report.md): a growing chain end either extends
+ * (propagation, probability per event `alpha`) or is irreversibly capped (termination, probability
+ * `1-alpha`) -- `alpha = k_p/(k_p+k_t)`, the propagation-vs-termination branching ratio, NOT
+ * `floryPrediction`'s reversible-equilibrium `x = Kc/(1+Kc)`. The resulting length distribution has
+ * the identical geometric SHAPE as `floryPrediction`'s own `p_n = (1-x)*x^(n-1)` (mean `1/(1-alpha)`
+ * either way) because both are "continue with probability p, stop with probability 1-p" processes --
+ * kept as a separate function, not an alias, so a caller's choice of which physical regime (kinetic
+ * branching vs reversible equilibrium) a given `alpha`/`x` came from stays explicit at the call
+ * site, since conflating the two is exactly the mistake the reverted energy-calibration attempt
+ * this file's history follows from made (see equilibrium's own history and data/soup.json's cc_bond
+ * basis). Renormalised over `[1, maxLength]`, same reason and mechanism as `floryPrediction`. */
+export function asfPrediction(alpha: number, maxLength: number): Record<number, number> {
+  const raw: number[] = []
+  for (let n = 1; n <= maxLength; n++) raw.push((1 - alpha) * alpha ** (n - 1))
+  const total = raw.reduce((a, b) => a + b, 0)
+  const out: Record<number, number> = {}
+  for (let n = 1; n <= maxLength; n++) out[n] = raw[n - 1] / total
+  return out
+}
+
+/** Recovers `alpha` from a MEASURED population of chain lengths (e.g. `carbonChainLengths`'s own
+ * output) by an ordinary-least-squares regression of `ln(count_n)` against `n`, over every length
+ * that actually occurred at least once. The ASF distribution is log-linear in `n` with slope
+ * `ln(alpha)` -- `ln[(1-alpha)*alpha^(n-1)] = [ln(1-alpha)-ln(alpha)] + n*ln(alpha)` -- the same
+ * "take the log, fit a line, read the slope" idea `vanHoffSlope` already uses for the (now retired,
+ * see data/soup.json's cc_break basis) reversible-equilibrium check, just against chain length here
+ * instead of `1/kT`. This is the "no fitting" falsifiability check this task requires: `alpha` is
+ * read off the MEASURED histogram's own slope, independent of whatever `alpha` was configured via
+ * `data/soup.json`'s rate ratio, so the two numbers can be compared honestly. Requires at least 2
+ * distinct lengths with a nonzero count -- throws rather than silently returning a line fitted
+ * through one point (a slope needs two). */
+export function recoverAlphaFromChainLengths(
+  lengths: number[],
+): { alpha: number; slope: number; intercept: number; r2: number } {
+  const counts = new Map<number, number>()
+  for (const n of lengths) counts.set(n, (counts.get(n) ?? 0) + 1)
+  const xs: number[] = []
+  const ys: number[] = []
+  for (const [n, c] of counts) {
+    if (c <= 0) continue
+    xs.push(n)
+    ys.push(Math.log(c))
+  }
+  if (xs.length < 2) {
+    throw new Error('recoverAlphaFromChainLengths: меньше двух различных длин с ненулевым count -- наклон не определён')
+  }
+  const n = xs.length
+  const xm = xs.reduce((a, b) => a + b, 0) / n
+  const ym = ys.reduce((a, b) => a + b, 0) / n
+  let sxy = 0
+  let sxx = 0
+  for (let i = 0; i < n; i++) {
+    sxy += (xs[i] - xm) * (ys[i] - ym)
+    sxx += (xs[i] - xm) ** 2
+  }
+  const slope = sxy / sxx
+  const intercept = ym - slope * xm
+  let ssRes = 0
+  let ssTot = 0
+  for (let i = 0; i < n; i++) {
+    const pred = intercept + slope * xs[i]
+    ssRes += (ys[i] - pred) ** 2
+    ssTot += (ys[i] - ym) ** 2
+  }
+  const r2 = ssTot > 0 ? 1 - ssRes / ssTot : 1
+  return { alpha: Math.exp(slope), slope, intercept, r2 }
+}
+
 /** Ordinary-least-squares van't Hoff recovery: regresses `ln[p/(1-p)]` (`points[i].bondFraction`
  * is `p`, e.g. `ccBondFraction` above) against `1/kT`. Since `p/(1-p) = Kc = c *
  * exp(energyKT/kT)`, `ln[p/(1-p)] = ln(c) + energyKT*(1/kT)` -- a straight line in `1/kT` whose
