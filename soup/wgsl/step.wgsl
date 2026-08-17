@@ -26,6 +26,14 @@ const SOUP_NONE: u32 = 0xFFFFFFFFu;
 @group(1) @binding(6) var<storage, read_write> posRW: array<vec4<f32>>;
 @group(1) @binding(7) var<storage, read> bondSlotsRO: array<u32>;
 
+// Surface growth / adsorption (task 'adsorption', 2026-08-17, adsorption-report.md): read-only view
+// of soup/wgsl/bond.wgsl's centerLink -- soup/src/sim.ts binds the SAME physical buffer into this
+// module's own bind groups at this same binding too, so bondedForce below can read which pair (if
+// any) the adsorption tether should pull together. Never written from this module: bond.wgsl's own
+// atomicCompareExchangeWeak discipline (centerCas) is the only writer, exactly as bondSlotsRO above
+// is read-only here while bond.wgsl (via bondSlots) owns every write to IT.
+@group(1) @binding(20) var<storage, read> centerLinkRO: array<u32>;
+
 // perf2-report.md, candidate (b): cell-sorted gather of `pos2` (forces.wgsl), rebuilt every grid
 // rebuild by soup_gather_sorted_main below, using the SAME permutation `cellIdx` (fill_main,
 // engine/wgsl/neighbor.wgsl) already produces. soup_force_main's O(candidates) neighbour walk
@@ -154,6 +162,24 @@ fn bondedForce(i: u32, xi: vec3<f32>, box: vec3<f32>) -> vec3<f32> {
       let r = max(length(d), 1e-6);
       f = f - bend_dv(r) * d / r;
     }
+  }
+  // Surface growth / adsorption (task 'adsorption', 2026-08-17, adsorption-report.md): the
+  // adsorption bond itself, a REAL FENE tether (the SAME spring formula every covalent bond above
+  // already uses) between whichever pair centerLink links this particle to -- a catalyst's own
+  // held chain tip, or a carbon's own owning catalyst. The link is mutual (soup/wgsl/bond.wgsl's
+  // centerCas discipline keeps both sides in agreement), so this fires independently from BOTH
+  // sides, exactly like the chain loop above fires from each bonded partner's own perspective with
+  // no double-counting. This is what physically holds a growing tip at the catalytic surface --
+  // see this file's header and adsorption-report.md for the mechanism this replaces (a
+  // bookkeeping-only link with nothing pulling the pair together, which measurably let thermal
+  // diffusion separate them within a handful of steps and deadlock nearly every centre
+  // permanently). No bend contribution here: this task asks only for the FENE tether, not a
+  // three-body angle constraint on a pair that is not part of any real chain topology.
+  let owner = centerLinkRO[i];
+  if (owner != SOUP_NONE) {
+    let d = mi3(xi - pos2[owner].xyz, box);
+    let r = max(length(d), 1e-6);
+    f = f - fene_dv(r) * d / r;
   }
   return f;
 }

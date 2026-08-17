@@ -14,7 +14,19 @@ export async function getGpu(): Promise<Gpu> {
     if (!navigator.gpu) throw new Error('navigator.gpu отсутствует')
     const adapter = await navigator.gpu.requestAdapter()
     if (!adapter) throw new Error('адаптер WebGPU не выдан')
-    const device = await adapter.requestDevice()
+    // Surface growth / adsorption (adsorption-report.md): the soup's bond-form kernels
+    // (soup/wgsl/bond.wgsl) grew past the WebGPU DEFAULT per-stage storage-buffer limit (8) once
+    // centerHeldSteps/desorbEvents joined pos2/cellStart/cellIdx/bondSlots/bondEvents/bondRng/
+    // posSortedRO/centerLink/verletList/verletCount -- a device created with no requiredLimits
+    // silently caps every pipeline at the default and 'auto' layout creation fails with only a
+    // console warning (no thrown JS error), leaving every affected compute pass a no-op (0 bonds
+    // ever formed) -- exactly the failure mode tests/soup-forces.test.ts's own header already
+    // warns this codebase is vulnerable to. Requesting the ADAPTER's OWN reported maximum (not a
+    // hardcoded number -- adapters vary) rather than a fixed limit keeps this portable across
+    // hardware while still comfortably covering every kernel in this project.
+    const device = await adapter.requestDevice({
+      requiredLimits: { maxStorageBuffersPerShaderStage: adapter.limits.maxStorageBuffersPerShaderStage },
+    })
     const info = adapter.info ?? ({} as GPUAdapterInfo)
     return {
       device,

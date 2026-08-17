@@ -64,6 +64,13 @@ export interface SoupSystem {
    * or a carbon's currently-owning catalyst). Debug/verification readback only, mirroring
    * `bonds()`'s own role for `bondSlots` -- never read by the real step loop. */
   centerLinks(): Promise<Uint32Array>
+  /** Surface growth / adsorption (adsorption-report.md): cumulative desorption event counts since
+   * creation -- `stretch` is soup/wgsl/bond.wgsl's desorbStretch (the adsorption bond exceeded
+   * FENE's own bonded range, P.r_inf), `timeout` is desorbTimeout (a centre held the same chain for
+   * more than data/soup.json's adsorption.maxHoldSteps real steps without a propagation/termination
+   * event). Neither overlaps `events()`'s own per-rule counts: a desorption is never a completed
+   * amphiphile. */
+  desorbEvents(): Promise<{ stretch: number; timeout: number }>
   /** Cumulative event counts since creation, keyed by data/soup.json rule id (e.g. "cc_bond"). */
   events(): Promise<Record<string, number>>
   /** Per-monomer-id particle counts, active bond count, and total charge (sum of each monomer's
@@ -485,6 +492,13 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // soup/wgsl/bond.wgsl's own header ("Surface growth") for what a catalyst vs a carbon stores in
   // it. All-unassociated at creation, exactly like bondSlots0.
   const centerLink0 = new Uint32Array(N).fill(NONE_U32)
+  // Surface growth / adsorption (adsorption-report.md): per-particle hold-timeout clock
+  // (soup/wgsl/bond.wgsl's centerHeldSteps) -- zero-filled, meaningful only once a centre claims a
+  // chain (see that file's own comments on where it is reset/incremented/checked).
+  const centerHeldSteps0 = new Uint32Array(N)
+  // Surface growth / adsorption: [0]=stretch-triggered desorptions, [1]=timeout-triggered
+  // desorptions -- see SoupSystem.desorbEvents()'s own doc comment.
+  const desorbEventsInit = new Uint32Array(2)
   const bondRng0 = new Uint32Array(N)
   for (let i = 0; i < N; i++) bondRng0[i] = (opts.seed >>> 0) ^ Math.imul(i + 1, 2654435761) ^ 0x9e3779b9
   const thermoRng0 = new Uint32Array(N)
@@ -555,6 +569,22 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   })
   device.queue.writeBuffer(centerLinkBuf, 0, centerLink0)
 
+  // Surface growth / adsorption (adsorption-report.md): centerHeldSteps/desorbEvents, bound at
+  // group1 bindings 21/22 (soup/wgsl/bond.wgsl) into both bond-form bind groups below (cell-walk
+  // and Verlet-list variants) -- neither is read by soup/wgsl/step.wgsl's force kernels (only
+  // centerLink itself is, for the tether force) nor by bond_break_main (desorption is decided
+  // entirely inside bond_form_main's own dispatch, see bondFormDecide).
+  const centerHeldStepsBuf = device.createBuffer({
+    size: centerHeldSteps0.byteLength,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+  })
+  device.queue.writeBuffer(centerHeldStepsBuf, 0, centerHeldSteps0)
+  const desorbEventsBuf = device.createBuffer({
+    size: desorbEventsInit.byteLength,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+  })
+  device.queue.writeBuffer(desorbEventsBuf, 0, desorbEventsInit)
+
   const bondRngBuf = device.createBuffer({ size: bondRng0.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST })
   device.queue.writeBuffer(bondRngBuf, 0, bondRng0)
   const thermoRngBuf = device.createBuffer({ size: thermoRng0.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST })
@@ -606,7 +636,11 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   const bondAttemptInterval = soup.bondAttemptInterval.steps
   const bondDt = dt * bondAttemptInterval
   const eventRuleIds: [string, string][] = rules.map((r) => [r.bond.id, r.brk.id])
-  const bondParamsUniform = device.createBuffer({ size: 160, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
+  // Surface growth / adsorption (adsorption-report.md): BondParams grew one more vec4
+  // (adsorptionParams -- see bond.wgsl's own struct comment), so its uniform buffer grows from 160
+  // to 176 bytes (11 vec4-aligned f32 groups instead of 10) -- the WRITE below is the single place
+  // that size must stay in sync with bond.wgsl's own struct layout.
+  const bondParamsUniform = device.createBuffer({ size: 176, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
   {
     const kindA = packVec4(rules.map((r) => r.kindA))
     const kindB = packVec4(rules.map((r) => r.kindB))
@@ -629,6 +663,12 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     // (soup/src/rules.ts) has already checked this is an integer within the architectural 1..3
     // range by the time loadSoup() returns it here.
     const headChainCapacity = soup.headPlacement.chainCapacity
+    // Surface growth / adsorption (adsorption-report.md): data/soup.json's adsorption.maxHoldSteps
+    // (real steps, x) and bondAttemptInterval.steps (real steps per bond-dispatch cycle, y -- what
+    // soup/wgsl/bond.wgsl's desorbTimeout increments centerHeldSteps by each cycle, so x and the
+    // running total it is compared against stay in the SAME real-step units). Both already exist as
+    // plain numbers read from data/soup.json / derived above -- no new numeric literal here.
+    const adsorptionMaxHoldSteps = soup.adsorption.maxHoldSteps
     device.queue.writeBuffer(
       bondParamsUniform,
       0,
@@ -645,6 +685,10 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
         catalystKind,
         headTerminalOnly,
         headChainCapacity,
+        0,
+        adsorptionMaxHoldSteps,
+        bondAttemptInterval,
+        0,
         0,
       ]),
     )
@@ -697,6 +741,9 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     { binding: 7, resource: buf(bondSlotsBuf) },
     { binding: 8, resource: buf(speciesUniform) },
     { binding: 13, resource: buf(posSortedBuf) },
+    // Surface growth / adsorption (adsorption-report.md): centerLink, read-only here
+    // (soup/wgsl/step.wgsl's centerLinkRO) for the adsorption tether's own FENE contribution.
+    { binding: 20, resource: buf(centerLinkBuf) },
   ])
   // perf2-report.md correctness gate: O(N^2) reference, no grid buffers needed at all. Its own
   // group0 -- NOT soupForceGroup0 -- because 'layout: auto' gives every pipeline a DISTINCT layout
@@ -709,6 +756,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     { binding: 3, resource: buf(gridUniform) },
     { binding: 7, resource: buf(bondSlotsBuf) },
     { binding: 8, resource: buf(speciesUniform) },
+    { binding: 20, resource: buf(centerLinkBuf) },
   ])
   const kickDriftWrapGroup0 = bind(pipe.kickDriftWrap, 0, [{ binding: 0, resource: buf(paramsUniform) }])
   const kickDriftWrapGroup1 = bind(pipe.kickDriftWrap, 1, [
@@ -737,6 +785,8 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     { binding: 9, resource: buf(bondRngBuf) },
     { binding: 13, resource: buf(posSortedBuf) },
     { binding: 20, resource: buf(centerLinkBuf) },
+    { binding: 21, resource: buf(centerHeldStepsBuf) },
+    { binding: 22, resource: buf(desorbEventsBuf) },
   ])
   const bondFormGroup2 = bind(pipe.bondForm, 2, [{ binding: 0, resource: buf(bondParamsUniform) }])
   const bondBreakGroup1 = bind(pipe.bondBreak, 1, [
@@ -794,6 +844,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     { binding: 14, resource: buf(verletListBuf) },
     { binding: 15, resource: buf(verletCountBuf) },
     { binding: 19, resource: buf(verletUniform) },
+    { binding: 20, resource: buf(centerLinkBuf) },
   ])
   const bondFormListGroup0 = bind(pipe.bondFormList, 0, [{ binding: 0, resource: buf(paramsUniform) }])
   const bondFormListGroup1 = bind(pipe.bondFormList, 1, [
@@ -807,6 +858,8 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     { binding: 15, resource: buf(verletCountBuf) },
     { binding: 19, resource: buf(verletUniform) },
     { binding: 20, resource: buf(centerLinkBuf) },
+    { binding: 21, resource: buf(centerHeldStepsBuf) },
+    { binding: 22, resource: buf(desorbEventsBuf) },
   ])
   const bondFormListGroup2 = bind(pipe.bondFormList, 2, [{ binding: 0, resource: buf(bondParamsUniform) }])
 
@@ -1214,6 +1267,12 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     return new Uint32Array(raw.buffer, raw.byteOffset, N)
   }
 
+  async function desorbEvents(): Promise<{ stretch: number; timeout: number }> {
+    const raw = await readBack(device, desorbEventsBuf, desorbEventsInit.byteLength)
+    const u32 = new Uint32Array(raw.buffer, raw.byteOffset, 2)
+    return { stretch: u32[0], timeout: u32[1] }
+  }
+
   async function events(): Promise<Record<string, number>> {
     const raw = await readBack(device, eventsBuf, eventsInit.byteLength)
     const u32 = new Uint32Array(raw.buffer, raw.byteOffset, rules.length * 2)
@@ -1295,6 +1354,8 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     verletUniform.destroy()
     bondSlotsBuf.destroy()
     centerLinkBuf.destroy()
+    centerHeldStepsBuf.destroy()
+    desorbEventsBuf.destroy()
     bondRngBuf.destroy()
     thermoRngBuf.destroy()
     eventsBuf.destroy()
@@ -1312,6 +1373,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     forcesBruteForce,
     bonds,
     centerLinks,
+    desorbEvents,
     events,
     invariants,
     box,

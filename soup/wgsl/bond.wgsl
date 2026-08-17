@@ -74,10 +74,42 @@
 // the catalyst id anchoring it AS THE ACTIVE GROWING TIP (or BOND_NONE if this carbon is not
 // currently a tip: it never nucleated, it is the permanently-inert distal end of an already-started
 // chain -- real amphiphile chains grow from and are capped at ONE end only, the other stays a plain
-// terminus exactly like a real fatty acid's tail -- or its chain has already been terminated and
-// released). See propagateOnCenter/terminateOnCenter below for how propagation/termination read and
-// update it, and this task's own basis text in data/soup.json's cc_bond/co_bond entries for the
-// physical argument in full.
+// terminus exactly like a real fatty acid's tail -- or its chain has already been terminated/
+// desorbed and released, and may be RE-ADSORBED by a different free catalyst later, see
+// propagateOnCenter's own re-adsorption comment below for why this model cannot and does not try to
+// tell those two owner-less cases apart). See propagateOnCenter/terminateOnCenter below for how
+// propagation/termination read and update it, and this task's own basis text in data/soup.json's
+// cc_bond/co_bond entries for the physical argument in full.
+//
+// Adsorption as a FORCE, and desorption (task 'adsorption', 2026-08-17, adsorption-report.md,
+// diagnosis in this task's own predecessor, surface-growth-report.md): recording the association
+// in centerLink alone was bookkeeping, not physics -- nothing pulled a claimed tip back toward its
+// centre, so thermal diffusion separated them within a handful of steps and almost every one of
+// the 400 centres deadlocked permanently on its first unfinished chain (0 amphiphiles, both seeds,
+// single-bead fraction 90.5%, recovered α 0.36-0.40 against configured 0.9333 -- surface-growth-
+// report.md §3). The fix: soup/wgsl/step.wgsl's bondedForce now applies a REAL FENE spring (the
+// SAME fene_dv every covalent bond already uses) between a catalyst and the tip its centerLink
+// names, in ADDITION to the existing centerLink bookkeeping here -- the tip is now physically held
+// at the surface, not merely remembered. This tether lives entirely in centerLink/centerHeldSteps,
+// never in bondSlots, so it costs no carbon valence and stays invisible to findAmphiphiles exactly
+// as before (this task's own requirement 1).
+//
+// Two desorption paths make a permanently stuck centre impossible BY CONSTRUCTION, on top of the
+// tether itself (requirement 4): desorbStretch releases a pair whose distance has exceeded FENE's
+// own bonded range (P.r_inf, data/params.json's fene.rInf) -- the literal "stretched beyond the
+// bonded range" case, checked unconditionally every bond-dispatch cycle from the carbon's own side,
+// independent of whether any bond-forming candidate happens to be nearby (the exact gap that let a
+// fully-drifted-away tip in the predecessor task never get re-examined at all); desorbTimeout
+// releases a centre that has held the SAME chain for more than data/soup.json's own
+// adsorption.maxHoldSteps real steps without a single successful propagation/termination event on
+// it (both reset the running count), regardless of distance -- the "longer than a stated number of
+// steps without an event" case. Both are counted separately (desorbEvents) from the existing
+// per-rule bondEvents, since neither is a completed amphiphile.
+//
+// Occupancy stays 1 chain per centre (data/soup.json's adsorption.occupancy, considered and kept --
+// see that field's own basis for why): the deadlock's cause was the missing tether, not the single-
+// slot design, and centerLink's own single-u32-per-particle layout is what this task's code changes
+// below assume throughout.
 
 const BOND_NONE: u32 = 0xFFFFFFFFu;
 const BOND_RULES: u32 = 2u;
@@ -104,6 +136,13 @@ struct BondParams {
   // as headTerminalOnly already is. Replaces the former bpPad1 padding float. bpPad2 remains unused.
   headChainCapacity: f32,
   bpPad2: f32,
+  // Surface growth / adsorption (this task, adsorption-report.md): x = data/soup.json's
+  // adsorption.maxHoldSteps (real integration steps a centre may hold the SAME chain tip without a
+  // successful propagation/termination event before desorbTimeout() below releases it regardless
+  // of distance); y = bondAttemptInterval.steps (how many real steps elapse per bond-dispatch
+  // cycle -- what centerHeldSteps is incremented by each cycle, so x and the running total stay in
+  // the SAME real-step units, uploaded once from soup/src/sim.ts). z, w unused.
+  adsorptionParams: vec4<f32>,
 };
 @group(2) @binding(0) var<uniform> BP: BondParams;
 
@@ -113,6 +152,20 @@ struct BondParams {
 // Surface growth (this file's header, "Surface growth"): one slot per particle, crossing kinds --
 // see the header for exactly what it holds for a catalyst vs a carbon.
 @group(1) @binding(20) var<storage, read_write> centerLink: array<atomic<u32>>;
+
+// Surface growth / adsorption (this file's header): per-particle count of consecutive REAL steps a
+// centre has held the SAME chain tip without a successful propagation or termination event on it --
+// meaningful only while centerLink[i] != BOND_NONE, reset to 0 by any such event
+// (propagateOnCenter/terminateOnCenter) or by either desorption path below. Incremented and checked
+// once per bond-dispatch cycle for every CATALYST particle by desorbTimeout().
+@group(1) @binding(21) var<storage, read_write> centerHeldSteps: array<atomic<u32>>;
+
+// Surface growth / adsorption (this file's header): [0] = desorption events triggered by the
+// adsorption bond stretching past FENE's own bonded range (desorbStretch), [1] = desorption events
+// triggered by the hold-time safety valve (desorbTimeout) -- reported alongside the existing
+// per-rule bondEvents (SoupSystem.desorbEvents(), soup/src/sim.ts) so a run can show, with numbers,
+// that the predecessor task's deadlock is now impossible by construction, not by luck.
+@group(1) @binding(22) var<storage, read_write> desorbEvents: array<atomic<u32>>;
 
 // perf2-report.md, candidate (b): the SAME cell-sorted position gather soup/wgsl/step.wgsl's
 // soup_force_main reads (populated once per step, before both force and bond attempts run --
@@ -273,6 +326,16 @@ fn centerCas(particle: u32, expected: u32, newVal: u32) -> bool {
 
 fn centerOf(particle: u32) -> u32 { return atomicLoad(&centerLink[particle]); }
 
+// Surface growth / adsorption (this file's header): the owner<->tip proximity/geometry test
+// propagateOnCenter/terminateOnCenter already needed, factored once so both of them and the
+// desorption safety valves below all read one formula instead of hand-copying it three times. Order
+// of the two arguments does not matter -- bPairB(ti,tj) sums both radii, so it is symmetric in its
+// own two arguments regardless of which particle's own kind gets passed as which.
+fn centerWithinReach(a: u32, b: u32) -> bool {
+  let d = bMi3(pos2[a].xyz - pos2[b].xyz, GB.box.xyz);
+  return length(d) < wca_cut(bPairB(pos2[a].w, BP.catalystKind)) + P.wc;
+}
+
 // Propagation (cc_bond): i and j are both carbons, roleI==roleJ==0 (chain pool). Called only AFTER
 // tryClaimSlot has already succeeded for both -- slotI/slotJ are its return values, which classify
 // this pair for free: this pool always fills slot 0 before slot 1 (tryClaimSlot's role==0 branch),
@@ -292,6 +355,23 @@ fn propagateOnCenter(i: u32, j: u32, slotI: i32, slotJ: i32, catalystId: u32) ->
     // physically, only that both sides of this function agree, and they do (same i/j the valence
     // claims above just used).
     if (catalystId == BOND_NONE) { return false; }
+    // Surface growth / adsorption (this task): the fresh tether this claim is about to create
+    // (soup/wgsl/step.wgsl's bondedForce reads centerLink at the very next force evaluation) must
+    // itself start at REACTION-CONTACT distance (wca_cut(bPairB(...)), the SAME reach every other
+    // bond in this file forms at, e.g. bondFormWalk's own catalystNear check) -- catalystId was
+    // only ever found within that distance of PARTICLE i, not necessarily of j, the arbitrary tip
+    // choice here, so this is not automatic. Checking against the FULL FENE divergence radius
+    // (P.r_inf) instead of contact distance was tried first and measured to blow up: fene_dv(r)
+    // grows steeply as r approaches r_inf (a stiff spring, not a soft one), so a tether allowed to
+    // START anywhere up to just under r_inf can begin already deep in that steep region, and one
+    // explicit-Euler kick (soup/wgsl/step.wgsl's kick_drift_wrap_main) at that force magnitude can
+    // overshoot r_inf outright, at which point fene_dv's own sign flips and the pair accelerates
+    // apart instead of together -- an exponential runaway (measured: max particle drift diverged
+    // to 1e4-1e9 sigma within a handful of steps of the FIRST such over-close claim). Every
+    // covalent bond in this file has always formed at exactly THIS tighter contact distance and
+    // has never shown this instability -- mirroring that convention here, not inventing a new one.
+    let dNuc = bMi3(pos2[j].xyz - pos2[catalystId].xyz, GB.box.xyz);
+    if (length(dNuc) >= wca_cut(bPairB(pos2[j].w, BP.catalystKind))) { return false; }
     if (!centerCas(catalystId, BOND_NONE, j)) { return false; }
     if (!centerCas(j, BOND_NONE, catalystId)) {
       // The tip side's own claim lost a race (some other thread claimed j's centerLink first,
@@ -301,6 +381,9 @@ fn propagateOnCenter(i: u32, j: u32, slotI: i32, slotJ: i32, catalystId: u32) ->
       centerCas(catalystId, j, BOND_NONE);
       return false;
     }
+    // Surface growth / adsorption (this task): a fresh claim is a successful event -- start this
+    // centre's hold-timeout clock (desorbTimeout below) at zero.
+    atomicStore(&centerHeldSteps[catalystId], 0u);
     return true;
   }
   var tipOld: u32;
@@ -315,41 +398,90 @@ fn propagateOnCenter(i: u32, j: u32, slotI: i32, slotJ: i32, catalystId: u32) ->
     // chain-chain coupling, so refusing this is not a physics loss).
     return false;
   }
-  let owner = centerOf(tipOld);
+  var owner = centerOf(tipOld);
+  // Surface growth / adsorption (this task): RE-ADSORPTION. tipOld having no owner is ambiguous by
+  // construction (this model tracks nothing that would tell "the permanently-inert distal end of a
+  // chain that has always grown from its OTHER end" apart from "an end this file's own desorption
+  // paths, desorbStretch/desorbTimeout, released mid-growth" -- both are simply one existing chain
+  // bond, no current owner). Refusing every owner-less end outright (this task's FIRST version,
+  // measured) makes the second case a PERMANENT dead end the instant it is ever desorbed: neither
+  // this function's own extension logic nor terminateOnCenter can act on an end with no owner, so a
+  // desorbed-but-unfinished chain could never grow OR be capped again -- measured as ~1108-1110
+  // timeout desorptions against just 1-6 real terminations over 60000 steps (adsorption-report.md),
+  // i.e. the timeout valve was silently killing chains, not merely freeing centres. The physical
+  // picture this model already commits to (a growing chain stays ADSORBED until it desorbs) already
+  // implies the reverse is possible too -- a desorbed intermediate re-adsorbing onto a DIFFERENT
+  // free site -- so this treats every owner-less chain end as re-adsorbable by whichever free
+  // catalyst this dispatch's own candidate walk already found (catalystId), not just a bare monomer.
+  var reclaiming = false;
   if (owner == BOND_NONE) {
-    // tipOld is the permanently-inert distal end of an already-started chain -- see this file's
-    // header for why that is the CORRECT amphiphile structure (one growing/cappable end, one plain
-    // terminus), not a gap.
-    return false;
+    if (catalystId == BOND_NONE) { return false; }
+    owner = catalystId; // tentative: not yet claimed, only used below to evaluate distance/CAS targets
+    reclaiming = true;
   }
   // Growth must happen ON that owner specifically, not merely near SOME catalyst -- checked by
   // direct distance to the owner's OWN current position, stronger than the generic
   // catalystNear/catalystId (which only proves *a* catalyst is near, not that it is this chain's
-  // own). Reach is wca_cut(bPairB(...))+P.wc, NOT the bare wca_cut reaction-contact distance a
-  // fresh nucleation candidate is found within: a catalyst and its tip are not held together by
-  // any bond (that would consume a real bondSlots valence slot and corrupt findAmphiphiles'
-  // degree bookkeeping, see this task's own report) -- once formed, nothing keeps them at
-  // reaction-contact distance except the SAME reversible, already-untouched Cooke-Deserno
-  // attraction every non-polar pair (carbon is polar=false, catalyst is polar=false too,
-  // soup/wgsl/step.wgsl's nonbondedSoup) already exerts out to wca_cut+wc -- checking only the
-  // narrower reaction-contact distance here (measured: this WAS tried first) made the pair drift
-  // beyond it within a handful of integration steps with nothing to pull it back, freezing almost
-  // every chain at length ~1-2 the instant its one catalyst was claimed. Checking the wider,
-  // already-existing attraction reach instead is not a new interaction -- it is the reach that
-  // interaction was already given the moment BOTH species (carbon, catalyst) were declared
-  // `polar: false` in data/soup.json.
-  let dOwner = bMi3(pos2[tipOld].xyz - pos2[owner].xyz, GB.box.xyz);
-  if (length(dOwner) >= wca_cut(bPairB(pos2[tipOld].w, BP.catalystKind)) + P.wc) { return false; }
+  // own). An ALREADY-tethered pair (not reclaiming) may sit anywhere within its own thermal
+  // fluctuation around the FENE spring's equilibrium, so that case uses the wider
+  // wca_cut(bPairB(...))+P.wc reach (centerWithinReach) -- but a RECLAIM is itself a FRESH tether
+  // (soup/wgsl/step.wgsl's bondedForce will apply fene_dv to it starting next force evaluation),
+  // exactly like nucleation's own fresh claim above, so it needs the SAME tighter reaction-contact
+  // check for the SAME measured reason (checking the wider reach here first blew up: a fresh tether
+  // allowed to start anywhere up to that wider radius can begin deep in fene_dv's own steep region
+  // and overshoot past P.r_inf on the very next kick).
+  if (reclaiming) {
+    let dReclaim = bMi3(pos2[tipOld].xyz - pos2[catalystId].xyz, GB.box.xyz);
+    if (length(dReclaim) >= wca_cut(bPairB(pos2[tipOld].w, BP.catalystKind))) { return false; }
+  } else {
+    if (!centerWithinReach(tipOld, owner)) { return false; }
+  }
+  // Surface growth / adsorption (this task): same reasoning, and the same measured instability, as
+  // the nucleation branch above -- the re-pointed tether (owner<->tipNew) must itself start at
+  // REACTION-CONTACT distance, not merely within the wider reach that gates whether this ATTEMPT
+  // may proceed at all (checking against P.r_inf here was the version that blew up, see the
+  // nucleation branch's own comment for the full mechanism). tipNew is only ever a cc_bond
+  // candidate already within reaction-contact distance of tipOld (bondFormWalk's own
+  // matchRule/wca_cut check), so this rejects just the rarer case where that contact-close carbon
+  // still happens to be too far from the OWNER itself -- retried next cycle, exactly like the reach
+  // check just above.
+  let dNew = bMi3(pos2[tipNew].xyz - pos2[owner].xyz, GB.box.xyz);
+  if (length(dNew) >= wca_cut(bPairB(pos2[tipNew].w, BP.catalystKind))) { return false; }
+  // Perform the reclaim itself only now that both geometry checks passed -- nothing to roll back if
+  // either failed above, since claiming happens after, not before, both distance checks.
+  if (reclaiming) {
+    if (!centerCas(owner, BOND_NONE, tipOld)) { return false; }
+    if (!centerCas(tipOld, BOND_NONE, owner)) {
+      centerCas(owner, tipOld, BOND_NONE);
+      return false;
+    }
+  }
   // Move the tip: both re-points go through the catalyst's OWN slot as the single arbitration
   // point -- whichever of possibly several racing bare monomers gets here first for this exact
   // owner wins (its CAS on centerLink[owner] succeeds), every loser's CAS simply fails and its own
-  // bond attempt is rejected, not corrupted.
-  if (!centerCas(owner, tipOld, tipNew)) { return false; }
+  // bond attempt is rejected, not corrupted. Following a reclaim, `owner` already holds `tipOld`
+  // (the CAS just above), so this is the same "move" transition centerCas always performs, not a
+  // special case.
+  if (!centerCas(owner, tipOld, tipNew)) {
+    if (reclaiming) { centerCas(tipOld, owner, BOND_NONE); }
+    return false;
+  }
   if (!centerCas(tipNew, BOND_NONE, owner)) {
     centerCas(owner, tipNew, tipOld);
+    // false must mean no side effect, exactly as every other rejection in this file guarantees --
+    // if this was a reclaim, undo it FULLY (both sides), not just the move: leaving owner pointing
+    // at tipOld here (a "successful re-adsorption" the return value never reported) would be a
+    // silent, unreported side effect on an attempt this function is about to say failed.
+    if (reclaiming) {
+      centerCas(owner, tipOld, BOND_NONE);
+      centerCas(tipOld, owner, BOND_NONE);
+    }
     return false;
   }
   centerCas(tipOld, owner, BOND_NONE);
+  // Surface growth / adsorption (this task): a successful extension (reclaim or not) is an event --
+  // reset this centre's hold-timeout clock to zero (see desorbTimeout below).
+  atomicStore(&centerHeldSteps[owner], 0u);
   return true;
 }
 
@@ -362,12 +494,63 @@ fn propagateOnCenter(i: u32, j: u32, slotI: i32, slotJ: i32, catalystId: u32) ->
 fn terminateOnCenter(carbon: u32) -> bool {
   let owner = centerOf(carbon);
   if (owner == BOND_NONE) { return false; }
-  // Same reach as propagateOnCenter's own owner-proximity check -- see that function's comment.
-  let d = bMi3(pos2[carbon].xyz - pos2[owner].xyz, GB.box.xyz);
-  if (length(d) >= wca_cut(bPairB(pos2[carbon].w, BP.catalystKind)) + P.wc) { return false; }
+  // Same reach as propagateOnCenter's own owner-proximity check -- see centerWithinReach above.
+  if (!centerWithinReach(carbon, owner)) { return false; }
   if (!centerCas(carbon, owner, BOND_NONE)) { return false; }
   centerCas(owner, carbon, BOND_NONE);
+  // Surface growth / adsorption (this task): the centre is now free -- its hold-timeout clock is
+  // moot (desorbTimeout returns immediately once centerOf(owner)==BOND_NONE), but zeroed here too
+  // for the same "leave no stale state behind a release" hygiene the desorption paths below follow.
+  atomicStore(&centerHeldSteps[owner], 0u);
   return true;
+}
+
+// Surface growth / adsorption (this task, adsorption-report.md), desorption path 1 ("the
+// adsorption bond is stretched beyond the bonded range" -- the task's own wording): even with a
+// real FENE tether holding tip and centre together (soup/wgsl/step.wgsl's bondedForce), an extreme
+// thermal fluctuation could in principle separate them past FENE's own divergence radius (P.r_inf,
+// engine/wgsl/forces.wgsl's fene_dv) before the spring's own steeply rising restoring force has
+// pulled them back -- fene_dv(r) is only well-behaved for r < P.r_inf; beyond it the formula's own
+// denominator changes sign and the spring would push the pair APART instead of together, an
+// unphysical regime this valve exists to make unreachable in practice. Checked from the CARBON's
+// own side, unconditionally, every bond-dispatch cycle (bondFormDecide below), independent of
+// whether any bond-forming CANDIDATE was found nearby at all -- the exact gap that let the
+// predecessor task's own deadlock happen: a tip that has drifted fully out of contact range with
+// everything never triggers a bond-forming candidate, so a check nested only inside candidate
+// handling would never re-fire on it.
+fn desorbStretch(carbon: u32, owner: u32) {
+  let d = bMi3(pos2[carbon].xyz - pos2[owner].xyz, GB.box.xyz);
+  if (length(d) >= P.r_inf) {
+    if (centerCas(carbon, owner, BOND_NONE)) {
+      centerCas(owner, carbon, BOND_NONE);
+      atomicStore(&centerHeldSteps[owner], 0u);
+      atomicAdd(&desorbEvents[0], 1u);
+    }
+  }
+}
+
+// Surface growth / adsorption (this task), desorption path 2, the deadlock-impossible-by-
+// construction guarantee ("a centre has held the same chain for longer than a stated number of
+// steps without an event" -- the task's own wording): a centre that has gone longer than
+// BP.adsorptionParams.x REAL steps without a single successful propagation or termination event on
+// the chain it holds (both reset centerHeldSteps to 0, see propagateOnCenter/terminateOnCenter)
+// releases it regardless of distance -- the safety valve that survives even a pathological
+// configuration the stretch check above would never trip (the pair staying close enough, just
+// never both satisfying valence + Metropolis + a partner arriving at the same instant). Called once
+// per bond-dispatch cycle for every CATALYST particle (never a carbon -- the clock belongs to the
+// centre, since a centre, not a tip, is the resource a fresh nucleation elsewhere needs freed).
+fn desorbTimeout(catalyst: u32) {
+  let tip = centerOf(catalyst);
+  if (tip == BOND_NONE) { return; }
+  let inc = u32(BP.adsorptionParams.y);
+  let prev = atomicAdd(&centerHeldSteps[catalyst], inc);
+  if (prev + inc > u32(BP.adsorptionParams.x)) {
+    if (centerCas(catalyst, tip, BOND_NONE)) {
+      centerCas(tip, catalyst, BOND_NONE);
+      atomicStore(&centerHeldSteps[catalyst], 0u);
+      atomicAdd(&desorbEvents[1], 1u);
+    }
+  }
 }
 
 // Capacity of the deferred-candidate buffer bond_form_main fills during its single neighbour-cell
@@ -455,6 +638,19 @@ fn bondFormWalk(i: u32, xi: vec3<f32>, ti: f32, box: vec3<f32>, dims: vec3<i32>,
 // parameter.
 fn bondFormDecide(i: u32, ti: f32, rngIn: u32, w: BondWalkResult) {
   var rng = rngIn;
+  // Surface growth / adsorption (this task): desorption safety valves run unconditionally, every
+  // bond-dispatch cycle, for whichever kind this particle is -- BEFORE the candidate loop below,
+  // and independent of whether any candidate was found nearby this cycle at all. See
+  // desorbStretch/desorbTimeout's own comments for why that independence is the whole point (a
+  // fully drifted-away tip never generates a bond-forming candidate for anyone to check against).
+  if (ti == BP.catalystKind) {
+    desorbTimeout(i);
+  } else {
+    let owner = centerOf(i);
+    if (owner != BOND_NONE) {
+      desorbStretch(i, owner);
+    }
+  }
   for (var ci = 0u; ci < w.nCand; ci = ci + 1u) {
     let j = w.candJ[ci];
     let r = w.candRule[ci];

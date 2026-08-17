@@ -112,6 +112,28 @@ export interface HeadPlacement {
   basis: string
 }
 
+/**
+ * Surface growth / adsorption (task 'adsorption', 2026-08-17, adsorption-report.md): the
+ * catalytic-centre occupancy and desorption-safety-valve parameters the FENE-tethered
+ * catalyst<->tip mechanism needs (soup/wgsl/bond.wgsl's centerLink/centerHeldSteps/desorbStretch/
+ * desorbTimeout). Rank D like every other model choice in this file -- see data/soup.json's own
+ * `basis` for the physical reasoning behind each field.
+ */
+export interface Adsorption {
+  /** How many chains a single catalytic centre may hold adsorbed at once. The current
+   * implementation (soup/wgsl/bond.wgsl's centerLink) is a single scalar slot per particle, so
+   * only 1 is supported today -- kept as an explicit, validated field (not a silent assumption) so
+   * a future multi-site model has one place to raise it, with its own basis, rather than changing
+   * behaviour underneath an unvalidated number. */
+  occupancy: number
+  /** Real integration steps a centre may hold the SAME chain tip without a single successful
+   * propagation or termination event on it (both reset the running count) before the timeout
+   * desorption safety valve releases it regardless of distance -- the deadlock-impossible-by-
+   * construction guarantee, on top of (not instead of) the FENE tether itself. */
+  maxHoldSteps: number
+  basis: string
+}
+
 export interface Soup {
   /** Единственная явная калибровка временнóй шкалы модели (kappa_t на экране в отчётах). */
   kappaT: number
@@ -123,13 +145,14 @@ export interface Soup {
   verletList: VerletList
   bondAttemptInterval: BondAttemptInterval
   headPlacement: HeadPlacement
+  adsorption: Adsorption
 }
 
 const ALLOWED_MONOMER_KINDS = new Set<Monomer['kind']>(['carbon', 'head', 'donor', 'catalyst'])
 
 const REQUIRED = [
   'kappaT', 'monomers', 'rules', 'start', 'sweep', 'neighborGrid', 'verletList', 'bondAttemptInterval',
-  'headPlacement',
+  'headPlacement', 'adsorption',
 ] as const
 
 export function loadSoup(): Soup {
@@ -276,5 +299,26 @@ export function assertRulesConsistent(s: Soup): void {
   }
   if (!hp.basis || hp.basis.trim().length <= 10) {
     throw new Error('data/soup.json: headPlacement не имеет содержательного обоснования (basis)')
+  }
+
+  const ad = s.adsorption
+  if (!Number.isInteger(ad.occupancy) || ad.occupancy < 1) {
+    throw new Error(`data/soup.json: adsorption.occupancy=${ad.occupancy} должен быть целым числом >= 1`)
+  }
+  // Architectural ceiling, not a physics one (mirrors headPlacement.chainCapacity's own check
+  // above): soup/wgsl/bond.wgsl's centerLink is a single u32 slot per particle, not an array --
+  // raising occupancy past 1 needs that buffer restructured first (data/soup.json's own basis
+  // explains why this was considered and deliberately deferred, not overlooked).
+  if (ad.occupancy !== 1) {
+    throw new Error(
+      `data/soup.json: adsorption.occupancy=${ad.occupancy} -- soup/wgsl/bond.wgsl's centerLink -- ` +
+        `один u32-слот на частицу -- поддерживает только 1; поднять это число требует отдельной перестройки буфера`,
+    )
+  }
+  if (!Number.isInteger(ad.maxHoldSteps) || ad.maxHoldSteps < 1) {
+    throw new Error(`data/soup.json: adsorption.maxHoldSteps=${ad.maxHoldSteps} должен быть целым числом >= 1`)
+  }
+  if (!ad.basis || ad.basis.trim().length <= 10) {
+    throw new Error('data/soup.json: adsorption не имеет содержательного обоснования (basis)')
   }
 }
