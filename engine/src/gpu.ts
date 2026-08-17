@@ -24,8 +24,19 @@ export async function getGpu(): Promise<Gpu> {
     // warns this codebase is vulnerable to. Requesting the ADAPTER's OWN reported maximum (not a
     // hardcoded number -- adapters vary) rather than a fixed limit keeps this portable across
     // hardware while still comfortably covering every kernel in this project.
+    // The SIZE limits matter for the same reason the COUNT limit does, and they bite at a
+    // measured particle count rather than at a kernel edit: the Verlet neighbour list is a flat
+    // N * listCapacity * 4 bytes, so at listCapacity 1000 it reaches 113.6 MB at 28 400 particles
+    // (runs) and 145.6 MB at 36 400 (silently does nothing) — the default
+    // maxStorageBufferBindingSize is 128 MiB. As with the count limit, a device created without
+    // asking for more caps every pipeline at the default and the failure is silent. Ask the
+    // adapter for its own reported maxima rather than a hardcoded number.
     const device = await adapter.requestDevice({
-      requiredLimits: { maxStorageBuffersPerShaderStage: adapter.limits.maxStorageBuffersPerShaderStage },
+      requiredLimits: {
+        maxStorageBuffersPerShaderStage: adapter.limits.maxStorageBuffersPerShaderStage,
+        maxStorageBufferBindingSize: adapter.limits.maxStorageBufferBindingSize,
+        maxBufferSize: adapter.limits.maxBufferSize,
+      },
     })
     const info = adapter.info ?? ({} as GPUAdapterInfo)
     return {
