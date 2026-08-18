@@ -71,6 +71,9 @@ export function createRunRenderer(
       const kind = Math.round(particles[i * 4 + 3])
       const m = monomers[kind]
       const mesh = meshes.monomerMesh[m.id]
+      // A hidden species (the solvent, unless the user asked to draw it) costs nothing per frame:
+      // its instance matrices are never written and its count stays 0 below.
+      if (!mesh.visible) continue
       dummy.position.set(particles[i * 4], particles[i * 4 + 1], particles[i * 4 + 2])
       dummy.scale.setScalar(1)
       dummy.rotation.set(0, 0, 0)

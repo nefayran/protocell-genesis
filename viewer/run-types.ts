@@ -74,7 +74,20 @@ export const BOND_RADIUS = atomsData.elements.C.vdw * 0.16
 // coarse spheres and the atomistic reconstruction draw from the exact same palette. The catalyst
 // ("M") has no atomic identity in this coarse-grained model at all; "Na" is an arbitrary, honestly
 // documented stand-in chosen only to keep it visually distinct, not a claim about its chemistry.
-export const MONOMER_ELEMENT: Record<string, string> = { C: 'C', O: 'O', H: 'H', M: 'Na' }
+// The solvent bead ("W", data/soup.json's `solvent.waterId`) maps to oxygen: a coarse water bead
+// stands for H2O, whose only heavy atom IS oxygen, so this reuses a real palette entry rather than
+// inventing an element -- data/atoms.json keeps holding measured atomic data only. It shares the
+// head group's colour by construction; SOLVENT_OPACITY below is what keeps the two distinguishable
+// on screen (the medium reads as a haze, the heads as solid spheres).
+export const MONOMER_ELEMENT: Record<string, string> = { C: 'C', O: 'O', H: 'H', M: 'Na', W: 'O' }
+
+// The solvent is the MEDIUM, not an object in it: at any broth-like composition it outnumbers every
+// other species several times over, so drawing it as solid spheres both hides the chemistry behind
+// a wall of water and multiplies transparent overdraw on a machine this page is meant to stay cheap
+// on. Hence a much lower opacity than the 0.94 of the coarse monomer spheres, and hidden by default
+// (viewer/run.html's #water-visible-input turns it on) -- a look/cost choice, not a model constant.
+export const SOLVENT_OPACITY = 0.1
+export const SOLVENT_VISIBLE_BY_DEFAULT = false
 
 // Safe upper bounds for InstancedMesh capacities, derived rather than guessed: soup/src/stages.ts's
 // own header notes valence is capped at 3, so bonds <= N*3/2 and this file's two-half-cylinder

@@ -49,9 +49,11 @@
      top since it comes later in the DOM), which doesn't just look wrong -- it eats every click
      meant for those buttons. Bumped with real headroom for the taller panel, including #size-error
      when a refused selection makes it visible. Item "composition control" (2026-08-17) added one
-     more label/input row (#head-count-input) -- bumped again by the same one-row increment. */
+     more label/input row (#head-count-input) -- bumped again by the same one-row increment. The
+     solvent-visibility checkbox (#water-visible-input, 2026-08-18) is one more such row: bumped by
+     the same increment again, for the same click-eating reason. */
   #cavity {
-    position: absolute; top: 495px; left: 12px; z-index: 2; width: 260px;
+    position: absolute; top: 525px; left: 12px; z-index: 2; width: 260px;
     background: rgba(15, 17, 20, 0.92); border: 1px solid #2b6f5e; border-radius: 8px;
     padding: 10px 14px; font-size: 12px; line-height: 1.5;
   }
@@ -121,6 +123,10 @@
   </label>
   <label>Число голов (O) — состав, не масштаб
     <input id="head-count-input" type="number" min="0" step="1" />
+  </label>
+  <label style="display: flex; align-items: center; gap: 6px;">
+    <input id="water-visible-input" type="checkbox" style="width: auto; margin-top: 0;" />
+    Рисовать воду (W) — дорого для машины
   </label>
   <div id="size-preview" class="size-note"></div>
   <div id="size-error" class="size-note error" hidden></div>

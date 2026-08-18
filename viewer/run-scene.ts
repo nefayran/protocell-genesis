@@ -20,6 +20,8 @@ import {
   elementRadius,
   MAX_BOND_SEGMENTS_PER_PARTICLE,
   MONOMER_ELEMENT,
+  SOLVENT_OPACITY,
+  SOLVENT_VISIBLE_BY_DEFAULT,
   type SceneMeshes,
 } from './run-types'
 
@@ -38,7 +40,7 @@ export interface RunScene {
    * cavity mesh's own capacity (see run-cavity.ts's buildCavityMesh). */
   buildMeshes(
     prevMeshes: SceneMeshes | null,
-    monomers: { id: string }[],
+    monomers: { id: string; solvent?: boolean }[],
     n: number,
     box: [number, number, number],
     closureCell: number,
@@ -153,7 +155,7 @@ export function createRunScene(canvas: HTMLCanvasElement): RunScene {
   // class outright rather than chasing whichever camera pose exposes it next.
   function buildMeshes(
     prevMeshes: SceneMeshes | null,
-    monomers: { id: string }[],
+    monomers: { id: string; solvent?: boolean }[],
     n: number,
     box: [number, number, number],
     closureCell: number,
@@ -170,16 +172,23 @@ export function createRunScene(canvas: HTMLCanvasElement): RunScene {
       // roughness gives the soft specular highlight a wet sphere shows under the key light above;
       // opacity just under 1 is the "slight translucency" -- the base colour is still exactly
       // elementColor(element) from data/atoms.json, untouched.
+      const solvent = m.solvent ?? false
       const mat = new THREE.MeshStandardMaterial({
         color: elementColor(element),
         roughness: 0.35,
         metalness: 0.05,
         transparent: true,
-        opacity: 0.94,
+        opacity: solvent ? SOLVENT_OPACITY : 0.94,
+        // Medium, not object: without this the near faces of the water haze hide everything behind
+        // them in depth order, which is the opposite of what a solvent should do to the view.
+        depthWrite: !solvent,
       })
       const mesh = new THREE.InstancedMesh(geo, mat, n)
       mesh.count = 0
       mesh.frustumCulled = false
+      // Hidden by default for the reason SOLVENT_VISIBLE_BY_DEFAULT documents; the checkbox in
+      // run-control-panel.ts flips this, and run-render.ts skips the per-instance work while off.
+      if (solvent) mesh.visible = SOLVENT_VISIBLE_BY_DEFAULT
       monomerMesh[m.id] = mesh
       scene.add(mesh)
     }

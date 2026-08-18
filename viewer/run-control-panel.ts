@@ -12,7 +12,7 @@ import type { ProgressReadout } from './run-readout'
 import type { RunLifecycle } from './run-sim-driver'
 import { currentElapsedMs, type RunRuntime } from './run-runtime'
 import type { RunScene } from './run-scene'
-import { DEFAULT_SIZE_KEY, DEFAULT_STEP_CAP, RUN_SEED, SIZE_PRESETS, STAGES, STAGE_LABEL, type RunState } from './run-types'
+import { DEFAULT_SIZE_KEY, DEFAULT_STEP_CAP, RUN_SEED, SIZE_PRESETS, SOLVENT_VISIBLE_BY_DEFAULT, STAGES, STAGE_LABEL, type RunState } from './run-types'
 
 export interface ControlPanel {
   setState(s: RunState): void
@@ -184,6 +184,21 @@ export function createControlPanel(
     sizeErrorEl.textContent = reason ?? ''
   }
 
+  // Which species are the medium comes from data/soup.json's own per-species `solvent` flag, never
+  // from a hardcoded "W" here -- adding a second solvent species to that file would need no edit.
+  const solventIds = soup.monomers.filter((m) => m.solvent ?? false).map((m) => m.id)
+  const waterVisibleInput = document.getElementById('water-visible-input') as HTMLInputElement
+  waterVisibleInput.checked = SOLVENT_VISIBLE_BY_DEFAULT
+
+  function applySolventVisibility(): void {
+    if (!rt.meshes) return
+    for (const id of solventIds) {
+      const mesh = rt.meshes.monomerMesh[id]
+      if (mesh) mesh.visible = waterVisibleInput.checked
+    }
+  }
+  waterVisibleInput.addEventListener('change', applySolventVisibility)
+
   sizeSelect.addEventListener('change', () => {
     const preset = SIZE_PRESETS[sizeSelect.value]
     baseStart = preset.start ?? soup.start
@@ -310,6 +325,7 @@ export function createControlPanel(
     rt.activeSys = sys
     const n = Object.values(startCounts).reduce((a, b) => a + b, 0)
     rt.meshes = runScene.buildMeshes(rt.meshes, soup.monomers, n, rt.box, thresholds.closureCell)
+    applySolventVisibility() // fresh meshes start at the default; re-assert whatever the user chose
 
     rt.runGeneration++
     void getLifecycle().simDriver(sys, rt.runGeneration)
