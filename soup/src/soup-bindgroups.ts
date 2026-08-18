@@ -1,0 +1,252 @@
+// Bind-group construction, including the rebind-on-resize logic. Split out of soup/src/sim.ts's
+// createSoup (file-size rule in CLAUDE.md) -- every bind group, and rebindGridDependent's own
+// grouping rationale, moved verbatim: not one binding index or buffer reference changed.
+
+import type { SoupPipelines } from './soup-pipelines'
+import type { SoupBuffers } from './soup-buffers'
+
+function bind(pipeline: GPUComputePipeline, group: number, entries: GPUBindGroupEntry[], device: GPUDevice): GPUBindGroup {
+  return device.createBindGroup({ label: `${pipeline.label}@${group}`, layout: pipeline.getBindGroupLayout(group), entries })
+}
+function buf(b: GPUBuffer): GPUBindingResource {
+  return { buffer: b }
+}
+
+export interface SoupBindGroups {
+  // --- bind groups that reference the ncells-sized buffers (countsBuf/cellStartBuf/cursorBuf) ----
+  // Grouped together here -- even though they belong to several different kernels (grid rebuild,
+  // soup force, bond formation, the perf2 diagnostic, the Verlet-list build) -- because ALL of them
+  // must be rebuilt together by rebindGridDependent() (below) whenever countsBuf/cellStartBuf/
+  // cursorBuf are reallocated: a WebGPU bind group is a fixed reference to specific buffer OBJECTS,
+  // so reassigning the buffer that holds a reference does nothing to a bind group already created
+  // against the old one. Exactly the discipline engine/src/sim.ts's own rebindGridDependent()/
+  // resizeGrid() established for the membrane's area move, generalised here to this soup's own
+  // larger set of grid-dependent kernels (it has bond formation and a Verlet-list build the
+  // membrane engine does not). soupForceBruteGroup1/soupForceListGroup1/bondFormListGroup1 (below,
+  // NOT here) reference NEITHER buffer -- the brute-force kernel walks no grid at all, and the two
+  // *List kernels walk the Verlet list (sized N*listCapacity, independent of ncells) instead of the
+  // coarse grid -- so none of those three ever need rebinding on a resize.
+  clearCountsBind: GPUBindGroup
+  countBind: GPUBindGroup
+  prefixBind: GPUBindGroup
+  fillBind: GPUBindGroup
+  soupForceGroup1: GPUBindGroup
+  bondFormGroup1: GPUBindGroup
+  forceStatsGroup1: GPUBindGroup
+  buildVerletListBind: GPUBindGroup
+
+  // --- fixed bind groups, never rebuilt on a resize ------------------------------------------
+  gatherSortedBind: GPUBindGroup
+  soupForceGroup0: GPUBindGroup
+  soupForceBruteGroup0: GPUBindGroup
+  soupForceBruteGroup1: GPUBindGroup
+  kickDriftWrapGroup0: GPUBindGroup
+  kickDriftWrapGroup1: GPUBindGroup
+  kickThermostatGroup0: GPUBindGroup
+  kickThermostatGroup1: GPUBindGroup
+  bondFormGroup0: GPUBindGroup
+  bondFormGroup2: GPUBindGroup
+  bondBreakGroup1: GPUBindGroup
+  bondBreakGroup2: GPUBindGroup
+  forceStatsGroup0: GPUBindGroup
+  forceStatsGroup3: GPUBindGroup
+  snapshotPositionsBind: GPUBindGroup
+  resetMaxDriftBind: GPUBindGroup
+  maxDriftBind: GPUBindGroup
+  soupForceListGroup0: GPUBindGroup
+  soupForceListGroup1: GPUBindGroup
+  bondFormListGroup0: GPUBindGroup
+  bondFormListGroup1: GPUBindGroup
+  bondFormListGroup2: GPUBindGroup
+}
+
+/** Rebuilds every bind group that references countsBuf/cellStartBuf/cursorBuf -- called once at
+ * creation time and again by soup/src/soup-buffers.ts's resizeSoupGrid (via the `onResized`
+ * callback soup/src/sim.ts wires up) whenever a dry-wet box change moves the grid into a different
+ * cell-count bracket. Mutates the 8 resizable fields on `bind` in place; the other bind groups
+ * (built once by buildBindGroups below) are left untouched. */
+export function rebindGridDependent(device: GPUDevice, pipe: SoupPipelines, sb: SoupBuffers, bind_: SoupBindGroups): void {
+  // --- grid rebuild (engine/wgsl/neighbor.wgsl, unchanged) --------------------------------------
+  bind_.clearCountsBind = bind(pipe.clearCounts, 0, [
+    { binding: 0, resource: buf(sb.gridUniform) },
+    { binding: 2, resource: buf(sb.countsBuf) },
+  ], device)
+  bind_.countBind = bind(pipe.count, 0, [
+    { binding: 0, resource: buf(sb.gridUniform) },
+    { binding: 1, resource: buf(sb.posBuf) },
+    { binding: 2, resource: buf(sb.countsBuf) },
+  ], device)
+  bind_.prefixBind = bind(pipe.prefix, 0, [
+    { binding: 0, resource: buf(sb.gridUniform) },
+    { binding: 2, resource: buf(sb.countsBuf) },
+    { binding: 4, resource: buf(sb.cellStartBuf) },
+    { binding: 5, resource: buf(sb.cursorBuf) },
+  ], device)
+  bind_.fillBind = bind(pipe.fill, 0, [
+    { binding: 0, resource: buf(sb.gridUniform) },
+    { binding: 1, resource: buf(sb.posBuf) },
+    { binding: 3, resource: buf(sb.cellsBuf) },
+    { binding: 5, resource: buf(sb.cursorBuf) },
+  ], device)
+  // --- soup force (forces.wgsl + step.wgsl), grid-walk variant ----------------------------------
+  bind_.soupForceGroup1 = bind(pipe.soupForce, 1, [
+    { binding: 0, resource: buf(sb.posBuf) },
+    { binding: 1, resource: buf(sb.forceBuf) },
+    { binding: 3, resource: buf(sb.gridUniform) },
+    { binding: 4, resource: buf(sb.cellStartBuf) },
+    { binding: 5, resource: buf(sb.cellsBuf) },
+    { binding: 7, resource: buf(sb.bondSlotsBuf) },
+    { binding: 8, resource: buf(sb.speciesUniform) },
+    { binding: 13, resource: buf(sb.posSortedBuf) },
+    // Surface growth / adsorption (adsorption-report.md): centerLink, read-only here
+    // (soup/wgsl/step.wgsl's centerLinkRO) for the adsorption tether's own FENE contribution.
+    { binding: 20, resource: buf(sb.centerLinkBuf) },
+  ], device)
+  // --- bond formation (forces.wgsl + bond.wgsl), grid-walk variant -----------------------------
+  bind_.bondFormGroup1 = bind(pipe.bondForm, 1, [
+    { binding: 0, resource: buf(sb.posBuf) },
+    { binding: 3, resource: buf(sb.gridUniform) },
+    { binding: 4, resource: buf(sb.cellStartBuf) },
+    { binding: 5, resource: buf(sb.cellsBuf) },
+    { binding: 6, resource: buf(sb.bondSlotsBuf) },
+    { binding: 7, resource: buf(sb.speciesUniform) },
+    { binding: 8, resource: buf(sb.eventsBuf) },
+    { binding: 9, resource: buf(sb.bondRngBuf) },
+    { binding: 13, resource: buf(sb.posSortedBuf) },
+    { binding: 20, resource: buf(sb.centerLinkBuf) },
+    { binding: 21, resource: buf(sb.centerHeldStepsBuf) },
+    { binding: 22, resource: buf(sb.desorbEventsBuf) },
+  ], device)
+  // perf2-report.md, STEP 1 diagnosis: soup_force_stats_main's own group1 -- same grid buffers as
+  // soup_force_main's group1 above.
+  bind_.forceStatsGroup1 = bind(pipe.forceStats, 1, [
+    { binding: 0, resource: buf(sb.posBuf) },
+    { binding: 3, resource: buf(sb.gridUniform) },
+    { binding: 4, resource: buf(sb.cellStartBuf) },
+    { binding: 5, resource: buf(sb.cellsBuf) },
+    { binding: 8, resource: buf(sb.speciesUniform) },
+  ], device)
+  // perf2-report.md, candidate (c): builds the Verlet list FROM the coarse grid (cellStartBuf) --
+  // must be rebuilt whenever that grid's own buffers are.
+  bind_.buildVerletListBind = bind(pipe.buildVerletList, 1, [
+    { binding: 0, resource: buf(sb.posBuf) },
+    { binding: 3, resource: buf(sb.gridUniform) },
+    { binding: 4, resource: buf(sb.cellStartBuf) },
+    { binding: 5, resource: buf(sb.cellsBuf) },
+    { binding: 14, resource: buf(sb.verletListBuf) },
+    { binding: 15, resource: buf(sb.verletCountBuf) },
+    { binding: 16, resource: buf(sb.verletOverflowBuf) },
+    { binding: 19, resource: buf(sb.verletUniform) },
+  ], device)
+}
+
+/** Builds every bind group createSoup needs -- the resizable set (via rebindGridDependent, above)
+ * plus every fixed one that never changes for this system's lifetime. Called exactly once, right
+ * after soup/src/soup-buffers.ts's allocateSoupBuffers. */
+export function buildBindGroups(device: GPUDevice, pipe: SoupPipelines, sb: SoupBuffers): SoupBindGroups {
+  const bind_ = {} as SoupBindGroups
+  rebindGridDependent(device, pipe, sb, bind_)
+
+  // perf2-report.md, candidate (b): gather bind group, only group 1 (no Params uniform needed for
+  // a plain copy) -- pos2 (read) + cellIdx (read, the permutation) + posSortedRW (write target).
+  // cellsBuf is sized N (the permutation, one slot per bead), never reallocated by resizeSoupGrid --
+  // this bind group is unaffected by ncells and does not need rebinding.
+  bind_.gatherSortedBind = bind(pipe.gatherSorted, 1, [
+    { binding: 0, resource: buf(sb.posBuf) },
+    { binding: 5, resource: buf(sb.cellsBuf) },
+    { binding: 13, resource: buf(sb.posSortedBuf) },
+  ], device)
+
+  // --- soup force + wrap (forces.wgsl + step.wgsl) -----------------------------------------------
+  bind_.soupForceGroup0 = bind(pipe.soupForce, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
+  // perf2-report.md correctness gate: O(N^2) reference, no grid buffers needed at all. Its own
+  // group0 -- NOT soupForceGroup0 -- because 'layout: auto' gives every pipeline a DISTINCT layout
+  // object even when the referenced uniform is identical; reusing another pipeline's bind group
+  // fails WebGPU validation (caught via a page-console listener, not silently -- see perf2-report.md).
+  bind_.soupForceBruteGroup0 = bind(pipe.soupForceBrute, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
+  bind_.soupForceBruteGroup1 = bind(pipe.soupForceBrute, 1, [
+    { binding: 0, resource: buf(sb.posBuf) },
+    { binding: 1, resource: buf(sb.forceBuf) },
+    { binding: 3, resource: buf(sb.gridUniform) },
+    { binding: 7, resource: buf(sb.bondSlotsBuf) },
+    { binding: 8, resource: buf(sb.speciesUniform) },
+    { binding: 20, resource: buf(sb.centerLinkBuf) },
+  ], device)
+  bind_.kickDriftWrapGroup0 = bind(pipe.kickDriftWrap, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
+  bind_.kickDriftWrapGroup1 = bind(pipe.kickDriftWrap, 1, [
+    { binding: 6, resource: buf(sb.posBuf) },
+    { binding: 3, resource: buf(sb.gridUniform) },
+    { binding: 10, resource: buf(sb.velBuf) },
+    { binding: 11, resource: buf(sb.forceBuf) },
+  ], device)
+  bind_.kickThermostatGroup0 = bind(pipe.kickThermostat, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
+  bind_.kickThermostatGroup1 = bind(pipe.kickThermostat, 1, [
+    { binding: 10, resource: buf(sb.velBuf) },
+    { binding: 11, resource: buf(sb.forceBuf) },
+    { binding: 12, resource: buf(sb.thermoRngBuf) },
+  ], device)
+
+  // --- bond formation/breaking (forces.wgsl + bond.wgsl) -----------------------------------------
+  bind_.bondFormGroup0 = bind(pipe.bondForm, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
+  bind_.bondFormGroup2 = bind(pipe.bondForm, 2, [{ binding: 0, resource: buf(sb.bondParamsUniform) }], device)
+  bind_.bondBreakGroup1 = bind(pipe.bondBreak, 1, [
+    { binding: 0, resource: buf(sb.posBuf) },
+    { binding: 6, resource: buf(sb.bondSlotsBuf) },
+    { binding: 8, resource: buf(sb.eventsBuf) },
+    { binding: 9, resource: buf(sb.bondRngBuf) },
+  ], device)
+  bind_.bondBreakGroup2 = bind(pipe.bondBreak, 2, [{ binding: 0, resource: buf(sb.bondParamsUniform) }], device)
+
+  // perf2-report.md, STEP 1 diagnosis: bind groups for soup_force_stats_main -- reuses exactly the
+  // same buffers soup_force_main's group0/1 do (it needs P.sigma/P.b_tt/P.wc via Params and the
+  // same grid), plus its own group 3 output. forceStatsGroup1 itself lives in rebindGridDependent
+  // above (it references cellStartBuf).
+  bind_.forceStatsGroup0 = bind(pipe.forceStats, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
+  bind_.forceStatsGroup3 = bind(pipe.forceStats, 3, [{ binding: 0, resource: buf(sb.statsBuf) }], device)
+
+  // perf2-report.md, candidate (c): Verlet list bind groups. buildVerletListBind itself lives in
+  // rebindGridDependent above (it references cellStartBuf); snapshotPositions/resetMaxDrift/
+  // maxDrift never reference P (no group 0 needed) -- only the geometry/positions and their own list
+  // buffers, none of them ncells-sized, so none need rebinding on a resize.
+  bind_.snapshotPositionsBind = bind(pipe.snapshotPositions, 1, [
+    { binding: 0, resource: buf(sb.posBuf) },
+    { binding: 17, resource: buf(sb.posAtRebuildBuf) },
+  ], device)
+  bind_.resetMaxDriftBind = bind(pipe.resetMaxDrift, 1, [{ binding: 18, resource: buf(sb.maxDriftSqBuf) }], device)
+  bind_.maxDriftBind = bind(pipe.maxDrift, 1, [
+    { binding: 0, resource: buf(sb.posBuf) },
+    { binding: 3, resource: buf(sb.gridUniform) },
+    { binding: 17, resource: buf(sb.posAtRebuildBuf) },
+    { binding: 18, resource: buf(sb.maxDriftSqBuf) },
+  ], device)
+  bind_.soupForceListGroup0 = bind(pipe.soupForceList, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
+  bind_.soupForceListGroup1 = bind(pipe.soupForceList, 1, [
+    { binding: 0, resource: buf(sb.posBuf) },
+    { binding: 1, resource: buf(sb.forceBuf) },
+    { binding: 3, resource: buf(sb.gridUniform) },
+    { binding: 7, resource: buf(sb.bondSlotsBuf) },
+    { binding: 8, resource: buf(sb.speciesUniform) },
+    { binding: 14, resource: buf(sb.verletListBuf) },
+    { binding: 15, resource: buf(sb.verletCountBuf) },
+    { binding: 19, resource: buf(sb.verletUniform) },
+    { binding: 20, resource: buf(sb.centerLinkBuf) },
+  ], device)
+  bind_.bondFormListGroup0 = bind(pipe.bondFormList, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
+  bind_.bondFormListGroup1 = bind(pipe.bondFormList, 1, [
+    { binding: 0, resource: buf(sb.posBuf) },
+    { binding: 3, resource: buf(sb.gridUniform) },
+    { binding: 6, resource: buf(sb.bondSlotsBuf) },
+    { binding: 7, resource: buf(sb.speciesUniform) },
+    { binding: 8, resource: buf(sb.eventsBuf) },
+    { binding: 9, resource: buf(sb.bondRngBuf) },
+    { binding: 14, resource: buf(sb.verletListBuf) },
+    { binding: 15, resource: buf(sb.verletCountBuf) },
+    { binding: 19, resource: buf(sb.verletUniform) },
+    { binding: 20, resource: buf(sb.centerLinkBuf) },
+    { binding: 21, resource: buf(sb.centerHeldStepsBuf) },
+    { binding: 22, resource: buf(sb.desorbEventsBuf) },
+  ], device)
+  bind_.bondFormListGroup2 = bind(pipe.bondFormList, 2, [{ binding: 0, resource: buf(sb.bondParamsUniform) }], device)
+
+  return bind_
+}
