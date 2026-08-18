@@ -49,6 +49,43 @@ export interface CreateSoupOpts {
    * targetDryDensity/rampSteps/rampRelaxSteps) always comes from data/soup.json -- this override is a
    * plain boolean switch, never a number. */
   dryWetCycle?: boolean
+  /** Checkpoint/resume (task 'checkpoint-resume'): when present, createSoup skips the jittered-
+   * lattice initial layout and every zero-filled buffer below, loading this system's ENTIRE mutable
+   * state from a prior checkpoint instead -- everything step()/stepCycled() can change: positions,
+   * velocities, the bond-slot graph, the catalyst<->chain adsorption links and their hold counters,
+   * cumulative desorption/rule-event counts, the two per-particle GPU RNG streams (bond
+   * Monte Carlo, Langevin thermostat noise), the real step counter, and the live box (which can
+   * differ from `box` above when a dry-wet cycle was mid-transition at checkpoint time -- `box`
+   * stays this call's WET/creation box, exactly as it always has, so cycleCfg/dryBox re-derive
+   * identically to the original run; only the mutable liveBox/cyclePhase/cycleIndex the getters
+   * report are seeded from the checkpoint instead of from step 0).
+   *
+   * What is deliberately NOT here, and why it does not need to be: the coarse neighbour grid
+   * (countsBuf/cellStartBuf/cursorBuf), the Verlet list itself (verletListBuf/verletCountBuf), the
+   * drift-safety snapshot/counter (posAtRebuildBuf/maxDriftSqBuf) and the overflow flag
+   * (verletOverflowBuf) are never part of a checkpoint -- every one of them is a pure function of
+   * the CURRENT positions (soup/src/checkpoint.ts's own header spells this out with the exact
+   * mechanism: they are rebuilt from `positions` below by this same function's own priming compute
+   * pass, the identical rebuild applyBoxScaleOnce already forces after every dry-wet box change for
+   * the same reason). Restoring them from a stale reading would be no more correct than rebuilding
+   * fresh, and rebuilding fresh needs no new state at all. */
+  resume?: {
+    globalStep: number
+    liveBox: [number, number, number]
+    positions: Float32Array
+    velocities: Float32Array
+    bondSlots: Uint32Array
+    centerLink: Uint32Array
+    centerHeldSteps: Uint32Array
+    desorbEvents: Uint32Array
+    bondRng: Uint32Array
+    thermoRng: Uint32Array
+    /** Keyed by data/soup.json rule id, matching SoupSystem.events()'s own return shape -- resolved
+     * to the numeric per-rule uniform layout by rule id lookup (not by array position), so this
+     * still lines up correctly even if data/soup.json's rule ORDER ever changes between the
+     * checkpointed run and the resuming one. */
+    events: Record<string, number>
+  }
 }
 
 export interface SoupSystem {
@@ -69,6 +106,23 @@ export interface SoupSystem {
   stepCycled(n: number): Promise<void>
   /** 4 floats per particle: x, y, z, kind index (position into data/soup.json's `monomers`). */
   particles(): Promise<Float32Array>
+  /** Checkpoint/resume (task 'checkpoint-resume'): 4 floats per particle, x/y/z/w velocity --
+   * mirrors particles()'s own layout and role, the other half of the Langevin state a checkpoint
+   * needs to continue the SAME trajectory rather than one that restarts every particle at rest. */
+  velocities(): Promise<Float32Array>
+  /** Checkpoint/resume (task 'checkpoint-resume'): the raw per-particle bond-slot rows this system's
+   * bondSlotsBuf holds -- 3 u32 slots per particle (NONE_U32 where unused), the exact bookkeeping
+   * bonds() derives its (i,j) pair list FROM. bonds()'s own pairs are not enough to resume from:
+   * which of a particle's 3 rows a given partner sits in is what soup/wgsl/bond.wgsl's roleOf()
+   * checks against slot-role/valence limits on every future bond attempt, and re-deriving an
+   * arbitrary (if physically equivalent) slot assignment from an unordered pair list is a needless
+   * risk when the exact row is already sitting in a buffer one readback away. */
+  bondSlots(): Promise<Uint32Array>
+  /** Checkpoint/resume (task 'checkpoint-resume'): the raw per-particle hold-timeout clock
+   * (soup/wgsl/bond.wgsl's centerHeldSteps) -- the adsorption.basis timeout desorption valve counts
+   * against this, so a resumed run that zeroed it would give every held centre a free extra
+   * maxHoldSteps of grace it never had. */
+  centerHeldSteps(): Promise<Uint32Array>
   /** Per-particle force from the grid path (rebuilds the grid for current positions first).
    * perf2-report.md correctness gate: compared against forcesBruteForce() to floating-point
    * tolerance, mirroring engine/src/sim.ts's own forces()/forcesBruteForce() pair. */
@@ -91,6 +145,15 @@ export interface SoupSystem {
    * event). Neither overlaps `events()`'s own per-rule counts: a desorption is never a completed
    * amphiphile. */
   desorbEvents(): Promise<{ stretch: number; timeout: number }>
+  /** Checkpoint/resume (task 'checkpoint-resume'): the two per-particle GPU RNG streams -- bond
+   * Monte Carlo (soup/wgsl/bond.wgsl's bondRng) and Langevin thermostat noise
+   * (soup/wgsl/step.wgsl's thermoRng) -- read back EXACTLY, one u32 state word per particle, the
+   * same buffer bond_form_main/bond_break_main/kick_thermostat_main themselves read and rewrite
+   * every dispatch. Restoring these is what lets a resumed run's random draws continue the SAME
+   * stream a crash cut off, rather than starting a fresh stream from the creation seed -- the one
+   * piece of state this engine's own RNG story does NOT have to report as "differs on resume" (see
+   * soup/src/checkpoint.ts's header for what, if anything, still does). */
+  rngState(): Promise<{ bond: Uint32Array; thermo: Uint32Array }>
   /** Cumulative event counts since creation, keyed by data/soup.json rule id (e.g. "cc_bond"). */
   events(): Promise<Record<string, number>>
   /** Per-monomer-id particle counts, active bond count, and total charge (sum of each monomer's
@@ -670,7 +733,16 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // is about the bond's own reach, not the neighbour grid). Both checks -- and computeDims below --
   // are planSoupGrid()'s own job now (see its doc comment): the SAME derivation a viewer previews
   // before calling this function at all, not a second copy that could drift from this one.
-  const plan = planSoupGrid(box, startCounts)
+  // Checkpoint/resume (task 'checkpoint-resume'): a resumed system's grid must be sized for whatever
+  // box it actually LIVES in right now, not for the wet/creation box `box` -- a checkpoint taken
+  // mid dry-phase has to reconstruct the dry grid directly, not the wet one createSoup would
+  // otherwise default to. `initialStep`/`initialLiveBox` fall back to the pre-existing behaviour
+  // (globalStep 0, the creation box) whenever opts.resume is absent, so every existing caller sees
+  // no change at all -- see CreateSoupOpts.resume's own doc comment for the full list of what this
+  // unlocks and what it deliberately omits.
+  const initialStep = opts.resume?.globalStep ?? 0
+  const initialLiveBox: [number, number, number] = opts.resume?.liveBox ?? box
+  const plan = planSoupGrid(initialLiveBox, startCounts)
   if (!plan.valid) throw new Error(plan.reason!)
   // `dims`/`ncells` are NOT fixed for the system's lifetime: resizeSoupGrid() (defined once the GPU
   // buffers/bind groups it touches exist, below) recomputes and reallocates them whenever a dry-wet
@@ -720,9 +792,9 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // initial layout/grid-size derivation above all use it, once, correctly), `liveBox` is what the
   // `box`/`cyclePhase`/`cycleIndex` getters report and what every GPU-side box reference (gridUniform's
   // own float4 at byte offset 16) is kept in sync with after every applied box change.
-  let liveBox: [number, number, number] = [box[0], box[1], box[2]]
-  let cyclePhaseState: 'wet' | 'dry' | 'none' = cycleCfg ? cyclePhaseAt(0, cycleCfg).phase : 'none'
-  let cycleIndexState = cycleCfg ? cyclePhaseAt(0, cycleCfg).cycleIndex : 0
+  let liveBox: [number, number, number] = [initialLiveBox[0], initialLiveBox[1], initialLiveBox[2]]
+  let cyclePhaseState: 'wet' | 'dry' | 'none' = cycleCfg ? cyclePhaseAt(initialStep, cycleCfg).phase : 'none'
+  let cycleIndexState = cycleCfg ? cyclePhaseAt(initialStep, cycleCfg).cycleIndex : 0
 
   const { device } = await getGpu()
   const sortedGather = soup.neighborGrid.sortedGather
@@ -741,7 +813,23 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // one spatial region per monomer kind.
   const positions0 = new Float32Array(N * 4)
   const velocities0 = new Float32Array(N * 4)
-  {
+  // Checkpoint/resume: a resumed system's positions/velocities are the checkpoint's own recorded
+  // state, not a fresh lattice+jitter -- the whole point of resuming being "continue the SAME
+  // trajectory", not "restart with the right particle count". `rng` above is still consumed further
+  // down (bondRng0/thermoRng0's own fallback branch), so it is not wasted even on a resume; it is
+  // simply not this block's OWN source of positions/velocities any more.
+  if (opts.resume) {
+    if (opts.resume.positions.length !== N * 4) {
+      throw new Error(
+        `createSoup: резюме содержит ${opts.resume.positions.length / 4} частиц, а состав этого вызова даёт N=${N} -- checkpoint не соответствует конфигурации`,
+      )
+    }
+    if (opts.resume.velocities.length !== N * 4) {
+      throw new Error(`createSoup: резюме содержит ${opts.resume.velocities.length / 4} скоростей, а N=${N}`)
+    }
+    positions0.set(opts.resume.positions)
+    velocities0.set(opts.resume.velocities)
+  } else {
     let nx = Math.max(1, Math.ceil(Math.cbrt(N)))
     while (nx * nx * nx < N) nx++
     const spacing: [number, number, number] = [box[0] / nx, box[1] / nx, box[2] / nx]
@@ -790,6 +878,27 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   for (let i = 0; i < N; i++) bondRng0[i] = (opts.seed >>> 0) ^ Math.imul(i + 1, 2654435761) ^ 0x9e3779b9
   const thermoRng0 = new Uint32Array(N)
   for (let i = 0; i < N; i++) thermoRng0[i] = (opts.seed >>> 0) ^ Math.imul(i + 1, 3266489917) ^ 0x85ebca6b
+
+  // Checkpoint/resume: overwrite every one of the arrays above (all already sized N/N*3/2 by their
+  // own declarations, so the .set()s below cannot mismatch in length except by the explicit checks
+  // here) with the checkpoint's OWN state, in place of this system's fresh-creation defaults --
+  // exactly the same "resume overrides the lattice defaults" discipline positions0/velocities0
+  // apply above, generalised to the rest of the mutable state CreateSoupOpts.resume documents.
+  if (opts.resume) {
+    const r = opts.resume
+    if (r.bondSlots.length !== N * 3) throw new Error(`createSoup: резюме содержит ${r.bondSlots.length} bondSlots-слотов, ожидалось ${N * 3}`)
+    if (r.centerLink.length !== N) throw new Error(`createSoup: резюме содержит ${r.centerLink.length} centerLink-записей, ожидалось ${N}`)
+    if (r.centerHeldSteps.length !== N) throw new Error(`createSoup: резюме содержит ${r.centerHeldSteps.length} centerHeldSteps-записей, ожидалось ${N}`)
+    if (r.desorbEvents.length !== 2) throw new Error(`createSoup: резюме содержит ${r.desorbEvents.length} desorbEvents-счётчиков, ожидалось 2`)
+    if (r.bondRng.length !== N) throw new Error(`createSoup: резюме содержит ${r.bondRng.length} bondRng-состояний, ожидалось ${N}`)
+    if (r.thermoRng.length !== N) throw new Error(`createSoup: резюме содержит ${r.thermoRng.length} thermoRng-состояний, ожидалось ${N}`)
+    bondSlots0.set(r.bondSlots)
+    centerLink0.set(r.centerLink)
+    centerHeldSteps0.set(r.centerHeldSteps)
+    desorbEventsInit.set(r.desorbEvents)
+    bondRng0.set(r.bondRng)
+    thermoRng0.set(r.thermoRng)
+  }
 
   const posBuf = storageBuffer(device, positions0)
   const velBuf = storageBuffer(device, velocities0)
@@ -880,7 +989,20 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   const thermoRngBuf = device.createBuffer({ size: thermoRng0.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST })
   device.queue.writeBuffer(thermoRngBuf, 0, thermoRng0)
 
+  // eventRuleIds pulled forward from where it lived below (only needed there for events()'s own
+  // readback formatting) so checkpoint/resume can use the SAME (bond id, break id) -> array-position
+  // mapping to go the other way: resume.events is a Record<string,number> BY RULE ID (matching
+  // events()'s own return shape, see SoupSystem.events()), not a positional array, so it survives a
+  // future reordering of data/soup.json's own rules list -- looked up by id here rather than trusted
+  // to already be at the right index.
+  const eventRuleIds: [string, string][] = rules.map((r) => [r.bond.id, r.brk.id])
   const eventsInit = new Uint32Array(rules.length * 2)
+  if (opts.resume) {
+    for (let r = 0; r < rules.length; r++) {
+      eventsInit[r * 2 + 0] = opts.resume.events[eventRuleIds[r][0]] ?? 0
+      eventsInit[r * 2 + 1] = opts.resume.events[eventRuleIds[r][1]] ?? 0
+    }
+  }
   const eventsBuf = device.createBuffer({
     size: eventsInit.byteLength,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
@@ -898,7 +1020,11 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     // soup/wgsl/step.wgsl's soup_force_main and soup/wgsl/bond.wgsl's bond_form_main to drive the
     // ±walkRadius cell walk instead of a hardcoded ±1.
     new Uint32Array(bytes, 0, 4).set([dims[0], dims[1], dims[2], effectiveWalkRadius])
-    new Float32Array(bytes, 16, 4).set([box[0], box[1], box[2], 0])
+    // initialLiveBox, not `box`: a checkpoint resumed mid dry-phase lives in the DRY box, and
+    // `dims` (from planSoupGrid(initialLiveBox, ...) above) already reflects that -- writing the
+    // wet `box` here instead would desync the uniform's own box floats from the dims right next to
+    // them, exactly the bug resizeSoupGrid's own doc comment describes for a live box change.
+    new Float32Array(bytes, 16, 4).set([initialLiveBox[0], initialLiveBox[1], initialLiveBox[2], 0])
     device.queue.writeBuffer(gridUniform, 0, bytes)
   }
 
@@ -925,7 +1051,6 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   const dt = p.integrator.dt
   const bondAttemptInterval = soup.bondAttemptInterval.steps
   const bondDt = dt * bondAttemptInterval
-  const eventRuleIds: [string, string][] = rules.map((r) => [r.bond.id, r.brk.id])
   // Surface growth / adsorption (adsorption-report.md): BondParams grew one more vec4
   // (adsorptionParams -- see bond.wgsl's own struct comment), so its uniform buffer grows from 160
   // to 176 bytes (11 vec4-aligned f32 groups instead of 10) -- the WRITE below is the single place
@@ -1412,7 +1537,12 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // Runs continuously across separate step(n) calls (not reset per call) so the
   // bondAttemptInterval schedule stays regular regardless of how a caller chunks its own n's --
   // e.g. step(30) then step(70) attempts bonds on the same global step indices step(100) would.
-  let globalStep = 0
+  // Checkpoint/resume: starts at `initialStep` (opts.resume.globalStep, or 0 with no resume) so the
+  // SAME schedule -- bond-attempt dispatch every bondAttemptInterval.steps, Verlet rebuild every
+  // rebuildEvery -- lines up exactly where a single, uninterrupted run would have been at this step
+  // count, rather than resetting the cadence's phase to whatever globalStep%interval happens to be
+  // for a phase of 0.
+  let globalStep = initialStep
 
   // perf2-report.md, candidate (c): checked once per chunk (not once per step -- the whole point
   // of STEP_CHUNK is to keep the GPU timeline free of per-step CPU round trips, and a live
@@ -1699,6 +1829,12 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     return readBack(device, posBuf, N * 16)
   }
 
+  // Checkpoint/resume (task 'checkpoint-resume'): mirrors particles() exactly, the other half of
+  // the Langevin state.
+  async function velocities(): Promise<Float32Array> {
+    return readBack(device, velBuf, N * 16)
+  }
+
   // perf2-report.md correctness gate: mirrors engine/src/sim.ts's forces()/forcesBruteForce() pair
   // (checked by tests/sim.test.ts's "сетка соседей даёт те же силы, что и полный перебор") for the
   // soup's own dynamic-topology force kernel. forces() rebuilds fresh for the CURRENT positions
@@ -1758,6 +1894,25 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     const raw = await readBack(device, desorbEventsBuf, desorbEventsInit.byteLength)
     const u32 = new Uint32Array(raw.buffer, raw.byteOffset, 2)
     return { stretch: u32[0], timeout: u32[1] }
+  }
+
+  // Checkpoint/resume (task 'checkpoint-resume'): raw readback, exposed publicly under the SAME name
+  // the private helper above already used internally for bonds() -- see SoupSystem.bondSlots()'s own
+  // doc comment for why the raw rows (not bonds()'s derived pair list) are what a checkpoint needs.
+  const bondSlots = readBondSlots
+
+  async function centerHeldSteps(): Promise<Uint32Array> {
+    const raw = await readBack(device, centerHeldStepsBuf, N * 4)
+    return new Uint32Array(raw.buffer, raw.byteOffset, N)
+  }
+
+  async function rngState(): Promise<{ bond: Uint32Array; thermo: Uint32Array }> {
+    const rawBond = await readBack(device, bondRngBuf, bondRng0.byteLength)
+    const rawThermo = await readBack(device, thermoRngBuf, thermoRng0.byteLength)
+    return {
+      bond: new Uint32Array(rawBond.buffer, rawBond.byteOffset, N),
+      thermo: new Uint32Array(rawThermo.buffer, rawThermo.byteOffset, N),
+    }
   }
 
   async function events(): Promise<Record<string, number>> {
@@ -1864,11 +2019,15 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     step,
     stepCycled,
     particles,
+    velocities,
     forces,
     forcesBruteForce,
     bonds,
+    bondSlots,
     centerLinks,
+    centerHeldSteps,
     desorbEvents,
+    rngState,
     events,
     invariants,
     get box(): [number, number, number] {

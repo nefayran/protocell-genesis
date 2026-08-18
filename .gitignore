@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 .superpowers/
 verify/out/kappa-test-run.json
+# Checkpoint/resume (task 'checkpoint-resume', data/soup.json's checkpoint.basis): working files a
+# long soup run writes while it runs, never code or configuration.
+data/checkpoints/

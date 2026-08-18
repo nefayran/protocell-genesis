@@ -47,6 +47,13 @@ export { findAmphiphiles, amphiphileHistogram } from '../../soup/src/amphiphile'
 // own header for why this reads the carbon-only C-C subgraph directly rather than going through
 // the (head-conditioned) amphiphile recogniser.
 export { carbonChainLengths, ccBondFraction } from '../../soup/src/equilibrium'
+// Checkpoint/resume (task 'checkpoint-resume'): encodeCheckpoint needs the live SoupSystem's GPU
+// readbacks, so it can only ever run INSIDE the page (window.api), the same escape-hatch reasoning
+// loadSoup/carbonChainLengths above already give. decodeCheckpointResume has no GPU dependency at
+// all and is exported here too only for symmetry -- soup/cli/campaign.ts imports it directly from
+// soup/src/checkpoint.ts on the Node side instead, where it actually needs to run.
+export { decodeCheckpointResume, encodeCheckpoint } from '../../soup/src/checkpoint'
+export type { CheckpointConfig, CheckpointFile } from '../../soup/src/checkpoint'
 // kinetic-growth (2026-08-17): re-exported so the assembly-vs-temperature check (tests/
 // soup-bonds.test.ts) can build the SAME WCA+attraction cutoff loadStageThresholds' own
 // aggregate-clustering already uses, from inside page.evaluate, without duplicating the formula --

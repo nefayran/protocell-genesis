@@ -175,6 +175,21 @@ export interface DryWetCycle {
   basis: string
 }
 
+/**
+ * Checkpoint/resume (task 'checkpoint-resume'): the DEFAULT interval/location a long soup run
+ * saves state at, engineering-only (no rank/energy the way Rule has, same as BondAttemptInterval) --
+ * see data/soup.json's own basis for why the number is what it is. Optional (not one of Soup's
+ * REQUIRED keys, unlike every physics-bearing section above) so this file stays loadable by any
+ * existing caller/test that predates this field, without a matching change on their end.
+ * soup/cli/campaign.ts's own --every/--dir flags override this file's numbers when given, exactly
+ * how CreateSoupOpts.catalystCount already overrides data/soup.json's own `start.M`.
+ */
+export interface CheckpointDefaults {
+  everySteps: number
+  dir: string
+  basis: string
+}
+
 export interface Soup {
   /** Единственная явная калибровка временнóй шкалы модели (kappa_t на экране в отчётах). */
   kappaT: number
@@ -188,6 +203,7 @@ export interface Soup {
   headPlacement: HeadPlacement
   adsorption: Adsorption
   dryWetCycle: DryWetCycle
+  checkpoint?: CheckpointDefaults
 }
 
 const ALLOWED_MONOMER_KINDS = new Set<Monomer['kind']>(['carbon', 'head', 'donor', 'catalyst'])
@@ -388,5 +404,20 @@ export function assertRulesConsistent(s: Soup): void {
   }
   if (!dwc.basis || dwc.basis.trim().length <= 10) {
     throw new Error('data/soup.json: dryWetCycle не имеет содержательного обоснования (basis)')
+  }
+
+  // Checkpoint/resume: optional (see CheckpointDefaults' own doc comment for why), but validated
+  // the same way as every other section here whenever it IS present.
+  if (s.checkpoint) {
+    const cp = s.checkpoint
+    if (!Number.isInteger(cp.everySteps) || cp.everySteps < 1) {
+      throw new Error(`data/soup.json: checkpoint.everySteps=${cp.everySteps} должен быть целым числом >= 1`)
+    }
+    if (!cp.dir || cp.dir.trim().length === 0) {
+      throw new Error('data/soup.json: checkpoint.dir не должен быть пустым')
+    }
+    if (!cp.basis || cp.basis.trim().length <= 10) {
+      throw new Error('data/soup.json: checkpoint не имеет содержательного обоснования (basis)')
+    }
   }
 }

@@ -29,12 +29,14 @@ export async function gpuPage(): Promise<Page> {
       // hook, and if the browser process itself is what's wedged, that close() can hang too,
       // taking the whole suite down instead of failing one test.
       //
-      // 1_800_000ms (30 min): 6x the longest legitimate evaluate() measured for the committed
+      // Default 1_800_000ms (30 min); GPU_PROTOCOL_TIMEOUT_MS raises it for scratch measurements
+    // whose single evaluate legitimately exceeds it (93 200 particles x 250k steps measured at ~40 min).
+    // 1_800_000ms (30 min): 6x the longest legitimate evaluate() measured for the committed
       // suite (self-assembly, ~300s) and 3x the longest ever measured during this task's
       // diagnostics (a 2_000_000-step exploratory run, ~596s) — comfortable headroom for a slower
       // CI machine without being long enough to leave a real hang undetected for the length of a
       // workday.
-      protocolTimeout: 1_800_000,
+      protocolTimeout: Number(process.env.GPU_PROTOCOL_TIMEOUT_MS ?? 1_800_000),
     })
   }
   const base = server.resolvedUrls!.local[0]
