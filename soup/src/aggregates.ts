@@ -38,8 +38,10 @@ import { dimsFor, enclosedVolume, occupancy } from '../../engine/src/closure'
 import { bilayerThickness, densityProfileZ, dropEscapedZ } from '../../engine/src/metrics'
 import { loadParams, wcaCutoff } from '../../engine/src/params'
 import rawLiterature from '../../data/literature.json'
+import periodicMeasurementParams from '../../data/periodic-measurement.json'
 import type { Amphiphile } from './amphiphile'
 import { loadSoup, type Monomer } from './rules'
+import { encapsulatedWaterVolume, periodicCentreOf, type EncapsulatedWaterResult } from './water-closure'
 
 /** Sentinel returned by computeHeadPeaks() (box-wide) and by this file's own per-aggregate
  * radial/transverse peak counts when the underlying profile does not carry enough particles to
@@ -221,8 +223,23 @@ export interface AggregateShape {
   transverseHeadShells: number | typeof HEAD_PEAKS_UNAVAILABLE
   /** Enclosed cavity volume from flooding ONLY this aggregate's own padded local bounding region
    * (localCavityVolume() below) -- 0 when nothing is closed, the normal case for a micelle or a
-   * lamellar patch. */
+   * lamellar patch. This is the VACUUM-cavity detector (counts empty grid cells) -- kept exactly as
+   * it was; see `encapsulatedWater` below for what replaces it once water particles exist (task
+   * 'explicit-water', 2026-08-18). */
   cavityVolume: number
+  /** Task 'explicit-water' (2026-08-18): water particles trapped inside this aggregate (cannot
+   * reach the bulk), measured by soup/src/water-closure.ts's own periodic (never-unwrap) flood --
+   * see that module's header for why counting empty CELLS (cavityVolume above) is the wrong measure
+   * once water exists (occupancy() never marks a cell as occupied just because water sits in it, so
+   * a water-filled interior reads as "empty" to that detector exactly as true vacuum would).
+   * `undefined` when the caller did not supply any water-particle indices to analyzeAggregates()
+   * (e.g. every existing call site that predates this task, or a real run with data/soup.json's `W`
+   * count at 0) -- isVesicleShape() below falls back to the vacuum-cavity check in that case, so
+   * every existing caller/test keeps seeing byte-identical behaviour. `null` when water indices
+   * WERE supplied but this aggregate's own periodic centre could not be trusted (see
+   * soup/src/water-closure.ts's periodicCentreOf -- an axis with too little positional
+   * concentration to support a centre at all), which is a real "cannot measure this", not a zero. */
+  encapsulatedWater?: EncapsulatedWaterResult | null
 }
 
 export interface AggregateAnalysis {
@@ -273,13 +290,27 @@ export function isBilayerShape(
 
 /** Vesicle stage condition on one already-analysed aggregate: two head SHELLS (inner + outer, read
  * off the radial profile -- a vesicle has no meaningful flat axis to project onto, unlike a bilayer
- * patch) AND an enclosed cavity clearing the existing physically-derived minimum (kept exactly as it
- * is, per the task's own instruction -- see AggregateThresholds.enclosedVolume's own doc comment). */
+ * patch) AND an enclosed interior.
+ *
+ * WHICH CLOSURE CHECK, task 'explicit-water' (2026-08-18): when the caller supplied water-particle
+ * indices to analyzeAggregates() (`shape.encapsulatedWater` is present), closure is decided by
+ * ENCAPSULATED WATER (soup/src/water-closure.ts) -- the physically correct question once a solvent
+ * exists (an enclosed interior full of water at the same chemical potential as the outside costs
+ * nothing, so counting EMPTY grid cells, as `cavityVolume` does, would call a water-filled vesicle
+ * unclosed). `shape.encapsulatedWater` being `null` (present but this snapshot's own periodic centre
+ * could not be trusted) is treated as NOT closed, not as "fall back to the old check" -- a
+ * measurement that could not be taken is not evidence of closure. When no water indices were
+ * supplied at all (`encapsulatedWater` is `undefined` -- every pre-existing caller, or a real run
+ * with zero water particles), this is EXACTLY the old vacuum-cavity check
+ * (`cavityVolume > enclosedVolume`), unchanged -- see AggregateThresholds.enclosedVolume's own doc
+ * comment for that minimum's own derivation, kept per this task's instruction not to touch it. */
 export function isVesicleShape(
-  shape: Pick<AggregateShape, 'radialHeadShells' | 'cavityVolume'>,
+  shape: Pick<AggregateShape, 'radialHeadShells' | 'cavityVolume'> & Partial<Pick<AggregateShape, 'encapsulatedWater'>>,
   t: Pick<AggregateThresholds, 'enclosedVolume'>,
 ): boolean {
-  return shape.radialHeadShells === 2 && shape.cavityVolume > t.enclosedVolume
+  if (shape.radialHeadShells !== 2) return false
+  if (shape.encapsulatedWater !== undefined) return shape.encapsulatedWater !== null && shape.encapsulatedWater.closed
+  return shape.cavityVolume > t.enclosedVolume
 }
 
 /** Packs a scalar-per-member coordinate (`coordFor`) and each member's own original kind index
@@ -360,6 +391,7 @@ function shapeOfAggregate(
   box: [number, number, number],
   monomers: Monomer[],
   t: AggregateThresholds,
+  waterIdx?: readonly number[],
 ): AggregateShape {
   const raw = new Float32Array(originalIdx.length * 4)
   for (let k = 0; k < originalIdx.length; k++) {
@@ -405,6 +437,23 @@ function shapeOfAggregate(
     transverseHeadShells = computeHeadPeaks(transverse.particles, transverse.box, monomers, headThresholds)
   }
 
+  // Task 'explicit-water' (2026-08-18): computed on the ORIGINAL, still-periodically-wrapped
+  // `particles`/`box` and this aggregate's own `originalIdx` -- deliberately NOT on `unwrapped`
+  // above, since the whole point of the periodic (never-unwrap) method is to stay correct even when
+  // this aggregate's own extent is comparable to the box (periodic-measurement-report.md's own
+  // finding for this project's largest campaign aggregate), a regime where unwrapAggregate()'s own
+  // single-reference-particle walk is exactly what can alias. `waterIdx` absent/empty -> undefined,
+  // so isVesicleShape() falls back to the vacuum-cavity check untouched (see that function's own
+  // doc comment).
+  let encapsulatedWater: AggregateShape['encapsulatedWater']
+  if (waterIdx && waterIdx.length > 0) {
+    const alpha = periodicMeasurementParams.circularConcentration.alpha
+    const centre = periodicCentreOf(particles, originalIdx, box, alpha)
+    encapsulatedWater = centre
+      ? encapsulatedWaterVolume(particles, originalIdx, waterIdx, box, centre, t.closureCell, t.closureRadius, t.enclosedVolume)
+      : null
+  }
+
   return {
     particleCount: n,
     amphiphileCount,
@@ -416,6 +465,7 @@ function shapeOfAggregate(
     radialHeadShells,
     transverseHeadShells,
     cavityVolume: localCavityVolume(unwrapped, t.closureCell, t.closureRadius),
+    encapsulatedWater,
   }
 }
 
@@ -453,6 +503,11 @@ export function analyzeAggregates(
   memberIdx: Set<number>,
   cutoff: number,
   thresholds: AggregateThresholds,
+  /** Task 'explicit-water' (2026-08-18): indices of every water-species particle in `particles`,
+   * or omitted entirely -- every pre-existing call site omits this and sees byte-identical
+   * behaviour (see AggregateShape.encapsulatedWater's own doc comment). soup/src/stages.ts's
+   * detectStage() is the one caller that supplies it, from data/soup.json's own solvent.waterId. */
+  waterIdx?: readonly number[],
 ): AggregateAnalysis {
   if (memberIdx.size === 0) return emptyAggregateAnalysis()
 
@@ -478,7 +533,7 @@ export function analyzeAggregates(
   const detailCount = Math.min(thresholds.detailAggregateCount, prepared.length)
   const aggregates: AggregateShape[] = []
   for (let k = 0; k < detailCount; k++) {
-    aggregates.push(shapeOfAggregate(prepared[k].originalIdx, prepared[k].amphiphileCount, particles, box, monomers, thresholds))
+    aggregates.push(shapeOfAggregate(prepared[k].originalIdx, prepared[k].amphiphileCount, particles, box, monomers, thresholds, waterIdx))
   }
 
   return {

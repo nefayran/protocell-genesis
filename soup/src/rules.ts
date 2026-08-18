@@ -1,11 +1,23 @@
 import raw from '../../data/soup.json'
 
-/** Один из четырёх элементарных строительных блоков — не готовый амфифил. */
+/** Один из элементарных строительных блоков — не готовый амфифил. `water` (task 'explicit-water',
+ * 2026-08-18) is the solvent bead: `solvent=true` marks it for the attraction rule below, `polar`
+ * stays false for it (polar denotes the carboxyl HEAD group specifically, not "hydrophilic" in
+ * general -- see soup/wgsl/step.wgsl's shouldAttract for how the two flags combine). */
 export interface Monomer {
   id: string
-  kind: 'carbon' | 'head' | 'donor' | 'catalyst'
+  kind: 'carbon' | 'head' | 'donor' | 'catalyst' | 'water'
   radiusSigma: number
   polar: boolean
+  /** True only for the solvent species (data/soup.json's `W`). Drives soup/wgsl/step.wgsl's
+   * nonbondedSoup attraction gate together with `polar`: water-water and water-head attract,
+   * water-tail and head-head do not -- see data/soup.json's `solvent.basis` for the full argument,
+   * including why the old blanket "both nonpolar" tail-tail attraction was removed rather than
+   * kept alongside this (double-counting the same hydrophobic-exclusion physics). Optional so every
+   * existing Monomer literal in this codebase (tests, older fixtures) that predates this field
+   * stays valid -- undefined reads as false, exactly like a monomer that never mentions `polar`
+   * would read as non-polar under the same `?? false` convention used elsewhere in this file. */
+  solvent?: boolean
 }
 
 /**
@@ -190,6 +202,22 @@ export interface CheckpointDefaults {
   basis: string
 }
 
+/**
+ * Task 'explicit-water' (2026-08-18): the nonbonded-attraction scheme's own documentation, not a
+ * second implementation of it -- soup/wgsl/step.wgsl's shouldAttract() computes the rule directly
+ * from each species' own `polar`/`solvent` flags (already uploaded per monomer), so there is
+ * nothing numeric here for params.test.ts's literal-scanner rule to catch and nothing that could
+ * drift from the WGSL side by having two copies of a pairwise table. `attractionRule` is a
+ * human-readable restatement of that same formula, for a reader who has not opened the WGSL.
+ */
+export interface Solvent {
+  /** data/soup.json monomer id of the solvent species -- read by callers that need to find water
+   * particles (e.g. soup/src/water-closure.ts) without hardcoding the id "W". */
+  waterId: string
+  attractionRule: string
+  basis: string
+}
+
 export interface Soup {
   /** Единственная явная калибровка временнóй шкалы модели (kappa_t на экране в отчётах). */
   kappaT: number
@@ -203,14 +231,15 @@ export interface Soup {
   headPlacement: HeadPlacement
   adsorption: Adsorption
   dryWetCycle: DryWetCycle
+  solvent: Solvent
   checkpoint?: CheckpointDefaults
 }
 
-const ALLOWED_MONOMER_KINDS = new Set<Monomer['kind']>(['carbon', 'head', 'donor', 'catalyst'])
+const ALLOWED_MONOMER_KINDS = new Set<Monomer['kind']>(['carbon', 'head', 'donor', 'catalyst', 'water'])
 
 const REQUIRED = [
   'kappaT', 'monomers', 'rules', 'start', 'sweep', 'neighborGrid', 'verletList', 'bondAttemptInterval',
-  'headPlacement', 'adsorption', 'dryWetCycle',
+  'headPlacement', 'adsorption', 'dryWetCycle', 'solvent',
 ] as const
 
 export function loadSoup(): Soup {
@@ -295,6 +324,23 @@ export function assertRulesConsistent(s: Soup): void {
         `data/soup.json: мономер ${m.id} имеет вид "${m.kind}", не входящий в набор элементарных строительных блоков`,
       )
     }
+  }
+
+  const sv = s.solvent
+  const waterMonomer = s.monomers.find((m) => m.id === sv.waterId)
+  if (!waterMonomer) {
+    throw new Error(`data/soup.json: solvent.waterId="${sv.waterId}" не найден среди monomers`)
+  }
+  if (waterMonomer.kind !== 'water' || !waterMonomer.solvent) {
+    throw new Error(
+      `data/soup.json: мономер "${sv.waterId}" назван solvent.waterId, но не имеет kind="water" и solvent=true`,
+    )
+  }
+  if (!sv.attractionRule || sv.attractionRule.trim().length <= 10) {
+    throw new Error('data/soup.json: solvent.attractionRule не имеет содержательного описания')
+  }
+  if (!sv.basis || sv.basis.trim().length <= 10) {
+    throw new Error('data/soup.json: solvent не имеет содержательного обоснования (basis)')
   }
 
   const ids = new Set(s.monomers.map((m) => m.id))

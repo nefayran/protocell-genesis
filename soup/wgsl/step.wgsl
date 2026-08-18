@@ -9,11 +9,16 @@
 // into chains of unknown length at runtime, tracked by `bondSlots` (written by bond.wgsl) rather
 // than by bead index arithmetic.
 //
-// Species asymmetry (the amphiphile-emergence requirement): attr_dv is added between a pair ONLY
-// when NEITHER particle is polar (SP.polar, from data/soup.json's `polar` field per monomer) --
-// polar heads get wca_dv (repulsion) alone, from every partner, never attr_dv. Nothing here
-// special-cases "amphiphile"; a chain that happens to end in a polar head only behaves like one
-// once Task 3 goes looking for the pattern.
+// Species asymmetry (the amphiphile-emergence requirement, REVISED by task 'explicit-water',
+// 2026-08-18): attr_dv is added between a pair when shouldAttract(ti,tj) below says so --
+// water-water or water-head, from each species' own `polar`/`solvent` flags (SP.polar/SP.solvent,
+// data/soup.json's Monomer fields) -- not, as before this task, "neither particle is polar". The
+// old rule made hydrophobicity a hand-written tail-tail (and, incidentally, any-nonpolar-pair)
+// attraction; this one makes it EMERGENT from water excluding tails (see data/soup.json's
+// solvent.basis for the full argument and why the old term was removed outright rather than kept
+// alongside the new one). Heads still get no attraction from a tail or from another head -- that
+// part of the old asymmetry is unchanged. Nothing here special-cases "amphiphile"; a chain that
+// happens to end in a polar head only behaves like one once Task 3 goes looking for the pattern.
 //
 // Periodicity: engine/wgsl/integrate.wgsl's wrap_main and forces.wgsl's mi() both wrap x,y only and
 // leave z open, which is correct for a membrane sitting in vacuum but not for a bulk soup with no
@@ -43,7 +48,15 @@ const SOUP_NONE: u32 = 0xFFFFFFFFu;
 // one shader module.
 @group(1) @binding(13) var<storage, read_write> posSortedRW: array<vec4<f32>>;
 
-struct Species { radius: vec4<f32>, polar: vec4<f32> };
+// Task 'explicit-water' (2026-08-18): widened from a single vec4 per field (4 species max) to two
+// vec4 slots per field (8 species max) so a 5th species (water, data/soup.json's "W") fits without
+// a new binding or a new buffer -- soup/src/sim.ts's packSpeciesSlots() writes 8 floats per field
+// regardless of how many monomers data/soup.json actually declares (unused slots are 0), and
+// speciesRadius/speciesPolar/speciesSolvent below index by kind/4u (which vec4) and kind%4u (which
+// component), a direct generalisation of the old kind==0u/1u/2u/else branches rather than a new
+// mechanism. `solvent` is new: the flag data/soup.json's Monomer.solvent uploads, read by
+// shouldAttract() below.
+struct Species { radius: array<vec4<f32>, 2>, polar: array<vec4<f32>, 2>, solvent: array<vec4<f32>, 2> };
 @group(1) @binding(8) var<uniform> SP: Species;
 
 // Fused integrator steps -- pure arithmetic glue around kick_main/drift_main/thermostat_main's
@@ -113,18 +126,34 @@ fn mi3(d_in: vec3<f32>, box: vec3<f32>) -> vec3<f32> {
 
 fn speciesRadius(kind: f32) -> f32 {
   let k = u32(kind);
-  if (k == 0u) { return SP.radius.x; }
-  else if (k == 1u) { return SP.radius.y; }
-  else if (k == 2u) { return SP.radius.z; }
-  else { return SP.radius.w; }
+  return SP.radius[k / 4u][k % 4u];
 }
 
 fn speciesPolar(kind: f32) -> bool {
   let k = u32(kind);
-  if (k == 0u) { return SP.polar.x > 0.5; }
-  else if (k == 1u) { return SP.polar.y > 0.5; }
-  else if (k == 2u) { return SP.polar.z > 0.5; }
-  else { return SP.polar.w > 0.5; }
+  return SP.polar[k / 4u][k % 4u] > 0.5;
+}
+
+// Task 'explicit-water': the solvent flag (data/soup.json's Monomer.solvent, true only for water).
+fn speciesSolvent(kind: f32) -> bool {
+  let k = u32(kind);
+  return SP.solvent[k / 4u][k % 4u] > 0.5;
+}
+
+// Task 'explicit-water': water-water and water-head attract (hydrophilic association); water-tail
+// does not (this IS the hydrophobic exclusion, now emergent rather than hand-written); head-head
+// does not (unchanged from before -- two polar heads never attracted each other under the old
+// !polar&&!polar rule either). The old blanket "both nonpolar" rule (tail-tail, but also
+// catalyst/donor pairs, since M and H were nonpolar too) is GONE: it is not a special case carved
+// out of this formula, it simply is not one of the three disjuncts below -- see
+// data/soup.json's solvent.basis for why keeping it alongside water exclusion would double-count
+// the same hydrophobic-effect physics.
+fn shouldAttract(ti: f32, tj: f32) -> bool {
+  let si = speciesSolvent(ti);
+  let sj = speciesSolvent(tj);
+  let pi = speciesPolar(ti);
+  let pj = speciesPolar(tj);
+  return (si && sj) || (si && pj) || (pi && sj);
 }
 
 // Lorentz-Berthelot-style arithmetic mean, same mixing convention data/params.json's own
@@ -193,7 +222,7 @@ fn nonbondedSoup(xi: vec3<f32>, xj: vec3<f32>, ti: f32, tj: f32, box: vec3<f32>)
   if (r < wca_cut(b)) {
     f = f - wca_dv(r, b) * d / r;
   }
-  if (!speciesPolar(ti) && !speciesPolar(tj)) {
+  if (shouldAttract(ti, tj)) {
     f = f - attr_dv(r) * d / r;
   }
   return f;
@@ -338,8 +367,7 @@ fn soup_force_stats_main(@builtin(global_invocation_id) gid: vec3<u32>) {
           let r = length(d);
           let b = pairB(ti, tj);
           let withinWca = r < wca_cut(b);
-          let bothNonpolar = !speciesPolar(ti) && !speciesPolar(tj);
-          let withinAttr = bothNonpolar && r >= rcAttr && r <= rcAttr + P.wc;
+          let withinAttr = shouldAttract(ti, tj) && r >= rcAttr && r <= rcAttr + P.wc;
           if (withinWca || withinAttr) {
             atomicAdd(&statsOut[1], 1u);
           }

@@ -252,8 +252,21 @@ export async function detectStage(sys: SoupSystem): Promise<{ stage: Stage; evid
     })
   }
 
+  // --- water particle indices (task 'explicit-water', 2026-08-18): every particle whose kind is
+  // data/soup.json's solvent.waterId, if that species is present at all. A run with data/soup.json's
+  // `start.W` at 0 (or that never mentions W) gives an EMPTY array here, and analyzeAggregates()
+  // treats an empty array the same as `undefined` -- see its own doc comment -- so a water-free run
+  // keeps the vacuum-cavity vesicle check exactly as it always was, no special-casing needed here.
+  const waterKind = soup.monomers.findIndex((m) => m.id === soup.solvent.waterId)
+  const waterIdx: number[] = []
+  if (waterKind >= 0) {
+    for (let i = 0; i < n; i++) {
+      if (Math.round(particles[i * 4 + 3]) === waterKind) waterIdx.push(i)
+    }
+  }
+
   // --- the per-aggregate breakdown the ladder is actually decided from (task-3c).
-  const aggregateAnalysis = analyzeAggregates(particles, box, soup.monomers, amphiphiles, memberIdx, cutoff, thresholds)
+  const aggregateAnalysis = analyzeAggregates(particles, box, soup.monomers, amphiphiles, memberIdx, cutoff, thresholds, waterIdx)
 
   const evidence: StageEvidence = {
     amphiphileFraction,

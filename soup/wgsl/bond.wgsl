@@ -114,7 +114,15 @@
 const BOND_NONE: u32 = 0xFFFFFFFFu;
 const BOND_RULES: u32 = 2u;
 
-struct Species { radius: vec4<f32>, polar: vec4<f32> };
+// Task 'explicit-water' (2026-08-18): only `radius` is read in this file (bSpeciesRadius below,
+// used for the WCA contact distance every claim/reach check here is built on) -- this struct
+// deliberately declares just that leading member, not the polar/solvent fields
+// soup/wgsl/step.wgsl's own (wider) Species struct also carries at this same physical buffer:
+// a WGSL struct only needs to describe the bytes it actually reads, and the buffer is sized (and
+// written, soup/src/sim.ts) for the wider struct regardless of which shader module binds it.
+// Widened from vec4<f32> (4 species) to array<vec4<f32>,2> (8 species) for the same reason step.wgsl
+// widened its own copy: an 8-species cap is enough for the 5th species (water) this task adds.
+struct Species { radius: array<vec4<f32>, 2> };
 @group(1) @binding(7) var<uniform> SP: Species;
 
 struct BondParams {
@@ -183,10 +191,7 @@ fn vget(v: vec4<f32>, idx: u32) -> f32 {
 
 fn bSpeciesRadius(kind: f32) -> f32 {
   let k = u32(kind);
-  if (k == 0u) { return SP.radius.x; }
-  else if (k == 1u) { return SP.radius.y; }
-  else if (k == 2u) { return SP.radius.z; }
-  else { return SP.radius.w; }
+  return SP.radius[k / 4u][k % 4u];
 }
 
 fn bPairB(ti: f32, tj: f32) -> f32 { return P.sigma * (bSpeciesRadius(ti) + bSpeciesRadius(tj)) * 0.5; }

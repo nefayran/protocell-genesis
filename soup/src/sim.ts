@@ -599,6 +599,16 @@ function packVec4(values: number[]): number[] {
   return out
 }
 
+/** Task 'explicit-water' (2026-08-18): the same zero-padded packing packVec4 does, widened from one
+ * vec4 (4 slots) to two (8 slots) -- matches soup/wgsl/step.wgsl/bond.wgsl's own Species struct
+ * (`array<vec4<f32>, 2>` per field), sized for up to 8 monomer kinds so the 5th species (water)
+ * fits without restructuring the uniform again. */
+function packSpeciesSlots(values: number[]): number[] {
+  const out = new Array(8).fill(0)
+  for (let i = 0; i < Math.min(8, values.length); i++) out[i] = values[i]
+  return out
+}
+
 // --- system --------------------------------------------------------------------------------------
 
 interface SoupPipelines {
@@ -750,8 +760,12 @@ export function planSoupGrid(box: [number, number, number], startCounts?: Record
 export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   const soup = loadSoup()
   assertRulesConsistent(soup)
-  if (soup.monomers.length > 4) {
-    throw new Error(`data/soup.json: ${soup.monomers.length} видов мономеров — шейдер вмещает не больше 4`)
+  // Task 'explicit-water' (2026-08-18): raised from 4 to 8 -- soup/wgsl/step.wgsl and bond.wgsl's
+  // Species struct now packs radius/polar/solvent into array<vec4<f32>,2> each (packSpeciesSlots
+  // above matches it), not a single vec4, specifically to make room for the 5th species (water)
+  // without yet another restructure the next time one more is needed.
+  if (soup.monomers.length > 8) {
+    throw new Error(`data/soup.json: ${soup.monomers.length} видов мономеров — шейдер вмещает не больше 8`)
   }
   const baseParams = loadParams()
   const p: Params = { ...baseParams, thermostat: { ...baseParams.thermostat, kT: opts.kT } }
@@ -1137,11 +1151,15 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     device.queue.writeBuffer(gridUniform, 0, bytes)
   }
 
-  const speciesUniform = device.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
+  // Task 'explicit-water' (2026-08-18): 96 bytes (3 fields x 2 vec4 x 4 bytes), not 32 -- see
+  // soup/wgsl/step.wgsl's own Species struct, widened from a single vec4 per field (4 species) to
+  // array<vec4<f32>,2> (8 species) so the 5th species (water) fits without a new binding.
+  const speciesUniform = device.createBuffer({ size: 96, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
   {
-    const radius = packVec4(soup.monomers.map((m) => m.radiusSigma))
-    const polar = packVec4(soup.monomers.map((m) => (m.polar ? 1 : 0)))
-    device.queue.writeBuffer(speciesUniform, 0, new Float32Array([...radius, ...polar]))
+    const radius = packSpeciesSlots(soup.monomers.map((m) => m.radiusSigma))
+    const polar = packSpeciesSlots(soup.monomers.map((m) => (m.polar ? 1 : 0)))
+    const solvent = packSpeciesSlots(soup.monomers.map((m) => (m.solvent ? 1 : 0)))
+    device.queue.writeBuffer(speciesUniform, 0, new Float32Array([...radius, ...polar, ...solvent]))
   }
 
   // BondParams: acceptProbForm/acceptProbBreak come DIRECTLY from soup/src/rules.ts's
