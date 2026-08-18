@@ -39,7 +39,50 @@ interface Args {
   start: Record<string, number>
   catalyst?: number
   cycle: boolean
+  /** box-expansion task (2026-08-18, .superpowers/sdd/2026-08-16-soup-to-vesicle/expanded-box-
+   * report.md): a ONE-TIME ramped box change applied right after this call's system is created
+   * (resumed or fresh), before the main step loop, via SoupSystem.growBoxTo (soup/src/sim.ts) --
+   * grows the box and rebuilds the neighbour grid (the SAME resizeSoupGrid mechanism dry-wet
+   * cycling already uses) WITHOUT moving any particle. An earlier version of this flag drove
+   * scaleBoxTo's rigid-CoM rescaling instead (dry-wet cycling's own mechanism, aimed at an
+   * arbitrary target box); that measured a genuine topological wraparound in this specific
+   * checkpoint's own rigid-unit BFS construction (both with an unrestricted and a member-restricted
+   * cohesion group -- see growBoxTo's own doc comment, soup/src/sim.ts, for the two measured
+   * failures), so this flag now drives growBoxTo instead -- see that function's own doc comment for
+   * why moving nothing sidesteps the wraparound risk entirely. Idempotent across repeated resumes of
+   * the SAME checkpoint lineage: skipped whenever the resumed system's live box already equals this
+   * target (see main() below), so re-running this campaign with the same flags after expansion has
+   * already happened does not re-expand a second time. Undefined (the default) never touches the
+   * box at all -- every existing invocation of this CLI is unaffected. */
+  expandTo?: number
+  /** How many box-size increments growBoxTo splits the expansion into (each followed by
+   * expandRampRelaxSteps of ordinary dynamics) -- an experiment-design choice for THIS one-off
+   * task, not a physical model parameter (same status as --steps/--every themselves), so it is an
+   * ordinary CLI flag with a written default here, not a data/soup.json field. growBoxTo moves no
+   * particle at all, so no increment size here carries any overlap/wraparound risk the way
+   * scaleBoxTo's own ramp would -- a single jump would be equally safe geometrically. Ramped anyway,
+   * per this task's own "ramp it, not one jump" instruction, and because gradual box growth gives
+   * ordinary dynamics repeated, evenly-spaced opportunities to start redistributing material into
+   * the newly available volume DURING the expansion, not only after it. Default 15, matching the
+   * scale of dry-wet cycling's own ramp (data/soup.json dryWetCycle.rampSteps=6) rather than a
+   * value tuned for any overlap-avoidance reason (none applies here). */
+  expandRampSteps: number
+  /** Ordinary dynamics steps between box-growth increments. Default 60: enough real steps between
+   * increments for the aggregate/free-monomer boundary to start responding to the newly available
+   * volume gradually rather than all at once at the very end of the ramp; not tuned against any
+   * overlap risk (growBoxTo has none), only against giving the "brief post-expansion relaxation"
+   * this task's own brief calls for a head start that is spread across the ramp instead of only
+   * following it. */
+  expandRampRelaxSteps: number
 }
+
+// box-expansion task: how many real steps stepPhasesDEBUG isolates each grid/force/bondAttempts/
+// integration component over, immediately before and after the one-time expansion above -- an
+// experiment-design sample count (perf-report.md's own precedent used n=3000 at N=13100; this
+// checkpoint's N=93200 is ~7x larger and the whole point of this measurement is "how expensive did
+// this just get", so a SMALL n that still finishes quickly is preferred over perf-report.md's own
+// n, not a physical parameter either way).
+const GRID_DEBUG_N = 100
 
 function printUsage(): void {
   console.log(
@@ -60,6 +103,10 @@ function printUsage(): void {
       '  --kT <n>          (по умолчанию data/params.json thermostat.kT)',
       '  --catalyst <n>    переопределяет число катализатора отдельно от --start (как CreateSoupOpts.catalystCount)',
       '  --cycle           включает сухо-влажное циклирование (data/soup.json dryWetCycle) для ЭТОЙ системы',
+      '  --expandTo <n>            одноразовое рамп-расширение живого бокса до [n,n,n] сразу после создания/резюме,',
+      '                            ДО основного цикла шагов (idempotent: пропускается, если бокс уже расширен)',
+      '  --expandRampSteps <n>     шагов рампы для --expandTo (по умолчанию 15)',
+      '  --expandRampRelaxSteps <n>  шагов обычной динамики между приращениями рампы (по умолчанию 60)',
     ].join('\n'),
   )
 }
@@ -82,6 +129,9 @@ function parseCliArgs(): Args {
       start: { type: 'string' },
       catalyst: { type: 'string' },
       cycle: { type: 'boolean', default: false },
+      expandTo: { type: 'string' },
+      expandRampSteps: { type: 'string' },
+      expandRampRelaxSteps: { type: 'string' },
       help: { type: 'boolean', default: false },
     },
     allowPositionals: false,
@@ -106,6 +156,9 @@ function parseCliArgs(): Args {
     start: JSON.parse(String(values.start)),
     catalyst: values.catalyst !== undefined ? Number(values.catalyst) : undefined,
     cycle: Boolean(values.cycle),
+    expandTo: values.expandTo !== undefined ? Number(values.expandTo) : undefined,
+    expandRampSteps: values.expandRampSteps !== undefined ? Number(values.expandRampSteps) : 15,
+    expandRampRelaxSteps: values.expandRampRelaxSteps !== undefined ? Number(values.expandRampRelaxSteps) : 60,
   }
 }
 
@@ -211,7 +264,189 @@ async function main(): Promise<void> {
     )
     console.log(`[campaign] система готова N=${created.N} стартовый_шаг=${created.steps} цель=${targetStep}`)
 
-    let currentStep = created.steps
+    // box-expansion task: one-time ramped box change, BEFORE the main step loop -- see Args.expandTo's
+    // own doc comment for why this is idempotent (skipped on a resume that already landed at the
+    // target box). Uses growBoxTo (soup/src/sim.ts), NOT scaleBoxTo: two independent real attempts
+    // with scaleBoxTo's rigid-CoM rescaling (cohesion unrestricted, then restricted to just the
+    // recognised aggregate's own members) both threw on applyBoxScaleOnce's own runtime self-check --
+    // a genuine topological wraparound in the rigid-unit's own BFS-over-proximity-graph construction,
+    // not a ramp-fineness problem (see growBoxTo's own doc comment, soup/src/sim.ts, for the measured
+    // numbers from both attempts and the pure-Node sweep that ruled out "just use more increments").
+    // growBoxTo moves no particle at all -- see that function's own doc comment for why this sidesteps
+    // the wraparound risk entirely while still satisfying "ramp it, not one jump" and "assert distances
+    // unchanged, no particle lost" (both hold BY CONSTRUCTION here, verified explicitly below anyway).
+    if (args.expandTo !== undefined) {
+      const liveBoxNow = (await page.evaluate(() => (window as any).__sys.box)) as [number, number, number]
+      if (Math.abs(liveBoxNow[0] - args.expandTo) > 1e-6) {
+        console.log(
+          `[campaign] расширение бокса ${JSON.stringify(liveBoxNow)} -> [${args.expandTo},${args.expandTo},${args.expandTo}] ` +
+            `(growBoxTo, rampSteps=${args.expandRampSteps}, rampRelaxSteps=${args.expandRampRelaxSteps})`,
+        )
+        // Grid-cost measurement runs on a THROWAWAY probe system, resumed fresh from the SAME
+        // checkpoint, NEVER on window.__sys (the real system this call goes on to expand/relax).
+        // stepPhasesDEBUG's own doc comment (soup/src/sim.ts) says its 'bondAttempts' bucket mutates
+        // the REAL bondSlots graph via n form/break attempts on a FROZEN position snapshot, and
+        // 'integration' mutates REAL positions/velocities via n kick+drift+thermostat iterations
+        // against a force that is never recomputed as those positions move -- both fine for the perf
+        // task's own purpose (state discarded after) but corrupt a system meant for further real use.
+        // First attempt at this task called stepPhasesDEBUG directly on window.__sys and then fed its
+        // (by then corrupted) bonds()/positions into the box change, which threw immediately: a
+        // covalent pair verified (independently, in pure Node, straight off the checkpoint file) to
+        // be a normal ~0.94 sigma bond read back at ~25.5 sigma live -- the 'integration' bucket's own
+        // stale-force drift, not a real structural problem with the checkpoint. Disposable probes
+        // below avoid this entirely.
+        async function probeDebug(cfgJson: string, checkpointJson: string | null, n: number, expandToBox: number | null, rampSteps: number, rampRelaxSteps: number) {
+          return page.evaluate(
+            async (cfgJson2: string, checkpointJson2: string | null, n2: number, expandToBox2: number | null, rampSteps2: number, rampRelaxSteps2: number) => {
+              const api = (window as any).api
+              const cfg = JSON.parse(cfgJson2)
+              const resume = checkpointJson2 ? api.decodeCheckpointResume(JSON.parse(checkpointJson2)) : undefined
+              const probe = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, resume })
+              try {
+                if (expandToBox2 !== null) await probe.growBoxTo([expandToBox2, expandToBox2, expandToBox2], rampSteps2, rampRelaxSteps2)
+                const debug = await probe.stepPhasesDEBUG(n2)
+                return { debug, box: probe.box, steps: probe.steps }
+              } finally {
+                probe.dispose()
+              }
+            },
+            cfgJson,
+            checkpointJson,
+            n,
+            expandToBox,
+            rampSteps,
+            rampRelaxSteps,
+          )
+        }
+        const cfgJson = JSON.stringify(config)
+        const checkpointJson = found ? JSON.stringify(found.file) : null
+        const before = await probeDebug(cfgJson, checkpointJson, GRID_DEBUG_N, null, 0, 0)
+        console.log(
+          `[campaign] ДО расширения (probe): box=${JSON.stringify(before.box)} steps=${before.steps} n=${GRID_DEBUG_N} ` +
+            `full=${before.debug.full.toFixed(4)}ms gridBuild=${before.debug.gridBuild.toFixed(4)}ms ` +
+            `force=${before.debug.force.toFixed(4)}ms bondAttempts=${before.debug.bondAttempts.toFixed(4)}ms ` +
+            `integration=${before.debug.integration.toFixed(4)}ms`,
+        )
+
+        const invariantsBefore = await page.evaluate(() => (window as any).__sys.invariants())
+        // particles() returns a Float32Array of up to 372800 numbers (93200*4) -- transferring that
+        // twice (before/after) as a plain array is exactly the transfer pattern this project's own
+        // checkpoint-resume-report.md measured killing the page at full scale. A CHEAP fingerprint
+        // (running sum + an evenly-spaced sample) is transferred instead of the whole array,
+        // sufficient to catch "any particle moved" without paying that cost.
+        const fingerprintBefore = await page.evaluate(async () => {
+          const sys = (window as any).__sys
+          const p = await sys.particles()
+          let sum = 0
+          for (let i = 0; i < p.length; i++) sum += p[i]
+          const sample: number[] = []
+          for (let i = 0; i < p.length; i += 3701) sample.push(p[i])
+          return { sum, sample }
+        })
+
+        const expandT0 = Date.now()
+        try {
+          await page.evaluate(
+            async (targetBox: number, rampSteps: number, rampRelaxSteps: number) => {
+              const sys = (window as any).__sys
+              await sys.growBoxTo([targetBox, targetBox, targetBox], rampSteps, rampRelaxSteps)
+            },
+            args.expandTo,
+            args.expandRampSteps,
+            args.expandRampRelaxSteps,
+          )
+        } catch (err) {
+          // Resilience: growBoxTo can legitimately throw partway through its own ramp (a real,
+          // physical assertVerletSafety drift-margin violation -- particles that were only "close"
+          // via periodic wraparound under the SMALLER box can read as far apart under a bigger one
+          // until real dynamics catches up; see growBoxTo's own doc comment, soup/src/sim.ts, for
+          // why this is a genuine, bounded physics effect, not corruption). The underlying position/
+          // velocity/bond state is still real and checkpoint-worthy at whatever box size was reached
+          // -- save it before re-throwing, so a partial expansion is not a total loss of this run's
+          // own GPU time.
+          console.error(`[campaign] growBoxTo бросил на промежуточном боксе: ${(err as Error).message}`)
+          const partialBox = await page.evaluate(() => (window as any).__sys.box)
+          console.log(`[campaign] сохраняю аварийную контрольную точку на боксе=${JSON.stringify(partialBox)}`)
+          const partialCheckpoint = await page.evaluate(async (cfgJson2: string) => {
+            const api = (window as any).api
+            const sys = (window as any).__sys
+            return api.encodeCheckpoint(sys, JSON.parse(cfgJson2))
+          }, JSON.stringify(config))
+          const partialPath = writeCheckpointFile(args.dir, args.label, partialCheckpoint)
+          console.log(`[campaign] аварийная контрольная точка сохранена: ${partialPath}`)
+          throw err
+        }
+        const expandMs = Date.now() - expandT0
+
+        const invariantsAfter = await page.evaluate(() => (window as any).__sys.invariants())
+        const boxAfter = await page.evaluate(() => (window as any).__sys.box)
+        const stepsAfter = await page.evaluate(() => (window as any).__sys.steps)
+        const fingerprintAfter = await page.evaluate(async () => {
+          const sys = (window as any).__sys
+          const p = await sys.particles()
+          let sum = 0
+          for (let i = 0; i < p.length; i++) sum += p[i]
+          const sample: number[] = []
+          for (let i = 0; i < p.length; i += 3701) sample.push(p[i])
+          return { sum, sample }
+        })
+
+        // "После расширения" probe: a SEPARATE fresh resume, box-grown to the SAME target via the
+        // SAME (rampSteps, rampRelaxSteps) as the real expansion above, so its box exactly matches
+        // window.__sys's post-expansion state -- then stepPhasesDEBUG on THAT throwaway, never on
+        // window.__sys itself. growBoxTo moves no particle, so this probe's positions are identical
+        // to window.__sys's own (both resumed from the SAME checkpoint, neither one's positions moved
+        // by growBoxTo) -- only the grid/Verlet state differs, which is exactly what this measures.
+        const after = await probeDebug(cfgJson, checkpointJson, GRID_DEBUG_N, args.expandTo, args.expandRampSteps, args.expandRampRelaxSteps)
+        console.log(
+          `[campaign] ПОСЛЕ расширения (${expandMs}ms стенных часов, probe): box=${JSON.stringify(after.box)} steps=${after.steps} n=${GRID_DEBUG_N} ` +
+            `full=${after.debug.full.toFixed(4)}ms gridBuild=${after.debug.gridBuild.toFixed(4)}ms ` +
+            `force=${after.debug.force.toFixed(4)}ms bondAttempts=${after.debug.bondAttempts.toFixed(4)}ms ` +
+            `integration=${after.debug.integration.toFixed(4)}ms`,
+        )
+        console.log(
+          `[campaign] window.__sys реально после расширения: box=${JSON.stringify(boxAfter)} steps=${stepsAfter} ` +
+            `invariantsBefore=${JSON.stringify(invariantsBefore)} invariantsAfter=${JSON.stringify(invariantsAfter)} ` +
+            `fingerprintSumBefore=${fingerprintBefore.sum} fingerprintSumAfter=${fingerprintAfter.sum}`,
+        )
+
+        // Requirement: "assert after it that intramolecular distances are unchanged and no particle
+        // was lost." growBoxTo moves no particle at all, so every pairwise distance (not just bonded
+        // ones) is unchanged by construction -- checked here directly, not just inferred: the particle
+        // count/charge invariant, AND a position fingerprint (running sum + an evenly-spaced sample)
+        // that would catch ANY particle having moved, even one, without literally transferring and
+        // diffing all 372800 numbers twice over CDP (checkpoint-resume-report.md's own measured cost
+        // concern at this exact particle count).
+        if (JSON.stringify(invariantsBefore.monomers) !== JSON.stringify(invariantsAfter.monomers) || invariantsBefore.charge !== invariantsAfter.charge) {
+          throw new Error(
+            `[campaign] расширение бокса потеряло/добавило частицы: ${JSON.stringify(invariantsBefore.monomers)} -> ${JSON.stringify(invariantsAfter.monomers)}`,
+          )
+        }
+        if (fingerprintBefore.sum !== fingerprintAfter.sum || JSON.stringify(fingerprintBefore.sample) !== JSON.stringify(fingerprintAfter.sample)) {
+          throw new Error('[campaign] расширение бокса (growBoxTo) сдвинуло хотя бы одну частицу -- отпечаток позиций изменился, а не должен был')
+        }
+        console.log('[campaign] инвариант подтверждён: число частиц по мономерам, заряд и отпечаток позиций не изменились расширением бокса (growBoxTo)')
+
+        // Immediate checkpoint right after expansion, before the main loop below -- this milestone
+        // must survive even if the process is killed before the next --every interval.
+        const expandedCheckpoint = await page.evaluate(async (cfgJson: string) => {
+          const api = (window as any).api
+          const sys = (window as any).__sys
+          return api.encodeCheckpoint(sys, JSON.parse(cfgJson))
+        }, JSON.stringify(config))
+        const savedExpandedPath = writeCheckpointFile(args.dir, args.label, expandedCheckpoint)
+        console.log(`[campaign] контрольная точка после расширения сохранена: ${savedExpandedPath}`)
+      } else {
+        console.log(`[campaign] бокс уже расширен до ${JSON.stringify(liveBoxNow)} -- пропускаю (idempotent-резюме)`)
+      }
+    }
+
+    // Read LIVE, not created.steps: when the expansion block above ran, its own ramp-relax steps
+    // (Args.expandRampRelaxSteps between each of Args.expandRampSteps increments) already advanced
+    // sys.steps past created.steps -- currentStep/the loop below must count against that real
+    // total, not a stale pre-expansion snapshot, or the main loop would think it still owed steps
+    // that already happened (or double-count/skip the remaining budget).
+    let currentStep = (await page.evaluate(() => (window as any).__sys.steps)) as number
     while (currentStep < targetStep && !stopRequested) {
       const chunk = Math.min(args.every, targetStep - currentStep)
 
