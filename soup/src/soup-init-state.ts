@@ -9,6 +9,7 @@ import type { CreateSoupOpts } from './soup-types'
 import { NONE_U32 } from './soup-types'
 import type { ResolvedRule } from './soup-plan'
 import type { loadSoup } from './rules'
+import { clayLatticePosition, claySiteIndices, type ClayLayout } from './soup-clay'
 
 // --- seeded RNG for reproducible initial layouts -------------------------------------------------
 
@@ -38,6 +39,16 @@ export interface InitialState {
   bondRng0: Uint32Array
   thermoRng0: Uint32Array
   eventsInit: Uint32Array
+  /** Task 'clay-surface' (2026-08-19): 1 for every particle that belongs to the rigid mineral
+   * platelet (its clay beads plus the catalyst beads immobilised on it as surface sites), 0 for
+   * everything else. All zeros when this system has no platelet, in which case NOTHING else in this
+   * function behaves differently either -- the clay-free path is byte-identical to the pre-task one.
+   *
+   * Typed `Uint32Array<ArrayBuffer>` (not the bare `Uint32Array` the older fields above use) so
+   * soup/src/soup-buffers.ts's writeBuffer call type-checks: the bare form widens to
+   * ArrayBufferLike, which is exactly the pre-existing lib-type noise `npx tsc --noEmit` already
+   * reports for every OTHER buffer upload in that file. No new noise was left behind by this task. */
+  frozen0: Uint32Array<ArrayBuffer>
 }
 
 /** Produces every CPU-side array createSoup uploads at creation time, either freshly generated (a
@@ -52,6 +63,7 @@ export function buildInitialState(
   box: [number, number, number],
   rules: ResolvedRule[],
   eventRuleIds: [string, string][],
+  clay: ClayLayout | null,
 ): InitialState {
   const rng = mulberry32(opts.seed)
 
@@ -68,6 +80,7 @@ export function buildInitialState(
   // one spatial region per monomer kind.
   const positions0 = new Float32Array(N * 4)
   const velocities0 = new Float32Array(N * 4)
+  const frozen0 = new Uint32Array(N)
   // Checkpoint/resume: a resumed system's positions/velocities are the checkpoint's own recorded
   // state, not a fresh lattice+jitter -- the whole point of resuming being "continue the SAME
   // trajectory", not "restart with the right particle count". `rng` above is still consumed further
@@ -97,16 +110,76 @@ export function buildInitialState(
       siteOrder[i] = siteOrder[j]
       siteOrder[j] = tmp
     }
+    // Task 'clay-surface' (2026-08-19): with a platelet present, the platelet's OWN beads are placed
+    // on its rigid lattice (not on this jittered one), and every other particle's z is squeezed into
+    // the space the sheet does not occupy. Both are no-ops when `clay` is null, so a clay-free system
+    // takes the identical code path it always did -- same RNG draws in the same order, same
+    // coordinates bit for bit.
+    //
+    // WHY z IS REMAPPED RATHER THAN RE-DRAWN. A lattice site landing inside the sheet's WCA core
+    // would start the run with a genuine overlap against an IMMOBILE bead, which is the one overlap
+    // the system cannot relax by moving both partners apart -- data/soup.json's own startBasis §2
+    // records what a cold-start overlap did to this engine (a 24.58 sigma displacement in 10 steps).
+    // Rejecting-and-redrawing would consume a seed-dependent number of RNG draws and silently change
+    // every subsequent particle's position; an affine squeeze of the z coordinate into the free slab
+    // keeps the draw sequence, the x/y layout and the velocities exactly as they were and only
+    // compresses the axis the sheet blocks. The free slab is genuinely smaller with a platelet in the
+    // box (the mineral occupies volume), so this is physics, not a workaround.
+    const claySites = clay ? claySiteIndices(clay) : new Set<number>()
+    const clayFree: number[] = []
+    if (clay) {
+      for (let k = 0; k < clay.latticeCount; k++) if (!claySites.has(k)) clayFree.push(k)
+      if (claySites.size !== clay.siteCount) {
+        throw new Error(`createSoup: разметка центров на пластине дала ${claySites.size} позиций вместо ${clay.siteCount}`)
+      }
+    }
+    // The free slab runs from just above the TOP sheet plane, around through the periodic wrap, to
+    // just below the BOTTOM one -- one contiguous interval of length zSpan starting at zStart.
+    const zStart = clay ? clay.planeZ[clay.planeZ.length - 1] + clay.exclusionHalfWidth : 0
+    const zSpan = clay ? box[2] - (clay.planeZ[clay.planeZ.length - 1] - clay.planeZ[0]) - 2 * clay.exclusionHalfWidth : box[2]
+    if (clay && zSpan <= 0) {
+      throw new Error(
+        `createSoup: пластина глины (${clay.planeZ.length} слоёв) вместе с исключённой зоной ${clay.exclusionHalfWidth.toFixed(3)}σ ` +
+          `не оставляет места в коробке высотой ${box[2]}σ`,
+      )
+    }
+    // The mineral beads and the surface sites are consumed in lattice order as their kind comes up in
+    // the composition loop below; these two cursors are what keeps that order deterministic.
+    let siteCursor = 0
+    let mineralCursor = 0
+    const siteList = clay ? [...claySites].sort((a, b) => a - b) : []
+
     let idx = 0
     for (let kind = 0; kind < countsByKind.length; kind++) {
       for (let c = 0; c < countsByKind[kind]; c++) {
+        const isMineral = clay !== null && kind === clay.mineralKind
+        const isSite = clay !== null && kind === clay.catalystKind && siteCursor < clay.siteCount
+        if (isMineral || isSite) {
+          const k = isMineral ? clayFree[mineralCursor++] : siteList[siteCursor++]
+          const [px, py, pz] = clayLatticePosition(clay!, k)
+          // No jitter and no velocity: this bead is frozen, so a jitter would only be a permanent
+          // lattice defect and a velocity would be a number the integrator refuses to use.
+          positions0[idx * 4 + 0] = px
+          positions0[idx * 4 + 1] = py
+          positions0[idx * 4 + 2] = pz
+          positions0[idx * 4 + 3] = kind
+          frozen0[idx] = 1
+          idx++
+          continue
+        }
         const site = siteOrder[idx]
         const ix = site % nx
         const iy = Math.floor(site / nx) % nx
         const iz = Math.floor(site / (nx * nx))
         positions0[idx * 4 + 0] = (ix + 0.5) * spacing[0] + (rng() * 2 - 1) * jitterFrac * spacing[0]
         positions0[idx * 4 + 1] = (iy + 0.5) * spacing[1] + (rng() * 2 - 1) * jitterFrac * spacing[1]
-        positions0[idx * 4 + 2] = (iz + 0.5) * spacing[2] + (rng() * 2 - 1) * jitterFrac * spacing[2]
+        const zRaw = (iz + 0.5) * spacing[2] + (rng() * 2 - 1) * jitterFrac * spacing[2]
+        if (clay) {
+          const u = (((zRaw / box[2]) % 1) + 1) % 1
+          positions0[idx * 4 + 2] = (((zStart + u * zSpan) % box[2]) + box[2]) % box[2]
+        } else {
+          positions0[idx * 4 + 2] = zRaw
+        }
         positions0[idx * 4 + 3] = kind
         const s = Math.sqrt(opts.kT)
         velocities0[idx * 4 + 0] = s * gaussian(rng)
@@ -114,6 +187,11 @@ export function buildInitialState(
         velocities0[idx * 4 + 2] = s * gaussian(rng)
         idx++
       }
+    }
+    if (clay && (mineralCursor !== clay.mineralCount || siteCursor !== clay.siteCount)) {
+      throw new Error(
+        `createSoup: пластина разложена не полностью — минеральных ${mineralCursor}/${clay.mineralCount}, центров ${siteCursor}/${clay.siteCount}`,
+      )
     }
   }
 
@@ -166,5 +244,5 @@ export function buildInitialState(
     }
   }
 
-  return { positions0, velocities0, bondSlots0, centerLink0, centerHeldSteps0, desorbEventsInit, bondRng0, thermoRng0, eventsInit }
+  return { positions0, velocities0, bondSlots0, centerLink0, centerHeldSteps0, desorbEventsInit, bondRng0, thermoRng0, eventsInit, frozen0 }
 }

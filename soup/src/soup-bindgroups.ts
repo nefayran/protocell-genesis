@@ -191,12 +191,19 @@ export function buildBindGroups(device: GPUDevice, pipe: SoupPipelines, sb: Soup
     { binding: 3, resource: buf(sb.gridUniform) },
     { binding: 10, resource: buf(sb.velBuf) },
     { binding: 11, resource: buf(sb.forceBuf) },
+    // Task 'clay-surface' (2026-08-19): soup/wgsl/step.wgsl's frozenRO. Both integrator kernels read
+    // it, so both of their group-1 layouts require the entry -- omitting it fails bind-group
+    // validation outright (entry count vs the shader's), which is how it would be caught rather than
+    // by the platelet silently drifting.
+    { binding: 21, resource: buf(sb.frozenBuf) },
   ], device)
   bind_.kickThermostatGroup0 = bind(pipe.kickThermostat, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
   bind_.kickThermostatGroup1 = bind(pipe.kickThermostat, 1, [
     { binding: 10, resource: buf(sb.velBuf) },
     { binding: 11, resource: buf(sb.forceBuf) },
     { binding: 12, resource: buf(sb.thermoRngBuf) },
+    // Task 'clay-surface': see kickDriftWrapGroup1's own note above.
+    { binding: 21, resource: buf(sb.frozenBuf) },
   ], device)
 
   // --- bond formation/breaking (forces.wgsl + bond.wgsl) -----------------------------------------

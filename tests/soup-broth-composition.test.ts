@@ -76,6 +76,20 @@ test(
     // of such an aggregate instead of chasing a chain dispersed through the whole box. That is the
     // encounter-frequency collapse broth-composition-report.md §5 named as its best explanation,
     // now removed by its own stated cause rather than compensated by a rate.
+    // Task 'clay-surface' (2026-08-19): this test runs the SHIPPED composition, which now includes the
+    // mineral platelet (data/soup.json's clay.enabled), so its numbers moved again -- reported, with the
+    // mechanism, not absorbed:
+    //   without clay (n=10, seeds 41/42/43): ccBondEvents 245-311 (mean 277.9, sd 19.3), coBondEvents
+    //     5-27 (mean 15.6, sd 6.3)
+    //   with clay    (n=10, same seeds):     ccBondEvents 180-225 (mean 197.7, sd 14.2), coBondEvents
+    //     5-23 (mean 14.0, sd 5.5)
+    //   this invocation: ccBondEvents 190, coBondEvents 19, amphiphileCount 16
+    // Chain GROWTH is ~29% lower with the platelet and the two ranges do not overlap (t = 10.6), while
+    // TERMINATION is unchanged within scatter (t = 0.60). The mechanism is quantitative rather than
+    // hand-waved: clay.siteCatalystFraction moves a quarter of the catalyst pool onto the platelet, and
+    // the platelet's own contact shell is measured 4-7x DEPLETED in carbon (it is a hydrophilic
+    // surface), so ~25% of the catalysts sit where there is almost no substrate -- 25% predicted against
+    // 29% measured. Full trail: clay-surface-report.md.
     expect(r.ccBondEvents).toBeGreaterThan(0) // chains still start growing
     expect(r.coBondEvents).toBeGreaterThan(0) // ... and now DO get capped by a head
     expect(r.amphiphileCount).toBeGreaterThan(0) // so natural growth yields recognised amphiphiles

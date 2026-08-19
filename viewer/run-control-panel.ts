@@ -7,6 +7,8 @@ import { equivalentSphereRadius } from '../engine/src/closure'
 import type { Params } from '../engine/src/params'
 import type { Soup } from '../soup/src/rules'
 import { planSoupGrid, createSoup, type SoupSystem } from '../soup/src/sim'
+import { clayEnabled, planClay } from '../soup/src/soup-clay'
+import { loadParams } from '../engine/src/params'
 import { emptyAggregateAnalysis, type Stage, type StageThresholds } from '../soup/src/stages'
 import type { ProgressReadout } from './run-readout'
 import type { RunLifecycle } from './run-sim-driver'
@@ -111,7 +113,24 @@ export function createControlPanel(
     const particleScale = Number.isFinite(scale) && scale > 0 ? scale : 1
     const startCounts = scaledStart(particleScale)
     startCounts.O = currentHeadCount(startCounts.O)
-    return { box: [boxSide, boxSide, boxSide], startCounts }
+    const box: [number, number, number] = [boxSide, boxSide, boxSide]
+    // Task 'clay-surface' (2026-08-19): the mineral platelet's bead count is DERIVED from the box
+    // (soup/src/soup-clay.ts), not carried in `start`, so the preview has to derive it the same way
+    // createSoup will -- otherwise the panel would show the platelet as "K:0" and undercount the total
+    // by a few hundred particles, which is precisely the cost this preview exists to make visible
+    // BEFORE start. `planClay` throws on a box too small to hold a sheet; the preview swallows that and
+    // shows zero, because validateSizeSelection/planSoupGrid already refuse such a box with their own
+    // message and a preview must never be the thing that throws while the user is mid-typing.
+    if (clayEnabled(soup)) {
+      try {
+        const catalystId = soup.monomers.find((m) => m.kind === 'catalyst')!.id
+        const layout = planClay(soup, loadParams(), box, startCounts[catalystId] ?? 0)
+        startCounts[soup.clay!.mineralId] = layout.mineralCount
+      } catch {
+        startCounts[soup.clay!.mineralId] = 0
+      }
+    }
+    return { box, startCounts }
   }
 
   /** Item 3's other guard, alongside planSoupGrid's neighbour-grid check: the vesicle-closure

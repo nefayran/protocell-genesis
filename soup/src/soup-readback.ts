@@ -86,6 +86,15 @@ export async function centerHeldSteps(rt: SoupRuntime): Promise<Uint32Array> {
   return new Uint32Array(raw.buffer, raw.byteOffset, rt.N)
 }
 
+/** Task 'clay-surface' (2026-08-19): the per-particle immobility flag exactly as the GPU holds it --
+ * 1 for a bead of the rigid mineral platelet (clay bead or catalyst surface site), 0 otherwise. Read
+ * back rather than recomputed on the CPU so a test proving immobility is proving what the SHADER
+ * actually saw, not what a CPU-side plan intended. */
+export async function frozen(rt: SoupRuntime): Promise<Uint32Array> {
+  const raw = await readBack(rt.device, rt.buf.frozenBuf, rt.N * 4)
+  return new Uint32Array(raw.buffer, raw.byteOffset, rt.N)
+}
+
 export async function rngState(rt: SoupRuntime): Promise<{ bond: Uint32Array; thermo: Uint32Array }> {
   const rawBond = await readBack(rt.device, rt.buf.bondRngBuf, rt.N * 4)
   const rawThermo = await readBack(rt.device, rt.buf.thermoRngBuf, rt.N * 4)

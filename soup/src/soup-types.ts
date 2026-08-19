@@ -34,6 +34,13 @@ export interface CreateSoupOpts {
    * data/soup.json between candidate values; the file's own field is what a real run (and the
    * committed gates) actually uses. */
   solventAttractionScaleOverride?: number
+  /** Task 'clay-surface' (2026-08-19): overrides data/soup.json's `clay.enabled` for THIS system --
+   * the same convenience-boolean pattern `dryWetCycle` uses. `false` is how every clay-free control
+   * arm is created, and every measurement of the platelet is a with/without pair at otherwise
+   * identical composition and seed. The platelet's geometry (bead count, lattice spacing, plane
+   * position, site count) is never a caller's choice: it is derived from the box, from
+   * data/params.json's rank-A sigma and from data/soup.json's clay section. */
+  clay?: boolean
   /** Checkpoint/resume (task 'checkpoint-resume'): when present, createSoup skips the jittered-
    * lattice initial layout and every zero-filled buffer below, loading this system's ENTIRE mutable
    * state from a prior checkpoint instead -- everything step()/stepCycled() can change: positions,
@@ -138,6 +145,12 @@ export interface SoupSystem {
    * valve counts against this, so a resumed run that zeroed it would give every held centre a free
    * extra maxHoldSteps of grace it never had. */
   centerHeldSteps(): Promise<Uint32Array>
+  /** Task 'clay-surface' (2026-08-19): the per-particle immobility flag as the GPU holds it -- 1 for
+   * a bead of the rigid mineral platelet, 0 otherwise. All zeros when this system has no platelet. */
+  frozen(): Promise<Uint32Array>
+  /** z of each of the platelet's sheet planes, empty when this system has no platelet -- what a
+   * distance-to-surface profile is binned against. */
+  clayPlanes(): number[]
   /** Per-particle force from the grid path (rebuilds the grid for current positions first).
    * perf2-report.md correctness gate: compared against forcesBruteForce() to floating-point
    * tolerance, mirroring engine/src/sim.ts's own forces()/forcesBruteForce() pair. */

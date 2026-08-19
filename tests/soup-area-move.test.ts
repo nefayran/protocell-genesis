@@ -155,6 +155,11 @@ test(
           box,
           seed,
           kT,
+          // Task 'clay-surface' (2026-08-19): the CLAY-FREE control. data/soup.json's shipped composition
+          // now carries the mineral platelet (clay.enabled), and this fixture must not: the zero-tension area move REFUSES to run on a system with an immobile phase (soup/src/soup-box-scale.ts), and its `resume` fixture was built at a clay-free particle count.
+          // A clay-free system is byte-identical to the pre-task engine, so every number in this file is
+          // unchanged by that task -- which is exactly what makes it a usable reference.
+          clay: false,
           start: startCounts,
           resume: {
             globalStep: 0,

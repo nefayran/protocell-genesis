@@ -3,7 +3,7 @@
 // pairAttrScale() reads, and soup/src/soup-potential.ts evaluates the same numbers on the CPU for
 // the area move's Metropolis energy. Two copies of a pairwise table drifting apart is exactly what
 // data/soup.json's own solvent.attractionRule warns about, so neither side owns the numbers --
-// data/soup.json does, and this module is the only thing that turns them into a 3x3 array.
+// data/soup.json does, and this module is the only thing that turns them into a per-class array.
 //
 // Task 'hydrophobic-asymmetry' (2026-08-19): before this task the attraction was a BOOLEAN
 // (soup/wgsl/step.wgsl's shouldAttract) times one global scale, with the apolar-apolar (tail-tail)
@@ -11,21 +11,32 @@
 // see data/soup.json's solvent.attractionScale.basis for the reversal, the MARTINI ratios and the
 // ranks. No numeric model constant is written here: every number comes from loadSoup().
 //
-// Classes are DERIVED from the two per-species flags data/soup.json already carries, not declared
-// per monomer id: solvent=true -> SOLVENT, else polar=true -> POLAR, else APOLAR. That is the same
-// derivation soup/wgsl/step.wgsl's speciesClass() does on the GPU side, kept textually parallel.
+// Classes are DERIVED from the per-species flags data/soup.json already carries, not declared per
+// monomer id: mineral=true -> MINERAL, else solvent=true -> SOLVENT, else polar=true -> POLAR, else
+// APOLAR. That is the same derivation soup/wgsl/step.wgsl's speciesClass() does on the GPU side,
+// kept textually parallel.
 
 import type { Monomer, Soup } from './rules'
 
 export const CLASS_APOLAR = 0
 export const CLASS_POLAR = 1
 export const CLASS_SOLVENT = 2
-export const CLASS_COUNT = 3
+// Task 'clay-surface' (2026-08-19): the mineral phase gets its OWN class rather than borrowing the
+// head's `polar` or the water's `solvent` row -- a clay basal surface is not a carboxyl head and not
+// a water bead, and the whole point of the platelet is that its depths against water/head/tail
+// differ from both. Appended as the LAST class so every pre-existing class index (and therefore
+// every pre-existing pairEpsilon key) is unchanged.
+export const CLASS_MINERAL = 3
+export const CLASS_COUNT = 4
 
-const CLASS_NAMES = ['apolar', 'polar', 'solvent'] as const
+const CLASS_NAMES = ['apolar', 'polar', 'solvent', 'mineral'] as const
 
-/** APOLAR/POLAR/SOLVENT for one monomer -- the CPU twin of step.wgsl's speciesClass(). */
+/** APOLAR/POLAR/SOLVENT/MINERAL for one monomer -- the CPU twin of step.wgsl's speciesClass().
+ * `mineral` is tested FIRST: it is the most specific flag, and data/soup.json's own validation
+ * (soup/src/rules-validate.ts) refuses a monomer that claims mineral together with polar/solvent, so
+ * the order can never silently reclassify an existing species. */
 export function speciesClassOf(m: Monomer): number {
+  if (m.mineral) return CLASS_MINERAL
   if (m.solvent) return CLASS_SOLVENT
   if (m.polar) return CLASS_POLAR
   return CLASS_APOLAR
@@ -54,7 +65,9 @@ function pairKey(ci: number, cj: number): string {
  * replaces the file's epsilonScale for one system (CreateSoupOpts.solventAttractionScaleOverride).
  *
  * A file with no attractionScale at all (an older fixture) reads as the pre-task behaviour it
- * described: water-water/water-head/water-tail at depth 1, everything else 0. */
+ * described: water-water/water-head/water-tail at depth 1, everything else 0 -- including every
+ * MINERAL cell, which is correct for such a fixture: a file too old to carry a pair table is also
+ * too old to declare a mineral monomer, so those cells are never read. */
 export function attractionScaleTable(soup: Soup, override?: number): number[][] {
   const sc = soup.solvent.attractionScale
   const table: number[][] = []
@@ -96,7 +109,9 @@ export function attractionScaleTable(soup: Soup, override?: number): number[][] 
 }
 
 /** The same table flattened for the GPU uniform soup/wgsl/step.wgsl declares as
- * `array<vec4<f32>, 3>` (16-byte row stride, 4th component unused) -- one row per class. */
+ * `array<vec4<f32>, CLASS_COUNT>` (16-byte row stride, one row per class). With four classes the
+ * rows are exactly full -- there is no spare component left, so a FIFTH class would need the
+ * uniform's own shape changed on both sides, not just one more entry here. */
 export function attractionScaleUniform(soup: Soup, override?: number): Float32Array<ArrayBuffer> {
   const table = attractionScaleTable(soup, override)
   const out = new Float32Array(CLASS_COUNT * 4)

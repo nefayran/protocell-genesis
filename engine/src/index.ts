@@ -46,6 +46,11 @@ export { loadSoup } from '../../soup/src/rules'
 // verification identity (bead-scaled vs molecule-scaled free-energy derivative) without a second
 // implementation of any of it.
 export { attractionScaleTable, speciesClasses, speciesClassOf } from '../../soup/src/soup-attraction'
+// Task 'clay-surface' (2026-08-19): the platelet's own geometry helpers, re-exported so the page
+// context (tests/runner.html) can bin a density profile against the same plane positions and the same
+// periodic distance function the engine placed the sheet with, instead of a second implementation.
+export { planClay, clayEnabled, clayLatticePosition, claySiteIndices, distanceToPlatelet } from '../../soup/src/soup-clay'
+export type { ClayLayout } from '../../soup/src/soup-clay'
 export { makePotentialBasis, soupPotential, bondAdjacency } from '../../soup/src/soup-potential'
 export { proposeBox, scaleBeadsAffine, moleculeCount } from '../../soup/src/soup-area-move'
 export { scaleMoleculesRigid as scaleMoleculesRigidSoup } from '../../soup/src/soup-box-scale-math'

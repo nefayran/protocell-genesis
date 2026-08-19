@@ -66,6 +66,7 @@ import {
   type CycleSchedule,
 } from './soup-box-scale'
 import { makeSoupAreaMove } from './soup-area-move'
+import { clayEnabled, planClay, type ClayLayout } from './soup-clay'
 import * as readback from './soup-readback'
 import type { SoupRuntime } from './soup-runtime'
 
@@ -95,11 +96,31 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     const catalystMonomer = soup.monomers.find((m) => m.kind === 'catalyst')!
     startCounts[catalystMonomer.id] = opts.catalystCount
   }
+  const box = opts.box
+
+  // Task 'clay-surface' (2026-08-19): the immobile mineral platelet. Its bead count is DERIVED from
+  // the box and from the mineral bead's own WCA contact distance (soup/src/soup-clay.ts), never read
+  // from `start` -- data/soup.json has no start entry for it at all, because a fixed count would tile
+  // exactly one box and leave holes in every other. So it is injected into startCounts HERE, before N
+  // is summed, and everything downstream (N, countsByKind, planSoupGrid, the invariants readback) sees
+  // the platelet as an ordinary part of the composition.
+  //
+  // The catalytic surface sites are NOT added on top of the catalyst pool: `planClay` takes the
+  // fraction data/soup.json's clay.siteCatalystFraction names out of THIS system's own catalyst count,
+  // so a with-clay and a without-clay run carry identical catalyst totals and the growth comparison
+  // cannot be explained by "one arm simply had more catalyst" (clay.basis §6).
+  let clay: ClayLayout | null = null
+  if (clayEnabled(soup, opts.clay)) {
+    const catalystMonomer = soup.monomers.find((m) => m.kind === 'catalyst')!
+    clay = planClay(soup, baseParams, box, startCounts[catalystMonomer.id] ?? 0)
+    startCounts[soup.clay!.mineralId] = clay.mineralCount
+  } else if (soup.clay) {
+    startCounts[soup.clay.mineralId] = 0
+  }
+
   const countsByKind = soup.monomers.map((m) => startCounts[m.id] ?? 0)
   const N = countsByKind.reduce((a, b) => a + b, 0)
   if (N === 0) throw new Error('createSoup: стартовый состав пуст')
-
-  const box = opts.box
 
   // Neighbour-grid/Verlet-list geometry, WITH its three throwing completeness guards (walk-radius
   // coverage, list coverage, drift-safety bound) -- see soup/src/soup-plan.ts's deriveGridGeometry.
@@ -124,7 +145,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   const sortedGather = soup.neighborGrid.sortedGather
   const pipe = getSoupPipelines(device, sortedGather)
 
-  const initial = buildInitialState(soup, opts, N, countsByKind, box, rules, eventRuleIds)
+  const initial = buildInitialState(soup, opts, N, countsByKind, box, rules, eventRuleIds, clay)
   const { buf, grid } = allocateSoupBuffers({
     device,
     soup,
@@ -160,6 +181,12 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     effectiveWalkRadius,
     bondAttemptInterval: soup.bondAttemptInterval.steps,
     sortedGather,
+    // Task 'clay-surface': how many particles are immobile. Kept on the runtime (rather than
+    // re-derived) so soup/src/soup-box-scale.ts's applyBoxScaleOnce can REFUSE a box change on a
+    // system that carries a platelet -- an affine scale would stretch the sheet's own lattice and move
+    // beads that by construction cannot move (clay.basis §7).
+    frozenCount: initial.frozen0.reduce((a, b) => a + b, 0),
+    clay,
     box,
     dryBox,
     cycleCfg,
@@ -277,6 +304,8 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     bondSlots: () => readback.readBondSlots(rt),
     centerLinks: () => readback.centerLinks(rt),
     centerHeldSteps: () => readback.centerHeldSteps(rt),
+    frozen: () => readback.frozen(rt),
+    clayPlanes: () => (clay ? [...clay.planeZ] : []),
     desorbEvents: () => readback.desorbEvents(rt),
     rngState: () => readback.rngState(rt),
     events: () => readback.events(rt),

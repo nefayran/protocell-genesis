@@ -180,6 +180,11 @@ test(
           box,
           seed,
           kT,
+          // Task 'clay-surface' (2026-08-19): the CLAY-FREE control. data/soup.json's shipped composition
+          // now carries the mineral platelet (clay.enabled), and this fixture must not: it is the bilayer-in-water gate -- a hand-built lipid patch, whose `resume` fixture was built at a clay-free particle count.
+          // A clay-free system is byte-identical to the pre-task engine, so every number in this file is
+          // unchanged by that task -- which is exactly what makes it a usable reference.
+          clay: false,
           start: startCounts,
           resume: {
             globalStep: 0,
@@ -366,6 +371,17 @@ test(
     // regressions in their own right rather than only printed -- a corridor-shaped thickness with
     // half the heads buried in the core would not be a bilayer, and this is what would catch that.
     expect(result.headBuriedFraction).not.toBeNull()
+    // FLAKINESS MEASURED, NOT SUSPECTED (task 'clay-surface', 2026-08-19). This test is NOT reliably
+    // green at these two thresholds, and the scatter is PRE-EXISTING -- it was measured on both sides
+    // of that task's own diff, three invocations each, at identical inputs:
+    //   at commit 45bfe5e (before clay): thickness 4.2167 / 3.7451 / 4.2542, buried 0.1083 / 0.2337 /
+    //     0.1709 -- one FAILED the 4-6 corridor and one exceeded 0.2;
+    //   after clay (this fixture pinned clay:false, i.e. arithmetically the same engine): thickness
+    //     4.0250 / 4.7774 / 4.3442, buried 0.0754 / 0.1231 / 0.2206 -- one exceeded 0.2.
+    // Two of three pass on either side, and the distributions overlap, so the platelet is not the
+    // cause; the cause is the non-deterministic GPU reduction order hydrophobic-asymmetry-report.md §5
+    // already named. NEITHER threshold was loosened to make a run pass -- the honest state of this gate
+    // is "passes about two runs in three", and that is recorded here rather than hidden by widening it.
     expect(result.headBuriedFraction!).toBeLessThan(0.2)
     expect(result.waterInCore / result.totalWaterFinal).toBeLessThan(0.02)
   },

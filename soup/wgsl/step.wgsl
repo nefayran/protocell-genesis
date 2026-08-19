@@ -34,7 +34,7 @@ const SOUP_NONE: u32 = 0xFFFFFFFFu;
 // Water-calibration task (2026-08-19): x = solvent.attractionScale.epsilonScale (data/soup.json,
 // rank D -- see that field's own basis) TIMES the per-class ratio table
 // solvent.attractionScale.pairEpsilon builds (task 'hydrophobic-asymmetry', 2026-08-19). One row per
-// species CLASS (0 = apolar, 1 = polar, 2 = solvent, exactly speciesClass() below), column = the
+// species CLASS (0 = apolar, 1 = polar, 2 = solvent, 3 = mineral, exactly speciesClass() below), column = the
 // other particle's class, 4th component unused; symmetric by construction on the JS side
 // (soup/src/soup-attraction.ts, which is also what soup/src/soup-potential.ts reads so the CPU
 // Metropolis energy and this kernel cannot drift apart). A cell of 0 means that pair simply does
@@ -42,7 +42,11 @@ const SOUP_NONE: u32 = 0xFFFFFFFFu;
 // alongside it. The depths themselves are ratios to the tail-tail pair, whose own cell is exactly
 // epsilonScale, so attr_dv keeps its rank-A Cooke & Deserno absolute depth for tail-tail; nothing
 // here redefines attr_dv's shape (P.epsilon/P.b_tt/P.wc, rank A, untouched).
-struct AttrScaleTable { rows: array<vec4<f32>, 3> };
+// Task 'clay-surface' (2026-08-19): widened 3 -> 4 rows for the MINERAL class (the clay platelet's
+// own row/column in data/soup.json's pairEpsilon). soup/src/soup-attraction.ts sizes the uniform
+// from its own CLASS_COUNT, so the two sides cannot disagree about the row count without failing
+// bind-group validation outright.
+struct AttrScaleTable { rows: array<vec4<f32>, 4> };
 @group(1) @binding(9) var<uniform> AttrScale: AttrScaleTable;
 
 // Surface growth / adsorption (task 'adsorption', 2026-08-17, adsorption-report.md): read-only view
@@ -70,7 +74,14 @@ struct AttrScaleTable { rows: array<vec4<f32>, 3> };
 // component), a direct generalisation of the old kind==0u/1u/2u/else branches rather than a new
 // mechanism. `solvent` is new: the flag data/soup.json's Monomer.solvent uploads, read by
 // shouldAttract() below.
-struct Species { radius: array<vec4<f32>, 2>, polar: array<vec4<f32>, 2>, solvent: array<vec4<f32>, 2> };
+// Task 'clay-surface' (2026-08-19): `mineral` appended (data/soup.json's Monomer.mineral, true only
+// for the clay bead). soup/src/soup-plan.ts's packSpeciesSlots writes 8 floats per field regardless
+// of how many monomers exist, so this is one more 32-byte field, not a new mechanism. NOTE
+// soup/wgsl/bond-common.wgsl declares its OWN, still-3-field Species against the SAME buffer and
+// deliberately stays that way: a uniform binding only requires the buffer to be at least as large as
+// the struct, and the bond kernels have no use for the mineral flag (no rule mentions the mineral
+// species, so a clay bead can never be a bonding partner).
+struct Species { radius: array<vec4<f32>, 2>, polar: array<vec4<f32>, 2>, solvent: array<vec4<f32>, 2>, mineral: array<vec4<f32>, 2> };
 @group(1) @binding(8) var<uniform> SP: Species;
 
 // Fused integrator steps -- pure arithmetic glue around kick_main/drift_main/thermostat_main's
@@ -86,6 +97,23 @@ struct Species { radius: array<vec4<f32>, 2>, polar: array<vec4<f32>, 2>, solven
 @group(1) @binding(11) var<storage, read> forceRO: array<vec4<f32>>;
 @group(1) @binding(12) var<storage, read_write> intRng: array<u32>;
 
+// Task 'clay-surface' (2026-08-19): per-particle immobility. 1 = this particle belongs to the rigid
+// mineral platelet (a clay bead, or a catalyst bead immobilised on the platelet as a surface site);
+// 0 = ordinary particle. Written once at creation (soup/src/soup-init-state.ts from
+// soup/src/soup-clay.ts's layout) and never again by any kernel.
+//
+// WHY IT IS CHECKED IN THE TWO INTEGRATOR KERNELS AND NOWHERE ELSE. Immobility here means "the
+// position never changes", and the ONLY two kernels that write posRW/velRW during a step are the two
+// below. Both return early for a frozen particle after zeroing its velocity, so:
+//  - its coordinate is not merely damped, it is never assigned at all -- no force, no dt, no
+//    thermostat kick can move it, which is what makes this structural rather than "a heavy mass"
+//    (a heavy bead still drifts, and drifts more the longer the run);
+//  - the force kernels are UNTOUCHED: a frozen bead's own force is still computed and simply never
+//    consumed, so every OTHER particle feels the platelet exactly as it feels any other bead. The
+//    honest consequence, stated rather than discovered: the reaction force on the platelet is
+//    discarded, i.e. the mineral phase is a momentum sink -- which is what a rigid wall is.
+@group(1) @binding(21) var<storage, read> frozenRO: array<u32>;
+
 fn pcgSoup(v: u32) -> u32 {
   var state = v * 747796405u + 2891336453u;
   let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
@@ -97,6 +125,8 @@ fn uniform01Soup(v: u32) -> f32 { return f32(v) / 4294967296.0; }
 fn kick_drift_wrap_main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let i = gid.x;
   if (i >= arrayLength(&posRW)) { return; }
+  // Task 'clay-surface': the platelet does not move. posRW[i] is left completely untouched.
+  if (frozenRO[i] != 0u) { velRW[i] = vec4<f32>(0.0, 0.0, 0.0, 0.0); return; }
   var v = velRW[i].xyz + 0.5 * P.dt * forceRO[i].xyz;
   velRW[i] = vec4<f32>(v, 0.0);
   let box = GB.box.xyz;
@@ -109,6 +139,11 @@ fn kick_drift_wrap_main(@builtin(global_invocation_id) gid: vec3<u32>) {
 fn kick_thermostat_main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let i = gid.x;
   if (i >= arrayLength(&velRW)) { return; }
+  // Task 'clay-surface': a frozen particle gets no half-kick and no Langevin noise either -- were it
+  // thermostatted, it would carry a velocity that the drift above then refuses to apply, i.e. a
+  // nonzero velocity that means nothing. Its RNG stream is also left unconsumed, so the platelet
+  // cannot shift the noise other particles receive.
+  if (frozenRO[i] != 0u) { velRW[i] = vec4<f32>(0.0, 0.0, 0.0, 0.0); return; }
   var v = velRW[i].xyz + 0.5 * P.dt * forceRO[i].xyz;
   var s = intRng[i];
   s = pcgSoup(s);
@@ -154,9 +189,19 @@ fn speciesSolvent(kind: f32) -> bool {
   return SP.solvent[k / 4u][k % 4u] > 0.5;
 }
 
+// Task 'clay-surface': the mineral flag (data/soup.json's Monomer.mineral, true only for the clay
+// platelet bead). Used ONLY for the interaction class below -- immobility is a per-PARTICLE flag
+// (frozenRO), not this, because the platelet also carries beads of the catalyst species as surface
+// sites and those must be frozen while their free-floating siblings are not.
+fn speciesMineral(kind: f32) -> bool {
+  let k = u32(kind);
+  return SP.mineral[k / 4u][k % 4u] > 0.5;
+}
+
 // Species CLASS, derived from the two per-species flags data/soup.json already uploads -- the GPU
 // twin of soup/src/soup-attraction.ts's speciesClassOf(), kept textually parallel on purpose.
 fn speciesClass(kind: f32) -> u32 {
+  if (speciesMineral(kind)) { return 3u; }
   if (speciesSolvent(kind)) { return 2u; }
   if (speciesPolar(kind)) { return 1u; }
   return 0u;

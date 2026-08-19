@@ -283,7 +283,8 @@ test('checkpoint decode cross-check: this file\'s own bondSlots-derived topology
     const api = (window as any).api
     const f = JSON.parse(checkpointJson)
     const r = api.decodeCheckpointResume(f)
-    const sys = await api.createSoup({ box: f.config.box, seed: f.config.seed, kT: f.config.kT, start: f.config.start, resume: r })
+    // clay: false (task 'clay-surface') -- this `resume` fixture was captured at a clay-free particle count.
+    const sys = await api.createSoup({ box: f.config.box, seed: f.config.seed, kT: f.config.kT, start: f.config.start, resume: r, clay: false })
     const particles = await sys.particles()
     const bonds = await sys.bonds()
     const sampleIdx = [0, 1, 1000, 50000, 93199]
@@ -390,6 +391,8 @@ test('formula validation: wcaV/feneV/bendV/attrV against the real engine\'s sys.
         box: boxArg,
         seed: 1,
         kT: 1.1,
+        // clay: false (task 'clay-surface') -- hand-built fixture at a clay-free particle count.
+        clay: false,
         start: { C: nArg, O: 0, H: 0, M: 0 },
         resume: {
           globalStep: 0,

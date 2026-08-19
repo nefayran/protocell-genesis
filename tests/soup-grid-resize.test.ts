@@ -27,7 +27,9 @@ test('box, реально пересекающий границу числа я�
   })
   const r = await page.evaluate(async (box: [number, number, number], start: Record<string, number>) => {
     const api = (window as any).api
-    const sys = await api.createSoup({ box, seed: 13, kT: 1.1, start, dryWetCycle: true })
+    // clay: false (task 'clay-surface', 2026-08-19) -- the clay-free control: a box change refuses to run
+    // on a system with an immobile mineral phase, so the dry-wet grid-resize path is measured without one.
+    const sys = await api.createSoup({ box, seed: 13, kT: 1.1, start, dryWetCycle: true, clay: false })
     const before = await sys.invariants()
 
     // data/soup.json's own schedule: the first wet->dry transition falls at

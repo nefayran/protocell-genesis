@@ -15,6 +15,7 @@ import type { ResolvedRule } from './soup-plan'
 import type { Soup } from './rules'
 import type { Params } from '../../engine/src/params'
 import type { CycleSchedule } from './soup-box-scale-math'
+import type { ClayLayout } from './soup-clay'
 
 /** Mutated by soup/src/soup-box-scale.ts (liveBox, cyclePhase, cycleIndex) and
  * soup/src/soup-integrate.ts (globalStep) -- the exact fields the original sim.ts exposed through
@@ -41,6 +42,12 @@ export interface SoupRuntime {
   effectiveWalkRadius: number
   bondAttemptInterval: number
   sortedGather: boolean
+  /** Task 'clay-surface' (2026-08-19): how many particles are immobile (soup/src/soup-clay.ts's
+   * platelet). Used by soup/src/soup-box-scale.ts's applyBoxScaleOnce to REFUSE a box change rather
+   * than silently stretching the platelet's rigid lattice. */
+  frozenCount: number
+  /** The platelet's derived geometry, or null when this system carries no mineral phase. */
+  clay: ClayLayout | null
   /** The immutable WET/creation box (CreateSoupOpts.box) -- never mutated after createSoup returns;
    * `live.liveBox` is the one that moves under dry-wet cycling / scaleBoxTo / growBoxTo. */
   box: [number, number, number]

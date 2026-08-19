@@ -19,11 +19,15 @@ import {
   elementColor,
   elementRadius,
   MAX_BOND_SEGMENTS_PER_PARTICLE,
+  MINERAL_COLOR,
+  MINERAL_METALNESS,
+  MINERAL_ROUGHNESS,
   MONOMER_ELEMENT,
   SOLVENT_OPACITY,
   SOLVENT_VISIBLE_BY_DEFAULT,
   type SceneMeshes,
 } from './run-types'
+import { loadParams, wcaCutoff } from '../engine/src/params'
 
 export interface RunScene {
   scene: THREE.Scene
@@ -40,7 +44,7 @@ export interface RunScene {
    * cavity mesh's own capacity (see run-cavity.ts's buildCavityMesh). */
   buildMeshes(
     prevMeshes: SceneMeshes | null,
-    monomers: { id: string; solvent?: boolean }[],
+    monomers: { id: string; solvent?: boolean; mineral?: boolean; radiusSigma?: number }[],
     n: number,
     box: [number, number, number],
     closureCell: number,
@@ -155,7 +159,7 @@ export function createRunScene(canvas: HTMLCanvasElement): RunScene {
   // class outright rather than chasing whichever camera pose exposes it next.
   function buildMeshes(
     prevMeshes: SceneMeshes | null,
-    monomers: { id: string; solvent?: boolean }[],
+    monomers: { id: string; solvent?: boolean; mineral?: boolean; radiusSigma?: number }[],
     n: number,
     box: [number, number, number],
     closureCell: number,
@@ -166,6 +170,34 @@ export function createRunScene(canvas: HTMLCanvasElement): RunScene {
     }
     const monomerMesh: Record<string, THREE.InstancedMesh> = {}
     for (const m of monomers) {
+      // Task 'clay-surface' (2026-08-19): the mineral platelet is drawn as a slab of thin flat plates,
+      // one per bead, not as spheres -- see MINERAL_COLOR's own note in run-types.ts for why it does
+      // not go through MONOMER_ELEMENT/data/atoms.json at all. The plate's footprint is the sheet's
+      // OWN lattice spacing, derived here exactly as soup/src/soup-clay.ts derives it (round the box
+      // side to a whole number of mineral-mineral contact distances, then divide the box by that), so
+      // neighbouring plates meet edge to edge at every box size instead of leaving gaps at some. Its
+      // thickness is one bead: pairB(mineral,mineral) = sigma*radiusSigma, the same contact-distance
+      // parameter the force kernel uses -- a single bead layer looks like a single mineral layer.
+      if (m.mineral) {
+        const pp = loadParams()
+        const radiusSigma = m.radiusSigma ?? 1
+        const contact = wcaCutoff(pp.sigma * radiusSigma)
+        const plateX = box[0] / Math.max(1, Math.round(box[0] / contact))
+        const plateY = box[1] / Math.max(1, Math.round(box[1] / contact))
+        const geoPlate = new THREE.BoxGeometry(plateX, plateY, pp.sigma * radiusSigma)
+        const matPlate = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(MINERAL_COLOR),
+          roughness: MINERAL_ROUGHNESS,
+          metalness: MINERAL_METALNESS,
+          flatShading: true,
+        })
+        const meshPlate = new THREE.InstancedMesh(geoPlate, matPlate, n)
+        meshPlate.count = 0
+        meshPlate.frustumCulled = false
+        monomerMesh[m.id] = meshPlate
+        scene.add(meshPlate)
+        continue
+      }
       const element = MONOMER_ELEMENT[m.id]
       const geo = new THREE.SphereGeometry(elementRadius(element), 10, 8)
       // Water-like response, applied uniformly to the WHOLE material (never per-instance): lower

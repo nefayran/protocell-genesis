@@ -59,6 +59,10 @@ export interface SoupBuffers {
   // variants) -- bond_break_main never references it (co_break/cc_break's own reversal is
   // deliberately orthogonal to this bookkeeping, see that task's own report).
   centerLinkBuf: GPUBuffer
+  /** Task 'clay-surface' (2026-08-19): per-particle immobility, bound at group1 binding21 into the
+   * two integrator bind groups (kickDriftWrap / kickThermostat). Not referenced by any force or bond
+   * kernel: a frozen bead interacts exactly like any other, it simply never integrates. */
+  frozenBuf: GPUBuffer
   // Surface growth / adsorption (adsorption-report.md): centerHeldSteps/desorbEvents, bound at
   // group1 bindings 21/22 (soup/wgsl/bond-adsorption.wgsl) into both bond-form bind groups
   // (cell-walk and Verlet-list variants) -- neither is read by soup/wgsl/step.wgsl's force kernels
@@ -109,7 +113,7 @@ export interface AllocateBuffersInput {
 
 export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuffers; grid: SoupGridState } {
   const { device, soup, p, N, dims, ncells, effectiveWalkRadius, initialLiveBox, verlet, listRange, rules, catalystKind, bondAttemptInterval, kT, initial, solventAttractionScaleOverride } = input
-  const { positions0, velocities0, bondSlots0, centerLink0, centerHeldSteps0, desorbEventsInit, bondRng0, thermoRng0, eventsInit } = initial
+  const { positions0, velocities0, bondSlots0, centerLink0, centerHeldSteps0, desorbEventsInit, bondRng0, thermoRng0, eventsInit, frozen0 } = initial
 
   const posBuf = storageBuffer(device, positions0)
   const velBuf = storageBuffer(device, velocities0)
@@ -148,6 +152,16 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
   })
   device.queue.writeBuffer(bondSlotsBuf, 0, bondSlots0)
+
+  // Task 'clay-surface' (2026-08-19): per-particle immobility flag, read (never written) by
+  // soup/wgsl/step.wgsl's two integrator kernels -- see frozenRO's own declaration there for why
+  // those two kernels are the only place immobility can be enforced. Same allocate-and-upload-once
+  // pattern as bondSlots/centerLink above.
+  const frozenBuf = device.createBuffer({
+    size: frozen0.byteLength,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+  })
+  device.queue.writeBuffer(frozenBuf, 0, frozen0)
 
   const centerLinkBuf = device.createBuffer({
     size: centerLink0.byteLength,
@@ -200,12 +214,18 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
   // Task 'explicit-water' (2026-08-18): 96 bytes (3 fields x 2 vec4 x 4 bytes), not 32 -- see
   // soup/wgsl/step.wgsl's own Species struct, widened from a single vec4 per field (4 species) to
   // array<vec4<f32>,2> (8 species) so the 5th species (water) fits without a new binding.
-  const speciesUniform = device.createBuffer({ size: 96, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
+  // Task 'clay-surface' (2026-08-19): 96 -> 128 bytes for the 4th per-species field (`mineral`, 8
+  // slots x 4 bytes). soup/wgsl/bond-common.wgsl's own Species struct is still the 3-field, 96-byte
+  // shape and stays bound to this same, now-larger buffer on purpose -- a uniform binding only needs
+  // the buffer to be at least as large as the struct, and no bond rule can ever name the mineral
+  // species (see step.wgsl's own note at the Species declaration).
+  const speciesUniform = device.createBuffer({ size: 128, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
   {
     const radius = packSpeciesSlots(soup.monomers.map((m) => m.radiusSigma))
     const polar = packSpeciesSlots(soup.monomers.map((m) => (m.polar ? 1 : 0)))
     const solvent = packSpeciesSlots(soup.monomers.map((m) => (m.solvent ? 1 : 0)))
-    device.queue.writeBuffer(speciesUniform, 0, new Float32Array([...radius, ...polar, ...solvent]))
+    const mineral = packSpeciesSlots(soup.monomers.map((m) => (m.mineral ? 1 : 0)))
+    device.queue.writeBuffer(speciesUniform, 0, new Float32Array([...radius, ...polar, ...solvent, ...mineral]))
   }
 
   // Task 'hydrophobic-asymmetry' (2026-08-19): the per-class attraction-depth table, see
@@ -316,6 +336,7 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
     eventsBuf,
     paramsUniform,
     gridUniform,
+    frozenBuf,
     speciesUniform,
     bondParamsUniform,
     attrScaleUniform,
@@ -402,6 +423,7 @@ export function disposeSoupBuffers(buf: SoupBuffers): void {
   buf.eventsBuf.destroy()
   buf.paramsUniform.destroy()
   buf.gridUniform.destroy()
+  buf.frozenBuf.destroy()
   buf.speciesUniform.destroy()
   buf.bondParamsUniform.destroy()
   buf.attrScaleUniform.destroy()

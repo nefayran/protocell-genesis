@@ -6,7 +6,7 @@ import raw from '../../data/soup.json'
  * general -- see soup/wgsl/step.wgsl's shouldAttract for how the two flags combine). */
 export interface Monomer {
   id: string
-  kind: 'carbon' | 'head' | 'donor' | 'catalyst' | 'water'
+  kind: 'carbon' | 'head' | 'donor' | 'catalyst' | 'water' | 'clay'
   radiusSigma: number
   polar: boolean
   /** True only for the solvent species (data/soup.json's `W`). Drives soup/wgsl/step.wgsl's
@@ -18,6 +18,19 @@ export interface Monomer {
    * stays valid -- undefined reads as false, exactly like a monomer that never mentions `polar`
    * would read as non-polar under the same `?? false` convention used elsewhere in this file. */
   solvent?: boolean
+  /** True only for the MINERAL phase (data/soup.json's clay bead `K`, task 'clay-surface',
+   * 2026-08-19). Two things follow from it, and they are deliberately the SAME flag rather than
+   * two, because in this model there is nothing mobile that is mineral and nothing immobile that is
+   * not:
+   *  - interaction CLASS: soup/src/soup-attraction.ts's speciesClassOf checks `mineral` BEFORE
+   *    `solvent`/`polar`, so a mineral bead gets its own row/column in
+   *    solvent.attractionScale.pairEpsilon (mineralSolvent / mineralPolar / mineralApolar /
+   *    mineralMineral) instead of borrowing the head's or the water's;
+   *  - it makes a particle ELIGIBLE to be frozen. Immobility itself is per-PARTICLE, not per
+   *    species (soup/src/soup-clay.ts's `frozen` array, soup/wgsl/step.wgsl's frozenRO): the same
+   *    catalyst species `M` has both free beads diffusing in the broth and beads immobilised as
+   *    surface sites on the platelet, so a species-wide switch could not express it. */
+  mineral?: boolean
 }
 
 /**
@@ -294,6 +307,40 @@ export interface SaltPhLimitation {
   basis: string
 }
 
+/**
+ * Task 'clay-surface' (2026-08-19): the immobile mineral PLATELET -- a rigid sheet of frozen beads
+ * standing for a montmorillonite-like clay basal surface. See data/soup.json's `clay.basis` for the
+ * literature, the ranks, and the explicit list of reported clay effects this cannot represent
+ * (surface charge first among them -- `saltPhLimitation` already declares there is no electrostatics
+ * in this engine at all).
+ *
+ * There is deliberately NO bead count and NO lattice spacing here: both are DERIVED (soup/src/
+ * soup-clay.ts) from the live box and from the mineral bead's own WCA contact distance, i.e. from
+ * data/params.json's rank-A sigma and the monomer's own radiusSigma, so the sheet is a dense,
+ * impermeable, box-spanning plane at whatever box a caller asks for rather than a count that only
+ * happens to tile one particular box.
+ */
+export interface Clay {
+  /** Whether the shipped composition carries the platelet. A caller overrides it per system with
+   * CreateSoupOpts.clay (the same "convenience boolean, file's default when absent" pattern
+   * dryWetCycle already uses) -- which is how every with/without-clay measurement is paired. */
+  enabled: boolean
+  /** data/soup.json monomer id of the mineral bead, read instead of hardcoding "K" (mirrors
+   * solvent.waterId's own reasoning). Must be a monomer with kind="clay" and mineral=true. */
+  mineralId: string
+  /** How many parallel bead layers the platelet is. 1 = a single tetrahedral-octahedral-tetrahedral
+   * (TOT) layer, which is what this task ships; see the basis for why the INTERLAYER (the quasi-2D
+   * reaction environment between two stacked layers) is therefore NOT represented. */
+  sheets: number
+  /** Fraction of the broth's OWN catalyst pool that sits immobilised on the platelet as a surface
+   * site, instead of diffusing freely. Not an addition: the sites are TAKEN from the same
+   * `start` count, so a with-clay and a without-clay run have identical catalyst totals and the
+   * comparison is not confounded by "more catalyst". Rank D -- a choice, see the basis. */
+  siteCatalystFraction: number
+  rank: 'A' | 'B' | 'C' | 'D'
+  basis: string
+}
+
 export interface Soup {
   /** Единственная явная калибровка временнóй шкалы модели (kappa_t на экране в отчётах). */
   kappaT: number
@@ -312,10 +359,11 @@ export interface Soup {
    * throws a named error if a caller asks for an area move on a file that has no such section. */
   areaMove?: AreaMove
   saltPhLimitation?: SaltPhLimitation
+  /** Optional so every pre-'clay-surface' fixture still loads; absent reads as "no mineral phase"
+   * exactly like `clay.enabled: false`. */
+  clay?: Clay
   checkpoint?: CheckpointDefaults
 }
-
-const ALLOWED_MONOMER_KINDS = new Set<Monomer['kind']>(['carbon', 'head', 'donor', 'catalyst', 'water'])
 
 const REQUIRED = [
   'kappaT', 'monomers', 'rules', 'start', 'sweep', 'neighborGrid', 'verletList', 'bondAttemptInterval',
@@ -360,239 +408,9 @@ export function acceptanceProbability(r: Rule, kT: number): number {
   return Math.min(1, Math.exp(-deltaE / kT))
 }
 
-/**
- * Проверяет три инварианта набора правил и один инвариант стартового состава.
- * Бросает Error с сообщением, называющим нарушителя, при первом нарушении:
- *  - у правила rank не 'D' (для этой модели измеренных констант скорости нет —
- *    заявлять более высокий ранг было бы нечестно);
- *  - у правила пустое или тривиальное basis (обоснование скорости обязано быть содержательным);
- *  - у правила образования ('bond') нет парного разрыва ('break') с теми же a/b,
- *    либо энергии пары не совпадают — без этого детальный баланс не определён;
- *  - у мономера вид не из четырёх элементарных ('carbon'|'head'|'donor'|'catalyst'),
- *    либо start ссылается на id, не объявленный в monomers — это и есть проверка
- *    «только мономеры, без готового амфифила» на входе.
- */
-export function assertRulesConsistent(s: Soup): void {
-  for (const r of s.rules) {
-    if (r.rank !== 'D') {
-      throw new Error(
-        `data/soup.json: правило ${r.id} имеет ранг ${r.rank}, а для скоростей синтеза без измеренных констант допускается только ранг D`,
-      )
-    }
-    if (!r.basis || r.basis.trim().length <= 10) {
-      throw new Error(`data/soup.json: правило ${r.id} не имеет содержательного обоснования (basis)`)
-    }
-  }
-
-  for (const r of s.rules.filter((x) => x.kind === 'bond')) {
-    const back = s.rules.find((x) => x.kind === 'break' && x.a === r.a && x.b === r.b)
-    if (!back) {
-      throw new Error(
-        `data/soup.json: у правила образования ${r.id} (${r.a}-${r.b}) нет парного правила разрыва — детальный баланс не определён`,
-      )
-    }
-    if (back.energyKT !== r.energyKT) {
-      throw new Error(
-        `data/soup.json: правила ${r.id} и ${back.id} расходятся по энергии (${r.energyKT} против ${back.energyKT}) — парный разрыв обязан иметь ту же энергию, иначе детальный баланс нарушен`,
-      )
-    }
-  }
-
-  for (const m of s.monomers) {
-    if (!ALLOWED_MONOMER_KINDS.has(m.kind)) {
-      throw new Error(
-        `data/soup.json: мономер ${m.id} имеет вид "${m.kind}", не входящий в набор элементарных строительных блоков`,
-      )
-    }
-  }
-
-  const sv = s.solvent
-  const waterMonomer = s.monomers.find((m) => m.id === sv.waterId)
-  if (!waterMonomer) {
-    throw new Error(`data/soup.json: solvent.waterId="${sv.waterId}" не найден среди monomers`)
-  }
-  if (waterMonomer.kind !== 'water' || !waterMonomer.solvent) {
-    throw new Error(
-      `data/soup.json: мономер "${sv.waterId}" назван solvent.waterId, но не имеет kind="water" и solvent=true`,
-    )
-  }
-  if (!sv.attractionRule || sv.attractionRule.trim().length <= 10) {
-    throw new Error('data/soup.json: solvent.attractionRule не имеет содержательного описания')
-  }
-  if (!sv.basis || sv.basis.trim().length <= 10) {
-    throw new Error('data/soup.json: solvent не имеет содержательного обоснования (basis)')
-  }
-  if (sv.attractionScale !== undefined) {
-    const sc = sv.attractionScale
-    if (!(Number.isFinite(sc.epsilonScale) && sc.epsilonScale > 0)) {
-      throw new Error(`data/soup.json: solvent.attractionScale.epsilonScale=${sc.epsilonScale} должен быть конечным положительным числом`)
-    }
-    if (!sc.basis || sc.basis.trim().length <= 10) {
-      throw new Error('data/soup.json: solvent.attractionScale не имеет содержательного обоснования (basis)')
-    }
-    if (sc.pairEpsilon !== undefined) {
-      const pe = sc.pairEpsilon
-      const ref = pe.levels?.[pe.reference]
-      if (!ref || !(Number.isFinite(ref.epsilonKJ) && ref.epsilonKJ > 0)) {
-        throw new Error(
-          `data/soup.json: solvent.attractionScale.pairEpsilon.reference="${pe.reference}" не указывает на уровень с положительным epsilonKJ`,
-        )
-      }
-      for (const [key, lvl] of Object.entries(pe.levels)) {
-        if (!Number.isFinite(lvl.epsilonKJ) || lvl.epsilonKJ < 0) {
-          throw new Error(`data/soup.json: solvent.attractionScale.pairEpsilon.levels.${key}.epsilonKJ=${lvl.epsilonKJ} должен быть конечным неотрицательным числом`)
-        }
-      }
-    }
-  }
-
-  if (s.areaMove !== undefined) {
-    const am = s.areaMove
-    if (!(Number.isFinite(am.logDelta) && am.logDelta > 0)) {
-      throw new Error(`data/soup.json: areaMove.logDelta=${am.logDelta} должен быть конечным положительным числом`)
-    }
-    if (am.mode !== 'lateral-fixed-volume' && am.mode !== 'lateral-fixed-z') {
-      throw new Error(`data/soup.json: areaMove.mode="${am.mode}" не входит в набор {lateral-fixed-volume, lateral-fixed-z}`)
-    }
-    if (!am.basis || am.basis.trim().length <= 10) {
-      throw new Error('data/soup.json: areaMove не имеет содержательного обоснования (basis)')
-    }
-  }
-
-  const ids = new Set(s.monomers.map((m) => m.id))
-  for (const k of Object.keys(s.start)) {
-    if (!ids.has(k)) {
-      throw new Error(
-        `data/soup.json: стартовый состав ссылается на "${k}", который не объявлен как мономер — это может быть готовый амфифил, а не строительный блок`,
-      )
-    }
-  }
-
-  const bai = s.bondAttemptInterval
-  if (!Number.isInteger(bai.steps) || bai.steps < 1) {
-    throw new Error(`data/soup.json: bondAttemptInterval.steps=${bai.steps} должен быть целым числом >= 1`)
-  }
-  if (!bai.basis || bai.basis.trim().length <= 10) {
-    throw new Error('data/soup.json: bondAttemptInterval не имеет содержательного обоснования (basis)')
-  }
-
-  const ng = s.neighborGrid
-  if (!Number.isInteger(ng.cellDivisor) || ng.cellDivisor < 1) {
-    throw new Error(`data/soup.json: neighborGrid.cellDivisor=${ng.cellDivisor} должен быть целым числом >= 1`)
-  }
-  if (typeof ng.sortedGather !== 'boolean') {
-    throw new Error('data/soup.json: neighborGrid.sortedGather должен быть булевым значением')
-  }
-  if (!ng.basis || ng.basis.trim().length <= 10) {
-    throw new Error('data/soup.json: neighborGrid не имеет содержательного обоснования (basis)')
-  }
-
-  const vl = s.verletList
-  if (typeof vl.enabled !== 'boolean') {
-    throw new Error('data/soup.json: verletList.enabled должен быть булевым значением')
-  }
-  if (!(vl.skin > 0)) {
-    throw new Error(`data/soup.json: verletList.skin=${vl.skin} должен быть положительным числом`)
-  }
-  if (!Number.isInteger(vl.rebuildEvery) || vl.rebuildEvery < 1) {
-    throw new Error(`data/soup.json: verletList.rebuildEvery=${vl.rebuildEvery} должен быть целым числом >= 1`)
-  }
-  if (!Number.isInteger(vl.listCapacity) || vl.listCapacity < 1) {
-    throw new Error(`data/soup.json: verletList.listCapacity=${vl.listCapacity} должен быть целым числом >= 1`)
-  }
-  if (!vl.basis || vl.basis.trim().length <= 10) {
-    throw new Error('data/soup.json: verletList не имеет содержательного обоснования (basis)')
-  }
-
-  const hp = s.headPlacement
-  if (typeof hp.terminalOnly !== 'boolean') {
-    throw new Error('data/soup.json: headPlacement.terminalOnly должен быть булевым значением')
-  }
-  // Architectural ceiling, not a physics one: every particle (any kind) owns exactly 3 bondSlots
-  // rows (soup/src/sim.ts's bondSlots0 -- N*3, uniform across kinds), so a head literally cannot
-  // claim a 4th chain slot regardless of what data/soup.json asks for.
-  const MAX_ARCHITECTURAL_SLOTS = 3
-  if (!Number.isInteger(hp.chainCapacity) || hp.chainCapacity < 1 || hp.chainCapacity > MAX_ARCHITECTURAL_SLOTS) {
-    throw new Error(
-      `data/soup.json: headPlacement.chainCapacity=${hp.chainCapacity} должен быть целым числом от 1 до ${MAX_ARCHITECTURAL_SLOTS} (soup/src/sim.ts's per-particle bondSlots row)`,
-    )
-  }
-  if (!hp.basis || hp.basis.trim().length <= 10) {
-    throw new Error('data/soup.json: headPlacement не имеет содержательного обоснования (basis)')
-  }
-
-  const ad = s.adsorption
-  if (!Number.isInteger(ad.occupancy) || ad.occupancy < 1) {
-    throw new Error(`data/soup.json: adsorption.occupancy=${ad.occupancy} должен быть целым числом >= 1`)
-  }
-  // Architectural ceiling, not a physics one (mirrors headPlacement.chainCapacity's own check
-  // above): soup/wgsl/bond.wgsl's centerLink is a single u32 slot per particle, not an array --
-  // raising occupancy past 1 needs that buffer restructured first (data/soup.json's own basis
-  // explains why this was considered and deliberately deferred, not overlooked).
-  if (ad.occupancy !== 1) {
-    throw new Error(
-      `data/soup.json: adsorption.occupancy=${ad.occupancy} -- soup/wgsl/bond.wgsl's centerLink -- ` +
-        `один u32-слот на частицу -- поддерживает только 1; поднять это число требует отдельной перестройки буфера`,
-    )
-  }
-  if (!Number.isInteger(ad.maxHoldSteps) || ad.maxHoldSteps < 1) {
-    throw new Error(`data/soup.json: adsorption.maxHoldSteps=${ad.maxHoldSteps} должен быть целым числом >= 1`)
-  }
-  if (!ad.basis || ad.basis.trim().length <= 10) {
-    throw new Error('data/soup.json: adsorption не имеет содержательного обоснования (basis)')
-  }
-
-  const dwc = s.dryWetCycle
-  if (typeof dwc.enabled !== 'boolean') {
-    throw new Error('data/soup.json: dryWetCycle.enabled должен быть булевым значением')
-  }
-  if (!Number.isInteger(dwc.cycles) || dwc.cycles < 1) {
-    throw new Error(`data/soup.json: dryWetCycle.cycles=${dwc.cycles} должен быть целым числом >= 1`)
-  }
-  if (!Number.isInteger(dwc.periodSteps) || dwc.periodSteps < 1) {
-    throw new Error(`data/soup.json: dryWetCycle.periodSteps=${dwc.periodSteps} должен быть целым числом >= 1`)
-  }
-  if (!(dwc.dryFraction > 0) || !(dwc.dryFraction < 1)) {
-    throw new Error(`data/soup.json: dryWetCycle.dryFraction=${dwc.dryFraction} должен лежать строго между 0 и 1`)
-  }
-  if (!(dwc.targetDryDensity > 0)) {
-    throw new Error(`data/soup.json: dryWetCycle.targetDryDensity=${dwc.targetDryDensity} должен быть положительным числом`)
-  }
-  if (!Number.isInteger(dwc.rampSteps) || dwc.rampSteps < 1) {
-    throw new Error(`data/soup.json: dryWetCycle.rampSteps=${dwc.rampSteps} должен быть целым числом >= 1`)
-  }
-  if (!Number.isInteger(dwc.rampRelaxSteps) || dwc.rampRelaxSteps < 0) {
-    throw new Error(`data/soup.json: dryWetCycle.rampRelaxSteps=${dwc.rampRelaxSteps} должен быть целым числом >= 0`)
-  }
-  if (!dwc.basis || dwc.basis.trim().length <= 10) {
-    throw new Error('data/soup.json: dryWetCycle не имеет содержательного обоснования (basis)')
-  }
-
-  // Salt/pH limitation (task 'broth-composition'): optional (mirrors CheckpointDefaults' own
-  // pattern) so every pre-existing Soup literal in tests/fixtures stays valid, but validated the
-  // same way as every other section whenever it IS present.
-  if (s.saltPhLimitation) {
-    const sp = s.saltPhLimitation
-    if (typeof sp.represented !== 'boolean') {
-      throw new Error('data/soup.json: saltPhLimitation.represented должен быть булевым значением')
-    }
-    if (!sp.basis || sp.basis.trim().length <= 10) {
-      throw new Error('data/soup.json: saltPhLimitation не имеет содержательного обоснования (basis)')
-    }
-  }
-
-  // Checkpoint/resume: optional (see CheckpointDefaults' own doc comment for why), but validated
-  // the same way as every other section here whenever it IS present.
-  if (s.checkpoint) {
-    const cp = s.checkpoint
-    if (!Number.isInteger(cp.everySteps) || cp.everySteps < 1) {
-      throw new Error(`data/soup.json: checkpoint.everySteps=${cp.everySteps} должен быть целым числом >= 1`)
-    }
-    if (!cp.dir || cp.dir.trim().length === 0) {
-      throw new Error('data/soup.json: checkpoint.dir не должен быть пустым')
-    }
-    if (!cp.basis || cp.basis.trim().length <= 10) {
-      throw new Error('data/soup.json: checkpoint не имеет содержательного обоснования (basis)')
-    }
-  }
-}
+// --- schema validation -------------------------------------------------------------------------
+// assertRulesConsistent lives in soup/src/rules-validate.ts since task 'clay-surface' (2026-08-19):
+// this file had reached 598 lines against CLAUDE.md's hard 600 limit, and the rule is "split first,
+// then add". Re-exported HERE, under its original name, so every existing importer
+// (soup/src/sim.ts, tests/soup-rules.test.ts, soup/cli/campaign.ts, ...) is untouched by the move.
+export { assertRulesConsistent } from './rules-validate'

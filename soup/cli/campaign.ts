@@ -255,7 +255,13 @@ async function main(): Promise<void> {
         const api = (window as any).api
         const cfg = JSON.parse(cfgJson)
         const resume = checkpointJson ? api.decodeCheckpointResume(JSON.parse(checkpointJson)) : undefined
-        const sys = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, resume })
+        // clay: false (task 'clay-surface', 2026-08-19). This CLI resumes from checkpoints captured
+        // BEFORE the mineral platelet existed -- their positions arrays are sized for a clay-free
+        // particle count, so an injected platelet would make every one of them fail to load -- and it
+        // drives dry-wet box cycling, which applyBoxScaleOnce refuses on a system with an immobile
+        // phase. Pinned clay-free so every existing campaign stays reproducible; a clay campaign is its
+        // own measurement with its own checkpoint lineage, not a silent change to this one.
+        const sys = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, resume, clay: false })
         ;(window as any).__sys = sys
         return { N: (await sys.particles()).length / 4, steps: sys.steps }
       },
@@ -301,7 +307,7 @@ async function main(): Promise<void> {
               const api = (window as any).api
               const cfg = JSON.parse(cfgJson2)
               const resume = checkpointJson2 ? api.decodeCheckpointResume(JSON.parse(checkpointJson2)) : undefined
-              const probe = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, resume })
+              const probe = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, resume, clay: false })
               try {
                 if (expandToBox2 !== null) await probe.growBoxTo([expandToBox2, expandToBox2, expandToBox2], rampSteps2, rampRelaxSteps2)
                 const debug = await probe.stepPhasesDEBUG(n2)

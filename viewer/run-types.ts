@@ -81,6 +81,20 @@ export const BOND_RADIUS = atomsData.elements.C.vdw * 0.16
 // on screen (the medium reads as a haze, the heads as solid spheres).
 export const MONOMER_ELEMENT: Record<string, string> = { C: 'C', O: 'O', H: 'H', M: 'Na', W: 'O' }
 
+// Task 'clay-surface' (2026-08-19): the mineral platelet gets its own visual identity, NOT another
+// entry in MONOMER_ELEMENT. Two reasons, in order: (a) a clay bead has no single element to look up
+// (an aluminosilicate layer is Si/Al/O/OH plus interlayer cations, and data/atoms.json holds measured
+// per-ELEMENT data only, so borrowing "Si" would put a colour in the palette that claims a chemistry
+// the model does not carry); (b) drawing it as one more sphere is exactly what the brief rules out --
+// on screen the platelet must read as a mineral slab. So mineral beads are drawn as thin, flat,
+// axis-aligned PLATES (a BoxGeometry per bead, sized to the sheet's own lattice spacing, which is
+// derived in run-scene.ts the same way soup/src/soup-clay.ts derives it) in a matte grey-olive with
+// flat shading -- a slate look, dull where the water beads are glossy. Look choice, documented here
+// rather than buried: no model constant, nothing measured, and nothing about it feeds the physics.
+export const MINERAL_COLOR = 0x8f9179
+export const MINERAL_ROUGHNESS = 0.92
+export const MINERAL_METALNESS = 0.02
+
 // The solvent is the MEDIUM, not an object in it: at any broth-like composition it outnumbers every
 // other species several times over, so drawing it as solid spheres both hides the chemistry behind
 // a wall of water and multiplies transparent overdraw on a machine this page is meant to stay cheap
@@ -117,9 +131,14 @@ export interface SizePreset {
 // the water code path (the solvent-attraction rule, the water-aware closure detector) at trivial
 // cost, not a scientifically meaningful liquid. A real liquid-density preview belongs in "default"
 // or a size a user picks knowing the cost, not in the one preset whose whole job is staying cheap.
+// Task 'clay-surface' (2026-08-19): the particle counts in these labels now INCLUDE the mineral
+// platelet, whose bead count is derived from the box (soup/src/soup-clay.ts), not from `start` -- at
+// box 16 that is a 14x14 sheet (~196 beads), at box 30 a 27x27 one (~729). The platelet is part of
+// the shipped composition (data/soup.json's clay.enabled), so it is part of what these presets run;
+// `clay: false` is what a clay-free control arm passes, and no preset here does.
 export const SIZE_PRESETS: Record<string, SizePreset> = {
-  tiny: { label: 'малый (проверочный, ~570 частиц)', box: [16, 16, 16], start: { C: 200, O: 50, H: 200, M: 20, W: 100 } },
-  default: { label: 'стандартный бульон (data/soup.json, ~14300 частиц)', box: [30, 30, 30] },
+  tiny: { label: 'малый (проверочный, ~760 частиц с пластиной глины)', box: [16, 16, 16], start: { C: 200, O: 50, H: 200, M: 20, W: 100 } },
+  default: { label: 'стандартный бульон + глина (data/soup.json, ~15000 частиц)', box: [30, 30, 30] },
 }
 export const DEFAULT_SIZE_KEY = 'tiny'
 export const DEFAULT_STEP_CAP = 20_000

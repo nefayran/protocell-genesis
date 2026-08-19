@@ -13,7 +13,10 @@ test('из бульона без готовых амфифилов возник�
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api
-    const sys = await api.createSoup({ box: [40, 40, 40], seed: 19, kT: 1.1, catalystCount: 400 })
+    // clay: false (task 'clay-surface', 2026-08-19): this test was NOT run by that task (its budget is
+    // millions of steps), so it is pinned clay-free rather than silently changed. A clay-assisted
+    // vesicle run is its own measurement, not a side effect of adding the platelet to the file.
+    const sys = await api.createSoup({ box: [40, 40, 40], seed: 19, kT: 1.1, catalystCount: 400, clay: false })
     const startAmph = (await api.stageOf(sys)).evidence.amphiphileFraction
     const run = await sys.runUntil('vesicle', { maxSteps: 4_000_000, sampleEvery: 20_000 })
     return { startAmph, ...run }

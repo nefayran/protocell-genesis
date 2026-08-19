@@ -36,6 +36,11 @@ test('сетка соседей (в т.ч. список Верле) даёт т�
       // data/soup.json's own defaults, which now include a box-30-sized water count -- explicit
       // zero keeps this box=16 force-correctness diagnostic at its own originally-intended,
       // deliberately small scale.
+      // Task 'clay-surface' (2026-08-19): the CLAY-FREE control. data/soup.json's shipped composition
+      // now carries the mineral platelet (clay.enabled), and this fixture must not: it is a force-correctness diagnostic at a deliberately small hand-picked scale, not a broth.
+      // A clay-free system is byte-identical to the pre-task engine, so every number in this file is
+      // unchanged by that task -- which is exactly what makes it a usable reference.
+      clay: false,
       start: { C: 600, O: 100, H: 500, M: 20, W: 0 },
     })
     // Несколько реальных шагов ПЕРЕД сравнением -- проверяем силы не только на стартовой решётке

@@ -80,6 +80,20 @@ export async function applyBoxScaleOnce(
   targetBox: [number, number, number],
   cohesion?: { cutoff: number; memberIndices?: Uint32Array },
 ): Promise<void> {
+  // Task 'clay-surface' (2026-08-19): a box change is structurally incompatible with an immobile
+  // phase, and this refuses rather than silently producing a wrong answer. An affine box scale moves
+  // every particle's centre by the box ratio -- which for the mineral platelet would (a) move beads
+  // that by construction cannot move (the integrator refuses to write their positions, so the CPU
+  // and GPU pictures would immediately disagree) and (b) stretch the sheet's own lattice spacing away
+  // from the mineral-mineral contact distance it is defined as, i.e. punch holes in a surface whose
+  // whole purpose is to be impermeable. Every zero-tension area measurement in this project therefore
+  // runs clay-free, which is what the bilayer gates need anyway -- see data/soup.json's clay.basis §7.
+  if (rt.frozenCount > 0) {
+    throw new Error(
+      `изменение коробки невозможно на системе с минеральной пластиной: ${rt.frozenCount} неподвижных бидов ` +
+        `(areaMove/scaleBoxTo/dryWetCycle требуют CreateSoupOpts.clay=false — см. data/soup.json clay.basis §7)`,
+    )
+  }
   const before = await particles()
   const bondPairs = await bonds()
   let rigidEdges = bondPairs
