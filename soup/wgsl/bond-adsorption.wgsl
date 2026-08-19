@@ -90,17 +90,39 @@ fn propagateOnCenter(i: u32, j: u32, slotI: i32, slotJ: i32, catalystId: u32) ->
     // near particle i (catalystId, BOND_NONE if none was within range) to adopt the new tip -- the
     // CAS below is simultaneously the "is it free" check and the claim, so a catalyst already
     // holding some OTHER tip simply fails here rather than needing a separate read-then-claim (the
-    // same race-free reasoning tryClaimSlot's own atomics already rest on). j is the arbitrary but
-    // deterministic choice of which bare carbon becomes the new tip -- which one does not matter
-    // physically, only that both sides of this function agree, and they do (same i/j the valence
-    // claims above just used).
+    // same race-free reasoning tryClaimSlot's own atomics already rest on).
+    //
+    // CATALYST TURNOVER (task 'catalyst-turnover-and-window', 2026-08-20,
+    // catalyst-turnover-and-window-report.md sec 1-2; diagnosis nominated by
+    // tail-length-and-window-report.md sec 6): WHICH of the two bare carbons becomes the tip is
+    // physically arbitrary (see the previous version of this comment, which said exactly that) but
+    // it is NOT arbitrary geometrically, and choosing the wrong one made this branch impossible to
+    // satisfy once the bare-carbon pool thinned out. bondFormWalk has ALREADY established that
+    // catalystId lies within reaction contact of PARTICLE i -- that is where catalystId comes from.
+    // Claiming j as the tip threw that contact away and demanded a SECOND, independent one
+    // (catalyst-to-j), i.e. a closed triangle: carbon i touching carbon j touching catalyst
+    // touching carbon i, all three at the same instant. A triangle scales as the CUBE of the local
+    // bare-carbon density where a single contact scales as its square, and the measurement is
+    // unambiguous (verify/center-nucleation.ts on the predecessor run's own checkpoints): the
+    // triangle count fell 393 -> 172 -> 3 -> 1 -> 0 over steps 15 000 ... 120 000 and then sat at
+    // EXACTLY 0 for the remaining 180 000 steps, while 234 bare carbons were still in contact with
+    // a FREE catalyst and 7855 bare-bare contact pairs still existed, and while 1021 of 1021
+    // centres sat empty. So the centres were not stuck (597 of them were measured re-claiming a tip
+    // earlier in that same run) and the reagents were not gone (5125 bare carbons, 58 387 free
+    // heads) -- the three-body coincidence nucleation demanded had simply gone extinct.
+    // Making the tip the carbon whose catalyst contact is already known (i) removes one leg of that
+    // triangle at zero physical cost and adds no new constant, buffer or event type: after the
+    // change the same measurement counts 106 eligible configurations at step 300 000 where it
+    // counted 0 before (305 vs 0 in the box-90 predecessor run).
     if (catalystId == BOND_NONE) { return false; }
-    // Surface growth / adsorption (this task): the fresh tether this claim is about to create
+    // Surface growth / adsorption: the fresh tether this claim is about to create
     // (soup/wgsl/step.wgsl's bondedForce reads centerLink at the very next force evaluation) must
     // itself start at REACTION-CONTACT distance (wca_cut(bPairB(...)), the SAME reach every other
-    // bond in this file forms at, e.g. bondFormWalk's own catalystNear check) -- catalystId was
-    // only ever found within that distance of PARTICLE i, not necessarily of j, the arbitrary tip
-    // choice here, so this is not automatic. Checking against the FULL FENE divergence radius
+    // bond in this file forms at, e.g. bondFormWalk's own catalystNear check). For the tip chosen
+    // here (i) that is guaranteed by bondFormWalk's own catalystNear test, which uses this exact
+    // threshold with this exact particle -- the check below is kept anyway, so the invariant "a
+    // tether is born at reaction contact" is enforced HERE, locally, rather than inherited from a
+    // caller that could later change. Checking against the FULL FENE divergence radius
     // (P.r_inf) instead of contact distance was tried first and measured to blow up: fene_dv(r)
     // grows steeply as r approaches r_inf (a stiff spring, not a soft one), so a tether allowed to
     // START anywhere up to just under r_inf can begin already deep in that steep region, and one
@@ -110,15 +132,15 @@ fn propagateOnCenter(i: u32, j: u32, slotI: i32, slotJ: i32, catalystId: u32) ->
     // to 1e4-1e9 sigma within a handful of steps of the FIRST such over-close claim). Every
     // covalent bond in this file has always formed at exactly THIS tighter contact distance and
     // has never shown this instability -- mirroring that convention here, not inventing a new one.
-    let dNuc = bMi3(pos2[j].xyz - pos2[catalystId].xyz, GB.box.xyz);
-    if (length(dNuc) >= wca_cut(bPairB(pos2[j].w, BP.catalystKind))) { return false; }
-    if (!centerCas(catalystId, BOND_NONE, j)) { return false; }
-    if (!centerCas(j, BOND_NONE, catalystId)) {
-      // The tip side's own claim lost a race (some other thread claimed j's centerLink first,
-      // impossible for j itself under the i<j dedupe but not for a DIFFERENT rule's event touching
-      // j concurrently) -- undo the catalyst claim rather than leave it pointing at a tip that does
+    let dNuc = bMi3(pos2[i].xyz - pos2[catalystId].xyz, GB.box.xyz);
+    if (length(dNuc) >= wca_cut(bPairB(pos2[i].w, BP.catalystKind))) { return false; }
+    if (!centerCas(catalystId, BOND_NONE, i)) { return false; }
+    if (!centerCas(i, BOND_NONE, catalystId)) {
+      // The tip side's own claim lost a race (some other thread claimed i's centerLink first,
+      // impossible for i itself under the i<j dedupe but not for a DIFFERENT rule's event touching
+      // i concurrently) -- undo the catalyst claim rather than leave it pointing at a tip that does
       // not point back, the same both-or-neither discipline tryClaimSlot's own rollback embodies.
-      centerCas(catalystId, j, BOND_NONE);
+      centerCas(catalystId, i, BOND_NONE);
       return false;
     }
     // Surface growth / adsorption (this task): a fresh claim is a successful event -- start this
