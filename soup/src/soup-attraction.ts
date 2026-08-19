@@ -16,7 +16,7 @@
 // APOLAR. That is the same derivation soup/wgsl/step.wgsl's speciesClass() does on the GPU side,
 // kept textually parallel.
 
-import type { Monomer, Soup } from './rules'
+import type { ClaySurfaceChemistry, Monomer, Soup } from './rules'
 
 export const CLASS_APOLAR = 0
 export const CLASS_POLAR = 1
@@ -57,6 +57,44 @@ function pairKey(ci: number, cj: number): string {
   return hi + lo[0].toUpperCase() + lo.slice(1)
 }
 
+/** The SURFACE CHEMISTRY in force for this system: data/soup.json's clay.surfaceChemistry, or the
+ * caller's override (CreateSoupOpts.claySurfaceChemistry). Task 'clay-surface-chemistry' (2026-08-19):
+ * the platelet's hydrophilicity is a MAPPING CHOICE, not a measured property of this tree, and the
+ * published CG clay mapping disagrees with the hydrophilic one -- so the mapping is selectable and
+ * both limits stay measurable. Throws by name rather than falling back to a default, because a
+ * silently-wrong surface chemistry is exactly the kind of thing a measurement would then attribute to
+ * physics. */
+export function claySurfaceChemistryOf(soup: Soup, override?: string): ClaySurfaceChemistry & { name: string } {
+  const c = soup.clay
+  if (!c) throw new Error('claySurfaceChemistryOf: data/soup.json не содержит секции clay')
+  const name = override ?? c.surfaceChemistry
+  const chem = c.surfaceChemistries?.[name]
+  if (chem === undefined) {
+    throw new Error(
+      `data/soup.json: химия поверхности глины "${name}" не объявлена в clay.surfaceChemistries ` +
+        `(есть: ${Object.keys(c.surfaceChemistries ?? {}).join(', ') || 'ни одной'})`,
+    )
+  }
+  return { name, ...chem }
+}
+
+/** Resolves one class-pair key through the selected surface chemistry: a MINERAL pair is looked up by
+ * the level name that chemistry aliases it to, every other pair by its own name. This is the only
+ * place the indirection exists, so the CPU potential and the GPU uniform cannot disagree about which
+ * surface the run has. */
+function levelKeyFor(soup: Soup, ci: number, cj: number, chemistry?: string): string {
+  const key = pairKey(ci, cj)
+  if (ci !== CLASS_MINERAL && cj !== CLASS_MINERAL) return key
+  if (!soup.clay) return key
+  const alias = claySurfaceChemistryOf(soup, chemistry).pairs[key]
+  if (alias === undefined) {
+    throw new Error(
+      `data/soup.json: clay.surfaceChemistries["${chemistry ?? soup.clay.surfaceChemistry}"].pairs не задаёт пару "${key}"`,
+    )
+  }
+  return alias
+}
+
 /** The symmetric CLASS_COUNT x CLASS_COUNT depth-multiplier table on attr_dv's magnitude:
  * levels[pair].epsilonKJ / levels[reference].epsilonKJ, times the global epsilonScale. The
  * reference pair therefore comes out at exactly `epsilonScale` (1.0 in the file), which is what
@@ -68,7 +106,7 @@ function pairKey(ci: number, cj: number): string {
  * described: water-water/water-head/water-tail at depth 1, everything else 0 -- including every
  * MINERAL cell, which is correct for such a fixture: a file too old to carry a pair table is also
  * too old to declare a mineral monomer, so those cells are never read. */
-export function attractionScaleTable(soup: Soup, override?: number): number[][] {
+export function attractionScaleTable(soup: Soup, override?: number, chemistry?: string): number[][] {
   const sc = soup.solvent.attractionScale
   const table: number[][] = []
   for (let ci = 0; ci < CLASS_COUNT; ci++) table.push(new Array(CLASS_COUNT).fill(0))
@@ -97,7 +135,7 @@ export function attractionScaleTable(soup: Soup, override?: number): number[][] 
   }
   for (let ci = 0; ci < CLASS_COUNT; ci++) {
     for (let cj = 0; cj < CLASS_COUNT; cj++) {
-      const key = pairKey(ci, cj)
+      const key = levelKeyFor(soup, ci, cj, chemistry)
       const lvl = pe.levels[key]
       if (lvl === undefined) {
         throw new Error(`data/soup.json: solvent.attractionScale.pairEpsilon.levels не содержит пары "${key}"`)
@@ -112,8 +150,8 @@ export function attractionScaleTable(soup: Soup, override?: number): number[][] 
  * `array<vec4<f32>, CLASS_COUNT>` (16-byte row stride, one row per class). With four classes the
  * rows are exactly full -- there is no spare component left, so a FIFTH class would need the
  * uniform's own shape changed on both sides, not just one more entry here. */
-export function attractionScaleUniform(soup: Soup, override?: number): Float32Array<ArrayBuffer> {
-  const table = attractionScaleTable(soup, override)
+export function attractionScaleUniform(soup: Soup, override?: number, chemistry?: string): Float32Array<ArrayBuffer> {
+  const table = attractionScaleTable(soup, override, chemistry)
   const out = new Float32Array(CLASS_COUNT * 4)
   for (let ci = 0; ci < CLASS_COUNT; ci++) {
     for (let cj = 0; cj < CLASS_COUNT; cj++) out[ci * 4 + cj] = table[ci][cj]

@@ -320,6 +320,27 @@ export interface SaltPhLimitation {
  * impermeable, box-spanning plane at whatever box a caller asks for rather than a count that only
  * happens to tile one particular box.
  */
+/**
+ * ONE named mapping of the mineral class onto the depth table, i.e. one SURFACE CHEMISTRY the
+ * platelet can be given. Task 'clay-surface-chemistry' (2026-08-19): the predecessor shipped exactly
+ * one (the P5 hydrophilic mapping) and its own report's concern §1 was that the published CG clay
+ * mapping DISAGREES with it -- Sposito et al. PNAS 1999 96:3358 has the uncharged siloxane basal
+ * surface hydrophobic, and Khan & Goel JPCB 2019 123:9011 puts the basal beads at an apolar subtype
+ * with the wetting carried by CHARGED beads this engine cannot represent. Neither mapping is the real
+ * charged mineral, so both are kept SELECTABLE and the honest statement is the bracket between them.
+ *
+ * `pairs` maps each mineral pair key soup/src/soup-attraction.ts asks for (mineralSolvent /
+ * mineralPolar / mineralApolar / mineralMineral) onto the name of a level in
+ * solvent.attractionScale.pairEpsilon.levels. It is an ALIAS, never a number: a chemistry can only
+ * point at a depth that already exists in the table with its own martini_v2.1.itp source line, so
+ * adding a chemistry cannot introduce an uncited energy.
+ */
+export interface ClaySurfaceChemistry {
+  pairs: Record<string, string>
+  rank: 'A' | 'B' | 'C' | 'D'
+  basis: string
+}
+
 export interface Clay {
   /** Whether the shipped composition carries the platelet. A caller overrides it per system with
    * CreateSoupOpts.clay (the same "convenience boolean, file's default when absent" pattern
@@ -337,6 +358,14 @@ export interface Clay {
    * `start` count, so a with-clay and a without-clay run have identical catalyst totals and the
    * comparison is not confounded by "more catalyst". Rank D -- a choice, see the basis. */
   siteCatalystFraction: number
+  /** Which entry of `surfaceChemistries` the shipped platelet uses. Overridden per system with
+   * CreateSoupOpts.claySurfaceChemistry, which is how the two limits are measured side by side. */
+  surfaceChemistry: string
+  /** Why there are two limits rather than one choice -- literature, ranks and the bracket. */
+  surfaceChemistryBasis: string
+  /** Every selectable surface chemistry, by name. Both bounds of the hydrophilicity bracket stay
+   * here permanently: the mineral this stands for is CHARGED, and neither limit is it. */
+  surfaceChemistries: Record<string, ClaySurfaceChemistry>
   rank: 'A' | 'B' | 'C' | 'D'
   basis: string
 }

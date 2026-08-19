@@ -79,6 +79,7 @@ export function planClay(
   p: Params,
   box: [number, number, number],
   catalystTotal: number,
+  siteFractionOverride?: number,
 ): ClayLayout {
   const c = soup.clay
   if (!c) throw new Error('planClay: data/soup.json не содержит секции clay')
@@ -109,16 +110,39 @@ export function planClay(
   for (let s = 0; s < c.sheets; s++) planeZ.push(box[2] / 2 - stackSpan / 2 + s * target)
 
   const latticeCount = nx * ny * c.sheets
-  const siteCount = Math.min(Math.round(c.siteCatalystFraction * catalystTotal), latticeCount)
+  // Task 'clay-surface-chemistry' (2026-08-19): the fraction is SWEEPABLE per system
+  // (CreateSoupOpts.claySiteCatalystFraction) because the predecessor's headline growth result is a
+  // function of it and it was never swept -- see that report's concern §3. The file's own value stays
+  // the default; an override is validated here exactly as the file's value is validated in
+  // soup/src/rules-validate.ts, so a sweep cannot ask for a fraction the schema would refuse.
+  const siteFraction = siteFractionOverride ?? c.siteCatalystFraction
+  if (!(siteFraction >= 0) || !(siteFraction <= 1)) {
+    throw new Error(`planClay: доля центров на пластине ${siteFraction} должна лежать в [0,1]`)
+  }
+  const siteCount = Math.min(Math.round(siteFraction * catalystTotal), latticeCount)
   const mineralCount = latticeCount - siteCount
 
   // The slab kept clear of everything else: the largest distance at which ANY other species would
   // still be inside a sheet bead's WCA core. Taken over every declared species (not just the ones
   // with a nonzero count) so the value does not silently depend on this run's composition.
+  //
+  // Task 'clay-surface-chemistry' (2026-08-19), MEASURED DEFECT of the predecessor's version: the
+  // maximum ran over the MINERAL bead's radius only, but a catalytic SITE is a bead of the catalyst
+  // species and that species is the LARGEST in the file (radiusSigma 1.2 against the mineral's 1.0).
+  // So a mobile catalyst could be placed at 1.2347 sigma from the plane -- inside the 1.3470 sigma WCA
+  // core of a site bead it happened to sit above -- i.e. a cold-start overlap against a bead that by
+  // construction cannot move away, which is exactly what data/soup.json's startBasis §2 warns about.
+  // Measured overlap energy: 0.47 eps (small, which is why it never showed at the shipped 25 % site
+  // fraction), but the fix costs nothing: the maximum runs over the radii of every species ACTUALLY IN
+  // the sheet, which is the mineral bead plus -- when there are sites -- the catalyst bead.
+  const sheetRadii = [mineralRadius]
+  if (siteCount > 0) sheetRadii.push(soup.monomers[catalystKind].radiusSigma)
   let exclusionHalfWidth = 0
-  for (const m of soup.monomers) {
-    const b = p.sigma * (mineralRadius + m.radiusSigma) * 0.5
-    exclusionHalfWidth = Math.max(exclusionHalfWidth, wcaCutoff(b))
+  for (const rSheet of sheetRadii) {
+    for (const m of soup.monomers) {
+      const b = p.sigma * (rSheet + m.radiusSigma) * 0.5
+      exclusionHalfWidth = Math.max(exclusionHalfWidth, wcaCutoff(b))
+    }
   }
 
   return { mineralKind, catalystKind, nx, ny, spacingX, spacingY, planeZ, latticeCount, siteCount, mineralCount, exclusionHalfWidth }

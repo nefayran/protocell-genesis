@@ -193,6 +193,45 @@ export function buildInitialState(
         `createSoup: пластина разложена не полностью — минеральных ${mineralCursor}/${clay.mineralCount}, центров ${siteCursor}/${clay.siteCount}`,
       )
     }
+
+    // THE CONTROL THE 'clay-surface' CAMPAIGN DID NOT RUN (its report's concern §3): the same number
+    // of catalyst beads immobilised in the BULK, with no platelet at all. It is what separates "a
+    // fraction of the catalysts stopped diffusing" from "the mineral surface did it", and it is done
+    // HERE, after the layout loop, precisely so it changes nothing else: the positions and the
+    // velocity draws are already made in the identical RNG order the clay-free arm uses, and this loop
+    // only sets the frozen flag (and zeroes the velocity the integrator would refuse to use anyway).
+    // Such a system is therefore bit-identical to the clay-free arm at the same seed except in WHICH
+    // beads the integrator moves.
+    //
+    // The first `frozenBulkCatalysts` catalysts in index order are taken, not a random subset: their
+    // positions are already a shuffled draw over the jittered lattice (siteOrder above), so "the first
+    // n" is already a spatially random sample, and taking them deterministically keeps the control
+    // reproducible from the seed alone.
+    const bulkFrozen = opts.frozenBulkCatalysts ?? 0
+    if (bulkFrozen > 0) {
+      if (clay) {
+        throw new Error(
+          'createSoup: frozenBulkCatalysts — это КОНТРОЛЬ БЕЗ ПЛАСТИНЫ (замороженные катализаторы в объёме); ' +
+            'вместе с clay=true он смешал бы два способа обездвижить катализатор — используйте clay.siteCatalystFraction',
+        )
+      }
+      const catalystKindIdx = soup.monomers.findIndex((m) => m.kind === 'catalyst')
+      if (catalystKindIdx < 0) throw new Error('createSoup: frozenBulkCatalysts, но в monomers нет частицы с kind="catalyst"')
+      let frozenSoFar = 0
+      for (let i = 0; i < N && frozenSoFar < bulkFrozen; i++) {
+        if (Math.round(positions0[i * 4 + 3]) !== catalystKindIdx) continue
+        frozen0[i] = 1
+        velocities0[i * 4 + 0] = 0
+        velocities0[i * 4 + 1] = 0
+        velocities0[i * 4 + 2] = 0
+        frozenSoFar++
+      }
+      if (frozenSoFar !== bulkFrozen) {
+        throw new Error(
+          `createSoup: frozenBulkCatalysts=${bulkFrozen}, но в составе всего ${frozenSoFar} частиц-катализаторов`,
+        )
+      }
+    }
   }
 
   const bondSlots0 = new Uint32Array(N * 3).fill(NONE_U32)

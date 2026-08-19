@@ -276,6 +276,50 @@ export function assertRulesConsistent(s: Soup): void {
     if (!c.basis || c.basis.trim().length <= 10) {
       throw new Error('data/soup.json: clay не имеет содержательного обоснования (basis)')
     }
+    // Task 'clay-surface-chemistry' (2026-08-19): the SURFACE CHEMISTRY is selectable, and both limits
+    // of the hydrophilicity bracket must stay declared -- the real mineral is charged and neither limit
+    // is it, so a single "the" clay surface would be a claim this engine cannot make. Checked here (a
+    // schema failure) rather than at system creation (a GPU-path failure).
+    const chems = c.surfaceChemistries
+    if (!chems || typeof chems !== 'object' || Object.keys(chems).length < 2) {
+      throw new Error(
+        'data/soup.json: clay.surfaceChemistries должен объявлять ОБЕ границы вилки гидрофильности ' +
+          '(гидрофильный предел P5 и аполярный предел SC6/C1) — одна «та самая» поверхность была бы утверждением, ' +
+          'которого этот движок сделать не может: настоящий минерал заряжен, а заряда здесь нет',
+      )
+    }
+    if (typeof c.surfaceChemistry !== 'string' || chems[c.surfaceChemistry] === undefined) {
+      throw new Error(
+        `data/soup.json: clay.surfaceChemistry="${c.surfaceChemistry}" не объявлен в clay.surfaceChemistries ` +
+          `(есть: ${Object.keys(chems).join(', ')})`,
+      )
+    }
+    if (!c.surfaceChemistryBasis || c.surfaceChemistryBasis.trim().length <= 10) {
+      throw new Error('data/soup.json: clay.surfaceChemistryBasis не объясняет, почему пределов два')
+    }
+    const levels = s.solvent.attractionScale?.pairEpsilon?.levels
+    for (const [name, chem] of Object.entries(chems)) {
+      if (chem.rank !== 'A' && chem.rank !== 'B' && chem.rank !== 'C' && chem.rank !== 'D') {
+        throw new Error(`data/soup.json: clay.surfaceChemistries["${name}"].rank=${chem.rank} — допускаются только A..D`)
+      }
+      if (!chem.basis || chem.basis.trim().length <= 10) {
+        throw new Error(`data/soup.json: clay.surfaceChemistries["${name}"] не имеет содержательного обоснования (basis)`)
+      }
+      for (const key of ['mineralApolar', 'mineralPolar', 'mineralSolvent', 'mineralMineral']) {
+        const alias = chem.pairs?.[key]
+        if (typeof alias !== 'string') {
+          throw new Error(`data/soup.json: clay.surfaceChemistries["${name}"].pairs не задаёт пару "${key}"`)
+        }
+        // A chemistry is an ALIAS onto a level that already exists with its own martini source line --
+        // never a number of its own. This check is what makes that structural rather than a convention.
+        if (levels && levels[alias] === undefined) {
+          throw new Error(
+            `data/soup.json: clay.surfaceChemistries["${name}"].pairs.${key}="${alias}" не указывает на уровень ` +
+              `в solvent.attractionScale.pairEpsilon.levels — химия поверхности это ПСЕВДОНИМ уровня, а не своя глубина`,
+          )
+        }
+      }
+    }
     // A clay-class column in the depth table is not optional once a mineral monomer exists: without
     // it soup/src/soup-attraction.ts would throw at system-creation time instead of here, i.e. the
     // schema error would surface as a GPU-path failure rather than as a schema failure.

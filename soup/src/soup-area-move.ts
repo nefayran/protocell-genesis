@@ -134,6 +134,9 @@ export interface SoupAreaMoveDeps {
   soup: Soup
   seed: number
   attractionOverride?: number
+  /** Task 'clay-surface-chemistry': the CPU Metropolis energy must use the SAME mineral depth row the
+   * GPU force kernel got, so the selected surface chemistry travels with the override. */
+  claySurfaceChemistry?: string
 }
 
 function mulberry32(seed: number): () => number {
@@ -158,7 +161,7 @@ export function makeSoupAreaMove(deps: SoupAreaMoveDeps): (trials: number, opts?
       throw new Error("data/soup.json: нет секции areaMove — MC-ход по площади не настроен (см. soup/src/soup-area-move.ts)")
     }
     const mode: AreaMoveMode = opts?.mode ?? am.mode
-    if (basis === null) basis = makePotentialBasis(soup, p, deps.attractionOverride)
+    if (basis === null) basis = makePotentialBasis(soup, p, deps.attractionOverride, deps.claySurfaceChemistry)
 
     const startBox: Box = [rt.live.liveBox[0], rt.live.liveBox[1], rt.live.liveBox[2]]
     const bondPairs = await bonds()

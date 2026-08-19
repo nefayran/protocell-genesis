@@ -41,6 +41,23 @@ export interface CreateSoupOpts {
    * position, site count) is never a caller's choice: it is derived from the box, from
    * data/params.json's rank-A sigma and from data/soup.json's clay section. */
   clay?: boolean
+  /** Task 'clay-surface-chemistry' (2026-08-19): which of data/soup.json's clay.surfaceChemistries
+   * this system's platelet uses, overriding the file's clay.surfaceChemistry. The two limits of the
+   * hydrophilicity bracket ("hydrophilic" = the P5 mapping, "apolar" = the published uncharged-
+   * siloxane mapping) are measured by running otherwise identical arms that differ only in this
+   * string. An unknown name THROWS (soup/src/soup-attraction.ts) rather than falling back. */
+  claySurfaceChemistry?: string
+  /** Overrides data/soup.json's clay.siteCatalystFraction for THIS system -- the knob the predecessor
+   * report's concern §3 named as unswept, and the one the growth result is a function of. 0 means a
+   * platelet with NO catalytic sites at all (the whole catalyst pool stays free in the broth), which
+   * is the arm that separates "the surface did it" from "a quarter of the catalysts were immobilised". */
+  claySiteCatalystFraction?: number
+  /** THE CONTROL THE PREDECESSOR DID NOT RUN (its concern §3): immobilise this many catalyst beads at
+   * their ordinary BULK positions, with NO platelet in the box. Every other draw -- positions,
+   * velocities, RNG streams -- is untouched, so such a system is bit-identical to the clay-free arm
+   * except in WHICH beads the integrator refuses to move. Ignored (throws) together with `clay`, since
+   * the point is a surface-free control. */
+  frozenBulkCatalysts?: number
   /** Checkpoint/resume (task 'checkpoint-resume'): when present, createSoup skips the jittered-
    * lattice initial layout and every zero-filled buffer below, loading this system's ENTIRE mutable
    * state from a prior checkpoint instead -- everything step()/stepCycled() can change: positions,

@@ -76,7 +76,7 @@ export interface PotentialBasis {
   cutoff: number
 }
 
-export function makePotentialBasis(soup: Soup, p: Params, attractionOverride?: number): PotentialBasis {
+export function makePotentialBasis(soup: Soup, p: Params, attractionOverride?: number, claySurfaceChemistry?: string): PotentialBasis {
   const bRadius = new Float64Array(soup.monomers.map((m) => p.sigma * m.radiusSigma))
   const rcAttr = wcaCut(p.sigma * p.beadSizes.tail_tail)
   let maxWca = 0
@@ -93,7 +93,7 @@ export function makePotentialBasis(soup: Soup, p: Params, attractionOverride?: n
     rcAttr,
     bRadius,
     classes: speciesClasses(soup),
-    attr: attractionScaleTable(soup, attractionOverride),
+    attr: attractionScaleTable(soup, attractionOverride, claySurfaceChemistry),
     cutoff: Math.max(maxWca, rcAttr + p.attraction.wc),
   }
 }

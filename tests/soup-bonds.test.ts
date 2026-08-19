@@ -13,10 +13,25 @@ test(
     const page = await gpuPage()
     const r = await page.evaluate(async () => {
       const api = (window as any).api
-      const withM = await api.createSoup({ box: [30, 30, 30], seed: 4, kT: 1.1, catalystCount: 200 })
+      // clay: false, added by task 'clay-surface-chemistry' (2026-08-19) with a MEASURED reason, not
+      // for convenience. This fixture measures the catalyst gate on covalent chemistry -- nothing about
+      // it is mineral -- and it acquired a platelet by OMISSION when clay.enabled shipped as true
+      // (exactly the hazard the predecessor report's concern 7 named: "a plain broth fixture that
+      // forgets it silently gets a platelet"). With the platelet AND this fixture's DOUBLED catalyst
+      // pool (catalystCount 200 -> 50 frozen sites of the largest bead in the file) the mobile phase is
+      // squeezed hard enough against the sheet that data/soup.json's verletList.listCapacity=2500 is
+      // insufficient and the safety guard throws: "список Верле: verletList.listCapacity=2500 было
+      // недостаточно". Measured: at HEAD (7030e82) the whole file passed 2 of 2 runs; with this task's
+      // larger, correct exclusion slab (soup/src/soup-clay.ts -- the slab must clear the SITE bead's
+      // radius, not only the mineral bead's) it threw in 2 of 4 runs. The capacity was NOT raised
+      // instead: that is a per-particle memory cost (2500 x N x 4 B = 150 MB at N=15000) paid by every
+      // system including the ones this task is forbidden to run, to serve one fixture that never needed
+      // a mineral surface. The clay-bearing path keeps its coverage in tests/soup-clay.test.ts,
+      // tests/soup-clay-chemistry.test.ts and tests/soup-broth-composition.test.ts.
+      const withM = await api.createSoup({ box: [30, 30, 30], seed: 4, kT: 1.1, catalystCount: 200, clay: false })
       await withM.step(50000)
       const a = await withM.events()
-      const noM = await api.createSoup({ box: [30, 30, 30], seed: 4, kT: 1.1, catalystCount: 0 })
+      const noM = await api.createSoup({ box: [30, 30, 30], seed: 4, kT: 1.1, catalystCount: 0, clay: false })
       await noM.step(50000)
       const b = await noM.events()
       return { withCatalyst: a['cc_bond'] ?? 0, without: b['cc_bond'] ?? 0 }
@@ -40,7 +55,11 @@ test('число мономеров каждого сорта и заряд со
   const page = await gpuPage()
   const inv = await page.evaluate(async () => {
     const api = (window as any).api
-    const sys = await api.createSoup({ box: [30, 30, 30], seed: 7, kT: 1.1 })
+    // clay: false for the same reason as above (monomer/charge conservation is not a mineral property).
+    // The THIRD test in this file is deliberately left as it was: it passed on both sides of this
+    // task's diff (4 of 4 runs) and its density was tuned by hand for a percolation threshold, so
+    // changing its configuration would trade a measured pass for an unmeasured one.
+    const sys = await api.createSoup({ box: [30, 30, 30], seed: 7, kT: 1.1, clay: false })
     const before = await sys.invariants()
     await sys.step(50000)
     const after = await sys.invariants()

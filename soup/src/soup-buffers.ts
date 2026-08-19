@@ -109,10 +109,13 @@ export interface AllocateBuffersInput {
   /** Water-calibration task (2026-08-19): overrides soup.solvent.attractionScale.epsilonScale for
    * this system only -- see soup/src/soup-types.ts's CreateSoupOpts.solventAttractionScaleOverride. */
   solventAttractionScaleOverride?: number
+  /** Task 'clay-surface-chemistry' (2026-08-19): which mineral depth row the AttrScale uniform below
+   * carries -- see soup/src/soup-types.ts's CreateSoupOpts.claySurfaceChemistry. */
+  claySurfaceChemistry?: string
 }
 
 export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuffers; grid: SoupGridState } {
-  const { device, soup, p, N, dims, ncells, effectiveWalkRadius, initialLiveBox, verlet, listRange, rules, catalystKind, bondAttemptInterval, kT, initial, solventAttractionScaleOverride } = input
+  const { device, soup, p, N, dims, ncells, effectiveWalkRadius, initialLiveBox, verlet, listRange, rules, catalystKind, bondAttemptInterval, kT, initial, solventAttractionScaleOverride, claySurfaceChemistry } = input
   const { positions0, velocities0, bondSlots0, centerLink0, centerHeldSteps0, desorbEventsInit, bondRng0, thermoRng0, eventsInit, frozen0 } = initial
 
   const posBuf = storageBuffer(device, positions0)
@@ -237,7 +240,7 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
     size: ATTR_SCALE_UNIFORM_BYTES,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   })
-  device.queue.writeBuffer(attrScaleUniform, 0, attractionScaleUniform(soup, solventAttractionScaleOverride))
+  device.queue.writeBuffer(attrScaleUniform, 0, attractionScaleUniform(soup, solventAttractionScaleOverride, claySurfaceChemistry))
 
   // BondParams: acceptProbForm/acceptProbBreak come DIRECTLY from soup/src/rules.ts's
   // acceptanceProbability(rule, kT) -- the same function tests/soup-rules.test.ts checks against

@@ -112,7 +112,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   let clay: ClayLayout | null = null
   if (clayEnabled(soup, opts.clay)) {
     const catalystMonomer = soup.monomers.find((m) => m.kind === 'catalyst')!
-    clay = planClay(soup, baseParams, box, startCounts[catalystMonomer.id] ?? 0)
+    clay = planClay(soup, baseParams, box, startCounts[catalystMonomer.id] ?? 0, opts.claySiteCatalystFraction)
     startCounts[soup.clay!.mineralId] = clay.mineralCount
   } else if (soup.clay) {
     startCounts[soup.clay.mineralId] = 0
@@ -163,6 +163,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     kT: opts.kT,
     initial,
     solventAttractionScaleOverride: opts.solventAttractionScaleOverride,
+    claySurfaceChemistry: opts.claySurfaceChemistry,
   })
   const bind = buildBindGroups(device, pipe, buf)
 
@@ -238,6 +239,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     soup,
     seed: opts.seed,
     attractionOverride: opts.solventAttractionScaleOverride,
+    claySurfaceChemistry: opts.claySurfaceChemistry,
   })
   const stepCycled = makeStepCycled(rt, particles, bonds, step, {
     rampSteps: soup.dryWetCycle.rampSteps,
