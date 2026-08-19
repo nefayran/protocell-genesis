@@ -20,9 +20,24 @@
 // With the variable unset it audits every `soup2ves90-step*.json` under data/checkpoints/trace plus
 // data/checkpoints, in step order, and skips (rather than fails) when none exist -- the checkpoints
 // are gitignored run artifacts, so a fresh clone must not fail this file.
+//
+// Task 'tail-length-and-window' (2026-08-19) generalised three things WITHOUT changing any measured
+// quantity, so that the box-54 window run could be audited by this same code path rather than by a
+// second copy of it (.superpowers/sdd/2026-08-16-soup-to-vesicle/tail-length-and-window-report.md):
+//   * CONTINUOUS_RUN_PREFIX / CONTINUOUS_RUN_ARTIFACT choose the checkpoint-name prefix and the
+//     output artifact (defaults are exactly the previous hardcoded 'soup2ves90-step' and
+//     'verify/out/continuous-run-trace.json', so an existing invocation is bit-identical);
+//   * the monomer-conservation assertion now reads the expected census out of the checkpoint's OWN
+//     `config.start` instead of a literal `{C:40500,...}`. That is a STRICTER check, not a looser
+//     one: every checkpoint must match the composition it itself declares, and the old literal is
+//     what config.start holds for the box-90 files;
+//   * per-tail length statistics and the ASF alpha (event-ratio and histogram-recovered, via
+//     soup/src/equilibrium.ts -- the plan's own Task 7 framework) are added to each record. Added
+//     fields only; nothing previously reported changed.
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
+import { asfPrediction, carbonChainLengths, recoverAlphaFromChainLengths } from '../soup/src/equilibrium'
 import { decodeCheckpointResume } from '../soup/src/checkpoint'
 import { loadSoup } from '../soup/src/rules'
 import { loadParams, wcaCutoff } from '../engine/src/params'
@@ -34,14 +49,18 @@ import { enclosedVolumeFromPositions } from '../engine/src/closure'
 
 const EMPTY = 0xffffffff
 
+const PREFIX = process.env.CONTINUOUS_RUN_PREFIX ?? 'soup2ves90-step'
+const ARTIFACT = process.env.CONTINUOUS_RUN_ARTIFACT ?? 'verify/out/continuous-run-trace.json'
+const SEARCH_DIRS = (process.env.CONTINUOUS_RUN_DIRS ?? 'data/checkpoints/trace,data/checkpoints/trace54,data/checkpoints').split(',')
+
 function discover(): string[] {
   const env = process.env.CONTINUOUS_RUN_CHECKPOINTS
   if (env && env.trim().length > 0) return env.trim().split(/[\s,]+/)
   const out: string[] = []
-  for (const dir of ['data/checkpoints/trace', 'data/checkpoints']) {
+  for (const dir of SEARCH_DIRS) {
     if (!existsSync(dir)) continue
     for (const n of readdirSync(dir)) {
-      if (n.startsWith('soup2ves90-step') && n.endsWith('.json')) out.push(join(dir, n))
+      if (n.startsWith(PREFIX) && n.endsWith('.json')) out.push(join(dir, n))
     }
   }
   return out.sort((a, b) => stepOf(a) - stepOf(b))
@@ -130,6 +149,33 @@ test('continuous-run checkpoints: invariants hold and the stage ladder is reprod
     const bonds = new Uint32Array(pairs)
 
     const amph = findAmphiphiles(pos, bonds, soup.monomers)
+    // Per-tail statistics: Amphiphile.length is the TOTAL carbon over a head's one or two tails,
+    // while the "C12-C18 maps to two tail beads" mapping constrains the PER-TAIL length. Both are
+    // reported; only the second is comparable to the 2-3 target.
+    let tailSum = 0
+    let tailN = 0
+    const perTailHistogram: Record<number, number> = {}
+    for (const a of amph) {
+      for (const t of a.tailLengths) {
+        tailSum += t
+        tailN++
+        perTailHistogram[t] = (perTailHistogram[t] ?? 0) + 1
+      }
+    }
+    // ASF alpha, both ways the plan's Task 7 framework defines it (soup/src/equilibrium.ts).
+    const ccEv = r.events.cc_bond ?? 0
+    const coEv = r.events.co_bond ?? 0
+    const alphaEvent = ccEv + coEv > 0 ? ccEv / (ccEv + coEv) : null
+    const chainLengths = carbonChainLengths(pos, bonds, soup.monomers)
+    let alphaRecovered: number | null = null
+    let alphaRecoveredR2: number | null = null
+    try {
+      const rec = recoverAlphaFromChainLengths(chainLengths)
+      alphaRecovered = rec.alpha
+      alphaRecoveredR2 = rec.r2
+    } catch {
+      alphaRecovered = null
+    }
     const memberIdx = memberIndicesOf(amph)
     const memberRadii = soup.monomers.filter((m) => m.kind === 'carbon' || m.kind === 'head').map((m) => m.radiusSigma)
     const cutoff = wcaCutoff(p.sigma * Math.max(...memberRadii)) + p.attraction.wc
@@ -186,7 +232,15 @@ test('continuous-run checkpoints: invariants hold and the stage ladder is reprod
           amphiphileCount: amph.length,
           amphiphileFraction: Number(evidence.amphiphileFraction.toFixed(5)),
           meanTailLength: amph.length ? Number((carbonInAmph / amph.length).toFixed(3)) : 0,
+          meanPerTail: tailN ? Number((tailSum / tailN).toFixed(3)) : 0,
+          twoTailedHeads: amph.filter((a) => a.tailLengths.length >= 2).length,
+          alphaEvent: alphaEvent === null ? null : Number(alphaEvent.toFixed(4)),
+          asfMeanFromEventAlpha: alphaEvent === null ? null : Number((1 / (1 - alphaEvent)).toFixed(3)),
+          alphaRecovered: alphaRecovered === null ? null : Number(alphaRecovered.toFixed(4)),
+          alphaRecoveredR2: alphaRecoveredR2 === null ? null : Number(alphaRecoveredR2.toFixed(3)),
+          asfPredictionFromEventAlpha: alphaEvent === null ? null : asfPrediction(alphaEvent, 16),
           lengthHistogram: amphiphileHistogram(amph),
+          perTailHistogram,
           aggregateCount: analysis.aggregateCount,
           qualifyingAggregateCount: analysis.qualifyingAggregateCount,
           amphiphilesInQualifying: analysis.amphiphilesInQualifying,
@@ -226,16 +280,20 @@ test('continuous-run checkpoints: invariants hold and the stage ladder is reprod
       vDeg: 0,
       vTerminal: 0,
     })
-    // Monomer conservation: the campaign's own requested composition, unchanged at every step.
-    expect(species, `${path}: monomer conservation`).toEqual({ C: 40500, O: 13500, H: 40500, M: 2700, W: 288900 })
+    // Monomer conservation against the composition THIS checkpoint declares (config.start), not a
+    // literal -- every checkpoint must reproduce its own requested census exactly. Ids the
+    // composition asked zero of are absent from `species` by construction (nothing is counted), so
+    // the comparison is over the requested keys.
+    const requested = JSON.parse(JSON.stringify(JSON.parse(readFileSync(path, 'utf8')).config.start ?? {})) as Record<string, number>
+    expect(species, `${path}: monomer conservation vs its own config.start`).toEqual(requested)
     // Every bond is one the rules declare (C-C or C-O); nothing else may ever be bonded.
     expect(vOther, `${path}: only carbon/head may carry bonds`).toBe(0)
   }
 
   artifact.sort((a, b) => (a as { step: number }).step - (b as { step: number }).step)
   mkdirSync('verify/out', { recursive: true })
-  writeFileSync('verify/out/continuous-run-trace.json', JSON.stringify(artifact, null, 1))
-  console.log(`RUN-AUDIT artifact written: verify/out/continuous-run-trace.json (${artifact.length} checkpoints)`)
+  writeFileSync(ARTIFACT, JSON.stringify(artifact, null, 1))
+  console.log(`RUN-AUDIT artifact written: ${ARTIFACT} (${artifact.length} checkpoints)`)
 
   // The monomers-only start, from the run's OWN trace rather than by assumption: the earliest
   // checkpoint on disk must carry zero bonds, zero amphiphiles and zero bond events.
