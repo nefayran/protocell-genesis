@@ -56,7 +56,7 @@ async function readInvariants(page: Awaited<ReturnType<typeof gpuPage>>, sysHand
 
 test('checkpoint round-trip reconstructs every field exactly at zero elapsed steps', async () => {
   const page = await gpuPage()
-  const config = { box: [18, 18, 18], seed: 7, kT: 1.1, start: { C: 120, O: 40, H: 120, M: 10 } }
+  const config = { box: [18, 18, 18], seed: 7, kT: 1.1, start: { C: 120, O: 40, H: 120, M: 10, W: 0 } }
 
   const result = await page.evaluate(async (cfg: any) => {
     const api = (window as any).api
@@ -123,7 +123,7 @@ test('checkpoint round-trip reconstructs every field exactly at zero elapsed ste
 
 test('taking a checkpoint does not change what a run computes next (checked against the engine\'s own run-to-run scatter)', async () => {
   const page = await gpuPage()
-  const config = { box: [18, 18, 18], seed: 11, kT: 1.1, start: { C: 250, O: 80, H: 250, M: 16 } }
+  const config = { box: [18, 18, 18], seed: 11, kT: 1.1, start: { C: 250, O: 80, H: 250, M: 16, W: 0 } }
   const K1 = 2000
   const K2 = 2000
 
@@ -205,7 +205,7 @@ test('same-process continue: writes real checkpoint files for a fresh-process re
   mkdirSync(CHECKPOINT_DIR, { recursive: true })
   const page = await gpuPage()
   const label = 'resumetest'
-  const config = { box: [20, 20, 20], seed: 23, kT: 1.1, start: { C: 450, O: 150, H: 450, M: 30 } }
+  const config = { box: [20, 20, 20], seed: 23, kT: 1.1, start: { C: 450, O: 150, H: 450, M: 30, W: 0 } }
   const K1 = 6000
   const K2 = 6000
 

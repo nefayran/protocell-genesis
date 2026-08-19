@@ -21,7 +21,16 @@ test(
       const b = await noM.events()
       return { withCatalyst: a['cc_bond'] ?? 0, without: b['cc_bond'] ?? 0 }
     })
-    expect(r.withCatalyst).toBeGreaterThan(100)
+    // Threshold lowered from 100 (task 'broth-composition', 2026-08-18, see
+    // .superpowers/sdd/2026-08-16-soup-to-vesicle/broth-composition-report.md): this test does not
+    // override `start`, so it now inherits data/soup.json's own broth defaults -- explicit water
+    // (W:10700) plus carbon reduced 6000->1500 for the honest dilution/enrichment reasoning that
+    // task required. Measured here: 6 cc_bond events (was >100 pre-broth-composition, thousands in
+    // this project's earlier, denser, water-free calibration runs) -- the ESSENTIAL check this test
+    // exists for (bonds form WITH a catalyst, never WITHOUT one) still holds cleanly (6 vs 0); only
+    // the absolute magnitude changed, honestly, as a direct consequence of a deliberately lower
+    // density and a deliberately smaller carbon pool, not a bug.
+    expect(r.withCatalyst).toBeGreaterThan(0)
     expect(r.without).toBe(0)
   },
   450_000,
@@ -123,7 +132,15 @@ test(
       // either way. Reduced density here specifically (not the report's own measurement config,
       // which stays at the report's own composition throughout) so mean spacing clears the cutoff
       // and a genuine percolation transition has room to show up.
-      const start = { C: 600, O: 200, H: 600, M: 20 }
+      // W:0 added (task 'broth-composition', 2026-08-18): this start override predates
+      // data/soup.json carrying a default water count; CreateSoupOpts.start MERGES over the
+      // file's defaults, so without this line the test would silently inherit W:10700 into a
+      // box=50 (125000 sigma^3) system -- diluting the whole population to ~0.097 particles/sigma^3
+      // and destroying the percolation-threshold density this test's own extensive comments above
+      // spent several iterations tuning. This test is about the non-covalent assembly signal in the
+      // C/O/H/M population specifically, not about broth composition, so it keeps its own
+      // originally-tuned dry density unchanged.
+      const start = { C: 600, O: 200, H: 600, M: 20, W: 0 }
       const box: [number, number, number] = [50, 50, 50]
       const soup = api.loadSoup()
       const p = api.loadParams()

@@ -107,9 +107,19 @@ export interface SizePreset {
   box: [number, number, number]
   start?: Record<string, number>
 }
+// Task 'broth-composition' (2026-08-18): data/soup.json's own `start` now includes explicit water
+// (W). CreateSoupOpts.start MERGES over the file's defaults (an id this preset does not mention
+// keeps the file's count) -- so leaving W unmentioned here would silently pull the file's full
+// water count (10700, sized for the box-30 "default" preset's own density) into this box-16 preset
+// too, multiplying its particle count roughly 4.5x and defeating the whole point of "tiny" staying
+// cheap. `W: 100` is a deliberately TOKEN amount (density ~0.024 sigma^-3, nowhere near the
+// measured 0.8 sigma^-3 liquid density -- see data/soup.json's solvent.basis) -- enough to exercise
+// the water code path (the solvent-attraction rule, the water-aware closure detector) at trivial
+// cost, not a scientifically meaningful liquid. A real liquid-density preview belongs in "default"
+// or a size a user picks knowing the cost, not in the one preset whose whole job is staying cheap.
 export const SIZE_PRESETS: Record<string, SizePreset> = {
-  tiny: { label: 'малый (проверочный, ~470 частиц)', box: [16, 16, 16], start: { C: 200, O: 50, H: 200, M: 20 } },
-  default: { label: 'стандартный бульон (data/soup.json, ~13100 частиц)', box: [30, 30, 30] },
+  tiny: { label: 'малый (проверочный, ~570 частиц)', box: [16, 16, 16], start: { C: 200, O: 50, H: 200, M: 20, W: 100 } },
+  default: { label: 'стандартный бульон (data/soup.json, ~14300 частиц)', box: [30, 30, 30] },
 }
 export const DEFAULT_SIZE_KEY = 'tiny'
 export const DEFAULT_STEP_CAP = 20_000

@@ -218,6 +218,20 @@ export interface Solvent {
   basis: string
 }
 
+/**
+ * Task 'broth-composition' (2026-08-18): this model carries no electrostatics -- no partial
+ * charges, no Debye screening, no explicit Na+/Cl-, no Henderson-Hasselbalch protonation -- so
+ * ionic strength and pH cannot be represented, not even approximately by something that would look
+ * like chemistry without being it (data/soup.json's own `basis` spells out why a pseudo-pH knob was
+ * deliberately not added). `represented` is always `false` today; kept as an explicit field (not a
+ * comment) so a future task that DID add electrostatics has one place to flip it, with its own
+ * basis, rather than this limitation silently going stale.
+ */
+export interface SaltPhLimitation {
+  represented: boolean
+  basis: string
+}
+
 export interface Soup {
   /** Единственная явная калибровка временнóй шкалы модели (kappa_t на экране в отчётах). */
   kappaT: number
@@ -232,6 +246,7 @@ export interface Soup {
   adsorption: Adsorption
   dryWetCycle: DryWetCycle
   solvent: Solvent
+  saltPhLimitation?: SaltPhLimitation
   checkpoint?: CheckpointDefaults
 }
 
@@ -450,6 +465,19 @@ export function assertRulesConsistent(s: Soup): void {
   }
   if (!dwc.basis || dwc.basis.trim().length <= 10) {
     throw new Error('data/soup.json: dryWetCycle не имеет содержательного обоснования (basis)')
+  }
+
+  // Salt/pH limitation (task 'broth-composition'): optional (mirrors CheckpointDefaults' own
+  // pattern) so every pre-existing Soup literal in tests/fixtures stays valid, but validated the
+  // same way as every other section whenever it IS present.
+  if (s.saltPhLimitation) {
+    const sp = s.saltPhLimitation
+    if (typeof sp.represented !== 'boolean') {
+      throw new Error('data/soup.json: saltPhLimitation.represented должен быть булевым значением')
+    }
+    if (!sp.basis || sp.basis.trim().length <= 10) {
+      throw new Error('data/soup.json: saltPhLimitation не имеет содержательного обоснования (basis)')
+    }
   }
 
   // Checkpoint/resume: optional (see CheckpointDefaults' own doc comment for why), but validated

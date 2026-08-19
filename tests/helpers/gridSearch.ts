@@ -36,11 +36,17 @@ export function findBracketCrossingBox(): {
     // instability from a compression amplitude never validated at, not a grid-buffer bug).
     const wetDensity = 0.45
     const approxN = wetDensity * side * side * side
+    // W:0 (task 'broth-composition', 2026-08-18): data/soup.json now carries a default water
+    // count sized for a box-30 run; CreateSoupOpts.start MERGES over the file's defaults, so
+    // without this explicit zero, this small (side 12-30) search box would silently inherit that
+    // full water count and end up at an absurd, guaranteed-unstable density. This helper is about
+    // the neighbour-grid bracket-crossing geometry, not about broth composition.
     const start = {
       C: Math.round(approxN * (30 / 71)),
       O: Math.round(approxN * (10 / 71)),
       H: Math.round(approxN * (30 / 71)),
       M: Math.max(4, Math.round(approxN * (1 / 71))),
+      W: 0,
     }
     const N = start.C + start.O + start.H + start.M
     const wetPlan = planSoupGrid(box, start)

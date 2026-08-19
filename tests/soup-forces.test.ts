@@ -32,7 +32,11 @@ test('сетка соседей (в т.ч. список Верле) даёт т�
       box: [16, 16, 16],
       seed: 7,
       kT: 1.1,
-      start: { C: 600, O: 100, H: 500, M: 20 },
+      // W:0 (task 'broth-composition', 2026-08-18): CreateSoupOpts.start merges over
+      // data/soup.json's own defaults, which now include a box-30-sized water count -- explicit
+      // zero keeps this box=16 force-correctness diagnostic at its own originally-intended,
+      // deliberately small scale.
+      start: { C: 600, O: 100, H: 500, M: 20, W: 0 },
     })
     // Несколько реальных шагов ПЕРЕД сравнением -- проверяем силы не только на стартовой решётке
     // (где расстояния почти идеальны и многие ветки WCA/attr не задействованы), а на уже
