@@ -101,9 +101,9 @@ export function rebindGridDependent(device: GPUDevice, pipe: SoupPipelines, sb: 
     // Surface growth / adsorption (adsorption-report.md): centerLink, read-only here
     // (soup/wgsl/step.wgsl's centerLinkRO) for the adsorption tether's own FENE contribution.
     { binding: 20, resource: buf(sb.centerLinkBuf) },
-    // Water-calibration task (2026-08-19): soup/wgsl/step.wgsl's SolventScale, read by
+    // Task 'hydrophobic-asymmetry' (2026-08-19): soup/wgsl/step.wgsl's AttrScale table, read by
     // nonbondedSoup's attraction term (this pipeline's own soup_force_main/_unsorted body).
-    { binding: 9, resource: buf(sb.solventScaleUniform) },
+    { binding: 9, resource: buf(sb.attrScaleUniform) },
   ], device)
   // --- bond formation (forces.wgsl + bond.wgsl), grid-walk variant -----------------------------
   bind_.bondFormGroup1 = bind(pipe.bondForm, 1, [
@@ -128,6 +128,14 @@ export function rebindGridDependent(device: GPUDevice, pipe: SoupPipelines, sb: 
     { binding: 4, resource: buf(sb.cellStartBuf) },
     { binding: 5, resource: buf(sb.cellsBuf) },
     { binding: 8, resource: buf(sb.speciesUniform) },
+    // Task 'hydrophobic-asymmetry' (2026-08-19): this diagnostic's own withinAttr gate calls
+    // shouldAttract(), which is now DERIVED from the AttrScale table (a zero cell is "does not
+    // attract") rather than from the polar/solvent flags alone -- so this group needs binding 9
+    // too. Before this task shouldAttract() read no uniform at all and this group deliberately
+    // omitted it; leaving it out now fails bind-group validation outright (entry count 5 vs the
+    // shader's 6), which is how it was caught -- tests/soup-forces.test.ts asserts the browser
+    // logged no GPU warning, so a missing entry surfaces as a test failure, not as a silent zero.
+    { binding: 9, resource: buf(sb.attrScaleUniform) },
   ], device)
   // perf2-report.md, candidate (c): builds the Verlet list FROM the coarse grid (cellStartBuf) --
   // must be rebuilt whenever that grid's own buffers are.
@@ -175,7 +183,7 @@ export function buildBindGroups(device: GPUDevice, pipe: SoupPipelines, sb: Soup
     { binding: 8, resource: buf(sb.speciesUniform) },
     { binding: 20, resource: buf(sb.centerLinkBuf) },
     // Water-calibration task (2026-08-19): see soupForceGroup1's own comment above.
-    { binding: 9, resource: buf(sb.solventScaleUniform) },
+    { binding: 9, resource: buf(sb.attrScaleUniform) },
   ], device)
   bind_.kickDriftWrapGroup0 = bind(pipe.kickDriftWrap, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
   bind_.kickDriftWrapGroup1 = bind(pipe.kickDriftWrap, 1, [
@@ -236,7 +244,7 @@ export function buildBindGroups(device: GPUDevice, pipe: SoupPipelines, sb: Soup
     { binding: 19, resource: buf(sb.verletUniform) },
     { binding: 20, resource: buf(sb.centerLinkBuf) },
     // Water-calibration task (2026-08-19): see soupForceGroup1's own comment above.
-    { binding: 9, resource: buf(sb.solventScaleUniform) },
+    { binding: 9, resource: buf(sb.attrScaleUniform) },
   ], device)
   bind_.bondFormListGroup0 = bind(pipe.bondFormList, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
   bind_.bondFormListGroup1 = bind(pipe.bondFormList, 1, [

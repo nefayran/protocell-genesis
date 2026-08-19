@@ -35,9 +35,10 @@ test('соль/pH: файл честно объявляет их непредс�
 // a budget (20000 steps) cheap enough to run routinely -- not a design goal, a documented limitation
 // that a future fix (recalibrating co_bond's rate for the water-present encounter geometry, out of
 // this task's budget) should make FAIL, at which point this assertion must be revisited, not
-// silently loosened.
+// silently loosened. IT DID FAIL, on 2026-08-19, and NOT by a rate recalibration -- see the
+// before/after measurement and the mechanism in the test body below.
 test(
-  'находка: с текущим составом+водой естественный рост не закрывает ни одной цепи головой за 20000 шагов',
+  'находка ОБНОВЛЕНА: после возврата дисперсии неполярное-неполярное рост ЗАКРЫВАЕТ цепи головой (co_bond > 0)',
   async () => {
     const page = await gpuPage()
     const r = await page.evaluate(async (kT: number, steps: number) => {
@@ -57,9 +58,27 @@ test(
     }, 1.1, 20000)
 
     console.log('BROTH-GROWTH-FINDING', JSON.stringify(r))
-    expect(r.ccBondEvents).toBeGreaterThan(0) // chains DO start growing
-    expect(r.coBondEvents).toBe(0) // but never get capped -- the documented finding
-    expect(r.amphiphileCount).toBe(0) // so no amphiphile is ever recognised via natural growth
+    // Task 'hydrophobic-asymmetry' (2026-08-19). This test used to assert coBondEvents === 0 and
+    // amphiphileCount === 0 -- broth-composition-report.md §5's honest finding that chains grew and
+    // were NEVER capped by a head, so "mean tail length via natural catalysis" was not a number at
+    // all. It was written as a live regression so that a real fix would break it. It broke.
+    // MEASURED, same box/seed/kT/steps, one line changed in the physics (the restored apolar-apolar
+    // dispersion attraction, data/soup.json's solvent.attractionScale.basis):
+    //   before: ccBondEvents 263, coBondEvents 0,  amphiphileCount 0
+    //   after:  ccBondEvents 263, coBondEvents 11, amphiphileCount 10
+    // co_bond's own attemptRate was NOT re-tuned -- it is the same rank-D number as before, and
+    // §9's open question 2 ("re-derive co_bond's encounter frequency with water present, by
+    // measurement rather than by fitting the rate") is answered by measurement here rather than by a
+    // fit. Physically: chain growth is unchanged (ccBondEvents identical, so this is not "more
+    // chemistry happened"), but carbon chains and catalysts are non-polar and had lost EVERY
+    // attractive term when 'explicit-water' removed the blanket non-polar attraction; with it back
+    // they cohere again, and a polar head diffusing in the solvent meets a chain END at the surface
+    // of such an aggregate instead of chasing a chain dispersed through the whole box. That is the
+    // encounter-frequency collapse broth-composition-report.md §5 named as its best explanation,
+    // now removed by its own stated cause rather than compensated by a rate.
+    expect(r.ccBondEvents).toBeGreaterThan(0) // chains still start growing
+    expect(r.coBondEvents).toBeGreaterThan(0) // ... and now DO get capped by a head
+    expect(r.amphiphileCount).toBeGreaterThan(0) // so natural growth yields recognised amphiphiles
   },
   120_000,
 )

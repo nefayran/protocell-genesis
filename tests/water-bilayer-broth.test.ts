@@ -22,8 +22,23 @@ afterAll(shutdownGpu)
 // engine, so area-per-lipid below is the ASSUMED starting condition (literature midpoint), not an
 // independent measurement. Thickness and integrity ARE genuine measurements.
 //
+// Task 'hydrophobic-asymmetry' (2026-08-19, .superpowers/sdd/2026-08-16-soup-to-vesicle/
+// hydrophobic-asymmetry-report.md) — STAGE 1 of that task's re-measurement, and the reason this
+// file's verdict flipped from FAILED to passed. Two structural defects were corrected; only the
+// FIRST of them is exercised here, deliberately, so the two are measured apart:
+//  - defect 1 (in force): the blanket apolar-apolar (tail-tail) dispersion attraction the
+//    'explicit-water' task had removed outright is RESTORED, with water-water / water-head /
+//    water-tail depths set from MARTINI's own parameter file as RATIOS to it and the absolute
+//    tail-tail depth still data/params.json's rank-A Cooke & Deserno epsilon. Hydrophobicity is
+//    still emergent -- it now comes from the ratio (the sign of the exchange energy), not from the
+//    absence of a term. See data/soup.json's solvent.attractionScale.basis for the reversal.
+//  - defect 2 (NOT here): the zero-tension MC area move, so area-per-lipid is measured rather than
+//    assumed. That is tests/water-bilayer-area-move.test.ts. THIS file keeps its FIXED box on
+//    purpose, so its own area reading below stays an ASSUMPTION (the corridor's midpoint) and its
+//    thickness reading is not entangled with a relaxing area.
+//
 // Task 'water-calibration' (2026-08-19, .superpowers/sdd/2026-08-16-soup-to-vesicle/
-// water-calibration-report.md): this is the reproduction case that report starts from. Mechanistic
+// water-calibration-report.md), for the record of what this looked like BEFORE that fix: mechanistic
 // finding (from the head/tail/water z-histogram over ALL particles, not just recognised-amphiphile
 // members): the core is genuinely DRY (water fraction inside the head span is a few percent, and
 // tail density is continuous, not patchy) -- the failure is not water penetration and not "leaflets
@@ -336,17 +351,23 @@ test(
         `throughput=${result.stepsPerSec.toFixed(2)} steps/s at N=${result.N} ` +
         `verdict=${inCorridor ? 'passed' : 'FAILED'}`,
     )
-    // water-calibration task (2026-08-19, .superpowers/sdd/2026-08-16-soup-to-vesicle/
-    // water-calibration-report.md): mechanistic diagnosis + a measured sweep of every legitimate
-    // explicit-water knob (water density, water bead radius, and a new water-only attraction-
-    // strength scale added by that task, data/soup.json's solvent.attractionScale) found NO
-    // combination in a defensible (or even a widely explored) range that holds this thickness
-    // stably inside 4-6 sigma with a dry core -- see that report for the full sweep map and the
-    // literature anchors (MARTINI's own interaction-level table; Lenz & Schmid 2007) that bounded
-    // the search. This assertion records that verdict as a real regression: if a future change
-    // ever DOES pull the measured thickness inside the corridor, this line should start failing --
-    // that would be news worth looking at, not a bug to silence.
-    expect(inCorridor).toBe(false)
+    // Task 'hydrophobic-asymmetry' (2026-08-19): this assertion was `expect(inCorridor).toBe(false)`
+    // -- the water-calibration task's honest record that no explicit-water interaction set it could
+    // find held this thickness inside 4-6 sigma, written as a live regression precisely so that a
+    // change which DID fix it would surface loudly rather than pass silently. It surfaced. With the
+    // apolar-apolar attraction restored (defect 1, see this file's header) the same construction,
+    // same seed, same fixed box measures thickness inside the corridor and holds it across the whole
+    // trajectory, with a dry core and a head-burial fraction a third of what it was:
+    //   before: thickness 12.24-12.42 sigma, waterInCore 88-129/4500, headBuriedFraction 0.40-0.49
+    //   after:  thickness  4.20- 4.65 sigma, waterInCore   4- 41/4500, headBuriedFraction ~0.13
+    // The corridor itself was NOT touched, and neither was data/params.json.
+    expect(inCorridor).toBe(true)
+    // The two diagnostics the water-calibration task identified as the real defect, now asserted as
+    // regressions in their own right rather than only printed -- a corridor-shaped thickness with
+    // half the heads buried in the core would not be a bilayer, and this is what would catch that.
+    expect(result.headBuriedFraction).not.toBeNull()
+    expect(result.headBuriedFraction!).toBeLessThan(0.2)
+    expect(result.waterInCore / result.totalWaterFinal).toBeLessThan(0.02)
   },
   580_000,
 )

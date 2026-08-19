@@ -145,6 +145,22 @@ export interface SoupSystem {
   /** Same physics as forces(), computed by an O(N^2) pair loop with no neighbour grid at all --
    * the reference implementation forces() is checked against. */
   forcesBruteForce(): Promise<Float32Array>
+  /** Task 'hydrophobic-asymmetry' (2026-08-19), defect 2: runs `trials` zero-tension Metropolis
+   * area moves, so area-per-lipid becomes a MEASUREMENT instead of the fixed box's assumption. The
+   * move's own mechanism, the two modes and why the explicit-solvent gate needs the volume-preserving
+   * one are documented in soup/src/soup-area-move.ts and data/soup.json's areaMove.basis. The
+   * returned `lateralTrajectory` is one L_x reading per trial, so a caller can SHOW that the box
+   * moved and settled. `opts.mode` overrides the file's mode for one call (the identity-verification
+   * test needs the fixed-L_z branch, where the entropic term is non-zero and therefore testable). */
+  areaMove(trials: number, opts?: { mode?: 'lateral-fixed-volume' | 'lateral-fixed-z' }): Promise<{
+    trials: number
+    accepted: number
+    acceptedFraction: number
+    box: [number, number, number]
+    lateralTrajectory: number[]
+    energyStart: number
+    energyEnd: number
+  }>
   /** Pairs of particle indices [i0, j0, i1, j1, ...], one entry per currently active bond. */
   bonds(): Promise<Uint32Array>
   /** Surface growth (surface-growth-report.md): the mutual catalyst<->tip association buffer,

@@ -1,0 +1,109 @@
+// The nonbonded-attraction DEPTH table, in ONE place, read by both sides that need it:
+// soup/src/soup-buffers.ts uploads it as the AttrScale uniform soup/wgsl/step.wgsl's
+// pairAttrScale() reads, and soup/src/soup-potential.ts evaluates the same numbers on the CPU for
+// the area move's Metropolis energy. Two copies of a pairwise table drifting apart is exactly what
+// data/soup.json's own solvent.attractionRule warns about, so neither side owns the numbers --
+// data/soup.json does, and this module is the only thing that turns them into a 3x3 array.
+//
+// Task 'hydrophobic-asymmetry' (2026-08-19): before this task the attraction was a BOOLEAN
+// (soup/wgsl/step.wgsl's shouldAttract) times one global scale, with the apolar-apolar (tail-tail)
+// pair structurally excluded. It is now a per-CLASS depth multiplier, and apolar-apolar is back --
+// see data/soup.json's solvent.attractionScale.basis for the reversal, the MARTINI ratios and the
+// ranks. No numeric model constant is written here: every number comes from loadSoup().
+//
+// Classes are DERIVED from the two per-species flags data/soup.json already carries, not declared
+// per monomer id: solvent=true -> SOLVENT, else polar=true -> POLAR, else APOLAR. That is the same
+// derivation soup/wgsl/step.wgsl's speciesClass() does on the GPU side, kept textually parallel.
+
+import type { Monomer, Soup } from './rules'
+
+export const CLASS_APOLAR = 0
+export const CLASS_POLAR = 1
+export const CLASS_SOLVENT = 2
+export const CLASS_COUNT = 3
+
+const CLASS_NAMES = ['apolar', 'polar', 'solvent'] as const
+
+/** APOLAR/POLAR/SOLVENT for one monomer -- the CPU twin of step.wgsl's speciesClass(). */
+export function speciesClassOf(m: Monomer): number {
+  if (m.solvent) return CLASS_SOLVENT
+  if (m.polar) return CLASS_POLAR
+  return CLASS_APOLAR
+}
+
+/** Per-kind-index class lookup, in data/soup.json's own monomer order (the same index particle
+ * positions carry in their .w component). */
+export function speciesClasses(soup: Soup): Uint32Array {
+  return new Uint32Array(soup.monomers.map(speciesClassOf))
+}
+
+/** data/soup.json key for the unordered class pair: higher class first, lower one capitalised
+ * ("solventApolar", "polarApolar", "apolarApolar", ...) -- the naming data/soup.json's
+ * solvent.attractionScale.pairEpsilon.levels uses. */
+function pairKey(ci: number, cj: number): string {
+  const hi = CLASS_NAMES[Math.max(ci, cj)]
+  const lo = CLASS_NAMES[Math.min(ci, cj)]
+  return hi + lo[0].toUpperCase() + lo.slice(1)
+}
+
+/** The symmetric CLASS_COUNT x CLASS_COUNT depth-multiplier table on attr_dv's magnitude:
+ * levels[pair].epsilonKJ / levels[reference].epsilonKJ, times the global epsilonScale. The
+ * reference pair therefore comes out at exactly `epsilonScale` (1.0 in the file), which is what
+ * ties the ABSOLUTE scale to data/params.json's rank-A Cooke & Deserno epsilon instead of importing
+ * MARTINI's kJ/mol into this model's energy unit -- only the RATIOS are borrowed. `override`
+ * replaces the file's epsilonScale for one system (CreateSoupOpts.solventAttractionScaleOverride).
+ *
+ * A file with no attractionScale at all (an older fixture) reads as the pre-task behaviour it
+ * described: water-water/water-head/water-tail at depth 1, everything else 0. */
+export function attractionScaleTable(soup: Soup, override?: number): number[][] {
+  const sc = soup.solvent.attractionScale
+  const table: number[][] = []
+  for (let ci = 0; ci < CLASS_COUNT; ci++) table.push(new Array(CLASS_COUNT).fill(0))
+  const global = override ?? sc?.epsilonScale ?? 1
+  if (!Number.isFinite(global) || global <= 0) {
+    throw new Error(`soup attraction: epsilonScale=${global} должен быть конечным положительным числом`)
+  }
+  if (sc?.pairEpsilon === undefined) {
+    // Pre-'hydrophobic-asymmetry' shape: the boolean rule (solvent with solvent, or solvent with
+    // polar) at one uniform depth. Kept so a fixture written against the old schema still loads.
+    for (let ci = 0; ci < CLASS_COUNT; ci++) {
+      for (let cj = 0; cj < CLASS_COUNT; cj++) {
+        const anySolvent = ci === CLASS_SOLVENT || cj === CLASS_SOLVENT
+        const bothSolventOrPolar = ci !== CLASS_APOLAR && cj !== CLASS_APOLAR
+        table[ci][cj] = anySolvent && bothSolventOrPolar ? global : 0
+      }
+    }
+    return table
+  }
+  const pe = sc.pairEpsilon
+  const ref = pe.levels[pe.reference]
+  if (ref === undefined || !(Number.isFinite(ref.epsilonKJ) && ref.epsilonKJ > 0)) {
+    throw new Error(
+      `data/soup.json: solvent.attractionScale.pairEpsilon.reference="${pe.reference}" не указывает на уровень с положительным epsilonKJ`,
+    )
+  }
+  for (let ci = 0; ci < CLASS_COUNT; ci++) {
+    for (let cj = 0; cj < CLASS_COUNT; cj++) {
+      const key = pairKey(ci, cj)
+      const lvl = pe.levels[key]
+      if (lvl === undefined) {
+        throw new Error(`data/soup.json: solvent.attractionScale.pairEpsilon.levels не содержит пары "${key}"`)
+      }
+      table[ci][cj] = (global * lvl.epsilonKJ) / ref.epsilonKJ
+    }
+  }
+  return table
+}
+
+/** The same table flattened for the GPU uniform soup/wgsl/step.wgsl declares as
+ * `array<vec4<f32>, 3>` (16-byte row stride, 4th component unused) -- one row per class. */
+export function attractionScaleUniform(soup: Soup, override?: number): Float32Array<ArrayBuffer> {
+  const table = attractionScaleTable(soup, override)
+  const out = new Float32Array(CLASS_COUNT * 4)
+  for (let ci = 0; ci < CLASS_COUNT; ci++) {
+    for (let cj = 0; cj < CLASS_COUNT; cj++) out[ci * 4 + cj] = table[ci][cj]
+  }
+  return out
+}
+
+export const ATTR_SCALE_UNIFORM_BYTES = CLASS_COUNT * 4 * 4

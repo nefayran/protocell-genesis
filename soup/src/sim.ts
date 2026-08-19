@@ -65,6 +65,7 @@ import {
   nextCycleTransition,
   type CycleSchedule,
 } from './soup-box-scale'
+import { makeSoupAreaMove } from './soup-area-move'
 import * as readback from './soup-readback'
 import type { SoupRuntime } from './soup-runtime'
 
@@ -198,6 +199,19 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   const bonds = () => readback.bonds(rt)
   const scaleBoxTo = makeScaleBoxTo(rt, particles, bonds, step)
   const growBoxTo = makeGrowBoxTo(rt, step)
+  // Task 'hydrophobic-asymmetry' (2026-08-19), defect 2 -- the zero-tension MC area move, ported
+  // from engine/src/sim-area-move.ts onto the soup's own scaleMoleculesRigid/applyBoxScaleOnce
+  // machinery rather than duplicated (see soup/src/soup-area-move.ts's header for what is reused and
+  // what genuinely could not be).
+  const areaMove = makeSoupAreaMove({
+    rt,
+    particles,
+    bonds,
+    centerLinks: () => readback.centerLinks(rt),
+    soup,
+    seed: opts.seed,
+    attractionOverride: opts.solventAttractionScaleOverride,
+  })
   const stepCycled = makeStepCycled(rt, particles, bonds, step, {
     rampSteps: soup.dryWetCycle.rampSteps,
     rampRelaxSteps: soup.dryWetCycle.rampRelaxSteps,
@@ -254,6 +268,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     stepCycled,
     scaleBoxTo,
     growBoxTo,
+    areaMove,
     particles,
     velocities: () => readback.velocities(rt),
     forces: () => readback.forces(rt),

@@ -203,29 +203,71 @@ export interface CheckpointDefaults {
 }
 
 /**
- * Task 'explicit-water' (2026-08-18): the nonbonded-attraction scheme's own documentation, not a
- * second implementation of it -- soup/wgsl/step.wgsl's shouldAttract() computes the rule directly
- * from each species' own `polar`/`solvent` flags (already uploaded per monomer), so there is
- * nothing numeric here for params.test.ts's literal-scanner rule to catch and nothing that could
- * drift from the WGSL side by having two copies of a pairwise table. `attractionRule` is a
- * human-readable restatement of that same formula, for a reader who has not opened the WGSL.
+ * Task 'explicit-water' (2026-08-18), amended by task 'hydrophobic-asymmetry' (2026-08-19): the
+ * nonbonded-attraction scheme's own documentation, not a second implementation of it --
+ * soup/wgsl/step.wgsl's speciesClass()/pairAttrScale() derive the rule from each species' own
+ * `polar`/`solvent` flags (already uploaded per monomer) plus the class ratio table
+ * soup/src/soup-attraction.ts builds from `attractionScale.pairEpsilon`, so there is exactly ONE
+ * place the depths live (data/soup.json) and one place they are turned into a table.
+ * `attractionRule` is a human-readable restatement of that same formula, for a reader who has not
+ * opened the WGSL.
  */
 /**
- * Water-calibration task (2026-08-19), `.superpowers/sdd/2026-08-16-soup-to-vesicle/
- * water-calibration-report.md`: a dimensionless multiplier on attr_dv's own magnitude (the SAME
- * Cooke & Deserno formula/range, data/params.json's epsilon/wc, both rank A and untouched), applied
- * ONLY where shouldAttract() is already true -- today that is exclusively water-water/water-head,
- * since tail-tail and head-head do not attract at all (see Solvent.attractionRule above). This is
- * NOT a second physical constant alongside epsilon: epsilon still sets the well depth's absolute
- * scale (energy units), this scale answers a different, water-specific question the Cooke-Deserno
- * calibration never had an opinion on ("how strong is water's OWN cohesion/hydration relative to
- * that scale") -- see this field's `basis` for the measurement and literature anchor that chose it.
+ * Water-calibration task (2026-08-19) introduced `epsilonScale`, a dimensionless multiplier on
+ * attr_dv's own magnitude (the SAME Cooke & Deserno formula/range, data/params.json's epsilon/wc,
+ * both rank A and untouched). Task 'hydrophobic-asymmetry' (2026-08-19) kept it as the GLOBAL
+ * multiplier of the whole per-class table `pairEpsilon` below (it is unchanged at 1) and moved the
+ * question of WHICH pairs attract, and how deeply relative to one another, into that table --
+ * including the restored apolar-apolar (tail-tail) term the earlier task had removed. This is still
+ * NOT a second physical constant alongside epsilon: epsilon sets the absolute well depth (energy
+ * units) and the reference pair's own multiplier is exactly 1, so tail-tail keeps the rank-A depth;
+ * the table only answers the question Cooke & Deserno's solvent-free calibration never had an
+ * opinion on ("how deep are the water pairs, and the water-tail pair, RELATIVE to tail-tail").
  * Optional on Solvent so a pre-existing fixture/test that never mentions it keeps working: absent
- * reads as 1.0 (identical to every explicit-water measurement before this task, i.e. no behaviour
- * change for a caller that does not know this field exists).
+ * reads as the pre-task water-only behaviour (soup/src/soup-attraction.ts's fallback branch).
  */
 export interface SolventAttractionScale {
   epsilonScale: number
+  /** Task 'hydrophobic-asymmetry' (2026-08-19): per-CLASS attraction DEPTHS, in MARTINI's own
+   * kJ/mol, used ONLY as ratios to `reference` (see data/soup.json's own basis for the file the
+   * numbers were read out of, the class->MARTINI-type mapping, and why the absolute scale stays
+   * tied to data/params.json's rank-A epsilon instead of importing kJ/mol). Optional: a fixture
+   * written before this task keeps the old boolean water-only behaviour -- soup/src/
+   * soup-attraction.ts's own fallback branch. */
+  pairEpsilon?: PairEpsilon
+  basis: string
+}
+
+/** One cell of solvent.attractionScale.pairEpsilon.levels: the literature depth plus the exact
+ * parameter-file line it was read from (`martini` is null for a pair deliberately kept at zero by
+ * the rank-A Cooke & Deserno structure, not taken from MARTINI at all). */
+export interface PairEpsilonLevel {
+  epsilonKJ: number
+  martini: string | null
+}
+
+export interface PairEpsilon {
+  /** Key into `levels` whose depth every other depth is divided by -- its own multiplier therefore
+   * comes out at exactly epsilonScale. */
+  reference: string
+  units: string
+  levels: Record<string, PairEpsilonLevel>
+}
+
+/**
+ * Task 'hydrophobic-asymmetry' (2026-08-19), defect 2: the zero-tension Monte Carlo area move for
+ * the soup path (soup/src/soup-area-move.ts), so area-per-lipid is MEASURED rather than assumed
+ * from a fixed box. `logDelta` is the proposal half-width in ln(area) -- a Markov-chain step-size
+ * knob with no effect on the equilibrium distribution, living in data/soup.json only because
+ * tests/params.test.ts forbids numeric constants inside soup/src. `mode` selects which box
+ * deformation the move proposes, and with explicit solvent that choice is forced rather than
+ * cosmetic: see data/soup.json's areaMove.basis for the measurement-level reason
+ * ('lateral-fixed-volume' realises gamma=0, 'lateral-fixed-z' would instead realise "solvent
+ * absolute lateral pressure = 0").
+ */
+export interface AreaMove {
+  logDelta: number
+  mode: 'lateral-fixed-volume' | 'lateral-fixed-z'
   basis: string
 }
 
@@ -266,6 +308,9 @@ export interface Soup {
   adsorption: Adsorption
   dryWetCycle: DryWetCycle
   solvent: Solvent
+  /** Optional so a pre-'hydrophobic-asymmetry' fixture still loads; soup/src/soup-area-move.ts
+   * throws a named error if a caller asks for an area move on a file that has no such section. */
+  areaMove?: AreaMove
   saltPhLimitation?: SaltPhLimitation
   checkpoint?: CheckpointDefaults
 }
@@ -384,6 +429,33 @@ export function assertRulesConsistent(s: Soup): void {
     }
     if (!sc.basis || sc.basis.trim().length <= 10) {
       throw new Error('data/soup.json: solvent.attractionScale не имеет содержательного обоснования (basis)')
+    }
+    if (sc.pairEpsilon !== undefined) {
+      const pe = sc.pairEpsilon
+      const ref = pe.levels?.[pe.reference]
+      if (!ref || !(Number.isFinite(ref.epsilonKJ) && ref.epsilonKJ > 0)) {
+        throw new Error(
+          `data/soup.json: solvent.attractionScale.pairEpsilon.reference="${pe.reference}" не указывает на уровень с положительным epsilonKJ`,
+        )
+      }
+      for (const [key, lvl] of Object.entries(pe.levels)) {
+        if (!Number.isFinite(lvl.epsilonKJ) || lvl.epsilonKJ < 0) {
+          throw new Error(`data/soup.json: solvent.attractionScale.pairEpsilon.levels.${key}.epsilonKJ=${lvl.epsilonKJ} должен быть конечным неотрицательным числом`)
+        }
+      }
+    }
+  }
+
+  if (s.areaMove !== undefined) {
+    const am = s.areaMove
+    if (!(Number.isFinite(am.logDelta) && am.logDelta > 0)) {
+      throw new Error(`data/soup.json: areaMove.logDelta=${am.logDelta} должен быть конечным положительным числом`)
+    }
+    if (am.mode !== 'lateral-fixed-volume' && am.mode !== 'lateral-fixed-z') {
+      throw new Error(`data/soup.json: areaMove.mode="${am.mode}" не входит в набор {lateral-fixed-volume, lateral-fixed-z}`)
+    }
+    if (!am.basis || am.basis.trim().length <= 10) {
+      throw new Error('data/soup.json: areaMove не имеет содержательного обоснования (basis)')
     }
   }
 

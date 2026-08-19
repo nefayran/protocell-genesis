@@ -32,14 +32,18 @@ const SOUP_NONE: u32 = 0xFFFFFFFFu;
 @group(1) @binding(7) var<storage, read> bondSlotsRO: array<u32>;
 
 // Water-calibration task (2026-08-19): x = solvent.attractionScale.epsilonScale (data/soup.json,
-// rank D -- see that field's own basis), a dimensionless multiplier on attr_dv's magnitude, applied
-// ONLY where shouldAttract() already gates the attraction on (today: water-water/water-head
-// exclusively, since tail-tail/head-head never attract at all -- see shouldAttract's own header).
-// NOT a second epsilon: data/params.json's P.epsilon/P.wc (rank A, Cooke & Deserno) still set the
-// attraction's absolute energy scale and range unchanged; this scale answers a question the
-// solvent-free calibration never had an opinion on (water's own relative cohesion/hydration
-// strength), and it multiplies the WHOLE attr_dv(r) term, not a separate formula. y/z/w unused.
-@group(1) @binding(9) var<uniform> SolventScale: vec4<f32>;
+// rank D -- see that field's own basis) TIMES the per-class ratio table
+// solvent.attractionScale.pairEpsilon builds (task 'hydrophobic-asymmetry', 2026-08-19). One row per
+// species CLASS (0 = apolar, 1 = polar, 2 = solvent, exactly speciesClass() below), column = the
+// other particle's class, 4th component unused; symmetric by construction on the JS side
+// (soup/src/soup-attraction.ts, which is also what soup/src/soup-potential.ts reads so the CPU
+// Metropolis energy and this kernel cannot drift apart). A cell of 0 means that pair simply does
+// not attract -- the boolean shouldAttract() this replaced is now derived FROM the table, not
+// alongside it. The depths themselves are ratios to the tail-tail pair, whose own cell is exactly
+// epsilonScale, so attr_dv keeps its rank-A Cooke & Deserno absolute depth for tail-tail; nothing
+// here redefines attr_dv's shape (P.epsilon/P.b_tt/P.wc, rank A, untouched).
+struct AttrScaleTable { rows: array<vec4<f32>, 3> };
+@group(1) @binding(9) var<uniform> AttrScale: AttrScaleTable;
 
 // Surface growth / adsorption (task 'adsorption', 2026-08-17, adsorption-report.md): read-only view
 // of soup/wgsl/bond.wgsl's centerLink -- soup/src/sim.ts binds the SAME physical buffer into this
@@ -150,20 +154,32 @@ fn speciesSolvent(kind: f32) -> bool {
   return SP.solvent[k / 4u][k % 4u] > 0.5;
 }
 
-// Task 'explicit-water': water-water and water-head attract (hydrophilic association); water-tail
-// does not (this IS the hydrophobic exclusion, now emergent rather than hand-written); head-head
-// does not (unchanged from before -- two polar heads never attracted each other under the old
-// !polar&&!polar rule either). The old blanket "both nonpolar" rule (tail-tail, but also
-// catalyst/donor pairs, since M and H were nonpolar too) is GONE: it is not a special case carved
-// out of this formula, it simply is not one of the three disjuncts below -- see
-// data/soup.json's solvent.basis for why keeping it alongside water exclusion would double-count
-// the same hydrophobic-effect physics.
+// Species CLASS, derived from the two per-species flags data/soup.json already uploads -- the GPU
+// twin of soup/src/soup-attraction.ts's speciesClassOf(), kept textually parallel on purpose.
+fn speciesClass(kind: f32) -> u32 {
+  if (speciesSolvent(kind)) { return 2u; }
+  if (speciesPolar(kind)) { return 1u; }
+  return 0u;
+}
+
+// Task 'hydrophobic-asymmetry' (2026-08-19): the attraction DEPTH multiplier for this pair, read
+// from the per-class table above. Replaces the boolean rule task 'explicit-water' wrote here
+// (water-water OR water-head only, with the apolar-apolar term structurally excluded). Restored
+// apolar-apolar (tail-tail, and equally any two non-polar beads -- London dispersion does not know
+// which bead was labelled catalyst), and water-tail is now a WEAK attraction rather than zero.
+// Hydrophobic segregation is still emergent: it comes from the SIGN of the exchange energy
+// eps_ww + eps_tt - 2*eps_wt built into the ratios, not from a hand-written "tails attract" rule --
+// see data/soup.json's solvent.attractionScale.basis, which states the reversal of that earlier
+// removal and the literature the ratios were read from.
+fn pairAttrScale(ti: f32, tj: f32) -> f32 {
+  return AttrScale.rows[speciesClass(ti)][speciesClass(tj)];
+}
+
+// Kept as a named predicate because soup_force_stats_main's own candidate-range diagnostic asks the
+// same question this way; it is now DERIVED from the table (a zero cell is exactly "does not
+// attract"), so there is no second place a pair rule could be stated.
 fn shouldAttract(ti: f32, tj: f32) -> bool {
-  let si = speciesSolvent(ti);
-  let sj = speciesSolvent(tj);
-  let pi = speciesPolar(ti);
-  let pj = speciesPolar(tj);
-  return (si && sj) || (si && pj) || (pi && sj);
+  return pairAttrScale(ti, tj) > 0.0;
 }
 
 // Lorentz-Berthelot-style arithmetic mean, same mixing convention data/params.json's own
@@ -232,12 +248,13 @@ fn nonbondedSoup(xi: vec3<f32>, xj: vec3<f32>, ti: f32, tj: f32, box: vec3<f32>)
   if (r < wca_cut(b)) {
     f = f - wca_dv(r, b) * d / r;
   }
-  if (shouldAttract(ti, tj)) {
-    // Water-calibration task (2026-08-19): SolventScale.x scales this term's magnitude only --
-    // same rc/wc/epsilon-shaped ramp attr_dv already computes from P.epsilon/P.b_tt/P.wc (rank A,
-    // untouched). See this file's SolventScale declaration above for why this is not a second
-    // physical constant.
-    f = f - SolventScale.x * attr_dv(r) * d / r;
+  // Task 'hydrophobic-asymmetry' (2026-08-19): the per-class depth multiplier scales this term's
+  // MAGNITUDE only -- same rc/wc/epsilon-shaped ramp attr_dv already computes from
+  // P.epsilon/P.b_tt/P.wc (rank A, untouched), same well onset and width for every pair. A zero
+  // multiplier is the "this pair does not attract" case, so no separate branch states a pair rule.
+  let attrScale = pairAttrScale(ti, tj);
+  if (attrScale > 0.0) {
+    f = f - attrScale * attr_dv(r) * d / r;
   }
   return f;
 }

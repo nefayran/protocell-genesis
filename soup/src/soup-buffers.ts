@@ -13,6 +13,7 @@ import { storageBuffer } from '../../engine/src/gpu'
 import { paramsToUniform, type Params } from '../../engine/src/params'
 import { packSpeciesSlots, packVec4 } from './soup-plan'
 import type { Soup } from './rules'
+import { ATTR_SCALE_UNIFORM_BYTES, attractionScaleUniform } from './soup-attraction'
 import { attemptProbability, acceptanceProbability } from './rules'
 import type { InitialState } from './soup-init-state'
 
@@ -72,10 +73,11 @@ export interface SoupBuffers {
   gridUniform: GPUBuffer
   speciesUniform: GPUBuffer
   bondParamsUniform: GPUBuffer
-  // Water-calibration task (2026-08-19): x = solvent.attractionScale.epsilonScale (or the
-  // CreateSoupOpts.solventAttractionScaleOverride passed at creation, for calibration sweeps that
-  // must not rewrite data/soup.json per candidate) -- see soup/wgsl/step.wgsl's SolventScale.
-  solventScaleUniform: GPUBuffer
+  // Task 'hydrophobic-asymmetry' (2026-08-19): the per-class attraction-depth table (3 rows of
+  // vec4, one row per species class) soup/wgsl/step.wgsl's pairAttrScale() reads -- built by
+  // soup/src/soup-attraction.ts from data/soup.json's solvent.attractionScale, optionally with
+  // CreateSoupOpts.solventAttractionScaleOverride replacing the file's global epsilonScale.
+  attrScaleUniform: GPUBuffer
 }
 
 export interface SoupGridState {
@@ -206,12 +208,16 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
     device.queue.writeBuffer(speciesUniform, 0, new Float32Array([...radius, ...polar, ...solvent]))
   }
 
-  // Water-calibration task (2026-08-19): see soup/wgsl/step.wgsl's SolventScale declaration.
-  // Override takes precedence (calibration sweeps); absent-from-both reads as 1.0 (unscaled --
-  // rules.ts's Solvent.attractionScale is optional for exactly this fallback).
-  const solventEpsilonScale = solventAttractionScaleOverride ?? soup.solvent.attractionScale?.epsilonScale ?? 1.0
-  const solventScaleUniform = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
-  device.queue.writeBuffer(solventScaleUniform, 0, new Float32Array([solventEpsilonScale, 0, 0, 0]))
+  // Task 'hydrophobic-asymmetry' (2026-08-19): the per-class attraction-depth table, see
+  // soup/wgsl/step.wgsl's AttrScale declaration and soup/src/soup-attraction.ts (which builds it
+  // from data/soup.json and is ALSO what the CPU-side Metropolis energy reads, so the two cannot
+  // drift). `solventAttractionScaleOverride` still overrides the file's global epsilonScale for one
+  // system (calibration sweeps); absent-from-both reads as unscaled.
+  const attrScaleUniform = device.createBuffer({
+    size: ATTR_SCALE_UNIFORM_BYTES,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  })
+  device.queue.writeBuffer(attrScaleUniform, 0, attractionScaleUniform(soup, solventAttractionScaleOverride))
 
   // BondParams: acceptProbForm/acceptProbBreak come DIRECTLY from soup/src/rules.ts's
   // acceptanceProbability(rule, kT) -- the same function tests/soup-rules.test.ts checks against
@@ -312,7 +318,7 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
     gridUniform,
     speciesUniform,
     bondParamsUniform,
-    solventScaleUniform,
+    attrScaleUniform,
   }
   const grid: SoupGridState = { dims, ncells, wgCells: Math.ceil(ncells / 64) }
   return { buf, grid }
@@ -398,5 +404,5 @@ export function disposeSoupBuffers(buf: SoupBuffers): void {
   buf.gridUniform.destroy()
   buf.speciesUniform.destroy()
   buf.bondParamsUniform.destroy()
-  buf.solventScaleUniform.destroy()
+  buf.attrScaleUniform.destroy()
 }

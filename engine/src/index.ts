@@ -41,6 +41,14 @@ export type { Stage, StageEvidence, StageThresholds } from '../../soup/src/stage
 // mis-rewritten by Vitest's own SSR transform of the OUTER test file -- window.api is the
 // established escape hatch every other facade call already uses instead).
 export { loadSoup } from '../../soup/src/rules'
+// Task 'hydrophobic-asymmetry' (2026-08-19): the attraction-depth table and the CPU potential/area-
+// move primitives, re-exported so tests/runner.html's page context can measure the port's own
+// verification identity (bead-scaled vs molecule-scaled free-energy derivative) without a second
+// implementation of any of it.
+export { attractionScaleTable, speciesClasses, speciesClassOf } from '../../soup/src/soup-attraction'
+export { makePotentialBasis, soupPotential, bondAdjacency } from '../../soup/src/soup-potential'
+export { proposeBox, scaleBeadsAffine, moleculeCount } from '../../soup/src/soup-area-move'
+export { scaleMoleculesRigid as scaleMoleculesRigidSoup } from '../../soup/src/soup-box-scale-math'
 export { findAmphiphiles, amphiphileHistogram } from '../../soup/src/amphiphile'
 // Energy calibration (2026-08-17): rate-free rigor checks over the bond graph, re-exported for
 // window.api the same way findAmphiphiles/loadSoup already are -- see soup/src/equilibrium.ts's
