@@ -27,6 +27,13 @@ export interface CreateSoupOpts {
    * targetDryDensity/rampSteps/rampRelaxSteps) always comes from data/soup.json -- this override is a
    * plain boolean switch, never a number. */
   dryWetCycle?: boolean
+  /** Water-calibration task (2026-08-19): overrides data/soup.json's `solvent.attractionScale.
+   * epsilonScale` for THIS system only -- the same "convenience override, file's own default when
+   * absent" pattern `catalystCount` already uses. Exists so the calibration sweep
+   * (tests/tmp-water-calib-probe.test.ts, and any future re-sweep) does not need to rewrite
+   * data/soup.json between candidate values; the file's own field is what a real run (and the
+   * committed gates) actually uses. */
+  solventAttractionScaleOverride?: number
   /** Checkpoint/resume (task 'checkpoint-resume'): when present, createSoup skips the jittered-
    * lattice initial layout and every zero-filled buffer below, loading this system's ENTIRE mutable
    * state from a prior checkpoint instead -- everything step()/stepCycled() can change: positions,

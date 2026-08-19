@@ -72,6 +72,10 @@ export interface SoupBuffers {
   gridUniform: GPUBuffer
   speciesUniform: GPUBuffer
   bondParamsUniform: GPUBuffer
+  // Water-calibration task (2026-08-19): x = solvent.attractionScale.epsilonScale (or the
+  // CreateSoupOpts.solventAttractionScaleOverride passed at creation, for calibration sweeps that
+  // must not rewrite data/soup.json per candidate) -- see soup/wgsl/step.wgsl's SolventScale.
+  solventScaleUniform: GPUBuffer
 }
 
 export interface SoupGridState {
@@ -96,10 +100,13 @@ export interface AllocateBuffersInput {
   bondAttemptInterval: number
   kT: number
   initial: InitialState
+  /** Water-calibration task (2026-08-19): overrides soup.solvent.attractionScale.epsilonScale for
+   * this system only -- see soup/src/soup-types.ts's CreateSoupOpts.solventAttractionScaleOverride. */
+  solventAttractionScaleOverride?: number
 }
 
 export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuffers; grid: SoupGridState } {
-  const { device, soup, p, N, dims, ncells, effectiveWalkRadius, initialLiveBox, verlet, listRange, rules, catalystKind, bondAttemptInterval, kT, initial } = input
+  const { device, soup, p, N, dims, ncells, effectiveWalkRadius, initialLiveBox, verlet, listRange, rules, catalystKind, bondAttemptInterval, kT, initial, solventAttractionScaleOverride } = input
   const { positions0, velocities0, bondSlots0, centerLink0, centerHeldSteps0, desorbEventsInit, bondRng0, thermoRng0, eventsInit } = initial
 
   const posBuf = storageBuffer(device, positions0)
@@ -198,6 +205,13 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
     const solvent = packSpeciesSlots(soup.monomers.map((m) => (m.solvent ? 1 : 0)))
     device.queue.writeBuffer(speciesUniform, 0, new Float32Array([...radius, ...polar, ...solvent]))
   }
+
+  // Water-calibration task (2026-08-19): see soup/wgsl/step.wgsl's SolventScale declaration.
+  // Override takes precedence (calibration sweeps); absent-from-both reads as 1.0 (unscaled --
+  // rules.ts's Solvent.attractionScale is optional for exactly this fallback).
+  const solventEpsilonScale = solventAttractionScaleOverride ?? soup.solvent.attractionScale?.epsilonScale ?? 1.0
+  const solventScaleUniform = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
+  device.queue.writeBuffer(solventScaleUniform, 0, new Float32Array([solventEpsilonScale, 0, 0, 0]))
 
   // BondParams: acceptProbForm/acceptProbBreak come DIRECTLY from soup/src/rules.ts's
   // acceptanceProbability(rule, kT) -- the same function tests/soup-rules.test.ts checks against
@@ -298,6 +312,7 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
     gridUniform,
     speciesUniform,
     bondParamsUniform,
+    solventScaleUniform,
   }
   const grid: SoupGridState = { dims, ncells, wgCells: Math.ceil(ncells / 64) }
   return { buf, grid }
@@ -383,4 +398,5 @@ export function disposeSoupBuffers(buf: SoupBuffers): void {
   buf.gridUniform.destroy()
   buf.speciesUniform.destroy()
   buf.bondParamsUniform.destroy()
+  buf.solventScaleUniform.destroy()
 }

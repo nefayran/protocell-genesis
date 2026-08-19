@@ -210,12 +210,32 @@ export interface CheckpointDefaults {
  * drift from the WGSL side by having two copies of a pairwise table. `attractionRule` is a
  * human-readable restatement of that same formula, for a reader who has not opened the WGSL.
  */
+/**
+ * Water-calibration task (2026-08-19), `.superpowers/sdd/2026-08-16-soup-to-vesicle/
+ * water-calibration-report.md`: a dimensionless multiplier on attr_dv's own magnitude (the SAME
+ * Cooke & Deserno formula/range, data/params.json's epsilon/wc, both rank A and untouched), applied
+ * ONLY where shouldAttract() is already true -- today that is exclusively water-water/water-head,
+ * since tail-tail and head-head do not attract at all (see Solvent.attractionRule above). This is
+ * NOT a second physical constant alongside epsilon: epsilon still sets the well depth's absolute
+ * scale (energy units), this scale answers a different, water-specific question the Cooke-Deserno
+ * calibration never had an opinion on ("how strong is water's OWN cohesion/hydration relative to
+ * that scale") -- see this field's `basis` for the measurement and literature anchor that chose it.
+ * Optional on Solvent so a pre-existing fixture/test that never mentions it keeps working: absent
+ * reads as 1.0 (identical to every explicit-water measurement before this task, i.e. no behaviour
+ * change for a caller that does not know this field exists).
+ */
+export interface SolventAttractionScale {
+  epsilonScale: number
+  basis: string
+}
+
 export interface Solvent {
   /** data/soup.json monomer id of the solvent species -- read by callers that need to find water
    * particles (e.g. soup/src/water-closure.ts) without hardcoding the id "W". */
   waterId: string
   attractionRule: string
   basis: string
+  attractionScale?: SolventAttractionScale
 }
 
 /**
@@ -356,6 +376,15 @@ export function assertRulesConsistent(s: Soup): void {
   }
   if (!sv.basis || sv.basis.trim().length <= 10) {
     throw new Error('data/soup.json: solvent не имеет содержательного обоснования (basis)')
+  }
+  if (sv.attractionScale !== undefined) {
+    const sc = sv.attractionScale
+    if (!(Number.isFinite(sc.epsilonScale) && sc.epsilonScale > 0)) {
+      throw new Error(`data/soup.json: solvent.attractionScale.epsilonScale=${sc.epsilonScale} должен быть конечным положительным числом`)
+    }
+    if (!sc.basis || sc.basis.trim().length <= 10) {
+      throw new Error('data/soup.json: solvent.attractionScale не имеет содержательного обоснования (basis)')
+    }
   }
 
   const ids = new Set(s.monomers.map((m) => m.id))

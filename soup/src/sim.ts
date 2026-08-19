@@ -140,6 +140,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     bondAttemptInterval: soup.bondAttemptInterval.steps,
     kT: opts.kT,
     initial,
+    solventAttractionScaleOverride: opts.solventAttractionScaleOverride,
   })
   const bind = buildBindGroups(device, pipe, buf)
 

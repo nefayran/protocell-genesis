@@ -31,6 +31,16 @@ const SOUP_NONE: u32 = 0xFFFFFFFFu;
 @group(1) @binding(6) var<storage, read_write> posRW: array<vec4<f32>>;
 @group(1) @binding(7) var<storage, read> bondSlotsRO: array<u32>;
 
+// Water-calibration task (2026-08-19): x = solvent.attractionScale.epsilonScale (data/soup.json,
+// rank D -- see that field's own basis), a dimensionless multiplier on attr_dv's magnitude, applied
+// ONLY where shouldAttract() already gates the attraction on (today: water-water/water-head
+// exclusively, since tail-tail/head-head never attract at all -- see shouldAttract's own header).
+// NOT a second epsilon: data/params.json's P.epsilon/P.wc (rank A, Cooke & Deserno) still set the
+// attraction's absolute energy scale and range unchanged; this scale answers a question the
+// solvent-free calibration never had an opinion on (water's own relative cohesion/hydration
+// strength), and it multiplies the WHOLE attr_dv(r) term, not a separate formula. y/z/w unused.
+@group(1) @binding(9) var<uniform> SolventScale: vec4<f32>;
+
 // Surface growth / adsorption (task 'adsorption', 2026-08-17, adsorption-report.md): read-only view
 // of soup/wgsl/bond.wgsl's centerLink -- soup/src/sim.ts binds the SAME physical buffer into this
 // module's own bind groups at this same binding too, so bondedForce below can read which pair (if
@@ -223,7 +233,11 @@ fn nonbondedSoup(xi: vec3<f32>, xj: vec3<f32>, ti: f32, tj: f32, box: vec3<f32>)
     f = f - wca_dv(r, b) * d / r;
   }
   if (shouldAttract(ti, tj)) {
-    f = f - attr_dv(r) * d / r;
+    // Water-calibration task (2026-08-19): SolventScale.x scales this term's magnitude only --
+    // same rc/wc/epsilon-shaped ramp attr_dv already computes from P.epsilon/P.b_tt/P.wc (rank A,
+    // untouched). See this file's SolventScale declaration above for why this is not a second
+    // physical constant.
+    f = f - SolventScale.x * attr_dv(r) * d / r;
   }
   return f;
 }

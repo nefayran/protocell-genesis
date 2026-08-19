@@ -21,6 +21,22 @@ afterAll(shutdownGpu)
 // HONEST LIMITATION, same as water-bilayer.test.ts: no zero-tension area-move/barostat in the soup
 // engine, so area-per-lipid below is the ASSUMED starting condition (literature midpoint), not an
 // independent measurement. Thickness and integrity ARE genuine measurements.
+//
+// Task 'water-calibration' (2026-08-19, .superpowers/sdd/2026-08-16-soup-to-vesicle/
+// water-calibration-report.md): this is the reproduction case that report starts from. Mechanistic
+// finding (from the head/tail/water z-histogram over ALL particles, not just recognised-amphiphile
+// members): the core is genuinely DRY (water fraction inside the head span is a few percent, and
+// tail density is continuous, not patchy) -- the failure is not water penetration and not "leaflets
+// never formed a core". It is that a large fraction of HEAD beads (headBuriedFraction below, ~40%
+// at this composition) sit buried inside the hydrophobic zone instead of at either face, because
+// the box's fixed area-per-lipid (no barostat) plus a solvent model whose only attractive force is
+// water-water/water-head leaves the leaflet with no lateral cohesion of its own once the old
+// tail-tail term was removed. A sweep of every legitimate explicit-water knob (water density, bead
+// radius, and a new water-only attraction-strength scale, data/soup.json's
+// solvent.attractionScale) found no combination in a defensible range that holds thickness stably
+// in the literature corridor with a dry core -- see the report for the full map, including two
+// single-snapshot "hits" that a longer trajectory revealed were transients (one mid-collapse, one
+// oscillating without ever settling), not real calibration wins.
 
 const AREA_MIN = literature.gates.find((g) => g.id === 'area-per-lipid')!.target.min!
 const AREA_MAX = literature.gates.find((g) => g.id === 'area-per-lipid')!.target.max!
@@ -219,7 +235,38 @@ test(
           for (const a of amph) for (const t of a.tailLengths) tails.push(t)
           const meanTail = tails.length > 0 ? tails.reduce((s: number, x: number) => s + x, 0) / tails.length : null
 
-          return { thickness, thicknessError, lower, upper, clusterFraction, waterInCore, totalWaterFinal, amphiphileCount: amph.length, meanTail, bondsAfter: bondsNow.length / 2 }
+          // water-calibration task (2026-08-19, water-calibration-report.md): the mechanistic
+          // measurement that told water penetration apart from heads never forming a proper
+          // surface. Fraction of HEAD beads sitting more than 1 sigma outside BOTH surface peaks --
+          // i.e. buried inside the hydrophobic zone rather than sitting at either face. Computed
+          // over every head bead (not just the ones inside `memberPositions`, which is the same
+          // set), so it is a direct read of where the real heads are, not an artifact of
+          // densityProfileZ's own binning.
+          let headBuried = 0
+          let headTotal = 0
+          if (lower !== null && upper !== null) {
+            for (const i of memberSet) {
+              if (soup.monomers[Math.round(particlesNow[i * 4 + 3])].kind !== 'head') continue
+              headTotal++
+              const z = particlesNow[i * 4 + 2]
+              if (Math.abs(z - lower) > 1 && Math.abs(z - upper) > 1) headBuried++
+            }
+          }
+          const headBuriedFraction = headTotal > 0 ? headBuried / headTotal : null
+
+          return {
+            thickness,
+            thicknessError,
+            lower,
+            upper,
+            clusterFraction,
+            waterInCore,
+            totalWaterFinal,
+            amphiphileCount: amph.length,
+            meanTail,
+            bondsAfter: bondsNow.length / 2,
+            headBuriedFraction,
+          }
         }
 
         const trajectory: { step: number; thickness: number | null; clusterFraction: number }[] = []
@@ -279,12 +326,27 @@ test(
     // lipid IS recognised, so the bound is stated as such (>= 395 of 400 placed).
     expect(result.amphiphileCount).toBeGreaterThanOrEqual(395)
     expect(result.meanTail).toBe(2)
+    const inCorridor =
+      result.thickness !== null && result.thickness >= THICKNESS_MIN && result.thickness <= THICKNESS_MAX
     console.log(
       `WATER-BILAYER-BROTH-VERDICT areaPerLipid(assumed)=${result.areaPerLipid.toFixed(4)} [corridor ${AREA_MIN}-${AREA_MAX}] ` +
         `thickness(measured)=${result.thickness?.toFixed(4) ?? 'N/A: ' + result.thicknessError} [corridor ${THICKNESS_MIN}-${THICKNESS_MAX}] ` +
         `clusterFraction=${result.clusterFraction.toFixed(4)} waterInCore=${result.waterInCore}/${result.totalWaterFinal} ` +
-        `throughput=${result.stepsPerSec.toFixed(2)} steps/s at N=${result.N}`,
+        `headBuriedFraction=${result.headBuriedFraction?.toFixed(4) ?? 'N/A'} ` +
+        `throughput=${result.stepsPerSec.toFixed(2)} steps/s at N=${result.N} ` +
+        `verdict=${inCorridor ? 'passed' : 'FAILED'}`,
     )
+    // water-calibration task (2026-08-19, .superpowers/sdd/2026-08-16-soup-to-vesicle/
+    // water-calibration-report.md): mechanistic diagnosis + a measured sweep of every legitimate
+    // explicit-water knob (water density, water bead radius, and a new water-only attraction-
+    // strength scale added by that task, data/soup.json's solvent.attractionScale) found NO
+    // combination in a defensible (or even a widely explored) range that holds this thickness
+    // stably inside 4-6 sigma with a dry core -- see that report for the full sweep map and the
+    // literature anchors (MARTINI's own interaction-level table; Lenz & Schmid 2007) that bounded
+    // the search. This assertion records that verdict as a real regression: if a future change
+    // ever DOES pull the measured thickness inside the corridor, this line should start failing --
+    // that would be news worth looking at, not a bug to silence.
+    expect(inCorridor).toBe(false)
   },
   580_000,
 )
