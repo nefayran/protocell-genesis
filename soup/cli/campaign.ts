@@ -26,6 +26,7 @@ import type { CheckpointConfig } from '../src/checkpoint'
 // The flag surface, the usage text, the resume-signature and the checkpoint file I/O live in
 // soup/cli/campaign-config.ts (CLAUDE.md's file-size rule) -- a pure move, see that file's header.
 import { configSignature, findNewestMatchingCheckpoint, parseCliArgs, writeCheckpointFile } from './campaign-config'
+import { loadSoup } from '../src/rules'
 
 // box-expansion task: how many real steps stepPhasesDEBUG isolates each grid/force/bondAttempts/
 // integration component over, immediately before and after the one-time expansion above -- an
@@ -48,6 +49,17 @@ async function main(): Promise<void> {
     evaporateSolvent: args.evaporate || undefined,
     dryWetCycles: args.cycles,
     minimiseAt: args.minimiseAt.length > 0 ? args.minimiseAt : undefined,
+    // Task 'electrostatics' (2026-08-20): resolved against data/soup.json's own defaults HERE (not
+    // left as three optional flags) so the checkpoint carries the pH and ionic strength the run
+    // actually used, and a reader of the file never has to re-resolve them against a data file that
+    // may have moved since.
+    electrostatics: args.charge
+      ? {
+          enabled: true,
+          pH: args.pH ?? loadSoup().electrostatics!.pH,
+          ionicStrengthMolar: args.ionicStrength ?? loadSoup().electrostatics!.ionicStrengthMolar,
+        }
+      : undefined,
   }
   mkdirSync(args.dir, { recursive: true })
   const sig = configSignature(config)
@@ -94,7 +106,7 @@ async function main(): Promise<void> {
         // drives dry-wet box cycling, which applyBoxScaleOnce refuses on a system with an immobile
         // phase. Pinned clay-free so every existing campaign stays reproducible; a clay campaign is its
         // own measurement with its own checkpoint lineage, not a silent change to this one.
-        const sys = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, dryWetCycles: cfg.dryWetCycles, evaporateSolvent: cfg.evaporateSolvent, resume, clay: false })
+        const sys = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, dryWetCycles: cfg.dryWetCycles, evaporateSolvent: cfg.evaporateSolvent, electrostatics: cfg.electrostatics, resume, clay: false })
         ;(window as any).__sys = sys
         return { N: (await sys.particles()).length / 4, steps: sys.steps }
       },
@@ -157,7 +169,7 @@ async function main(): Promise<void> {
               const api = (window as any).api
               const cfg = JSON.parse(cfgJson2)
               const resume = checkpointJson2 ? api.decodeCheckpointResume(JSON.parse(checkpointJson2)) : undefined
-              const probe = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, dryWetCycles: cfg.dryWetCycles, evaporateSolvent: cfg.evaporateSolvent, resume, clay: false })
+              const probe = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, dryWetCycles: cfg.dryWetCycles, evaporateSolvent: cfg.evaporateSolvent, electrostatics: cfg.electrostatics, resume, clay: false })
               try {
                 if (expandToBox2 !== null) await probe.growBoxTo([expandToBox2, expandToBox2, expandToBox2], rampSteps2, rampRelaxSteps2)
                 const debug = await probe.stepPhasesDEBUG(n2)
@@ -371,7 +383,26 @@ async function main(): Promise<void> {
         // they are no longer constants of the run -- a dry-phase progress line has to show how much
         // solvent actually left, or the trace cannot be read.
         const inv = await sys.invariants()
+        // Task 'electrostatics' (2026-08-20): the protonation state and the acid-soap pairing, in the
+        // SAME progress line as the structure, because with charge on they are the two things the
+        // structure is a function of. Computed inside the page (where the charge readback lives) and
+        // reduced to scalars before crossing the CDP boundary -- never the whole array.
+        const es = sys.electrostatics() as Record<string, any>
+        let esLine = ''
+        if (es.enabled) {
+          const pos = await sys.particles()
+          const q = await sys.charges()
+          const params = api.loadParams()
+          const contact = api.wcaCutoff(params.sigma * params.beadSizes.head_head)
+          const pr = api.pairingStats(pos, q, sys.box, es, contact)
+          esLine =
+            ` pH=${es.pH} I=${es.ionicStrengthMolar} alpha=${pr.alpha.toFixed(4)} pKaApp=${api.apparentPKa(pr.alpha, es.pH).toFixed(3)}` +
+            ` спаренных=${pr.pairedFraction.toFixed(4)} неодинаковых=${pr.unlikeFraction.toFixed(4)}(случайно ${pr.unlikeFractionRandom.toFixed(4)})` +
+            ` подметаний=${es.sweeps}` +
+            (es.last ? ` последнее(принято=${es.last.accepted}/${es.last.attempts} dEs=${es.last.dEsMeanKT.toFixed(4)}kT)` : '')
+        }
         return {
+          esLine,
           stage,
           aggregateCount: evidence.aggregateAnalysis.aggregateCount,
           largestAggregateSize: largest?.amphiphileCount ?? 0,
@@ -390,7 +421,7 @@ async function main(): Promise<void> {
         `[campaign] шаг=${currentStep}/${targetStep} stage=${progress.stage} агрегатов=${progress.aggregateCount} ` +
           `крупнейший=${progress.largestAggregateSize} headShells=${progress.headShells} cavityVolume=${progress.cavityVolume.toFixed(3)} ` +
           `фаза=${progress.phase}/${progress.cycleIndex} box=${progress.box.toFixed(4)} связей=${progress.bonds} census=${JSON.stringify(progress.census)} ` +
-          `stepMs=${stepMs} checkpointMs=${checkpointMs} progressMs=${progressMs} сохранено=${savedPath}`,
+          `stepMs=${stepMs} checkpointMs=${checkpointMs} progressMs=${progressMs} сохранено=${savedPath}` + progress.esLine,
       )
     }
 

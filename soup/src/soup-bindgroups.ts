@@ -131,6 +131,13 @@ export function rebindGridDependent(device: GPUDevice, pipe: SoupPipelines, sb: 
     // Task 'hydrophobic-asymmetry' (2026-08-19): soup/wgsl/step.wgsl's AttrScale table, read by
     // nonbondedSoup's attraction term (this pipeline's own soup_force_main/_unsorted body).
     { binding: 9, resource: buf(sb.attrScaleUniform) },
+    // Task 'electrostatics' (2026-08-20): the per-particle charge (soup/wgsl/electrostatics.wgsl's
+    // chargeRO) and the ES uniform. Required on exactly the three pipelines whose entry points reach
+    // nonbondedSoup -- soupForce, soupForceBrute, soupForceList. `layout: auto` derives each layout
+    // from what the entry point actually USES, so adding these to any other group would fail
+    // bind-group validation outright (which is how a miswiring surfaces here, not silently).
+    { binding: 24, resource: buf(sb.chargeBuf) },
+    { binding: 25, resource: buf(sb.esUniformBuf) },
   ], device)
   // --- bond formation (forces.wgsl + bond.wgsl), grid-walk variant -----------------------------
   bind_.bondFormGroup1 = bind(pipe.bondForm, 1, [
@@ -211,6 +218,13 @@ export function buildBindGroups(device: GPUDevice, pipe: SoupPipelines, sb: Soup
     { binding: 20, resource: buf(sb.centerLinkBuf) },
     // Water-calibration task (2026-08-19): see soupForceGroup1's own comment above.
     { binding: 9, resource: buf(sb.attrScaleUniform) },
+    // Task 'electrostatics' (2026-08-20): the per-particle charge (soup/wgsl/electrostatics.wgsl's
+    // chargeRO) and the ES uniform. Required on exactly the three pipelines whose entry points reach
+    // nonbondedSoup -- soupForce, soupForceBrute, soupForceList. `layout: auto` derives each layout
+    // from what the entry point actually USES, so adding these to any other group would fail
+    // bind-group validation outright (which is how a miswiring surfaces here, not silently).
+    { binding: 24, resource: buf(sb.chargeBuf) },
+    { binding: 25, resource: buf(sb.esUniformBuf) },
   ], device)
   bind_.kickDriftWrapGroup0 = bind(pipe.kickDriftWrap, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
   bind_.kickDriftWrapGroup1 = bind(pipe.kickDriftWrap, 1, [
@@ -279,6 +293,13 @@ export function buildBindGroups(device: GPUDevice, pipe: SoupPipelines, sb: Soup
     { binding: 20, resource: buf(sb.centerLinkBuf) },
     // Water-calibration task (2026-08-19): see soupForceGroup1's own comment above.
     { binding: 9, resource: buf(sb.attrScaleUniform) },
+    // Task 'electrostatics' (2026-08-20): the per-particle charge (soup/wgsl/electrostatics.wgsl's
+    // chargeRO) and the ES uniform. Required on exactly the three pipelines whose entry points reach
+    // nonbondedSoup -- soupForce, soupForceBrute, soupForceList. `layout: auto` derives each layout
+    // from what the entry point actually USES, so adding these to any other group would fail
+    // bind-group validation outright (which is how a miswiring surfaces here, not silently).
+    { binding: 24, resource: buf(sb.chargeBuf) },
+    { binding: 25, resource: buf(sb.esUniformBuf) },
   ], device)
   bind_.bondFormListGroup0 = bind(pipe.bondFormList, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
   bind_.bondFormListGroup1 = bind(pipe.bondFormList, 1, [

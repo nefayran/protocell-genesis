@@ -1,0 +1,110 @@
+[
+  {
+    "file": "data/checkpoints/ocB19/ocB19-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 1,
+    "amphiphilesInLargest": 394,
+    "particlesInLargest": 2025,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ]
+  },
+  {
+    "file": "data/checkpoints/esB19pH40/esB19pH40-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 1,
+    "amphiphilesInLargest": 394,
+    "particlesInLargest": 2147,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ]
+  },
+  {
+    "file": "data/checkpoints/esB19pH50/esB19pH50-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 1,
+    "amphiphilesInLargest": 397,
+    "particlesInLargest": 2079,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ]
+  },
+  {
+    "file": "data/checkpoints/esB19pH60/esB19pH60-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 1,
+    "amphiphilesInLargest": 395,
+    "particlesInLargest": 2095,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ]
+  },
+  {
+    "file": "data/checkpoints/esB19pH70/esB19pH70-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 1,
+    "amphiphilesInLargest": 386,
+    "particlesInLargest": 2125,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ]
+  },
+  {
+    "file": "data/checkpoints/esB19pH90/esB19pH90-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 1,
+    "amphiphilesInLargest": 433,
+    "particlesInLargest": 2251,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ]
+  }
+]

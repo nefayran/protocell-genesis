@@ -76,6 +76,10 @@ import { relaxIterations } from './soup-relax'
 import { planEvaporation, evaporateSolventTo, rehydrateSolventTo } from './soup-evaporate'
 import { scanNonFinite } from './soup-health'
 import { clayEnabled, planClay, type ClayLayout } from './soup-clay'
+// Task 'electrostatics' (2026-08-20): the screened-Coulomb basis (derived once from data/soup.json +
+// data/params.json + this run's own pH/ionic-strength overrides) and the constant-pH Monte Carlo.
+import { makeEsBasis } from './electrostatics'
+import { initialCharges, maybeProtonationSweep, type ProtonationState } from './soup-protonation'
 import * as readback from './soup-readback'
 import type { SoupRuntime } from './soup-runtime'
 
@@ -170,6 +174,29 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   const pipe = getSoupPipelines(device, sortedGather)
 
   const initial = buildInitialState(soup, opts, capacityN, countsByKind, box, rules, eventRuleIds, clay, N)
+
+  // Task 'electrostatics' (2026-08-20). The basis is derived from data/soup.json's `electrostatics`
+  // section with only the two EXPERIMENT-design numbers overridable per run (pH, ionic strength) --
+  // see soup/src/electrostatics.ts for the scheme and data/soup.json's own basis for every rank. A run
+  // that does not ask for it gets coeffA = 0, which makes both the GPU term and the CPU twin
+  // identically zero, so it is bit-identical to every pre-task run.
+  //
+  // Charges: the checkpoint's own array on a resume (the protonation state MUST round-trip -- it is
+  // as much of the mutable state as the bond graph is), otherwise an equilibrium Henderson-
+  // Hasselbalch draw at this run's pH, which is the correct distribution at a monomers-only step 0.
+  const es = makeEsBasis(soup, p, opts.electrostatics)
+  const fresh = initialCharges(initial.positions0, es, opts.seed)
+  // Sized for CAPACITY, not for the live count: a checkpoint taken mid dry-phase carries only the
+  // LIVE beads' charges, and the trailing slots rehydration writes back into are solvent, which is
+  // charge 0 by construction -- so a zero-padded copy is exactly right and needs no fixup later.
+  const charges0 = new Float32Array(capacityN)
+  charges0.set((opts.resume?.charges ?? fresh.charges).subarray(0, capacityN))
+  const protonation: ProtonationState = {
+    es,
+    rng: { state: opts.resume?.protonationRng ?? fresh.rng.state },
+    nextSweepAt: es.enabled ? initialStep + es.sweepEverySteps : Number.POSITIVE_INFINITY,
+    sweeps: 0,
+  }
   const { buf, grid } = allocateSoupBuffers({
     device,
     soup,
@@ -188,6 +215,8 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     initial,
     solventAttractionScaleOverride: opts.solventAttractionScaleOverride,
     claySurfaceChemistry: opts.claySurfaceChemistry,
+    es,
+    charges0,
   })
   const bind = buildBindGroups(device, pipe, buf, N)
 
@@ -219,6 +248,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     buf,
     bind,
     grid,
+    protonation,
     live: {
       liveBox: [initialLiveBox[0], initialLiveBox[1], initialLiveBox[2]],
       globalStep: initialStep,
@@ -364,6 +394,16 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     centerLinks: () => readback.centerLinks(rt),
     centerHeldSteps: () => readback.centerHeldSteps(rt),
     frozen: () => readback.frozen(rt),
+    // Task 'electrostatics' (2026-08-20): the per-particle charge, and the resolved basis + live MC
+    // statistics. The charge array is checkpointed (soup/src/checkpoint.ts) and read by every
+    // off-GPU measurement of the deprotonated fraction, the apparent pKa and acid-soap pairing.
+    charges: () => readback.charges(rt),
+    electrostatics: () => ({ ...rt.protonation.es, sweeps: rt.protonation.sweeps, last: rt.protonation.last }),
+    protonationSweepDEBUG: async () => {
+      rt.protonation.nextSweepAt = rt.live.globalStep
+      return maybeProtonationSweep(rt)
+    },
+    protonationRngState: () => rt.protonation.rng.state,
     clayPlanes: () => (clay ? [...clay.planeZ] : []),
     desorbEvents: () => readback.desorbEvents(rt),
     rngState: () => readback.rngState(rt),

@@ -16,6 +16,7 @@ import type { Soup } from './rules'
 import { ATTR_SCALE_UNIFORM_BYTES, attractionScaleUniform } from './soup-attraction'
 import { attemptProbability, acceptanceProbability } from './rules'
 import type { InitialState } from './soup-init-state'
+import { esUniform, type EsBasis } from './electrostatics'
 
 export interface SoupBuffers {
   posBuf: GPUBuffer
@@ -86,6 +87,19 @@ export interface SoupBuffers {
    * nonFiniteVelComponents] -- written by soup/wgsl/health.wgsl's scan kernel and read back once per
    * step()-chunk by soup/src/soup-health.ts. 8 bytes, COPY_SRC so readBack can reach it. */
   healthBuf: GPUBuffer
+  /** Task 'electrostatics' (2026-08-20): the PER-PARTICLE charge in units of e, read by
+   * soup/wgsl/electrostatics.wgsl's chargeRO and rewritten from the CPU by every constant-pH Monte
+   * Carlo sweep (soup/src/soup-protonation.ts). Sized for the CREATION (wet) particle count and bound
+   * WHOLE, not over the active range: no kernel reads its arrayLength as a particle bound (they are
+   * all bounded by pos2/posRW), and the evaporation path only ever truncates the trailing SOLVENT
+   * block, which carries charge 0 by construction -- so an evaporating run needs no fixup here and
+   * no index of a charged bead ever moves. COPY_SRC so the checkpoint can read it back. */
+  chargeBuf: GPUBuffer
+  /** Task 'electrostatics' (2026-08-20): ES = [A, kappa, rc, F(rc)] -- soup/src/electrostatics.ts's
+   * esUniform(), the SINGLE derivation both this uniform and the CPU-side Monte Carlo read, so the
+   * force the GPU applies and the energy the acceptance test uses cannot drift apart. All zeros on a
+   * system without electrostatics, which makes the term identically zero. */
+  esUniformBuf: GPUBuffer
   /** Task 'loud-failure-and-liquid-water' (2026-08-20): RX (soup/wgsl/relax.wgsl) -- x = this
    * minimisation iteration's displacement cap in sigma, rewritten by soup/src/soup-relax.ts before
    * every iteration's submit. Untouched (and the kernel never dispatched) on any system that does not
@@ -121,10 +135,16 @@ export interface AllocateBuffersInput {
   /** Task 'clay-surface-chemistry' (2026-08-19): which mineral depth row the AttrScale uniform below
    * carries -- see soup/src/soup-types.ts's CreateSoupOpts.claySurfaceChemistry. */
   claySurfaceChemistry?: string
+  /** Task 'electrostatics' (2026-08-20): this system's resolved electrostatics basis. */
+  es: EsBasis
+  /** Task 'electrostatics' (2026-08-20): the initial per-particle charge array -- from a resumed
+   * checkpoint when there is one, otherwise from an equilibrium Henderson-Hasselbalch draw at this
+   * run's own pH (soup/src/soup-init-state.ts). */
+  charges0: Float32Array
 }
 
 export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuffers; grid: SoupGridState } {
-  const { device, soup, p, N, dims, ncells, effectiveWalkRadius, initialLiveBox, verlet, listRange, rules, catalystKind, bondAttemptInterval, kT, initial, solventAttractionScaleOverride, claySurfaceChemistry } = input
+  const { device, soup, p, N, dims, ncells, effectiveWalkRadius, initialLiveBox, verlet, listRange, rules, catalystKind, bondAttemptInterval, kT, initial, solventAttractionScaleOverride, claySurfaceChemistry, es, charges0 } = input
   const { positions0, velocities0, bondSlots0, centerLink0, centerHeldSteps0, desorbEventsInit, bondRng0, thermoRng0, eventsInit, frozen0 } = initial
 
   const posBuf = storageBuffer(device, positions0)
@@ -345,6 +365,17 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
   const relaxUniform = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
   device.queue.writeBuffer(relaxUniform, 0, new Float32Array([0, 0, 0, 0]))
 
+  // Task 'electrostatics' (2026-08-20). See the two field comments on SoupBuffers above for why the
+  // charge buffer is bound whole rather than over the active range, and why an evaporating run needs
+  // no fixup in it.
+  const chargeBuf = device.createBuffer({
+    size: Math.max(4, N * 4),
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+  })
+  device.queue.writeBuffer(chargeBuf, 0, charges0)
+  const esUniformBuf = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
+  device.queue.writeBuffer(esUniformBuf, 0, esUniform(es))
+
   const buf: SoupBuffers = {
     posBuf,
     velBuf,
@@ -376,6 +407,8 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
     attrScaleUniform,
     healthBuf,
     relaxUniform,
+    chargeBuf,
+    esUniformBuf,
   }
   const grid: SoupGridState = { dims, ncells, wgCells: Math.ceil(ncells / 64) }
   return { buf, grid }
@@ -465,4 +498,6 @@ export function disposeSoupBuffers(buf: SoupBuffers): void {
   buf.attrScaleUniform.destroy()
   buf.healthBuf.destroy()
   buf.relaxUniform.destroy()
+  buf.chargeBuf.destroy()
+  buf.esUniformBuf.destroy()
 }

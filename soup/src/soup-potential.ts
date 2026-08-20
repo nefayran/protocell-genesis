@@ -27,7 +27,9 @@
 import type { Params } from '../../engine/src/params'
 import type { Soup } from './rules'
 import { attractionScaleTable, speciesClasses } from './soup-attraction'
+import { esPairEnergy, makeEsBasis, type EsBasis } from './electrostatics'
 import { NONE_U32 } from './soup-types'
+import type { Soup as SoupType } from './rules'
 
 function wcaCut(b: number): number {
   return Math.pow(2, 1 / 6) * b
@@ -74,9 +76,20 @@ export interface PotentialBasis {
   attr: number[][]
   /** Largest distance at which any pair can contribute -- the CPU cell list's own cutoff. */
   cutoff: number
+  /** Task 'electrostatics' (2026-08-20): the screened-Coulomb basis, whose cutoff is BY CONSTRUCTION
+   * the same rcAttr+wc this cell list already covers (soup/src/electrostatics.ts), so adding the term
+   * changes no cell size and no walk. Zero coefficient on a system without electrostatics, which makes
+   * the term identically zero and this file's output bit-identical to before the task. */
+  es: EsBasis
 }
 
-export function makePotentialBasis(soup: Soup, p: Params, attractionOverride?: number, claySurfaceChemistry?: string): PotentialBasis {
+export function makePotentialBasis(
+  soup: Soup,
+  p: Params,
+  attractionOverride?: number,
+  claySurfaceChemistry?: string,
+  esOverrides?: { enabled?: boolean; pH?: number; ionicStrengthMolar?: number },
+): PotentialBasis {
   const bRadius = new Float64Array(soup.monomers.map((m) => p.sigma * m.radiusSigma))
   const rcAttr = wcaCut(p.sigma * p.beadSizes.tail_tail)
   let maxWca = 0
@@ -95,6 +108,7 @@ export function makePotentialBasis(soup: Soup, p: Params, attractionOverride?: n
     classes: speciesClasses(soup),
     attr: attractionScaleTable(soup, attractionOverride, claySurfaceChemistry),
     cutoff: Math.max(maxWca, rcAttr + p.attraction.wc),
+    es: makeEsBasis(soup as unknown as SoupType, p, esOverrides),
   }
 }
 
@@ -125,6 +139,7 @@ export function soupPotential(
   box: [number, number, number],
   basis: PotentialBasis,
   centerLink?: Uint32Array,
+  charges?: Float32Array,
 ): PotentialTerms {
   const n = positions.length / 4
   const cutoff = basis.cutoff
@@ -208,6 +223,14 @@ export function soupPotential(
           nonbonded += wcaV(r, (bi + basis.bRadius[kj]) / 2, basis.epsilon)
           const sc = attrRow[basis.classes[kj]]
           if (sc > 0) nonbonded += sc * attrV(r, basis.rcAttr, basis.wc, basis.epsilon)
+          // Task 'electrostatics' (2026-08-20): the shifted-force screened-Coulomb energy, whose
+          // -d/dr is exactly what soup/wgsl/electrostatics.wgsl's esForceMag adds to the GPU force --
+          // which is what tests/soup-area-move.test.ts's numerical-gradient comparison verifies, now
+          // with charge on as well as off.
+          if (charges !== undefined) {
+            const qq = charges[i] * charges[j]
+            if (qq !== 0) nonbonded += esPairEnergy(r, qq, basis.es)
+          }
         }
       }
     }

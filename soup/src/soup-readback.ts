@@ -101,6 +101,13 @@ export async function centerHeldSteps(rt: SoupRuntime): Promise<Uint32Array> {
  * 1 for a bead of the rigid mineral platelet (clay bead or catalyst surface site), 0 otherwise. Read
  * back rather than recomputed on the CPU so a test proving immobility is proving what the SHADER
  * actually saw, not what a CPU-side plan intended. */
+/** Task 'electrostatics' (2026-08-20): the per-particle charge in units of e (soup/wgsl/
+ * electrostatics.wgsl's chargeRO). Read by the protonation Monte Carlo before every sweep, by the
+ * checkpoint, and by every off-GPU measurement of the deprotonated fraction / acid-soap pairing. */
+export async function charges(rt: SoupRuntime): Promise<Float32Array> {
+  return readBack(rt.device, rt.buf.chargeBuf, rt.N * 4)
+}
+
 export async function frozen(rt: SoupRuntime): Promise<Uint32Array> {
   const raw = await readBack(rt.device, rt.buf.frozenBuf, rt.N * 4)
   return new Uint32Array(raw.buffer, raw.byteOffset, rt.N)

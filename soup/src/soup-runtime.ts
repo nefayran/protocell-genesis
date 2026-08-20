@@ -11,6 +11,7 @@
 import type { SoupPipelines } from './soup-pipelines'
 import type { SoupBuffers, SoupGridState } from './soup-buffers'
 import type { SoupBindGroups } from './soup-bindgroups'
+import type { ProtonationState } from './soup-protonation'
 import type { ResolvedRule } from './soup-plan'
 import type { Soup } from './rules'
 import type { Params } from '../../engine/src/params'
@@ -66,4 +67,10 @@ export interface SoupRuntime {
   bind: SoupBindGroups
   grid: SoupGridState
   live: SoupLiveState
+  /** Task 'electrostatics' (2026-08-20): the constant-pH Monte Carlo's own mutable state (its
+   * checkpointed RNG, when the next sweep is due, the last sweep's statistics) plus the resolved
+   * electrostatics basis. Present on EVERY system -- with `es.enabled` false when the run did not ask
+   * for charge, which makes soup/src/soup-protonation.ts's sweep a no-op and the GPU term identically
+   * zero. */
+  protonation: ProtonationState
 }

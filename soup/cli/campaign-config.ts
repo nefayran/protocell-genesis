@@ -92,6 +92,16 @@ export interface Args {
    * -- see planEvaporation). Defaults to data/soup.json's coldStartRelax.iterations only so the flag
    * has a defined meaning on its own; a real control passes the cycled arm's number explicitly. */
   minimiseIterations: number
+  /** Task 'electrostatics' (2026-08-20): turn CHARGE on for this run (data/soup.json's
+   * electrostatics.enabled for THIS system). Part of the resume signature: a charged run and a neutral
+   * one at the same box/composition/seed are two different experiments, not two snapshots of one. */
+  charge: boolean
+  /** The run's pH -- the swept variable. Defaults to data/soup.json's electrostatics.pH. Part of the
+   * signature for the same reason `charge` is. */
+  pH?: number
+  /** The run's ionic strength in mol/l, which sets the Debye screening length. Defaults to
+   * data/soup.json's electrostatics.ionicStrengthMolar. Part of the signature. */
+  ionicStrength?: number
 }
 
 export function printUsage(): void {
@@ -126,6 +136,11 @@ export function printUsage(): void {
       '                    (контроль «только минимизации», без циклирования; входит в подпись резюме)',
       '  --minimiseIterations <n>  итераций на каждую такую минимизацию (по умолчанию coldStartRelax.iterations;',
       '                    для контроля берётся число из [evaporation]-строк циклированного плеча)',
+      '  --charge          включает экранированную электростатику + равновесие протонирования голов',
+      '                    (data/soup.json electrostatics) для ЭТОГО прогона; входит в подпись резюме',
+      '  --pH <n>          pH прогона (по умолчанию data/soup.json electrostatics.pH); входит в подпись',
+      '  --ionicStrength <n>  ионная сила, моль/л -- задаёт дебаевскую длину (по умолчанию из файла);',
+      '                    входит в подпись резюме',
     ].join('\n'),
   )
 }
@@ -156,6 +171,9 @@ export function parseCliArgs(): Args {
       cycles: { type: 'string' },
       minimiseAt: { type: 'string' },
       minimiseIterations: { type: 'string' },
+      charge: { type: 'boolean', default: false },
+      pH: { type: 'string' },
+      ionicStrength: { type: 'string' },
       help: { type: 'boolean', default: false },
     },
     allowPositionals: false,
@@ -195,6 +213,9 @@ export function parseCliArgs(): Args {
             .sort((a, b) => a - b)
         : [],
     minimiseIterations: values.minimiseIterations !== undefined ? Number(values.minimiseIterations) : soup.coldStartRelax?.iterations ?? 200,
+    charge: Boolean(values.charge),
+    pH: values.pH !== undefined ? Number(values.pH) : undefined,
+    ionicStrength: values.ionicStrength !== undefined ? Number(values.ionicStrength) : undefined,
   }
 }
 
@@ -219,6 +240,11 @@ export function configSignature(c: CheckpointConfig): string {
     // else.
     ...(c.dryWetCycles !== undefined ? { dryWetCycles: c.dryWetCycles } : {}),
     ...(c.minimiseAt !== undefined && c.minimiseAt.length > 0 ? { minimiseAt: c.minimiseAt } : {}),
+    // Task 'electrostatics' (2026-08-20): same conditional-spread discipline for the same reason --
+    // a run that does not ask for charge produces a signature byte-identical to every checkpoint
+    // lineage already on disk, while a charged run at pH 5 refuses to resume from a charged run at
+    // pH 6 or from a neutral one.
+    ...(c.electrostatics !== undefined ? { electrostatics: c.electrostatics } : {}),
   })
 }
 

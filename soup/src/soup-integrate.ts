@@ -7,6 +7,9 @@
 import { encodeGridRebuild, encodeVerletRebuild, encodeMaxDrift, assertVerletSafety } from './soup-grid-verlet'
 import { encodeBondChemistry } from './soup-bond-chemistry'
 import { assertStateFinite } from './soup-health'
+// Task 'electrostatics' (2026-08-20): the constant-pH Monte Carlo sweep. Imported lazily-by-name (not
+// at module top with a value import that would create a cycle: soup-protonation.ts imports
+// encodeSoupForce/encodeSoupForceList from THIS file) -- see the call site below.
 import type { SoupRuntime } from './soup-runtime'
 
 export function encodeSoupForce(rt: SoupRuntime, pass: GPUComputePassEncoder): void {
@@ -120,6 +123,15 @@ export function buildStepper(rt: SoupRuntime): (n: number) => Promise<void> {
       // Checking finiteness first is what makes the thrown message name the real cause.
       await assertStateFinite(rt, chunkStart)
       if (rt.verlet.enabled) await assertVerletSafety(rt)
+      // Task 'electrostatics' (2026-08-20): the constant-pH Monte Carlo sweep, at the SAME chunk
+      // boundary the two guards above already synchronise on -- so a sweep costs no extra pipeline
+      // stall, only its own readback. A no-op (one integer comparison) on any system without
+      // electrostatics, so every pre-task run's dispatch sequence is unchanged. Dynamic import breaks
+      // an otherwise circular module reference (soup-protonation.ts needs encodeSoupForce from here).
+      if (rt.protonation?.es.enabled) {
+        const { maybeProtonationSweep } = await import('./soup-protonation')
+        await maybeProtonationSweep(rt)
+      }
       done += chunk
     }
   }

@@ -103,6 +103,12 @@ interface PercolationRow {
   amphiphilesInLargest: number
   wrappingAxes: number
   slabsTouchedOfTotal: number[]
+  /** Task 'electrostatics' (2026-08-20): 'campaign' = a checkpoint of the run under test, 'control' =
+   * an object the project already calls finite and which this instrument must therefore report as
+   * NOT wrapping. Written by tests/percolation-check.test.ts (from its own PERC_CAMPAIGN_LABEL);
+   * absent on every artifact written before this field existed, which is why the reader below falls
+   * back to the old label substring rather than treating absence as 'control'. */
+  role?: 'campaign' | 'control'
 }
 
 /** The wet, settled checkpoints -- i.e. the ones a structural claim may rest on. The dry phase of a
@@ -256,13 +262,19 @@ export function collectCampaignGateInputs(): CampaignGateInputs {
 
   // --- the percolation gate ---------------------------------------------------------------------
   const perc = readJson<PercolationRow[]>(PERCOLATION_ARTIFACT)
-  const campaignRows = (perc?.value ?? []).filter((r) => r.file.includes('zfB54'))
+  // Task 'electrostatics' (2026-08-20): the row's OWN `role` decides, with the pre-existing 'zfB54'
+  // substring kept as the fallback for artifacts written before that field existed. The hardcoded
+  // label was a real defect: the first campaign with a different label turned this gate `unproven`
+  // while its measurement was sitting in the artifact.
+  const isCampaign = (r: PercolationRow): boolean =>
+    r.role !== undefined ? r.role === 'campaign' : r.file.includes('zfB54')
+  const campaignRows = (perc?.value ?? []).filter(isCampaign)
   if (perc && campaignRows.length > 0) {
     // The WORST case over the campaign's own wet checkpoints: this gate asks "is the object finite",
     // and one wrapping axis at one checkpoint already answers no.
     const worst = campaignRows.reduce((a, b) => (b.wrappingAxes > a.wrappingAxes ? b : a))
     metrics.wrappingAxes = worst.wrappingAxes
-    const controls = (perc.value ?? []).filter((r) => !r.file.includes('zfB54'))
+    const controls = (perc.value ?? []).filter((r) => !isCampaign(r))
     provenance['aggregate-percolation'] =
       `${PERCOLATION_ARTIFACT} (tests/percolation-check.test.ts, off-GPU по чекпойнтам кампании, ` +
       `измерено ${perc.measuredAt}): ${campaignRows.length} снимков кампании, обёртывающих осей ` +

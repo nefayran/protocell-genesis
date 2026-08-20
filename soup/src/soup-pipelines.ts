@@ -12,6 +12,15 @@
 import forcesWgsl from '../../engine/wgsl/forces.wgsl?raw'
 import neighborWgsl from '../../engine/wgsl/neighbor.wgsl?raw'
 import stepWgsl from '../wgsl/step.wgsl?raw'
+// Task 'electrostatics' (2026-08-20): TWO more files, and the ORDER below is load-bearing twice over.
+// electrostatics.wgsl declares chargeRO/ES and esForce, which step.wgsl's nonbondedSoup CALLS, and
+// WGSL has no forward declarations -- so it must come BEFORE step.wgsl. verlet.wgsl is the Verlet
+// list responsibility split OUT of step.wgsl (which stood at 596 against CLAUDE.md's hard 600, and
+// the rule is "split first, then add"); its soup_force_list_main calls step.wgsl's
+// nonbondedSoup/bondedForce, so it must come AFTER. Neither changes the token stream the previously
+// compiled entry points were built from, so no binding index and no kernel body moved.
+import electrostaticsWgsl from '../wgsl/electrostatics.wgsl?raw'
+import verletWgsl from '../wgsl/verlet.wgsl?raw'
 // Task 'loud-failure-and-liquid-water' (2026-08-20): two NEW files, not additions to step.wgsl --
 // that file stands at 596 lines against CLAUDE.md's hard 600 limit, and the rule is "split first,
 // then add". Order matters twice over: health.wgsl's soupNonFinite() is called by relax.wgsl, and
@@ -81,7 +90,9 @@ let cached: SoupPipelines | undefined
 // explicitly documents that dependency rather than leaving it implicit.
 export function getSoupPipelines(device: GPUDevice, sortedGather: boolean): SoupPipelines {
   if (cached && cached.device === device && cached.sortedGather === sortedGather) return cached
-  const forceModule = device.createShaderModule({ code: `${forcesWgsl}\n${stepWgsl}\n${healthWgsl}\n${relaxWgsl}` })
+  const forceModule = device.createShaderModule({
+    code: `${forcesWgsl}\n${electrostaticsWgsl}\n${stepWgsl}\n${verletWgsl}\n${healthWgsl}\n${relaxWgsl}`,
+  })
   const bondModule = device.createShaderModule({ code: `${forcesWgsl}\n${bondWgsl}` })
   const neighborModule = device.createShaderModule({ code: neighborWgsl })
   const cp = (module: GPUShaderModule, entryPoint: string) =>

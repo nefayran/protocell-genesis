@@ -35,6 +35,13 @@ import { loadSoup } from '../soup/src/rules'
 
 const FILES = (process.env.PERC_CHECKPOINTS ?? '').split(/\s+/).filter(Boolean)
 const ARTIFACT = process.env.PERC_ARTIFACT ?? 'verify/out/percolation-check.json'
+/** Task 'electrostatics' (2026-08-20): which of these files are THE campaign under test and which are
+ * the must-say-no controls. verify/campaign-gates.ts used to decide that by looking for the substring
+ * 'zfB54' -- one campaign's LABEL hardcoded into the gate pipeline, which silently turned the
+ * percolation gate to `unproven` the first time a campaign with a different label produced the
+ * artifact. Each row now carries its own `role`, so the label lives with the run that made it; the
+ * gate keeps the old substring rule as a fallback for artifacts written before this field existed. */
+const CAMPAIGN_LABEL = process.env.PERC_CAMPAIGN_LABEL ?? 'zfB54'
 
 /** True iff the given member positions connect to their own +L image on `axis`: replicate along
  * that axis with the axis made OPEN (so the only way particle i can meet image i is a genuine chain
@@ -118,6 +125,7 @@ test('does the largest aggregate wrap the box on any axis?', () => {
       wrapsZ: wraps[2],
       wrappingAxes: wraps.filter(Boolean).length,
       slabsTouchedOfTotal: occupied.map((s) => s.size).concat([nc]),
+      role: f.includes(CAMPAIGN_LABEL) ? 'campaign' : 'control',
     }
     out.push(rec)
     console.log(`PERC ${JSON.stringify(rec)}`)

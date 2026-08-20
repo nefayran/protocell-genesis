@@ -77,6 +77,14 @@ export interface CreateSoupOpts {
    * except in WHICH beads the integrator refuses to move. Ignored (throws) together with `clay`, since
    * the point is a surface-free control. */
   frozenBulkCatalysts?: number
+  /** Task 'electrostatics' (2026-08-20): per-run overrides of data/soup.json's `electrostatics`
+   * section. Only three things are overridable and all three are EXPERIMENT-design parameters, not
+   * model constants: whether charge is on at all, the pH (the swept variable), and the ionic strength
+   * (which sets the Debye length). Everything else -- the Bjerrum length, the intrinsic pKa, the
+   * sigma->nm mapping and its range, the sweep cadence -- always comes from the file with its own
+   * rank and basis. Absent defers to the file, which ships `enabled: false`, so every pre-task caller
+   * is unchanged. */
+  electrostatics?: { enabled?: boolean; pH?: number; ionicStrengthMolar?: number }
   /** Checkpoint/resume (task 'checkpoint-resume'): when present, createSoup skips the jittered-
    * lattice initial layout and every zero-filled buffer below, loading this system's ENTIRE mutable
    * state from a prior checkpoint instead -- everything step()/stepCycled() can change: positions,
@@ -121,6 +129,15 @@ export interface CreateSoupOpts {
      * still lines up correctly even if data/soup.json's rule ORDER ever changes between the
      * checkpointed run and the resuming one. */
     events: Record<string, number>
+    /** Task 'electrostatics' (2026-08-20): the per-particle charge array, i.e. the PROTONATION STATE.
+     * As much a part of the mutable state as the bond graph is -- a resume that dropped it would
+     * silently re-draw every head's protonation from the Henderson-Hasselbalch prior and throw away
+     * whatever the interface had equilibrated to. Optional so every pre-task checkpoint still loads
+     * (absent = draw fresh, which is what those runs did anyway since they had no charge at all). */
+    charges?: Float32Array
+    /** The constant-pH Monte Carlo's own RNG state, so a resumed run continues the same chain rather
+     * than restarting it at the seed. */
+    protonationRng?: number
   }
 }
 
@@ -192,6 +209,17 @@ export interface SoupSystem {
   /** Task 'clay-surface' (2026-08-19): the per-particle immobility flag as the GPU holds it -- 1 for
    * a bead of the rigid mineral platelet, 0 otherwise. All zeros when this system has no platelet. */
   frozen(): Promise<Uint32Array>
+  /** Task 'electrostatics' (2026-08-20): per-particle charge in units of e -- 0 for every bead except
+   * a deprotonated head. Part of the checkpoint; read by every off-GPU measurement of the
+   * deprotonated fraction, the apparent pKa and acid-soap pairing. */
+  charges(): Promise<Float32Array>
+  /** The resolved electrostatics basis plus how many constant-pH sweeps have run and what the last
+   * one did. Synchronous: it reads no GPU buffer. */
+  electrostatics(): Record<string, unknown>
+  /** Forces ONE constant-pH sweep now, regardless of the schedule -- for tests and for the sweep
+   * probe. Returns null on a system without electrostatics. */
+  protonationSweepDEBUG(): Promise<unknown>
+  protonationRngState(): number
   /** z of each of the platelet's sheet planes, empty when this system has no platelet -- what a
    * distance-to-surface profile is binned against. */
   clayPlanes(): number[]

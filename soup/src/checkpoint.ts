@@ -90,6 +90,13 @@ export interface CheckpointConfig {
    * argument as dryWetCycles above: a trajectory that was minimised at step 12 000 is not a snapshot
    * of one that was not. Omitted from the signature when absent or empty. */
   minimiseAt?: number[]
+  /** Task 'electrostatics' (2026-08-20): this run's electrostatics settings -- whether charge is on,
+   * the pH and the ionic strength. Part of the run's IDENTITY, not a snapshot detail: a charged run at
+   * pH 5 is a different experiment from the same box/composition/seed at pH 6 or with charge off, so
+   * soup/cli/campaign-config.ts's configSignature must refuse to resume one from the other. Undefined
+   * (every pre-task run) omits the key from the signature entirely, so no existing lineage is
+   * orphaned. */
+  electrostatics?: { enabled: boolean; pH: number; ionicStrengthMolar: number }
 }
 
 export interface CheckpointFile {
@@ -120,6 +127,13 @@ export interface CheckpointFile {
   centerHeldStepsB64: string
   bondRngB64: string
   thermoRngB64: string
+  /** Task 'electrostatics' (2026-08-20): the PROTONATION STATE -- one f32 per particle, the charge in
+   * units of e. Optional so every pre-task checkpoint on disk still loads (absent reads as "no charge
+   * state", which is exactly what those runs had). Written by every checkpoint from now on, also by
+   * runs without electrostatics, where it is all zeros -- so a reader never has to guess which. */
+  chargesB64?: string
+  /** The constant-pH Monte Carlo's own RNG state, so a resumed run continues the same chain. */
+  protonationRng?: number
 }
 
 /** The subset of SoupSystem a checkpoint needs -- named separately (rather than importing the whole
@@ -131,6 +145,8 @@ export interface CheckpointableSystem {
   centerLinks(): Promise<Uint32Array>
   centerHeldSteps(): Promise<Uint32Array>
   desorbEvents(): Promise<{ stretch: number; timeout: number }>
+  charges(): Promise<Float32Array>
+  protonationRngState(): number
   rngState(): Promise<{ bond: Uint32Array; thermo: Uint32Array }>
   events(): Promise<Record<string, number>>
   invariants(): Promise<{ monomers: Record<string, number>; bonds: number; charge: number }>
@@ -150,7 +166,7 @@ export interface CheckpointableSystem {
  * GPUCommandEncoder compute pass or a writeBuffer call, so a caller inserting a checkpoint between
  * two step() calls submits the EXACT SAME sequence of compute dispatches either way. */
 export async function encodeCheckpoint(sys: CheckpointableSystem, config: CheckpointConfig): Promise<CheckpointFile> {
-  const [positions, velocities, bondSlots, centerLink, centerHeldSteps, desorb, rng, events, inv] = await Promise.all([
+  const [positions, velocities, bondSlots, centerLink, centerHeldSteps, desorb, rng, events, inv, charges] = await Promise.all([
     sys.particles(),
     sys.velocities(),
     sys.bondSlots(),
@@ -162,6 +178,9 @@ export async function encodeCheckpoint(sys: CheckpointableSystem, config: Checkp
     // invariants() is another pure readback (it recomputes the census from the positions buffer's own
     // species slot), so it joins the same concurrent batch and keeps this function trajectory-neutral.
     sys.invariants(),
+    // Task 'electrostatics' (2026-08-20): another pure readback, so it joins the same concurrent batch
+    // and keeps this function trajectory-neutral.
+    sys.charges(),
   ])
   return {
     version: 1,
@@ -182,6 +201,8 @@ export async function encodeCheckpoint(sys: CheckpointableSystem, config: Checkp
     centerHeldStepsB64: encodeTyped(centerHeldSteps),
     bondRngB64: encodeTyped(rng.bond),
     thermoRngB64: encodeTyped(rng.thermo),
+    chargesB64: encodeTyped(charges),
+    protonationRng: sys.protonationRngState(),
   }
 }
 
@@ -202,5 +223,7 @@ export function decodeCheckpointResume(file: CheckpointFile): NonNullable<Create
     bondRng: decodeUint32(file.bondRngB64),
     thermoRng: decodeUint32(file.thermoRngB64),
     events: file.events,
+    charges: file.chargesB64 !== undefined ? decodeFloat32(file.chargesB64) : undefined,
+    protonationRng: file.protonationRng,
   }
 }

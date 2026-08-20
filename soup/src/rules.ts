@@ -317,13 +317,66 @@ export interface Solvent {
 }
 
 /**
- * Task 'broth-composition' (2026-08-18): this model carries no electrostatics -- no partial
- * charges, no Debye screening, no explicit Na+/Cl-, no Henderson-Hasselbalch protonation -- so
- * ionic strength and pH cannot be represented, not even approximately by something that would look
- * like chemistry without being it (data/soup.json's own `basis` spells out why a pseudo-pH knob was
- * deliberately not added). `represented` is always `false` today; kept as an explicit field (not a
- * comment) so a future task that DID add electrostatics has one place to flip it, with its own
- * basis, rather than this limitation silently going stale.
+ * Task 'electrostatics' (2026-08-20): SCREENED ELECTROSTATICS plus a PROTONATION EQUILIBRIUM on the
+ * titratable head. This is the section `saltPhLimitation` was deliberately left as an explicit field
+ * for -- see data/soup.json's own `electrostatics.basis` for every literature citation, every rank,
+ * and the list of what is still NOT represented, and soup/src/electrostatics.ts's header for the
+ * scheme and what each choice biases. Optional so every pre-task fixture/test still loads: absent, or
+ * `enabled: false`, makes the interaction coefficient exactly 0, which makes both the GPU term
+ * (soup/wgsl/electrostatics.wgsl) and the CPU twin identically zero -- so a run without it is
+ * bit-identical to every predecessor's.
+ */
+export interface Electrostatics {
+  /** The file's own default (false). Overridden per system by CreateSoupOpts.electrostatics -- pH,
+   * ionic strength and this switch are EXPERIMENT-design parameters (like --steps), not model
+   * constants, which is why all three are overridable and none of them is baked into a run. */
+  enabled: boolean
+  /** Monomer id of the titratable species -- read rather than hardcoding "O", mirroring
+   * solvent.waterId / clay.mineralId. EVERY bead of it titrates, bonded or free (basis item 10). */
+  chargedKind: string
+  /** Charge of the DEPROTONATED state in units of e. -1: a carboxylate. */
+  chargeDeprotonated: number
+  /** How many nanometres one sigma stands for. Rank C and a RANGE, not a calibration this project
+   * has: `sigmaToNmRange` is carried through every derived quantity and every reported result,
+   * because both the coupling A = kT*l_B/sigma and the screening kappa = sigma/lambda_D scale with
+   * it (basis item 2). */
+  sigmaToNm: number
+  sigmaToNmRange: [number, number]
+  sigmaToNmRank: 'A' | 'B' | 'C' | 'D'
+  /** Bjerrum length of water at 298 K, nm (rank B literature). */
+  bjerrumLengthNm: number
+  bjerrumLengthRank: 'A' | 'B' | 'C' | 'D'
+  /** Debye length of a 1:1 electrolyte at 1 M and 298 K, nm -- lambda_D = this / sqrt(I[M]) (rank B). */
+  debyeLengthNmAtUnitMolar: number
+  debyeLengthRank: 'A' | 'B' | 'C' | 'D'
+  /** Ionic strength in mol/l. THE salt parameter: it is what makes 10 mM and 100 mM two different
+   * interactions rather than two labels. Overridable per run. */
+  ionicStrengthMolar: number
+  ionicStrengthRank: 'A' | 'B' | 'C' | 'D'
+  /** pKa of the MONOMER acid (rank B literature), deliberately NOT the interfacial apparent pKa: the
+   * shift at a crowded charged interface must EMERGE from the electrostatic work, not be inserted. */
+  pKaIntrinsic: number
+  pKaIntrinsicRank: 'A' | 'B' | 'C' | 'D'
+  /** The run's pH. Overridable per run; this is the swept variable. */
+  pH: number
+  /** Integration steps between constant-pH Monte Carlo sweeps (rank D, engineering -- it is the
+   * sync point step() already takes, so a sweep costs no extra pipeline stall). */
+  sweepEverySteps: number
+  sweepEveryStepsRank: 'A' | 'B' | 'C' | 'D'
+  rank: 'A' | 'B' | 'C' | 'D'
+  basis: string
+}
+
+/**
+ * Task 'broth-composition' (2026-08-18) declared ionic strength and pH UNREPRESENTABLE and kept
+ * `represented` as an explicit field (not a comment) precisely so a future task that DID add
+ * electrostatics would have one place to flip it with its own basis. Task 'electrostatics'
+ * (2026-08-20) is that task and flipped it to `true` -- for the part that is genuinely represented
+ * (charge on the head, Debye screening set by a real ionic strength, a protonation equilibrium whose
+ * state changes during the run) and no more: data/soup.json's own `basis` now restates, item by item,
+ * what stays OUT (no explicit H+, no titration of the medium, no explicit Na+/Cl-, no acid-soap
+ * hydrogen bond, no electrostatics in the bond Metropolis, and an uncalibrated sigma->nm mapping
+ * carried as a range). Read that field, not this comment, for the current boundary.
  */
 export interface SaltPhLimitation {
   represented: boolean
@@ -425,6 +478,9 @@ export interface Soup {
    * throws a named error if a caller asks for an area move on a file that has no such section. */
   areaMove?: AreaMove
   saltPhLimitation?: SaltPhLimitation
+  /** Optional so every pre-'electrostatics' fixture still loads; absent reads as "no electrostatics
+   * at all", which is bit-identical to `enabled: false`. */
+  electrostatics?: Electrostatics
   /** Optional so every pre-'clay-surface' fixture still loads; absent reads as "no mineral phase"
    * exactly like `clay.enabled: false`. */
   clay?: Clay

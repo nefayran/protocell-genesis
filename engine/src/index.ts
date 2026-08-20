@@ -52,6 +52,23 @@ export { attractionScaleTable, speciesClasses, speciesClassOf } from '../../soup
 export { planClay, clayEnabled, clayLatticePosition, claySiteIndices, distanceToPlatelet } from '../../soup/src/soup-clay'
 export type { ClayLayout } from '../../soup/src/soup-clay'
 export { makePotentialBasis, soupPotential, bondAdjacency } from '../../soup/src/soup-potential'
+// Task 'electrostatics' (2026-08-20): the screened-Coulomb basis/energy/force, the constant-pH Monte
+// Carlo and its two measurement functions -- re-exported so tests/runner.html's page context, and the
+// pure-Node measurement tests, both reach the SAME implementation the GPU uniform is built from.
+export {
+  makeEsBasis,
+  esUniform,
+  esPairEnergy,
+  esPairForceMag,
+  hendersonAlpha,
+  apparentPKa,
+  protonationSweep,
+  pairingStats,
+  headIndices,
+  pcgNext,
+} from '../../soup/src/electrostatics'
+export type { EsBasis, SweepResult, PairingStats, PcgState } from '../../soup/src/electrostatics'
+export { initialCharges } from '../../soup/src/soup-protonation'
 export { proposeBox, scaleBeadsAffine, moleculeCount } from '../../soup/src/soup-area-move'
 export { scaleMoleculesRigid as scaleMoleculesRigidSoup } from '../../soup/src/soup-box-scale-math'
 export { findAmphiphiles, amphiphileHistogram } from '../../soup/src/amphiphile'
