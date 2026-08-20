@@ -176,6 +176,36 @@ test('continuous-run checkpoints: invariants hold and the stage ladder is reprod
     } catch {
       alphaRecovered = null
     }
+    // Task 'decisive-run' (2026-08-20): THE SECOND DEFECT the evaporation report named and left
+    // unfixed -- an adsorption tether (centerLink) can cross FENE's own r_inf by ordinary thermal
+    // stretching between two bond dispatches (bondAttemptInterval = 20 real steps), and past r_inf
+    // fene_dv(r) = k*r/(1 - (r/r_inf)^2) changes SIGN and diverges, so an over-stretched tether
+    // pushes its pair apart without bound. It was only ever measured at BOX CHANGES (the evaporating
+    // ramp's own desorbOverstretchedTethers, which cleared 0 in 216 increments); nobody had measured
+    // it on ordinary wet dynamics. Measured here, on every checkpoint of every lineage, off-GPU:
+    // the longest live tether against r_inf. This is a detector, not a fix -- the fix is either a
+    // per-step desorbStretch check or a clamp on fene_dv past r_inf, and both are engine changes.
+    // Reported per checkpoint and asserted AFTER the artifact is written (see the end of this test),
+    // so a violation is recorded in the trace rather than destroying it.
+    let maxTether = 0
+    let tethersLive = 0
+    let tethersOverRInf = 0
+    for (let i = 0; i < N; i++) {
+      const owner = r.centerLink[i]
+      if (owner === EMPTY || owner >= N) continue
+      tethersLive++
+      const d = Math.sqrt(
+        ['x', 'y', 'z'].reduce((acc, _, c) => {
+          let dd = pos[i * 4 + c] - pos[owner * 4 + c]
+          const L = box[c]
+          dd -= L * Math.round(dd / L)
+          return acc + dd * dd
+        }, 0),
+      )
+      if (d > maxTether) maxTether = d
+      if (d >= p.fene.rInf) tethersOverRInf++
+    }
+
     const memberIdx = memberIndicesOf(amph)
     const memberRadii = soup.monomers.filter((m) => m.kind === 'carbon' || m.kind === 'head').map((m) => m.radiusSigma)
     const cutoff = wcaCutoff(p.sigma * Math.max(...memberRadii)) + p.attraction.wc
@@ -265,6 +295,7 @@ test('continuous-run checkpoints: invariants hold and the stage ladder is reprod
           })),
           closureThreshold: t.enclosedVolume,
           minAmphiphilesPerAggregate: t.minAmphiphilesPerAggregate,
+          tether: { live: tethersLive, longest: Number(maxTether.toFixed(4)), rInf: p.fene.rInf, overRInf: tethersOverRInf },
     }
     artifact.push(record)
     console.log('RUN-AUDIT ' + JSON.stringify(record))
@@ -305,10 +336,19 @@ test('continuous-run checkpoints: invariants hold and the stage ladder is reprod
     expect(vOther, `${path}: only carbon/head may carry bonds`).toBe(0)
   }
 
+  const tetherViolations = artifact
+    .map((r) => r as { step: number; tether?: { longest: number; rInf: number; overRInf: number } })
+    .filter((r) => r.tether !== undefined && r.tether.overRInf > 0)
+    .map((r) => `step=${r.step} перетянутых=${r.tether!.overRInf} самая_длинная=${r.tether!.longest} r_inf=${r.tether!.rInf}`)
+
   artifact.sort((a, b) => (a as { step: number }).step - (b as { step: number }).step)
   mkdirSync('verify/out', { recursive: true })
   writeFileSync(ARTIFACT, JSON.stringify(artifact, null, 1))
   console.log(`RUN-AUDIT artifact written: ${ARTIFACT} (${artifact.length} checkpoints)`)
+  // Asserted only after the artifact exists, so the number that proves or refutes the defect is on
+  // disk either way.
+  console.log(`RUN-AUDIT-TETHER нарушений=${tetherViolations.length}${tetherViolations.length ? ': ' + tetherViolations.join(' | ') : ''}`)
+  expect(tetherViolations, 'привязка адсорбции перетянута за FENE r_inf -- за этой границей сила меняет ЗНАК и расходится').toEqual([])
 
   // The monomers-only start, from the run's OWN trace rather than by assumption: the earliest
   // checkpoint on disk must carry zero bonds, zero amphiphiles and zero bond events.

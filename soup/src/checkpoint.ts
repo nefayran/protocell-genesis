@@ -78,6 +78,18 @@ export interface CheckpointConfig {
    * the config (and therefore of soup/cli/campaign.ts's own resume signature) because two runs that
    * differ in it are different experiments, not two snapshots of one. */
   evaporateSolvent?: boolean
+  /** Task 'decisive-run' (2026-08-20): how many wet->dry->wet cycles THIS run's schedule has,
+   * overriding data/soup.json's dryWetCycle.cycles. Part of the run's identity, not a snapshot
+   * detail: a one-cycle run and a six-cycle run at the same box/composition/seed are two different
+   * experiments, so soup/cli/campaign-config.ts's configSignature must refuse to resume one from the
+   * other. Undefined (every pre-task run) means "the file's own cycle count", and the signature omits
+   * the key entirely in that case, so no existing checkpoint lineage is orphaned. */
+  dryWetCycles?: number
+  /** Task 'decisive-run' (2026-08-20): the global steps at which this run applied a MID-RUN energy
+   * minimisation (SoupSystem.minimiseNowDEBUG) -- the minimisation-only control arm. Same identity
+   * argument as dryWetCycles above: a trajectory that was minimised at step 12 000 is not a snapshot
+   * of one that was not. Omitted from the signature when absent or empty. */
+  minimiseAt?: number[]
 }
 
 export interface CheckpointFile {

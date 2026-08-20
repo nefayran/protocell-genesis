@@ -30,6 +30,15 @@ export interface CreateSoupOpts {
    * targetDryDensity/rampSteps/rampRelaxSteps) always comes from data/soup.json -- this override is a
    * plain boolean switch, never a number. */
   dryWetCycle?: boolean
+  /** Task 'decisive-run' (2026-08-20): overrides data/soup.json's dryWetCycle.cycles for THIS system
+   * only -- the schedule's cycle COUNT, nothing else (period, dry fraction, ramp and target density
+   * all still come from the file). Exists because the evaporation task measured that the gain does
+   * NOT compound: one drying event delivered 13x in aggregate size while cycles 2-6 delivered nothing
+   * measurable and the yield declined monotonically, so the schedule that trend justifies is ONE
+   * cycle -- and expressing that must not mean editing a data file per run. An experiment-design
+   * number in exactly the sense --steps and --every already are; undefined keeps the file's own value
+   * byte for byte. */
+  dryWetCycles?: number
   /** Task 'evaporation' (2026-08-20): overrides data/soup.json's dryWetCycle.evaporateSolvent for
    * THIS system -- the same boolean-only convenience pattern `dryWetCycle` itself uses. `true` makes
    * the dry phase REMOVE solvent beads from the system (and rehydration put them back) instead of
@@ -269,6 +278,29 @@ export interface SoupSystem {
    * with solvent evaporation. */
   evaporateDEBUG(targetSolvent: number): Promise<void>
   rehydrateDEBUG(targetSolvent: number): Promise<RehydrationReport>
+  /** Task 'decisive-run' (2026-08-20): the force buffer AS IT STANDS -- no grid/list/force rebuild
+   * first -- i.e. the very F(x_n) the next kick will consume. forces() recomputes before reading
+   * back, which makes a stale forceBuf unobservable through it; this is what
+   * tests/soup-stale-force.test.ts uses to pin applyBoxScaleOnce's force refresh. Encodes no
+   * dispatch, changes no state. */
+  forcesNoRebuildDEBUG(): Promise<Float32Array>
+  /** Task 'decisive-run' (2026-08-20): the SAME minimiser the cold start, the solvent insertion and
+   * the evaporating ramp's guard use (soup/src/soup-relax.ts's relaxIterations), applied MID-RUN at
+   * the current box with no box change and no solvent movement. Exists for ONE measurement: the
+   * minimisation-only control arm -- a run that receives exactly the minimisations the cycled arm
+   * received, at the same global steps, with no evaporation cycle, so the share of the cycling
+   * benefit attributable to minimisation alone can be measured instead of argued about. Deliberately
+   * does NOT carry relaxColdStart's "globalStep must be 0" refusal (being inside the trajectory is
+   * the whole point here), which is exactly why it is a separately-named DEBUG hook and not that
+   * entry point. Reachable only from soup/cli/campaign.ts's --minimiseAt and from
+   * tests/soup-stale-force.test.ts. */
+  minimiseNowDEBUG(iterations: number): Promise<{
+    iterations: number
+    globalStep: number
+    maxForceBefore: number
+    maxForceAfter: number
+    displacementBound: number
+  }>
   /** The system's CURRENT box -- a live snapshot, mirroring engine/src/sim.ts's own `System.box`
    * getter (its doc comment: "a live snapshot, since areaMove() mutates L_x, L_y in place"). Equal
    * to `CreateSoupOpts.box` for the system's whole lifetime UNLESS dry-wet cycling is enabled, in

@@ -8,6 +8,7 @@
 
 import { resizeSoupGrid } from './soup-buffers'
 import { encodeGridRebuild, encodeVerletRebuild, assertVerletSafety } from './soup-grid-verlet'
+import { encodeSoupForce, encodeSoupForceList } from './soup-integrate'
 import { assertStateFinite } from './soup-health'
 import { rebindGridDependent } from './soup-bindgroups'
 import type { SoupRuntime } from './soup-runtime'
@@ -166,32 +167,39 @@ export async function applyBoxScaleOnce(
   // waiting up to `verletList.rebuildEvery` real steps for the next scheduled rebuild -- now ALSO
   // exercised against a freshly reallocated grid, not merely a rewritten uniform, whenever this
   // box change actually crossed a cell-count bracket.
-  // Task 'evaporation' (2026-08-20) -- A PRE-EXISTING DEFECT DIAGNOSED HERE AND DELIBERATELY NOT
-  // PATCHED IN THIS SHARED PATH. This block rebuilds the grid and the Verlet list and stops, leaving
+  // Task 'decisive-run' (2026-08-20) -- THE STALE F(x) DEFECT, NOW FIXED IN THIS SHARED PATH.
+  // Until this task the block below rebuilt the grid and the Verlet list and STOPPED, leaving
   // forceBuf holding the force of the configuration that existed BEFORE the coordinate remap; but
   // soup/src/soup-integrate.ts's step() opens with kick_drift_wrap, which consumes forceBuf as
-  // F(x_n), so the first half-kick after every box change applies a force computed for geometry that
-  // no longer exists. A velocity-Verlet integrator requires F(x_n) there -- this is the same
-  // staleness soup/src/soup-relax.ts fixes for its own case in its closing block ("the positions
-  // moved, so createSoup's own priming F(x0) is stale").
+  // F(x_n), so the first half-kick after EVERY box change applied a force computed for geometry that
+  // no longer exists. A velocity-Verlet integrator requires F(x_n) there -- exactly the staleness
+  // soup/src/soup-relax.ts fixes for its own case in its closing block ("the positions moved, so
+  // createSoup's own priming F(x0) is stale"), and the one soup/src/soup-evaporate.ts's
+  // setActiveCount already fixes for its own case (its rebuild pass has always included the force).
+  // The force dispatch is therefore encoded HERE, in the same pass, for every caller of a box
+  // change: the dry-wet cycle's ramp, growBoxTo, scaleBoxTo and soup/src/soup-area-move.ts's
+  // accepted-chain application.
   //
-  // Measured, and NOT introduced by this task: tests/soup-grid-resize.test.ts (a bracket-crossing box
-  // change followed by real steps) FAILS on the pre-task tree with assertVerletSafety reporting a
-  // drift of 8.7e5 sigma at a FINITE state -- verified by stashing every change of this task and
-  // running that test alone. Adding the missing force rebuild here was tried and does NOT cure it
-  // (drift 1.94e8 with the rebuild in place), so the box change that test picks is simply too large
-  // for its own ramp at that composition, and the staleness is a second, independent defect rather
-  // than the cause. The rebuild is therefore withheld from this shared path, because it WOULD change
-  // the trajectory of every published dry-wet box-scaling number (wet-dry-cycling-report.md's own
-  // 0.711...0.926 series) and this task's budget could not re-run them. The evaporating transition
-  // does refresh F(x_n) explicitly -- see applyEvaporatingTransition, where the per-increment
-  // forces() call is documented as load-bearing rather than diagnostic.
+  // Cost: one extra force dispatch per box change (not per step) -- applyBoxScale's ramp is 6
+  // increments per transition and areaMove applies at most one box change per call, so this is
+  // arithmetically negligible against the rampRelaxSteps of real dynamics between them.
+  //
+  // What it does NOT fix, measured: tests/soup-grid-resize.test.ts's bracket-crossing test still
+  // fails identically (see that test and this task's report) -- the box change it picks is simply
+  // too large for its own ramp at that composition, so the staleness was a second, independent
+  // defect rather than the cause of that failure. Fixing it anyway because it is wrong physics on
+  // its own terms, and because the evaporating transition's own per-increment forces() call
+  // (applyEvaporatingTransition, below) was until now the ONLY thing standing between this defect
+  // and the cycling result -- which made the cycling result rest on a workaround instead of on a
+  // correct integrator.
   const enc = rt.device.createCommandEncoder()
   const pass = enc.beginComputePass()
   if (rt.verlet.enabled) {
     encodeVerletRebuild(rt, pass)
+    encodeSoupForceList(rt, pass)
   } else {
     encodeGridRebuild(rt, pass)
+    encodeSoupForce(rt, pass)
   }
   pass.end()
   rt.device.queue.submit([enc.finish()])

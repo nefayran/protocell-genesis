@@ -331,7 +331,14 @@ export function deriveCycleConfig(
     // remains the sole guard here.
     const dryPlan = planSoupGrid(dryBox, startCounts)
     if (!dryPlan.valid) throw new Error(dryPlan.reason!)
-    cycleCfg = { periodSteps: dwc.periodSteps, dryFraction: dwc.dryFraction, cycles: dwc.cycles }
+    // Task 'decisive-run' (2026-08-20): the CYCLE COUNT may be overridden per system (see
+    // CreateSoupOpts.dryWetCycles for why -- the measured fact that the gain does not compound);
+    // periodSteps, dryFraction, targetDryDensity and both ramps still come from the file only.
+    const cycles = opts.dryWetCycles ?? dwc.cycles
+    if (!Number.isInteger(cycles) || cycles < 1) {
+      throw new Error(`число циклов сухо-влажного цикла должно быть целым >= 1, получено ${cycles}`)
+    }
+    cycleCfg = { periodSteps: dwc.periodSteps, dryFraction: dwc.dryFraction, cycles }
   }
   return { cycleCfg, dryBox }
 }

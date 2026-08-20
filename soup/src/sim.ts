@@ -70,6 +70,7 @@ import { makeSoupAreaMove } from './soup-area-move'
 // only) and the non-finite state guard. The guard's own per-chunk hook lives in
 // soup/src/soup-integrate.ts's stepper; what is wired HERE is only the two public methods.
 import { makeRelaxColdStart } from './soup-relax'
+import { relaxIterations } from './soup-relax'
 // Task 'evaporation' (2026-08-20): real solvent removal/return. planEvaporation is pure (no GPU) and
 // carries its own throwing preconditions; nothing here changes for a system that does not ask for it.
 import { planEvaporation, evaporateSolventTo, rehydrateSolventTo } from './soup-evaporate'
@@ -332,6 +333,32 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     velocities: () => readback.velocities(rt),
     forces: () => readback.forces(rt),
     forcesBruteForce: () => readback.forcesBruteForce(rt),
+    // Task 'decisive-run' (2026-08-20). Two hooks that exist for ONE measurement each and are
+    // reachable from nothing else -- not from step/stepCycled, not from the viewer, not from any
+    // measurement path:
+    //  - forcesNoRebuildDEBUG: the force buffer as it stands, used by tests/soup-stale-force.test.ts
+    //    to observe whether a box change left F(x_n) stale (forces() recomputes, so it cannot see it);
+    //  - minimiseNowDEBUG: the SAME minimiser (soup/src/soup-relax.ts's relaxIterations, the one the
+    //    cold start, the solvent insertion and the evaporating ramp's guard all use) applied MID-RUN
+    //    at the current box, with no box change and no solvent movement. It exists solely for the
+    //    minimisation-only CONTROL arm the evaporation report named as its own missing control: an
+    //    arm that receives exactly the minimisations the cycled arm received, at the same global
+    //    steps, WITHOUT the evaporation cycle. It deliberately does NOT carry relaxColdStart's
+    //    "globalStep must be 0" refusal, because being inside the trajectory is the entire point of
+    //    the control -- so it is a DEBUG hook with its own name, never the cold-start entry point.
+    forcesNoRebuildDEBUG: () => readback.forcesNoRebuild(rt),
+    minimiseNowDEBUG: async (iterations: number) => {
+      const before = await readback.forces(rt)
+      const d0 = (soup.coldStartRelax?.maxDisplacementSigma ?? 0.1) * p.sigma
+      await relaxIterations(rt, iterations, d0)
+      const after = await readback.forces(rt)
+      const mx = (f: Float32Array) => {
+        let m = 0
+        for (let i = 0; i < rt.N; i++) for (let c = 0; c < 3; c++) m = Math.max(m, Math.abs(f[i * 4 + c]))
+        return m
+      }
+      return { iterations, globalStep: rt.live.globalStep, maxForceBefore: mx(before), maxForceAfter: mx(after), displacementBound: (d0 * (iterations + 1)) / 2 }
+    },
     bonds,
     bondSlots: () => readback.readBondSlots(rt),
     centerLinks: () => readback.centerLinks(rt),

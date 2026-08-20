@@ -44,6 +44,17 @@ export async function forces(rt: SoupRuntime): Promise<Float32Array> {
   return readBack(rt.device, rt.buf.forceBuf, rt.N * 16)
 }
 
+/** The force buffer EXACTLY AS IT STANDS, with no grid/list/force rebuild first -- i.e. the very
+ * F(x_n) that soup/src/soup-integrate.ts's next kick_drift_wrap will consume. Task 'decisive-run'
+ * (2026-08-20): forces() above recomputes before reading back, which makes a STALE forceBuf
+ * unobservable through it -- so a test could not tell "the buffer holds the force of the current
+ * geometry" from "the buffer holds the force of the geometry two box sizes ago". This readback is
+ * the only way to see that difference, and it exists for tests/soup-stale-force.test.ts to pin the
+ * applyBoxScaleOnce fix with. It changes no state at all (no dispatch is encoded). */
+export async function forcesNoRebuild(rt: SoupRuntime): Promise<Float32Array> {
+  return readBack(rt.device, rt.buf.forceBuf, rt.N * 16)
+}
+
 export async function forcesBruteForce(rt: SoupRuntime): Promise<Float32Array> {
   const enc = rt.device.createCommandEncoder()
   const pass = enc.beginComputePass()
