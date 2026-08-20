@@ -109,6 +109,7 @@ export function renderReport(results: GateResult[], meta: Record<string, unknown
         <td>${escapeHtml(corridorText(g.target, g.unit))}</td>
         <td>${escapeHtml(g.rank)}</td>
         <td class="verdict">${VERDICT_RU[g.verdict]}</td>
+        <td>${escapeHtml(g.provenance ?? (g.note ? `НЕ ИЗМЕРЯЛОСЬ В ЭТОМ ПРОГОНЕ: ${g.note}` : 'измерено этим прогоном (verify/run.ts)'))}</td>
         <td>${escapeHtml(g.source)}</td>
         <td>${escapeHtml(g.conditions)}</td>
       </tr>`,
@@ -214,7 +215,7 @@ export function renderReport(results: GateResult[], meta: Record<string, unknown
 (тот же идентификатор проставлен на gates.json и kappa-measurement.json — расхождение означало бы, что артефакты из разных прогонов).</p>
 <table>
   <thead>
-    <tr><th>ворота</th><th>значение</th><th>коридор</th><th>ранг</th><th>вердикт</th><th>источник</th><th>условия</th></tr>
+    <tr><th>ворота</th><th>значение</th><th>коридор</th><th>ранг</th><th>вердикт</th><th>откуда число</th><th>источник</th><th>условия</th></tr>
   </thead>
   <tbody>
     ${rows}

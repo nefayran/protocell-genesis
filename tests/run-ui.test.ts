@@ -5,8 +5,15 @@ afterAll(shutdownGpu)
 
 // Run-control page (viewer/run.html + viewer/run.ts): the user starts/pauses/stops the run
 // themselves instead of a script launching a long one for them. Kept tiny on purpose -- the
-// "tiny" size preset (~470 particles, box 16^3) is this page's own DEFAULT selection, and the step
-// cap set below is small, so this test costs seconds, not minutes.
+// "tiny" size preset is this page's own DEFAULT selection, and the step cap set below is small, so
+// this test costs seconds, not minutes.
+//
+// Task 'consolidation' (2026-08-20): that preset is now 3938 particles, not ~470, because its
+// solvent count is derived from the box at the measured LIQUID density (0.8 sigma^-3, viewer/
+// run-types.ts's LIQUID_SOLVENT_DENSITY) instead of the token `W: 100` it used to carry -- the page
+// was previewing a medium no current gate is measured in. Measured cost of the change, not
+// estimated: 2155-2158 steps/s at 3938 particles against 2086-2302 at the old ~13100-particle
+// "default" preset, i.e. this test still costs seconds.
 test('управление прогоном: старт держит счёт, пауза останавливает его, стоп останавливает навсегда', async () => {
   const page = await gpuPage()
   await page.goto(new URL('/viewer/run.html', page.url()).href, { waitUntil: 'load' })
@@ -348,6 +355,7 @@ test('состав: число голов задаётся напрямую, в�
   })
   await page.click('#start-btn')
   await page.waitForFunction('window.runUI.steps > 0 && window.runUI.state === "running"')
+
   await page.waitForFunction('window.runUI.state === "stopped"', { timeout: 30_000 })
   const final = await page.evaluate(() => ({ steps: (window as any).runUI.steps, error: (window as any).runUI.error }))
   expect(final.error).toBeNull()
@@ -419,6 +427,22 @@ test('океанский фон: прогон стартует и рисует �
     expect(handle, `#${id} должен существовать`).not.toBeNull()
   }
 
+  // Task 'consolidation' (2026-08-20): the buttons must actually RECEIVE their own clicks. The
+  // bottom-anchored honesty notes are absolutely positioned and grow upward, and twice now a taller
+  // #controls has ended up UNDER one of them at the same z-index -- which does not look broken, it
+  // silently eats the click (measured: elementFromPoint over #start-btn's centre came back as
+  // `visibility-note`, the run never started, state stayed 'idle', trace empty, no error anywhere).
+  // Asserting the hit target is the only thing that catches that class of failure, since every
+  // other assertion in this file happens AFTER a click it assumes landed.
+  const hitTargets = await page.evaluate(() =>
+    ['start-btn', 'pause-btn', 'stop-btn'].map((id) => {
+      const r = document.getElementById(id)!.getBoundingClientRect()
+      return { id, hitId: document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.id ?? 'null' }
+    }),
+  )
+  console.log(`RUN-UI CLICKTARGET ${JSON.stringify(hitTargets)}`)
+  for (const t of hitTargets) expect(t.hitId, `клик по #${t.id} должен попадать в саму кнопку`).toBe(t.id)
+
   await page.$eval('#step-cap', (el) => {
     ;(el as HTMLInputElement).value = '500'
   })
@@ -428,6 +452,21 @@ test('океанский фон: прогон стартует и рисует �
   // Real rendered frames are still being produced with the new background in place.
   const frames0 = await page.evaluate(() => (window as any).sceneDebug.renderedFrameCount)
   await page.waitForFunction(`window.sceneDebug.renderedFrameCount > ${frames0}`)
+
+  // Task 'consolidation' (2026-08-20): WHICH species is drawn, not just "something is". The clay
+  // platelet is the one most easily lost -- it is the only species drawn as flat plates rather than
+  // spheres, its bead count is derived from the box instead of carried in `start`, and it sits at
+  // the box floor. sceneDebug.instanceCounts() reads the counts straight off the meshes draw()
+  // writes, so this is the platelet's own instances, not a pixel guess.
+  const instances = await page.evaluate(() => (window as any).sceneDebug.instanceCounts())
+  console.log(`RUN-UI INSTANCES ${JSON.stringify(instances)}`)
+  expect(instances.K.visible, 'пластина глины должна быть видимой').toBe(true)
+  expect(instances.K.count, 'у пластины глины должны быть нарисованные экземпляры').toBeGreaterThan(0)
+  expect(instances.W.visible, 'растворитель по умолчанию не рисуется').toBe(false)
+  // Read AFTER a real frame has been drawn, deliberately: instanceCounts() reports what the last
+  // draw() wrote, so asking before the first frame reports 0 for every species -- measured, an
+  // earlier version of this assertion sat right after `steps > 0` and failed for exactly that
+  // reason, on a platelet that was in fact on screen.
 
   // A screenshot is non-trivial (not a blank/solid canvas) -- same size floor as tests/viewer.test.ts
   // uses for the same purpose.

@@ -1,0 +1,40 @@
+{
+  "measuredBy": "tests/water-bilayer-area-move.test.ts",
+  "generatedAt": "2026-08-20T11:49:04.547Z",
+  "lipids": 400,
+  "waterDensity": 0.8,
+  "totalWater": 4500,
+  "N": 5700,
+  "areaPerLipid": 1.1596934665224978,
+  "areaTailMin": 1.155819193269172,
+  "areaTailMax": 1.163680575861322,
+  "thickness": 4.531146746561193,
+  "settled": true,
+  "chunksUsed": 450,
+  "driftPerChunk": -0.000003423998011623868,
+  "driftT": -0.7315094477996765,
+  "clusterFraction": 1,
+  "waterInCore": 55,
+  "headBuriedFraction": 0.16076294277929154,
+  "acceptedFraction": 0.11422222222222222,
+  "trialsTotal": 4500,
+  "stepsPerSec": 1139.8384165058696,
+  "amphiphileCount": 367,
+  "events": {
+    "cc_bond": 0,
+    "cc_break": 0,
+    "co_bond": 0,
+    "co_break": 33
+  },
+  "corridors": {
+    "area": [
+      1.1,
+      1.5
+    ],
+    "thickness": [
+      4,
+      6
+    ]
+  },
+  "verdict": "passed"
+}

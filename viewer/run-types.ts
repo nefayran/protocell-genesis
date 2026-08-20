@@ -121,24 +121,59 @@ export interface SizePreset {
   box: [number, number, number]
   start?: Record<string, number>
 }
-// Task 'broth-composition' (2026-08-18): data/soup.json's own `start` now includes explicit water
-// (W). CreateSoupOpts.start MERGES over the file's defaults (an id this preset does not mention
-// keeps the file's count) -- so leaving W unmentioned here would silently pull the file's full
-// water count (10700, sized for the box-30 "default" preset's own density) into this box-16 preset
-// too, multiplying its particle count roughly 4.5x and defeating the whole point of "tiny" staying
-// cheap. `W: 100` is a deliberately TOKEN amount (density ~0.024 sigma^-3, nowhere near the
-// measured 0.8 sigma^-3 liquid density -- see data/soup.json's solvent.basis) -- enough to exercise
-// the water code path (the solvent-attraction rule, the water-aware closure detector) at trivial
-// cost, not a scientifically meaningful liquid. A real liquid-density preview belongs in "default"
-// or a size a user picks knowing the cost, not in the one preset whose whole job is staying cheap.
-// Task 'clay-surface' (2026-08-19): the particle counts in these labels now INCLUDE the mineral
+
+/** Number density of the solvent, σ⁻³, at which this project measures its medium to be a LIQUID.
+ *
+ * Task 'consolidation' (2026-08-20). Not a look choice and not a page constant in spirit: it is the
+ * density the whole project's current physics is measured at. `data/soup.json`'s `solvent.basis` §1
+ * (quoted in .superpowers/sdd/2026-08-16-soup-to-vesicle/broth-composition-report.md §1) swept
+ * 0.50-0.85 σ⁻³ on pure water and measured 0.80 as the LOWEST density with no macroscopic void
+ * (largest empty coarse cell 0 % vs 4.4-24.5 % below it) and sub-Poissonian uniformity (dispersion
+ * 0.207 vs 3.3-9.2); water-calibration-report.md §3 measured every density ABOVE it (0.9-1.2)
+ * dynamically unstable. Rank D -- measured on THIS interaction set, not a literature constant, and
+ * one bead still stands for many H2O molecules.
+ *
+ * WHY THE PRESETS NOW DERIVE THE WATER COUNT FROM IT INSTEAD OF CARRYING ONE. Both explicit-water
+ * bilayer gates (area/lipid 1.1777 σ², thickness 4.7990 σ -- hydrophobic-asymmetry-report.md,
+ * re-measured in final-campaign-report.md §3) PASS only in water at this density, and the whole
+ * box-54 campaign ran at ρ_W = 125971/157464 = 0.79999. The presets used to ship a token `W: 100`
+ * at box 16 (ρ ≈ 0.024 σ⁻³) and `data/soup.json`'s own `W: 10700` at box 30 (ρ = 0.396 σ⁻³,
+ * BELOW the liquid threshold -- broth-composition-report.md §2 recorded that gap honestly and it was
+ * never closed on this page), so the page was showing a medium that no current gate is measured in.
+ * Deriving W from the box means the medium tracks the box at the measured liquid density, and the
+ * particle-scale control below deliberately does NOT scale it: the solvent is the MEDIUM at a
+ * measured density, not a count a user should be able to double into an unstable regime. */
+export const LIQUID_SOLVENT_DENSITY = 0.8
+
+/** How many solvent beads the given box holds at LIQUID_SOLVENT_DENSITY. */
+export function liquidSolventCount(box: [number, number, number]): number {
+  return Math.round(LIQUID_SOLVENT_DENSITY * box[0] * box[1] * box[2])
+}
+
+// Task 'broth-composition' (2026-08-18): data/soup.json's own `start` includes explicit water (W),
+// and CreateSoupOpts.start MERGES over the file's defaults (an id a preset does not mention keeps
+// the file's count). Task 'consolidation' (2026-08-20): the solvent count is therefore no longer
+// carried in a preset at ALL -- run-control-panel.ts's currentSizeSelection() overwrites it with
+// liquidSolventCount(box) for whatever box the form currently describes, so neither preset can
+// silently ship an under-dense medium and neither can silently inherit the file's box-30 count into
+// a different box. What a preset carries is only its ORGANIC composition.
+// Task 'clay-surface' (2026-08-19): the particle counts in these labels INCLUDE the mineral
 // platelet, whose bead count is derived from the box (soup/src/soup-clay.ts), not from `start` -- at
-// box 16 that is a 14x14 sheet (~196 beads), at box 30 a 27x27 one (~729). The platelet is part of
-// the shipped composition (data/soup.json's clay.enabled), so it is part of what these presets run;
-// `clay: false` is what a clay-free control arm passes, and no preset here does.
+// box 16 that is a 14x14 lattice minus its catalytic sites (191 mineral beads), at box 30 a 27x27
+// one (704). The platelet is part of the shipped composition (data/soup.json's clay.enabled), so it
+// is part of what these presets run; `clay: false` is what a clay-free control arm passes, and no
+// preset here does.
 export const SIZE_PRESETS: Record<string, SizePreset> = {
-  tiny: { label: 'малый (проверочный, ~760 частиц с пластиной глины)', box: [16, 16, 16], start: { C: 200, O: 50, H: 200, M: 20, W: 100 } },
-  default: { label: 'стандартный бульон + глина (data/soup.json, ~15000 частиц)', box: [30, 30, 30] },
+  tiny: {
+    label: 'малый (проверочный, ~3940 частиц: 470 органики + 3277 воды при 0.8 σ⁻³ + пластина глины 191)',
+    box: [16, 16, 16],
+    start: { C: 200, O: 50, H: 200, M: 20 },
+  },
+  default: {
+    label: 'стандартный бульон + глина, вода при 0.8 σ⁻³ (~25900 частиц — ДОРОГО)',
+    box: [30, 30, 30],
+    start: { C: 1500, O: 500, H: 1500, M: 100 },
+  },
 }
 export const DEFAULT_SIZE_KEY = 'tiny'
 export const DEFAULT_STEP_CAP = 20_000
@@ -254,6 +289,15 @@ export interface SceneDebugHooks {
    * guessed convention runUI.stepsPerSecond already uses for the sim side. Added for the
    * ocean-look task's own frame-rate-before/after requirement; harmless to leave in place. */
   renderedFrameCount: number
+  /** Per-monomer-id instance count and visibility of the coarse InstancedMeshes, as of the last
+   * frame draw() wrote. Task 'consolidation' (2026-08-20): added because "is the clay platelet
+   * actually on screen?" had no ground truth on this page at all -- nonBackgroundPixelFraction()
+   * proves SOMETHING drew, never WHICH species did, and the platelet is exactly the species most
+   * easily lost (it is the only one drawn as plates rather than spheres, its bead count is derived
+   * from the box rather than carried in `start`, and it sits at the box floor where the camera
+   * frames least). Same test-support convention as the two hooks above: a small named object on
+   * `window`, never a production feature. */
+  instanceCounts(): Record<string, { count: number; visible: boolean; capacity: number }>
 }
 
 /** Shortest periodic image of `d` along one axis of length `L` (minimum-image convention -- the

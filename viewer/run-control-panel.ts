@@ -14,7 +14,18 @@ import type { ProgressReadout } from './run-readout'
 import type { RunLifecycle } from './run-sim-driver'
 import { currentElapsedMs, type RunRuntime } from './run-runtime'
 import type { RunScene } from './run-scene'
-import { DEFAULT_SIZE_KEY, DEFAULT_STEP_CAP, RUN_SEED, SIZE_PRESETS, SOLVENT_VISIBLE_BY_DEFAULT, STAGES, STAGE_LABEL, type RunState } from './run-types'
+import {
+  DEFAULT_SIZE_KEY,
+  DEFAULT_STEP_CAP,
+  liquidSolventCount,
+  LIQUID_SOLVENT_DENSITY,
+  RUN_SEED,
+  SIZE_PRESETS,
+  SOLVENT_VISIBLE_BY_DEFAULT,
+  STAGES,
+  STAGE_LABEL,
+  type RunState,
+} from './run-types'
 
 export interface ControlPanel {
   setState(s: RunState): void
@@ -44,6 +55,7 @@ export function createControlPanel(
   const sizeErrorEl = document.getElementById('size-error') as HTMLElement
   const stageSelect = document.getElementById('stage-select') as HTMLSelectElement
   const stepCapInput = document.getElementById('step-cap') as HTMLInputElement
+  const clayEnabledInput = document.getElementById('clay-enabled-input') as HTMLInputElement
   const startBtn = document.getElementById('start-btn') as HTMLButtonElement
   const pauseBtn = document.getElementById('pause-btn') as HTMLButtonElement
   const stopBtn = document.getElementById('stop-btn') as HTMLButtonElement
@@ -57,6 +69,17 @@ export function createControlPanel(
     sizeSelect.appendChild(opt)
   }
   sizeSelect.value = DEFAULT_SIZE_KEY
+
+  // Task 'consolidation' (2026-08-20): the platelet's default is data/soup.json's own clay.enabled,
+  // so the page still ships the composition the file ships -- but it is now a visible, switchable
+  // fact rather than an invisible one, because every published measurement in this project ran
+  // WITHOUT it (`clay: false` in every arm of every campaign, final-campaign-report.md §12) and the
+  // page was the only place a clay platelet silently took part in a run.
+  clayEnabledInput.checked = clayEnabled(soup)
+
+  // Which species are the medium comes from data/soup.json's own per-species `solvent` flag, never
+  // from a hardcoded "W" here -- adding a second solvent species to that file would need no edit.
+  const solventIds = soup.monomers.filter((m) => m.solvent ?? false).map((m) => m.id)
 
   // --- item 3 (2026-08 UI-fixes task): the user picks box side + particle scale directly instead
   // of choosing between two fixed guesses. The presets above are kept only as a convenience "fill
@@ -114,6 +137,16 @@ export function createControlPanel(
     const startCounts = scaledStart(particleScale)
     startCounts.O = currentHeadCount(startCounts.O)
     const box: [number, number, number] = [boxSide, boxSide, boxSide]
+    // Task 'consolidation' (2026-08-20): the SOLVENT count is derived from the box at the measured
+    // liquid density (LIQUID_SOLVENT_DENSITY -- see its own doc comment for the measurement and why
+    // this page may not ship anything below it), overwriting whatever a preset or the particle-scale
+    // control would otherwise produce. Two drifts this closes, both of them things the page was
+    // showing that no current gate is measured in: the "tiny" preset's token `W: 100` (rho ~ 0.024
+    // sigma^-3) and the box-30 preset silently inheriting data/soup.json's own `W: 10700` (rho =
+    // 0.396 sigma^-3, below the liquid threshold -- broth-composition-report.md section 2). The
+    // medium is a density, not a count: scaling C/H/M by 2x must not double the water and walk the
+    // run into the regime water-calibration-report.md section 3 measured as dynamically unstable.
+    for (const id of solventIds) startCounts[id] = liquidSolventCount(box)
     // Task 'clay-surface' (2026-08-19): the mineral platelet's bead count is DERIVED from the box
     // (soup/src/soup-clay.ts), not carried in `start`, so the preview has to derive it the same way
     // createSoup will -- otherwise the panel would show the platelet as "K:0" and undercount the total
@@ -121,7 +154,7 @@ export function createControlPanel(
     // BEFORE start. `planClay` throws on a box too small to hold a sheet; the preview swallows that and
     // shows zero, because validateSizeSelection/planSoupGrid already refuse such a box with their own
     // message and a preview must never be the thing that throws while the user is mid-typing.
-    if (clayEnabled(soup)) {
+    if (clayEnabled(soup, clayEnabledInput.checked)) {
       try {
         const catalystId = soup.monomers.find((m) => m.kind === 'catalyst')!.id
         const layout = planClay(soup, loadParams(), box, startCounts[catalystId] ?? 0)
@@ -129,6 +162,11 @@ export function createControlPanel(
       } catch {
         startCounts[soup.clay!.mineralId] = 0
       }
+    } else if (soup.clay) {
+      // Same branch createSoup itself takes when clay is off (soup/src/sim.ts) -- the preview must
+      // agree with what the run will build, or the particle count on screen is a different number
+      // from the one the GPU allocates.
+      startCounts[soup.clay.mineralId] = 0
     }
     return { box, startCounts }
   }
@@ -196,16 +234,23 @@ export function createControlPanel(
     // total/grid numbers already satisfy. Order follows data/soup.json's own monomer list, not this
     // object's insertion order, so it reads the same regardless of which field the user touched last.
     const perSpecies = soup.monomers.map((m) => `${m.id}:${startCounts[m.id] ?? 0}`).join(' ')
+    const boxVolume = boxNow[0] * boxNow[1] * boxNow[2]
+    const solventN = solventIds.reduce((a, id) => a + (startCounts[id] ?? 0), 0)
+    // Deliberately kept to a few short lines: this element sits inside #controls, so every extra
+    // line pushes the START/PAUSE/STOP buttons down the left column -- and viewer/run.html's own CSS
+    // comment records that #cavity's fixed top offset has already eaten those buttons' clicks twice
+    // when #controls grew. The density is what this task added, so it is stated with the shortest
+    // labels that still say which density is which (LIQUID_SOLVENT_DENSITY's doc comment carries
+    // the measurement, and the honesty note carries the limitation).
     sizePreviewEl.textContent =
-      `частиц: ${plan.N} (${perSpecies}) · сетка соседей: ${plan.dims[0]}×${plan.dims[1]}×${plan.dims[2]} = ${plan.ncells} ячеек`
+      `частиц: ${plan.N} (${perSpecies}) · сетка ${plan.dims[0]}×${plan.dims[1]}×${plan.dims[2]}=${plan.ncells} · ` +
+      `ρ_раств ${(solventN / boxVolume).toFixed(3)} (жидкость ${LIQUID_SOLVENT_DENSITY}, из бокса) · ` +
+      `ρ_полная ${(plan.N / boxVolume).toFixed(3)} σ⁻³`
     const reason = validateSizeSelection(boxNow, startCounts)
     sizeErrorEl.hidden = reason === null
     sizeErrorEl.textContent = reason ?? ''
   }
 
-  // Which species are the medium comes from data/soup.json's own per-species `solvent` flag, never
-  // from a hardcoded "W" here -- adding a second solvent species to that file would need no edit.
-  const solventIds = soup.monomers.filter((m) => m.solvent ?? false).map((m) => m.id)
   const waterVisibleInput = document.getElementById('water-visible-input') as HTMLInputElement
   waterVisibleInput.checked = SOLVENT_VISIBLE_BY_DEFAULT
 
@@ -232,6 +277,7 @@ export function createControlPanel(
   boxSideInput.addEventListener('input', refreshSizePreview)
   particleScaleInput.addEventListener('input', refreshSizePreview)
   headCountInput.addEventListener('input', refreshSizePreview)
+  clayEnabledInput.addEventListener('change', refreshSizePreview)
   refreshSizePreview()
 
   // `monomers` is the state every run STARTS in, so offering it as a target makes the run
@@ -279,6 +325,7 @@ export function createControlPanel(
     boxSideInput.disabled = controlsLocked
     particleScaleInput.disabled = controlsLocked
     headCountInput.disabled = controlsLocked
+    clayEnabledInput.disabled = controlsLocked
     stageSelect.disabled = controlsLocked
     stepCapInput.disabled = controlsLocked
   }
@@ -338,9 +385,33 @@ export function createControlPanel(
     rt.activeSys = null
 
     setState('running')
-    readout.appendTraceLine(`[старт] бокс=${rt.box[0]}×${rt.box[1]}×${rt.box[2]} цель=${rt.targetStage} предел_шагов=${rt.stepCap}`)
+    readout.appendTraceLine(
+      `[старт] бокс=${rt.box[0]}×${rt.box[1]}×${rt.box[2]} цель=${rt.targetStage} предел_шагов=${rt.stepCap} ` +
+        `глина=${clayEnabledInput.checked ? 'да (в опубликованных замерах НЕТ)' : 'нет (как в опубликованных замерах)'}`,
+    )
 
-    const sys = await createSoup({ box: rt.box, seed: RUN_SEED, kT: params.thermostat.kT, start: startCounts })
+    const sys = await createSoup({
+      box: rt.box,
+      seed: RUN_SEED,
+      kT: params.thermostat.kT,
+      start: startCounts,
+      clay: clayEnabledInput.checked,
+    })
+    // Task 'consolidation' (2026-08-20): the cold-start minimisation, which this page never ran.
+    // At the token water counts the presets used to ship it was not needed; at the measured liquid
+    // density (LIQUID_SOLVENT_DENSITY) it is the difference between a run and a NaN -- soup/src/
+    // soup-relax.ts's own guard test (tests/soup-cold-start-relax.test.ts) measures max|F| 3.518e4
+    // -> 13.372 over 29 bounded iterations, and its payoff pair measures the SAME start throwing at
+    // step 1000 with 29199/29232 non-finite components without this stage. Every campaign in this
+    // project passes `--relax` for exactly this reason; the page was the one caller that did not.
+    // relaxColdStart() refuses at globalStep != 0 by construction, so it can only ever run here,
+    // before the trajectory the measurements are read off.
+    const relax = await sys.relaxColdStart()
+    readout.appendTraceLine(
+      `[минимизация] итераций=${relax.iterations} max|F| ${relax.maxForceBefore.toExponential(3)} -> ` +
+        `${relax.maxForceAfter.toExponential(3)} граница_смещения=${relax.displacementBound.toFixed(3)}σ ` +
+        `нефинитных ${relax.nonFiniteBefore}/${relax.nonFiniteAfter}`,
+    )
     rt.activeSys = sys
     const n = Object.values(startCounts).reduce((a, b) => a + b, 0)
     rt.meshes = runScene.buildMeshes(rt.meshes, soup.monomers, n, rt.box, thresholds.closureCell)

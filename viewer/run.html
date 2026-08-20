@@ -51,9 +51,16 @@
      when a refused selection makes it visible. Item "composition control" (2026-08-17) added one
      more label/input row (#head-count-input) -- bumped again by the same one-row increment. The
      solvent-visibility checkbox (#water-visible-input, 2026-08-18) is one more such row: bumped by
-     the same increment again, for the same click-eating reason. */
+     the same increment again, for the same click-eating reason. Task 'consolidation' (2026-08-20)
+     hit this trap a THIRD time and paid a probe run for it: no new row, just #size-preview growing
+     from one line to three (it now states the solvent density the run will actually use), and the
+     very first headless run of the page after that change never started at all -- state stayed
+     'idle', the trace stayed empty, because the click landed on #cavity instead of #start-btn.
+     Bumped again for this task's own extra row (#clay-enabled-input) plus real headroom, and the
+     probe now checks the ground truth instead of the arithmetic: document.elementFromPoint() over
+     each button's own centre must come back as that button. */
   #cavity {
-    position: absolute; top: 525px; left: 12px; z-index: 2; width: 260px;
+    position: absolute; top: 620px; left: 12px; z-index: 2; width: 260px;
     background: rgba(15, 17, 20, 0.92); border: 1px solid #2b6f5e; border-radius: 8px;
     padding: 10px 14px; font-size: 12px; line-height: 1.5;
   }
@@ -69,7 +76,7 @@
      file's honesty notes for the same "show numbers, not narrative" convention every other panel
      here already follows. Positioned below #cavity, same left column. */
   #aggregates {
-    position: absolute; top: 735px; left: 12px; z-index: 2; width: 260px; max-height: 260px; overflow-y: auto;
+    position: absolute; top: 830px; left: 12px; z-index: 2; width: 260px; max-height: 260px; overflow-y: auto;
     background: rgba(15, 17, 20, 0.92); border: 1px solid #5a4a8a; border-radius: 8px;
     padding: 10px 14px; font-size: 12px; line-height: 1.5;
   }
@@ -81,17 +88,38 @@
   .aggregate-card .row { display: flex; justify-content: space-between; }
 
   /* Honesty note and visibility note: same treatment as every other viewer's honesty badge --
-     always visible, never a tooltip. */
+     always visible, never a tooltip.
+
+     Task 'consolidation' (2026-08-20): `left` moved from 12px to 288px, i.e. clear of the 260px-wide
+     left control column entirely, and this is a BUG FIX, not styling. These notes are anchored to
+     the viewport's BOTTOM and spanned the full width, so on a short viewport they painted over
+     whatever the bottom of #controls happened to be -- and since they come later in the DOM at the
+     same z-index, they won every click landing there. Measured, not reasoned: at the 800x600 headless
+     viewport the probe read #start-btn's rect as top 461 / bottom 492 and
+     document.elementFromPoint() over its own centre came back as `visibility-note`; the run never
+     started, state stayed 'idle' and the trace stayed empty, with no error anywhere -- exactly the
+     silent failure the #cavity comment above describes, from a different element. Anchoring them to
+     the right of the control column removes the whole class of failure instead of buying one more
+     row of clearance: neither note can ever reach the buttons again at any viewport height, and both
+     stay permanently visible, which is what this project's honesty rule requires of them. */
+  /* One bottom-anchored COLUMN instead of three notes at three hand-maintained `bottom` offsets.
+     Same reason as `left: 288px` above, one step further: the old offsets (12/70/128px) were sized
+     for notes spanning the FULL width, so narrowing them to clear the control column made each one
+     taller and they overlapped each other on screen -- visible in this task's own probe screenshot.
+     A flex column cannot overlap itself at any width or text length, so no offset has to be
+     re-derived the next time one of these notes gains a sentence. Each note keeps its own id, its
+     own colour and its own collapsible behaviour untouched. */
+  #notes {
+    position: absolute; left: 288px; right: 12px; bottom: 12px; z-index: 2;
+    display: flex; flex-direction: column; gap: 8px;
+  }
   #honesty-note, #visibility-note {
-    position: absolute; left: 12px; right: 12px; z-index: 2;
     border-radius: 8px; padding: 8px 12px; font-size: 12px; line-height: 1.4; font-weight: 600;
   }
-  #honesty-note { bottom: 12px; background: rgba(120, 20, 20, 0.9); border: 1px solid #a33; }
-  #visibility-note { bottom: 70px; background: rgba(20, 60, 90, 0.9); border: 1px solid #2b6f9e; }
+  #honesty-note { background: rgba(120, 20, 20, 0.9); border: 1px solid #a33; }
+  #visibility-note { background: rgba(20, 60, 90, 0.9); border: 1px solid #2b6f9e; }
   #visibility-note.active { background: rgba(140, 100, 10, 0.92); border-color: #d69a1a; }
-  #atom-badge {
-    position: absolute; left: 12px; bottom: 128px; right: 12px; z-index: 2; font-size: 11px; color: #9aa;
-  }
+  #atom-badge { font-size: 11px; color: #9aa; }
 
   /* Item 4 (2026-08 UI-fixes task): collapsible honesty notes (#honesty-note, #cavity-honesty,
      #atom-badge) -- one compact summary line plus a small toggle that reveals the full text on
@@ -127,6 +155,14 @@
   <label style="display: flex; align-items: center; gap: 6px;">
     <input id="water-visible-input" type="checkbox" style="width: auto; margin-top: 0;" />
     Рисовать воду (W) — дорого для машины
+  </label>
+  <!-- Task 'consolidation' (2026-08-20): the clay platelet was in every run this page could start
+       and in NO measurement this project published -- every arm of all eight campaigns ran
+       `clay: false` (final-campaign-report.md section 12). So its presence gets a control and a
+       label that says which of the two the run matches, instead of being a silent default. -->
+  <label style="display: flex; align-items: center; gap: 6px;">
+    <input id="clay-enabled-input" type="checkbox" style="width: auto; margin-top: 0;" />
+    Пластина глины (K) — в опубликованных замерах её НЕТ
   </label>
   <div id="size-preview" class="size-note"></div>
   <div id="size-error" class="size-note error" hidden></div>
@@ -177,11 +213,13 @@
   <div id="aggregate-detail"></div>
 </div>
 
-<div id="visibility-note">Пока эта заметка синяя — вкладка видима, счёт идёт. Как только вкладка уходит из
-  видимости (переключение окна/таба), прогон автоматически ставится на паузу и не грузит GPU в фоне;
-  при возврате на вкладку он сам продолжается — но только если это была автопауза, а не ручная.</div>
-<div id="honesty-note"></div>
-<div id="atom-badge"></div>
+<div id="notes">
+  <div id="atom-badge"></div>
+  <div id="visibility-note">Пока эта заметка синяя — вкладка видима, счёт идёт. Как только вкладка уходит из
+    видимости (переключение окна/таба), прогон автоматически ставится на паузу и не грузит GPU в фоне;
+    при возврате на вкладку он сам продолжается — но только если это была автопауза, а не ручная.</div>
+  <div id="honesty-note"></div>
+</div>
 
 <script type="module" src="./run.ts"></script>
 </body>

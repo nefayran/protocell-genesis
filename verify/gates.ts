@@ -40,6 +40,27 @@ export interface GateResult {
    * data/literature.json already carries one per gate -- attaching it here is a superset, not a
    * departure from the contract (every field the four tests check is present and typed as given). */
   conditions: string
+  /** WHERE this row's number came from, and WHEN it was measured. Task 'consolidation'
+   * (2026-08-20): the published set now spans gates measured in three different places -- the
+   * membrane-engine scenarios verify/run.ts runs itself, the explicit-water patch measured by
+   * tests/water-bilayer-area-move.test.ts, and the box-54 campaign re-analysed off-GPU from its own
+   * checkpoints -- and a reader cannot tell those apart from the value alone. So every gate carries
+   * the artifact its metric was read from and that artifact's own timestamp. `undefined` means the
+   * metric was measured by this very process, in this run. */
+  provenance?: string
+  /** Why an `unproven` verdict is unproven, in one sentence, and which report the number lives in
+   * when there is one. Present exactly when the pipeline knows more than "the metric is absent" --
+   * i.e. an input artifact was missing, so nothing fresh could be measured and NOTHING STALE WAS
+   * CARRIED FORWARD in its place. */
+  note?: string
+}
+
+/** Extra, per-gate context the pipeline knows and data/literature.json cannot: see GateResult's own
+ * `provenance`/`note` doc comments. Both maps are keyed by gate id and are entirely optional -- an
+ * `evaluateGates(metrics)` call with no second argument behaves exactly as it did before. */
+export interface GateContext {
+  provenance?: Record<string, string>
+  notes?: Record<string, string>
 }
 
 interface LiteratureGate {
@@ -57,7 +78,7 @@ function loadLiteratureGates(): LiteratureGate[] {
   return (literature as { gates: LiteratureGate[] }).gates
 }
 
-export function evaluateGates(metrics: Record<string, number>): GateResult[] {
+export function evaluateGates(metrics: Record<string, number>, context: GateContext = {}): GateResult[] {
   return loadLiteratureGates().map((g) => {
     const raw = metrics[g.metric]
     const value = raw === undefined || Number.isNaN(raw) ? null : raw
@@ -83,6 +104,8 @@ export function evaluateGates(metrics: Record<string, number>): GateResult[] {
       verdict,
       source: g.source,
       conditions: g.conditions,
+      provenance: context.provenance?.[g.id],
+      note: context.notes?.[g.id],
     }
   })
 }

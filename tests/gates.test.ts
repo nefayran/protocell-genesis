@@ -40,6 +40,68 @@ test('literature.json держит ровно спецификационные �
   expect(byId('bending-modulus')).toEqual({ min: 5, max: 50 })
 })
 
+// Task 'consolidation' (2026-08-20): the corridors this task ADDED get the same guard as the three
+// above -- the project's rule is that a gate is published passed/failed/unproven and its bound is
+// never widened, so every bound needs something that breaks if it moves. The two explicit-water
+// gates deliberately pin to the SAME numbers as their solvent-free namesakes: they are the same
+// literature corridor measured in a different medium, and letting them drift apart would turn "the
+// bilayer holds in water" into "the bilayer holds in water, by a corridor of its own".
+test('literature.json: коридоры, добавленные консолидацией, не разъезжаются', () => {
+  const gates = (literature as { gates: Array<{ id: string; target: { min?: number; max?: number }; rank: string }> }).gates
+  const byId = (id: string) => gates.find((g) => g.id === id)!
+  expect(byId('area-per-lipid-water').target).toEqual(byId('area-per-lipid').target)
+  expect(byId('bilayer-thickness-water').target).toEqual(byId('bilayer-thickness').target)
+  // A closed vesicle must hold AT LEAST the threshold's worth of solvent -- the ratio's floor is 1
+  // by construction, not by choice, and the raw threshold is recomputed per snapshot.
+  expect(byId('vesicle-closure-water').target).toEqual({ min: 1.0 })
+  // A finite object wraps ZERO axes. Not a tolerance: the definition.
+  expect(byId('aggregate-percolation').target).toEqual({ max: 0 })
+  expect(byId('vesicle-verdict').target).toEqual({ min: 1.0 })
+  // The chain-to-bead mapping is ours (spec §4), so the window it implies stays rank D and the gate
+  // stays unproven whatever it measures -- pinned here so nobody promotes it by editing one field.
+  expect(byId('mean-tail-length').target).toEqual({ min: 2.0, max: 3.0 })
+  expect(byId('mean-tail-length').rank).toBe('D')
+  expect(byId('chain-length-asf').rank).toBe('D')
+})
+
+// The three verdicts this project's own final numbers must produce. Written with the measured values
+// inline rather than read from verify/out/gates.json on purpose: this is a test of the RULE, and it
+// must fail if a future edit makes "no vesicle" or "the object percolates" read as anything but a
+// failure.
+test('итоговые ворота кампании выходят ПРОВАЛЕННЫМИ на измеренных числах, а не недоказанными', () => {
+  const r = evaluateGates({
+    encapsulatedWaterOverThreshold: 0 / 320.8907983202498,
+    wrappingAxes: 3,
+    vesicleAggregates: 0,
+  })
+  const g = (id: string) => r.find((x) => x.id === id)!
+  expect(g('vesicle-closure-water').verdict).toBe('failed')
+  expect(g('vesicle-closure-water').rank).toBe('B')
+  expect(g('aggregate-percolation').verdict).toBe('failed')
+  expect(g('vesicle-verdict').verdict).toBe('failed')
+  // ...and a hypothetical finite object with a full lumen would pass the same three, so the gates
+  // are not simply wired to fail.
+  const ok = evaluateGates({ encapsulatedWaterOverThreshold: 1.4, wrappingAxes: 0, vesicleAggregates: 1 })
+  for (const id of ['vesicle-closure-water', 'aggregate-percolation', 'vesicle-verdict']) {
+    expect(ok.find((x) => x.id === id)!.verdict).toBe('passed')
+  }
+})
+
+test('пропущенный входной артефакт даёт недоказанные ворота С ПРИЧИНОЙ, а не молча старое число', () => {
+  const r = evaluateGates(
+    {},
+    { notes: { 'area-per-lipid-water': 'артефакт отсутствует, число не подставляется' } },
+  )
+  const g = r.find((x) => x.id === 'area-per-lipid-water')!
+  expect(g.verdict).toBe('unproven')
+  expect(g.value).toBeNull()
+  expect(g.note).toContain('не подставляется')
+  // provenance is attached only where the pipeline knows one, and never invented
+  expect(g.provenance).toBeUndefined()
+  const withProv = evaluateGates({ wrappingAxes: 3 }, { provenance: { 'aggregate-percolation': 'artifact X' } })
+  expect(withProv.find((x) => x.id === 'aggregate-percolation')!.provenance).toBe('artifact X')
+})
+
 test('отчёт содержит вердикт, число, коридор и ссылку', () => {
   const html = renderReport(evaluateGates({ areaPerLipid: 1.2 }), { commit: { sha: 'abc123', dirty: false } })
   // NOT plain '1.1': that also matches the area gate's own condition text ("kT/eps = 1.1"), so it

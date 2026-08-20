@@ -1,15 +1,15 @@
 {
-  "runId": "0f8c0185-036e-4af0-8a76-5fceb533cbcd",
-  "generatedAt": "2026-08-16T02:31:30.056Z",
+  "runId": "ff1ed507-7dd8-42e1-9674-3fa597a6a260",
+  "generatedAt": "2026-08-20T11:49:51.254Z",
   "commit": {
-    "sha": "823dbb8daa2dba15d9c85056a862c54f50f07b8a",
+    "sha": "5b5937ca514fb32fb89b3a5382bd8c78937acab4",
     "dirty": true
   },
   "gates": [
     {
       "id": "area-per-lipid",
       "title": "Площадь на липид",
-      "value": 1.2089337655267967,
+      "value": 1.200976496918188,
       "target": {
         "min": 1.1,
         "max": 1.5
@@ -23,7 +23,7 @@
     {
       "id": "bilayer-thickness",
       "title": "Толщина бислоя",
-      "value": 4.456531927526974,
+      "value": 4.492471522285122,
       "target": {
         "min": 4,
         "max": 6
@@ -49,17 +49,116 @@
       "conditions": "из спектра ундуляций; окно подгонки по q выбирается ПО ДАННЫМ (растёт от наименьшей оболочки |q|, пока наклон log-log остаётся в допуске ±1 от -4, минимум 4 независимых оболочки), а не фиксированным потолком в 8 мод — в этом прогоне окно вышло на 4 оболочки до q_max ≈ 0.18"
     },
     {
+      "id": "area-per-lipid-water",
+      "title": "Площадь на липид В ЯВНОЙ ВОДЕ",
+      "value": 1.1596934665224978,
+      "target": {
+        "min": 1.1,
+        "max": 1.5
+      },
+      "unit": "sigma^2",
+      "rank": "C",
+      "verdict": "passed",
+      "source": "коридор — Cooke & Deserno 2005, arXiv:cond-mat/0509218 (ТОТ ЖЕ коридор, что у бесрастворительных ворот); среда — отношения глубин пар, выведенные из martini_v2.1.itp (Marrink et al., The MARTINI Force Field, J. Phys. Chem. B 2007, 111, 7812), задача 'hydrophobic-asymmetry', перезамерено задачей 'final-campaign' §3",
+      "conditions": "НОВЫЙ РЕЗУЛЬТАТ ЭТОЙ КАМПАНИИ: та же величина, что у ворот area-per-lipid, но измеренная в ЖИДКОЙ явной воде 0.8 sigma^-3 (4500 бидов) вокруг заплатки из 400 липидов с 2-бидовыми хвостами, seed 31, kT из data/params.json, с ходом по площади при НУЛЕВОМ натяжении (Метрополис, 10 попыток на 500 шагов МД, окно из 150 отсчётов, критерий осёдлости по дрейфу блочных средних ln A). Площадь здесь ИЗМЕРЕНА, а не задана построением — до задачи 'hydrophobic-asymmetry' в воде она была допущением 1.3 sigma^2, и заплатка тогда давала 12.2-12.4 sigma при коридоре 4-6 (broth-composition-report.md §4, water-calibration-report.md). Ранг C, а НЕ A: коридор литературный (ранг A), но само число получено в среде, чьи отношения глубин пар взяты из чужого силового поля и на этом дереве не калиброваны (ранг C), а множитель epsilonScale=1.0 несёт ранг D.",
+      "provenance": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-20T11:49:04.548Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 450 отсчётов, дрейф ln A -3.424e-6 (t=-0.73)"
+    },
+    {
+      "id": "bilayer-thickness-water",
+      "title": "Толщина бислоя В ЯВНОЙ ВОДЕ",
+      "value": 4.531146746561193,
+      "target": {
+        "min": 4,
+        "max": 6
+      },
+      "unit": "sigma",
+      "rank": "C",
+      "verdict": "passed",
+      "source": "коридор — Cooke & Deserno 2005, arXiv:cond-mat/0509218; среда — martini_v2.1.itp (Marrink et al., J. Phys. Chem. B 2007, 111, 7812); задача 'hydrophobic-asymmetry', перезамерено задачей 'final-campaign' §3",
+      "conditions": "по максимумам плотности головных бидов, в ТОМ ЖЕ прогоне, что и area-per-lipid-water (те же 400 липидов, та же вода 0.8 sigma^-3, тот же ход по площади). Диагностика того же прогона публикуется рядом: доля закопанных голов и число водяных бидов в ядре — именно они, а не толщина, показали механизм предыдущего провала (закапывание голов 0.40-0.49 при отсутствии латеральной когезии листка). Ранг C по той же причине, что у area-per-lipid-water.",
+      "provenance": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-20T11:49:04.548Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 450 отсчётов, дрейф ln A -3.424e-6 (t=-0.73)"
+    },
+    {
+      "id": "vesicle-closure-water",
+      "title": "Замкнутость: ИНКАПСУЛИРОВАННАЯ ВОДА против порога",
+      "value": 0,
+      "target": {
+        "min": 1
+      },
+      "unit": "доля порога",
+      "rank": "B",
+      "verdict": "failed",
+      "source": "критерий: замкнутая везикула обязана удерживать растворитель, недостижимый для объёма извне — периодическая заливка снаружи, soup/src/water-closure.ts (методика проверена задачей 'periodic-measurement'). Порог ВЫЧИСЛЯЕТСЯ на том же снимке: минимальный замкнутый объём 370.8656 sigma^3 (эти же ворота closure, выведен из ИЗМЕРЕННОЙ толщины бислоя — ворота bilayer-thickness, ранг A) умноженный на ИЗМЕРЕННУЮ на том же снимке объёмную числовую плотность воды. final-campaign-report.md §7.1",
+      "conditions": "Публикуется как ОТНОШЕНИЕ измеренного числа инкапсулированных водяных бидов к порогу, потому что сам порог пересчитывается на каждом снимке из живой объёмной плотности (замерено 317.1-320.9 бида по ходу кампании) — фиксированного числа в этом файле для него быть не может. Ранг B (посчитано): порог выведен из ворот ранга A через геометрию, а не импортирован. ЭТИ ВОРОТА ПРОВАЛЕНЫ, и это главный отрицательный результат проекта: инкапсулированной воды РОВНО НОЛЬ на всех снимках кампании, где периодический центр агрегата надёжен, closed=false везде. Отдельно и честно: на 9 из 15 влажных снимков water-closure.ts ОТКАЗЫВАЕТСЯ отвечать (центр не надёжен, когда протяжённость объекта сравнима с боксом) — сам отказ является независимым индикатором того же факта, что измеряют ворота aggregate-percolation.",
+      "provenance": "verify/out/gates-campaign-trace.json (tests/continuous-run-audit.test.ts, off-GPU по чекпойнтам кампании, измерено 2026-08-20T11:49:36.036Z), шаг 113400: инкапсулировано 0 водяных бидов против порога 320.891 (объёмная плотность воды 0.8652 sigma^-3 x минимальный замкнутый объём 370.8656 sigma^3), closed=false; таких снимков с надёжным центром 3 из 5 влажных, и на КАЖДОМ инкапсулировано 0"
+    },
+    {
+      "id": "aggregate-percolation",
+      "title": "Крупнейший агрегат — КОНЕЧНЫЙ объект, а не сетка через весь бокс",
+      "value": 3,
+      "target": {
+        "max": 0
+      },
+      "unit": "осей из 3",
+      "rank": "B",
+      "verdict": "failed",
+      "source": "стандартный критерий обёртывающего кластера: агрегат реплицируется один раз вдоль оси на +L с этой осью, сделанной открытой, пары соединяются по ТОМУ ЖЕ радиусу связности, что и везде в проекте, и спрашивается, попала ли частица в одну компоненту со своим собственным образом. Порог не вводится: у конечного объекта таких осей 0 ПО ОПРЕДЕЛЕНИЮ. tests/percolation-check.test.ts, final-campaign-report.md §6",
+      "conditions": "Ранг B (посчитано из собственных величин проекта, без импортированной константы). ЭТИ ВОРОТА ПРОВАЛЕНЫ, и это НАЙДЕННОЕ СВЯЗЫВАЮЩЕЕ ОГРАНИЧЕНИЕ проекта: объект обёртывает бокс по 3 осям из 3 и касается всех 19 из 19 слоёв шириной радиуса связности по каждой оси, на всех 5 влажных снимках, охватывающих 135000 осевших шагов. У объекта, протянутого через периодический бокс, нет ни «внутри», ни «снаружи» — замкнуть он не может ничего, каким бы большим ни был. Инструмент различает: на трёх независимых системах, которые проект называет конечными стержнями (решающий прогон на шагах 41400 и 174400, плечо A), он даёт 0 осей из 3, а его собственный внутренний контроль (заведомо компактное подмножество в один слой) не обёртывает ни на одном снимке.",
+      "provenance": "verify/out/gates-percolation.json (tests/percolation-check.test.ts, off-GPU по чекпойнтам кампании, измерено 2026-08-20T11:49:38.531Z): 3 снимков кампании, обёртывающих осей 3/3/3, слоёв затронуто 19/19/19/19 на шаге 41400; контроли (объекты, которые проект называет конечными): dec54-step174400.json=0, dec54-step41400.json=0"
+    },
+    {
+      "id": "vesicle-verdict",
+      "title": "ИТОГ ПРОЕКТА: самособранная ЗАМКНУТАЯ везикула",
+      "value": 0,
+      "target": {
+        "min": 1
+      },
+      "unit": "агрегатов",
+      "rank": "A",
+      "verdict": "failed",
+      "source": "измерено собственным распознавателем стадии (soup/src/aggregates.ts hasVesicleAggregate: замкнутость по инкапсулированной воде И два радиальных слоя голов И полость не меньше 370.8656 sigma^3) на каждом снимке всех кампаний; последняя и самая крупная — бокс 54 sigma, N=191778, 176400 шагов, жидкая вода 0.79999 sigma^-3, одно событие высушивания. final-campaign-report.md §0, §7, §8",
+      "conditions": "ПРОВАЛЕНО: ни одного везикулярного агрегата ни на одном снимке ни одной кампании. Связывающее ограничение названо по имени и это НЕ то, что останавливало предыдущие прогоны: подача (2.10x над порогом) и РАЗМЕР агрегата (2087.2 против порога 1004, то есть 2.08x НАД ним, впервые в проекте) сняты замером, краевая энергия при этом размере тоже снята (0.583 kT на молекулу против порога конкурентоспособности ~1 kT). Останавливает СВЯЗНОСТЬ — ворота aggregate-percolation: объект обёртывает бокс по всем трём осям. Всё остальное ниже по течению: радиальных слоёв голов 1 вместо 2 (то есть стенки бислоя нет вовсе), полость 50.5 +- 1.6 sigma^3 против 370.8656 (в 7.3 раза меньше), плоскостность 0.65-0.81 против <= 0.35 для ламеллярного объекта.",
+      "provenance": "verify/out/gates-campaign-trace.json (измерено 2026-08-20T11:49:36.036Z): 5 снимков, hasVesicleAggregate=false на всех; последний влажный снимок — шаг 176400, агрегатов 2, крупнейший 2077 амфифилов, радиальных слоёв голов 1, полость 53.25 sigma^3 против порога 370.8656 sigma^3"
+    },
+    {
+      "id": "chain-length-asf",
+      "title": "Распределение длин цепей: согласие с ASF (ворота 2 спецификации)",
+      "value": 0.1518624641833809,
+      "target": {},
+      "unit": "-",
+      "rank": "D",
+      "verdict": "unproven",
+      "source": "рамка Андерсона-Шульца-Флори для роста цепей на катализаторе: van der Laan & Beenackers, Kinetics and selectivity of the Fischer-Tropsch synthesis: a literature review, Catal. Rev. Sci. Eng. 41 (1999) 255-318; спецификация раздел 8, ворота 2. Реализация — soup/src/equilibrium.ts (asfPrediction, recoverAlphaFromChainLengths)",
+      "conditions": "Публикуемое число — относительное расхождение ASF-среднего 1/(1-alpha_ev), посчитанного из СОБЫТИЙНОГО отношения alpha_ev = cc_bond/(cc_bond+co_bond) без единого подогнанного параметра, с ИЗМЕРЕННЫМ средним числом бидов на хвост. Рядом публикуются оба alpha: событийное и восстановленное из самой гистограммы длин (recoverAlphaFromChainLengths) вместе с r^2 её лог-линейной подгонки — две независимые оценки одной величины. НЕДОКАЗАНО, и причина названа прямо: спецификация формулирует критерий этих ворот как «расхождение гистограмм», не давая числового коридора, и независимого литературного коридора для alpha ИМЕННО ЭТОЙ системы не существует — поэтому ворота несут ранг D и по правилу 1 verify/gates.ts выходят недоказанными при любом значении. Форма распределения при этом геометрическая, что и есть подпись ASF.",
+      "provenance": "verify/out/gates-campaign-trace.json (измерено 2026-08-20T11:49:36.036Z), шаг 176400: alpha_ev=0.7513, ASF-среднее 1/(1-alpha_ev)=4.02, измеренное среднее на хвост=3.49, alpha восстановленное из гистограммы=0.7732 (r^2=0.928)"
+    },
+    {
+      "id": "mean-tail-length",
+      "title": "Среднее число бидов на хвост",
+      "value": 3.49,
+      "target": {
+        "min": 2,
+        "max": 3
+      },
+      "unit": "бидов",
+      "rank": "D",
+      "verdict": "unproven",
+      "source": "наше отображение «число атомов углерода -> число бидов» (спецификация раздел 4: C8 -> 2, C12 -> 3, C16 -> 4), то есть окно 2-3 бида отвечает диапазону C8-C12; сами ворота отображения — chain-to-bead-mapping, ранг D",
+      "conditions": "Ранг D и, следовательно, НЕДОКАЗАНО по правилу 1 verify/gates.ts, ровно как и ворота chain-to-bead-mapping, через которые это отображение только и принимается (через ворота площади и толщины, а не напрямую). Число публикуется потому, что оно измерено, и потому что честнее показать его вместе с окном, чем прятать: если бы это отображение несло независимый коридор, значение ВЫШЕ 3 читалось бы как провал. В кампании длина хвоста растёт ПО ХОДУ прогона при неизменном составе (замерено 2.845 -> 3.490 на 135000 шагах), то есть это не одна цифра, а тренд, и разделить «второй хвост» и «длину хвоста» составом в этой модели нельзя — голова здесь и есть терминатор цепи.",
+      "provenance": "verify/out/gates-campaign-trace.json (измерено 2026-08-20T11:49:36.036Z), шаг 176400: alpha_ev=0.7513, ASF-среднее 1/(1-alpha_ev)=4.02, измеренное среднее на хвост=3.49, alpha восстановленное из гистограммы=0.7732 (r^2=0.928)"
+    },
+    {
       "id": "closure",
       "title": "Замкнутая полость",
       "value": 1284.875,
       "target": {
-        "min": 1
+        "min": 370.8656
       },
       "unit": "sigma^3",
       "rank": "D",
       "verdict": "unproven",
       "source": "детектор заливкой снаружи проверен на синтетической тестовой оболочке (шар из бидов, построенный вручную в verify/run.ts) — движок ЕЩЁ НЕ ПОКАЗАЛ самособранную замкнутую везикулу; спецификация раздел 7",
-      "conditions": "сетка 0.5 sigma, радиус бида 0.6 sigma; значение — полость СИНТЕТИЧЕСКОЙ проверочной оболочки самого детектора, а не измеренный объём мембраны"
+      "conditions": "сетка 0.5 sigma, радиус бида 0.6 sigma. ИСПРАВЛЕНО (было min:1): 1 читался как «есть хоть одна незалитая ячейка сетки» — техническая проверка самого флуд-фила, не физический критерий везикулы. Живой прогон (36000 шагов, стандартный бульон, 548 распознанных амфифилов) дал enclosedVolume=1.1250 — при cell=0.5σ это ровно 9 ячеек (1.125/0.5³=9), карман между несколькими бидами, а не внутренность мембраны, и старый порог 1 объявил его везикулой. Новый порог — объём шара радиусом, ПРЕВЫШАЮЩИМ измеренную в этом же кодовом дереве толщину бислоя t≈4.457σ (verify/out/gates.json, гейт bilayer-thickness, Cooke & Deserno 2005 калибровка, см. также data/soup.json's startBasis): полость меньше такого шара физически не может быть внутренностью везикулы, потому что сама мембрана, которая должна её огибать, толще этой полости. min = (4/3)·π·t³ = (4/3)·π·4.457³ ≈ 370.8656 σ³ — примерно в 330 раз больше девяти ячеек, которые старый порог принял за везикулу. Тот же порог обязан использовать data/soup.json's stageThresholds.enclosedVolume (лестница стадий); soup/src/stages.ts's loadStageThresholds() читает это значение из ДАННОГО файла и бросает ошибку, если числа расходятся, а не полагается на две вручную синхронизируемые копии. Ранг D сохранён — это физически обоснованный порог самого детектора, а не измеренное свойство самособранной везикулы (см. verify/gates.ts's правило 1)."
     },
     {
       "id": "chain-to-bead-mapping",
@@ -74,23 +173,30 @@
     }
   ],
   "metrics": {
-    "areaPerLipid": 1.2089337655267967,
-    "thickness": 4.456531927526974,
+    "areaPerLipid": 1.200976496918188,
+    "thickness": 4.492471522285122,
     "enclosedVolume": 1284.875,
-    "chainToBeadMapping": 3
+    "chainToBeadMapping": 3,
+    "areaPerLipidWater": 1.1596934665224978,
+    "thicknessWater": 4.531146746561193,
+    "encapsulatedWaterOverThreshold": 0,
+    "meanPerTail": 3.49,
+    "asfMeanRelativeDeviation": 0.1518624641833809,
+    "vesicleAggregates": 0,
+    "wrappingAxes": 3
   },
   "performance": {
-    "stepsPerSecond": 3627.328291345048,
+    "stepsPerSecond": 3252.1382809134006,
     "beads": 3600,
-    "neighborBuildMs": 0.4000000059604645,
+    "neighborBuildMs": 0.800000011920929,
     "scenario": "lipids=1200 (3600 бидов), box=[28,28,28], layout=bilayer, 20000 шагов"
   },
   "bilayer": {
-    "areaPerLipidMin": 1.18373439320831,
-    "areaPerLipidMax": 1.2338896775517842,
-    "lnADriftPerMove": 0.0000708124442519208,
-    "lnADriftT": 5.329122176792408,
-    "acceptedFraction": 0.29,
+    "areaPerLipidMin": 1.1870803289687417,
+    "areaPerLipidMax": 1.22041975966877,
+    "lnADriftPerMove": 0.00000839602739577354,
+    "lnADriftT": 0.8539153574420492,
+    "acceptedFraction": 0.285,
     "escapedMax": 0,
     "samples": 400,
     "steps": 83000
@@ -101,15 +207,15 @@
   },
   "kappa": {
     "gate": "bending-modulus-kappa",
-    "runId": "0f8c0185-036e-4af0-8a76-5fceb533cbcd",
-    "generatedAt": "2026-08-16T02:31:30.056Z",
+    "runId": "ff1ed507-7dd8-42e1-9674-3fa597a6a260",
+    "generatedAt": "2026-08-20T11:49:51.254Z",
     "valid": false,
     "kappa": null,
-    "slope": -1.5272824904915183,
+    "slope": -1.0562447794938419,
     "fitModes": 20,
     "fitShells": 4,
-    "qMax": 0.18024874050534165,
-    "ceilingQMax": 0.644877498605862,
+    "qMax": 0.18034958584742974,
+    "ceilingQMax": 0.645238293870059,
     "literatureRange": [
       5,
       50
@@ -128,252 +234,440 @@
     },
     "samples": 200,
     "stepsPerSample": 100,
-    "wallClockMs": 135659,
+    "wallClockMs": 145147,
     "noiseFloor": {
       "predictedOldAllBeads32x32": {
         "meanBeadsPerColumn": 29.296875,
-        "meanColumnVariance": 2.4694057502906888,
-        "predictedFloor": 0.00008231352500968962
+        "meanColumnVariance": 2.4359280434529293,
+        "predictedFloor": 0.00008119760144843098
       },
       "predictedNewTailEndSameGrid": {
         "meanBeadsPerColumn": 39.0625,
-        "meanColumnVariance": 0.4609480807979097,
-        "predictedFloor": 0.00004609480807979097
+        "meanColumnVariance": 0.4271504170248777,
+        "predictedFloor": 0.00004271504170248777
       }
     },
     "spectrumTable": [
       {
-        "q": 0.08061,
+        "q": 0.080655,
         "degeneracy": 4,
-        "mean": 0.024861974941677252,
-        "degenerateSpreadSd": 0.007350181098084302,
-        "degenerateSpreadRel": 0.2956394701276471,
+        "mean": 0.019611037964911586,
+        "degenerateSpreadSd": 0.010165136291487704,
+        "degenerateSpreadRel": 0.5183374949186955,
         "inFitWindow": true
       },
       {
-        "q": 0.113999,
+        "q": 0.114063,
         "degeneracy": 4,
-        "mean": 0.026674470585757233,
-        "degenerateSpreadSd": 0.004195047649293838,
-        "degenerateSpreadRel": 0.1572682627685879,
+        "mean": 0.02500398612341803,
+        "degenerateSpreadSd": 0.0031917803166537136,
+        "degenerateSpreadRel": 0.12765085938295181,
         "inFitWindow": true
       },
       {
-        "q": 0.161219,
+        "q": 0.16131,
         "degeneracy": 4,
-        "mean": 0.017371672228278442,
-        "degenerateSpreadSd": 0.007156278243728848,
-        "degenerateSpreadRel": 0.41195102864533184,
+        "mean": 0.025401515999196607,
+        "degenerateSpreadSd": 0.0016769319490840436,
+        "degenerateSpreadRel": 0.06601700265201027,
         "inFitWindow": true
       },
       {
-        "q": 0.180249,
+        "q": 0.18035,
         "degeneracy": 8,
-        "mean": 0.007519978469135413,
-        "degenerateSpreadSd": 0.0027672572681269087,
-        "degenerateSpreadRel": 0.3679873924486204,
+        "mean": 0.007052675817637082,
+        "degenerateSpreadSd": 0.002271728462809234,
+        "degenerateSpreadRel": 0.32210873171402205,
         "inFitWindow": false
       },
       {
-        "q": 0.227999,
+        "q": 0.228126,
         "degeneracy": 4,
-        "mean": 0.01096911163831306,
-        "degenerateSpreadSd": 0.004649613587710869,
-        "degenerateSpreadRel": 0.4238824201105435,
+        "mean": 0.0032690652642240964,
+        "degenerateSpreadSd": 0.0022741633940783473,
+        "degenerateSpreadRel": 0.6956616678676538,
         "inFitWindow": false
       },
       {
-        "q": 0.241829,
+        "q": 0.241964,
         "degeneracy": 4,
-        "mean": 0.004011599270145738,
-        "degenerateSpreadSd": 0.0002073657769625255,
-        "degenerateSpreadRel": 0.051691548182725665,
+        "mean": 0.0046395845233255925,
+        "degenerateSpreadSd": 0.003324913080318614,
+        "degenerateSpreadRel": 0.7166402645759669,
         "inFitWindow": false
       },
       {
-        "q": 0.25491,
+        "q": 0.255053,
         "degeneracy": 8,
-        "mean": 0.003054877860233554,
-        "degenerateSpreadSd": 0.002497361698389933,
-        "degenerateSpreadRel": 0.8174996882523489,
+        "mean": 0.002094013867415892,
+        "degenerateSpreadSd": 0.001106132341648,
+        "degenerateSpreadRel": 0.5282354424008745,
         "inFitWindow": false
       },
       {
-        "q": 0.290642,
+        "q": 0.290805,
         "degeneracy": 8,
-        "mean": 0.0029941487041359846,
-        "degenerateSpreadSd": 0.0006874276555694058,
-        "degenerateSpreadRel": 0.2295903522159149,
+        "mean": 0.002370357744072425,
+        "degenerateSpreadSd": 0.001363300968506567,
+        "degenerateSpreadRel": 0.5751456597282778,
         "inFitWindow": false
       },
       {
-        "q": 0.322439,
+        "q": 0.322619,
         "degeneracy": 4,
-        "mean": 0.0021285643733185804,
-        "degenerateSpreadSd": 0.0014155581672913764,
-        "degenerateSpreadRel": 0.6650295311879257,
+        "mean": 0.00045466341709668456,
+        "degenerateSpreadSd": 0.00021519357401045245,
+        "degenerateSpreadRel": 0.4733030323499534,
         "inFitWindow": false
       },
       {
-        "q": 0.332362,
+        "q": 0.332548,
         "degeneracy": 8,
-        "mean": 0.001154355647236096,
-        "degenerateSpreadSd": 0.00042130067159185867,
-        "degenerateSpreadRel": 0.36496609394218316,
+        "mean": 0.0009597754594087532,
+        "degenerateSpreadSd": 0.0006617511539825772,
+        "degenerateSpreadRel": 0.6894853869156367,
         "inFitWindow": false
       },
       {
-        "q": 0.341998,
+        "q": 0.342189,
         "degeneracy": 4,
-        "mean": 0.001195892444356845,
-        "degenerateSpreadSd": 0.0002772739978098929,
-        "degenerateSpreadRel": 0.23185529695273874,
+        "mean": 0.000598625256689534,
+        "degenerateSpreadSd": 0.000040570935925751965,
+        "degenerateSpreadRel": 0.06777351184631579,
         "inFitWindow": false
       },
       {
-        "q": 0.360497,
+        "q": 0.360699,
         "degeneracy": 8,
-        "mean": 0.0004765084131732626,
-        "degenerateSpreadSd": 0.00009305496959719475,
-        "degenerateSpreadRel": 0.19528505064056267,
+        "mean": 0.000690392538153131,
+        "degenerateSpreadSd": 0.0003095795881256527,
+        "degenerateSpreadRel": 0.4484109705962481,
         "inFitWindow": false
       },
       {
-        "q": 0.403048,
+        "q": 0.403274,
         "degeneracy": 12,
-        "mean": 0.00037831981710023535,
-        "degenerateSpreadSd": 0.00008864271168722773,
-        "degenerateSpreadRel": 0.2343062871161781,
+        "mean": 0.00047957263103458954,
+        "degenerateSpreadSd": 0.0001598194171157543,
+        "degenerateSpreadRel": 0.3332538322109278,
         "inFitWindow": false
       },
       {
-        "q": 0.41103,
+        "q": 0.41126,
         "degeneracy": 8,
-        "mean": 0.0004451456545674494,
-        "degenerateSpreadSd": 0.00021207234570517447,
-        "degenerateSpreadRel": 0.47641113314078376,
+        "mean": 0.0003512750568918866,
+        "degenerateSpreadSd": 0.00017841076416145603,
+        "degenerateSpreadRel": 0.507894769813862,
         "inFitWindow": false
       },
       {
-        "q": 0.434096,
+        "q": 0.434339,
         "degeneracy": 8,
-        "mean": 0.00028584649750609413,
-        "degenerateSpreadSd": 0.00005857869658890412,
-        "degenerateSpreadRel": 0.20493060821098655,
+        "mean": 0.0003823562651725454,
+        "degenerateSpreadSd": 0.00004425971141932927,
+        "degenerateSpreadRel": 0.11575516200671183,
         "inFitWindow": false
       },
       {
-        "q": 0.455997,
+        "q": 0.456252,
         "degeneracy": 4,
-        "mean": 0.00023604971598811017,
-        "degenerateSpreadSd": 0.00003504944025400886,
-        "degenerateSpreadRel": 0.14848329771247978,
+        "mean": 0.00025010884143031434,
+        "degenerateSpreadSd": 0.000012300904946628579,
+        "degenerateSpreadRel": 0.04918220753925596,
         "inFitWindow": false
       },
       {
-        "q": 0.470031,
+        "q": 0.470294,
         "degeneracy": 8,
-        "mean": 0.0002444140640701259,
-        "degenerateSpreadSd": 0.00005268346355180429,
-        "degenerateSpreadRel": 0.21555004926675841,
+        "mean": 0.0002412551834290214,
+        "degenerateSpreadSd": 0.00005585564315706658,
+        "degenerateSpreadRel": 0.2315210076035511,
         "inFitWindow": false
       },
       {
-        "q": 0.483658,
+        "q": 0.483929,
         "degeneracy": 4,
-        "mean": 0.00028885600233175966,
-        "degenerateSpreadSd": 0.000002161633009164761,
-        "degenerateSpreadRel": 0.007483427700013869,
+        "mean": 0.00020271391559859633,
+        "degenerateSpreadSd": 0.000028339334366782147,
+        "degenerateSpreadRel": 0.1397996495854692,
         "inFitWindow": false
       },
       {
-        "q": 0.49033,
+        "q": 0.490604,
         "degeneracy": 8,
-        "mean": 0.00020451975512118494,
-        "degenerateSpreadSd": 0.00007213367776566249,
-        "degenerateSpreadRel": 0.3526978492758356,
+        "mean": 0.0002356456013489049,
+        "degenerateSpreadSd": 0.00006572071125821541,
+        "degenerateSpreadRel": 0.278896405797565,
         "inFitWindow": false
       },
       {
-        "q": 0.50982,
+        "q": 0.510106,
         "degeneracy": 8,
-        "mean": 0.00018689600093351618,
-        "degenerateSpreadSd": 0.00004034454466352663,
-        "degenerateSpreadRel": 0.21586628104406708,
+        "mean": 0.00021435482903492203,
+        "degenerateSpreadSd": 0.00002617798898249667,
+        "degenerateSpreadRel": 0.12212455907971093,
         "inFitWindow": false
       },
       {
-        "q": 0.516154,
+        "q": 0.516443,
         "degeneracy": 8,
-        "mean": 0.00019326739672007823,
-        "degenerateSpreadSd": 0.0000503123785709963,
-        "degenerateSpreadRel": 0.26032522517942847,
+        "mean": 0.0001875450128743234,
+        "degenerateSpreadSd": 0.00007342418246507916,
+        "degenerateSpreadRel": 0.39150165253544633,
         "inFitWindow": false
       },
       {
-        "q": 0.540746,
+        "q": 0.541049,
         "degeneracy": 8,
-        "mean": 0.00017505570439210204,
-        "degenerateSpreadSd": 0.0000478078707789757,
-        "degenerateSpreadRel": 0.2731009020528247,
+        "mean": 0.00018077730632763857,
+        "degenerateSpreadSd": 0.00002105557156988806,
+        "degenerateSpreadRel": 0.11647242675320761,
         "inFitWindow": false
       },
       {
-        "q": 0.564268,
+        "q": 0.564584,
         "degeneracy": 4,
-        "mean": 0.00011452784179117582,
-        "degenerateSpreadSd": 0.0000043068439617623285,
-        "degenerateSpreadRel": 0.037605213670359794,
+        "mean": 0.00011910664237257642,
+        "degenerateSpreadSd": 0.000014572206610036787,
+        "degenerateSpreadRel": 0.12234587693651541,
         "inFitWindow": false
       },
       {
-        "q": 0.569997,
+        "q": 0.570315,
         "degeneracy": 12,
-        "mean": 0.00013709838139351366,
-        "degenerateSpreadSd": 0.000027132709046016383,
-        "degenerateSpreadRel": 0.19790685178213252,
+        "mean": 0.00012898371457767288,
+        "degenerateSpreadSd": 0.00002293093407696857,
+        "degenerateSpreadRel": 0.1777816226804335,
         "inFitWindow": false
       },
       {
-        "q": 0.581285,
+        "q": 0.58161,
         "degeneracy": 8,
-        "mean": 0.00009758471729490309,
-        "degenerateSpreadSd": 0.000015823573438952,
-        "degenerateSpreadRel": 0.1621521676507278,
+        "mean": 0.00012992531504282928,
+        "degenerateSpreadSd": 0.000015084070646178259,
+        "degenerateSpreadRel": 0.1160980109319409,
         "inFitWindow": false
       },
       {
-        "q": 0.586847,
+        "q": 0.587176,
         "degeneracy": 8,
-        "mean": 0.00014490519857994748,
-        "degenerateSpreadSd": 0.00001940563703974605,
-        "degenerateSpreadRel": 0.13391953656541536,
+        "mean": 0.0001169062677099839,
+        "degenerateSpreadSd": 0.000012029450660248983,
+        "degenerateSpreadRel": 0.10289825255640812,
         "inFitWindow": false
       },
       {
-        "q": 0.613905,
+        "q": 0.614249,
         "degeneracy": 8,
-        "mean": 0.0001077196351528186,
-        "degenerateSpreadSd": 0.000017038314458896505,
-        "degenerateSpreadRel": 0.15817278284246658,
+        "mean": 0.00009960074622986361,
+        "degenerateSpreadSd": 0.000003039107370227117,
+        "degenerateSpreadRel": 0.030512897596302265,
         "inFitWindow": false
       },
       {
-        "q": 0.629582,
+        "q": 0.629934,
         "degeneracy": 8,
-        "mean": 0.00008067021712399459,
-        "degenerateSpreadSd": 0.000016785847195572514,
-        "degenerateSpreadRel": 0.2080798564081182,
+        "mean": 0.0001061589368893869,
+        "degenerateSpreadSd": 0.000011000067035565465,
+        "degenerateSpreadRel": 0.10361885073347209,
         "inFitWindow": false
       },
       {
-        "q": 0.644877,
+        "q": 0.645238,
         "degeneracy": 4,
-        "mean": 0.00010397069718631101,
-        "degenerateSpreadSd": 0.0000032837533519989835,
-        "degenerateSpreadRel": 0.0315834503457704,
+        "mean": 0.00016086059617765648,
+        "degenerateSpreadSd": 0.000019172615134662336,
+        "degenerateSpreadRel": 0.11918776624132275,
         "inFitWindow": false
       }
     ]
+  },
+  "campaign": {
+    "detail": {
+      "waterBilayer": {
+        "measuredBy": "tests/water-bilayer-area-move.test.ts",
+        "generatedAt": "2026-08-20T11:49:04.547Z",
+        "lipids": 400,
+        "waterDensity": 0.8,
+        "totalWater": 4500,
+        "N": 5700,
+        "areaPerLipid": 1.1596934665224978,
+        "areaTailMin": 1.155819193269172,
+        "areaTailMax": 1.163680575861322,
+        "thickness": 4.531146746561193,
+        "settled": true,
+        "chunksUsed": 450,
+        "driftPerChunk": -0.000003423998011623868,
+        "driftT": -0.7315094477996765,
+        "clusterFraction": 1,
+        "waterInCore": 55,
+        "headBuriedFraction": 0.16076294277929154,
+        "acceptedFraction": 0.11422222222222222,
+        "trialsTotal": 4500,
+        "stepsPerSec": 1139.8384165058696,
+        "amphiphileCount": 367,
+        "events": {
+          "cc_bond": 0,
+          "cc_break": 0,
+          "co_bond": 0,
+          "co_break": 33
+        },
+        "corridors": {
+          "area": [
+            1.1,
+            1.5
+          ],
+          "thickness": [
+            4,
+            6
+          ]
+        },
+        "verdict": "passed"
+      },
+      "closure": {
+        "step": 113400,
+        "encapsulatedCount": 0,
+        "encapsulationThresholdCount": 320.8907983202498,
+        "closed": false,
+        "bulkWaterDensity": 0.865248214771739,
+        "closureVolumeThreshold": 370.8656,
+        "reportableWetCheckpoints": 3,
+        "wetCheckpoints": 5,
+        "thresholdRange": [
+          317.149099172973,
+          320.8907983202498
+        ]
+      },
+      "chainStatistics": {
+        "step": 176400,
+        "alphaEvent": 0.7513,
+        "asfMeanFromEventAlpha": 4.02,
+        "meanPerTail": 3.49,
+        "alphaRecovered": 0.7732,
+        "alphaRecoveredR2": 0.928,
+        "alphaAgreementRelative": 0.029149474244642662,
+        "meanPerTailFirstWet": 2.845
+      },
+      "verdict": {
+        "checkpoints": 5,
+        "wetCheckpoints": 5,
+        "lastStep": 176400,
+        "box": [
+          54,
+          54,
+          54
+        ],
+        "largestAmphiphiles": 2077,
+        "radialHeadShells": 1,
+        "cavityVolume": 53.25,
+        "cavityVolumeThreshold": 370.8656
+      },
+      "percolation": {
+        "campaign": [
+          {
+            "file": "data/checkpoints/zfB54/zfB54-step41400.json",
+            "step": 41400,
+            "box": 54,
+            "aggregates": 2,
+            "amphiphilesInLargest": 2211,
+            "particlesInLargest": 11842,
+            "wrapsX": true,
+            "wrapsY": true,
+            "wrapsZ": true,
+            "wrappingAxes": 3,
+            "slabsTouchedOfTotal": [
+              19,
+              19,
+              19,
+              19
+            ]
+          },
+          {
+            "file": "data/checkpoints/zfB54/zfB54-step113400.json",
+            "step": 113400,
+            "box": 54,
+            "aggregates": 2,
+            "amphiphilesInLargest": 2112,
+            "particlesInLargest": 13851,
+            "wrapsX": true,
+            "wrapsY": true,
+            "wrapsZ": true,
+            "wrappingAxes": 3,
+            "slabsTouchedOfTotal": [
+              19,
+              19,
+              19,
+              19
+            ]
+          },
+          {
+            "file": "data/checkpoints/zfB54/zfB54-step176400.json",
+            "step": 176400,
+            "box": 54,
+            "aggregates": 2,
+            "amphiphilesInLargest": 2077,
+            "particlesInLargest": 14265,
+            "wrapsX": true,
+            "wrapsY": true,
+            "wrapsZ": true,
+            "wrappingAxes": 3,
+            "slabsTouchedOfTotal": [
+              19,
+              19,
+              19,
+              19
+            ]
+          }
+        ],
+        "controls": [
+          {
+            "file": "data/checkpoints/dec54/dec54-step174400.json",
+            "step": 174400,
+            "box": 54,
+            "aggregates": 25,
+            "amphiphilesInLargest": 151,
+            "particlesInLargest": 596,
+            "wrapsX": false,
+            "wrapsY": false,
+            "wrapsZ": false,
+            "wrappingAxes": 0,
+            "slabsTouchedOfTotal": [
+              7,
+              7,
+              10,
+              19
+            ]
+          },
+          {
+            "file": "data/checkpoints/dec54/dec54-step41400.json",
+            "step": 41400,
+            "box": 54,
+            "aggregates": 22,
+            "amphiphilesInLargest": 200,
+            "particlesInLargest": 704,
+            "wrapsX": false,
+            "wrapsY": false,
+            "wrapsZ": false,
+            "wrappingAxes": 0,
+            "slabsTouchedOfTotal": [
+              12,
+              13,
+              12,
+              19
+            ]
+          }
+        ]
+      }
+    },
+    "provenance": {
+      "area-per-lipid-water": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-20T11:49:04.548Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 450 отсчётов, дрейф ln A -3.424e-6 (t=-0.73)",
+      "bilayer-thickness-water": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-20T11:49:04.548Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 450 отсчётов, дрейф ln A -3.424e-6 (t=-0.73)",
+      "vesicle-closure-water": "verify/out/gates-campaign-trace.json (tests/continuous-run-audit.test.ts, off-GPU по чекпойнтам кампании, измерено 2026-08-20T11:49:36.036Z), шаг 113400: инкапсулировано 0 водяных бидов против порога 320.891 (объёмная плотность воды 0.8652 sigma^-3 x минимальный замкнутый объём 370.8656 sigma^3), closed=false; таких снимков с надёжным центром 3 из 5 влажных, и на КАЖДОМ инкапсулировано 0",
+      "chain-length-asf": "verify/out/gates-campaign-trace.json (измерено 2026-08-20T11:49:36.036Z), шаг 176400: alpha_ev=0.7513, ASF-среднее 1/(1-alpha_ev)=4.02, измеренное среднее на хвост=3.49, alpha восстановленное из гистограммы=0.7732 (r^2=0.928)",
+      "mean-tail-length": "verify/out/gates-campaign-trace.json (измерено 2026-08-20T11:49:36.036Z), шаг 176400: alpha_ev=0.7513, ASF-среднее 1/(1-alpha_ev)=4.02, измеренное среднее на хвост=3.49, alpha восстановленное из гистограммы=0.7732 (r^2=0.928)",
+      "vesicle-verdict": "verify/out/gates-campaign-trace.json (измерено 2026-08-20T11:49:36.036Z): 5 снимков, hasVesicleAggregate=false на всех; последний влажный снимок — шаг 176400, агрегатов 2, крупнейший 2077 амфифилов, радиальных слоёв голов 1, полость 53.25 sigma^3 против порога 370.8656 sigma^3",
+      "aggregate-percolation": "verify/out/gates-percolation.json (tests/percolation-check.test.ts, off-GPU по чекпойнтам кампании, измерено 2026-08-20T11:49:38.531Z): 3 снимков кампании, обёртывающих осей 3/3/3, слоёв затронуто 19/19/19/19 на шаге 41400; контроли (объекты, которые проект называет конечными): dec54-step174400.json=0, dec54-step41400.json=0"
+    },
+    "notes": {}
   }
 }

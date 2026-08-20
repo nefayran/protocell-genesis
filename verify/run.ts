@@ -22,6 +22,7 @@ import { randomUUID } from 'node:crypto'
 import { execSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { gpuPage, shutdownGpu } from '../tests/helpers/gpu'
+import { collectCampaignGateInputs } from './campaign-gates'
 import { evaluateGates, type GateResult } from './gates'
 import { renderReport } from './report'
 
@@ -372,12 +373,23 @@ async function main() {
   // identically by both writers below -- one in-memory object, no intervening read from disk.
   const kappaArtifact = await runKappaScenario(runId, generatedAt)
 
+  // Task 'consolidation' (2026-08-20): the metrics this process measures ITSELF, in this run --
+  // the solvent-free bilayer gates, the flood-fill detector's own synthetic check object, and the
+  // chain-to-bead mapping. These four carry no `provenance` entry below precisely because their
+  // provenance is "this run".
   const metrics: Record<string, number> = {
     areaPerLipid: bilayer.areaPerLipid,
     thickness: bilayer.thickness,
     enclosedVolume: closure.volume,
     chainToBeadMapping: throughput.chainToBeadMapping,
   }
+  // ...and the metrics that cannot be measured inside one invocation of this pipeline (the
+  // explicit-water patch, and everything that is a property of the box-54 campaign). Read from the
+  // artifacts their own measuring code wrote, each stamped with that artifact's own mtime; a
+  // MISSING artifact contributes no metric, so its gate comes out `unproven` with a reason instead
+  // of carrying a stale number. See verify/campaign-gates.ts's header.
+  const campaign = collectCampaignGateInputs()
+  for (const [k, v] of Object.entries(campaign.metrics)) metrics[k] = v
   // bendingModulus is intentionally OMITTED rather than set to NaN/null when this run's own fit is
   // invalid: evaluateGates already treats an absent metric as unproven with value:null, which is
   // exactly the honest outcome here -- no valid measurement exists to report, so none is smuggled
@@ -386,7 +398,7 @@ async function main() {
     metrics.bendingModulus = kappaArtifact.kappa
   }
 
-  const results: GateResult[] = evaluateGates(metrics)
+  const results: GateResult[] = evaluateGates(metrics, { provenance: campaign.provenance, notes: campaign.notes })
 
   const performance = {
     stepsPerSecond: throughput.stepsPerSecond,
@@ -414,6 +426,10 @@ async function main() {
     },
     closure,
     kappa: kappaArtifact,
+    // Everything needed to CHECK the campaign-sourced rows above rather than take them on trust:
+    // the raw encapsulated-water count and the threshold it is a ratio of, both alpha estimates,
+    // the percolation rows including their must-say-no controls, and which artifact each came from.
+    campaign: { detail: campaign.detail, provenance: campaign.provenance, notes: campaign.notes },
   }
 
   // All three artifacts written from the SAME in-memory values (kappaArtifact, results, closure,

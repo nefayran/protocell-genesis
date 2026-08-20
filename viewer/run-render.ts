@@ -158,6 +158,18 @@ export function createRunRenderer(
   // production feature.
   const sceneDebug: SceneDebugHooks = {
     renderedFrameCount: 0,
+    // See SceneDebugHooks.instanceCounts' own doc comment (run-types.ts) for why this exists: it is
+    // the only ground truth for "which species is actually drawn", read straight off the meshes
+    // draw() writes rather than recomputed from a snapshot.
+    instanceCounts() {
+      const out: Record<string, { count: number; visible: boolean; capacity: number }> = {}
+      const meshes = runtime.meshes
+      if (!meshes) return out
+      for (const [id, mesh] of Object.entries(meshes.monomerMesh)) {
+        out[id] = { count: mesh.count, visible: mesh.visible, capacity: mesh.instanceMatrix.count }
+      }
+      return out
+    },
     setCameraOrbit(distanceScale, thetaDeg, phiDeg) {
       const box = runtime.box
       const center = new THREE.Vector3(box[0] / 2, box[1] / 2, box[2] / 2)

@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
 import { afterAll, expect, test } from 'vitest'
 import literature from '../data/literature.json'
 import { gpuPage, shutdownGpu } from './helpers/gpu'
@@ -26,6 +28,9 @@ const AREA_MAX = literature.gates.find((g) => g.id === 'area-per-lipid')!.target
 const THICKNESS_MIN = literature.gates.find((g) => g.id === 'bilayer-thickness')!.target.min!
 const THICKNESS_MAX = literature.gates.find((g) => g.id === 'bilayer-thickness')!.target.max!
 const AREA_START = (AREA_MIN + AREA_MAX) / 2
+/** Where this measurement is published for the gate table -- see the writeFileSync call below.
+ * Overridable so a scratch re-measurement can never overwrite the committed one by accident. */
+const ARTIFACT = process.env.WATER_BILAYER_ARTIFACT ?? 'verify/out/water-bilayer-area-move.json'
 // Sampling schedule. The area coordinate is not read at one instant: it is SAMPLED (one reading per
 // chunk) and judged on a window, exactly as tests/gate6-bilayer.test.ts judges the solvent-free
 // gate's own area move -- reading a Metropolis coordinate once is reading its wander, not its
@@ -413,6 +418,50 @@ test(
         `throughput=${result.stepsPerSec.toFixed(2)} steps/s at N=${result.N} ` +
         `verdict=${result.settled && inArea && inThickness ? 'passed' : 'FAILED'}`,
     )
+
+    // Task 'consolidation' (2026-08-20): this measurement is one of the two explicit-water rows the
+    // published gate table now carries, and verify/run.ts cannot re-take it inside one invocation
+    // (152 000 steps at N = 5700, and this file's settle protocol must not be forked). So it is
+    // written as an artifact, at a path this test is the ONLY writer of, and verify/campaign-gates.ts
+    // reads it with its own mtime as the provenance stamp -- if the file is absent, both gates
+    // publish as `unproven` with a reason rather than carrying an old number. Written BEFORE the
+    // assertions below on purpose: a run that measured honestly and then failed a bound must still
+    // leave its numbers on disk for the gate table to publish as the failure it is.
+    mkdirSync(dirname(ARTIFACT), { recursive: true })
+    writeFileSync(
+      ARTIFACT,
+      JSON.stringify(
+        {
+          measuredBy: 'tests/water-bilayer-area-move.test.ts',
+          generatedAt: new Date().toISOString(),
+          lipids: 400,
+          waterDensity: 0.8,
+          totalWater: result.totalWater,
+          N: result.N,
+          areaPerLipid: result.tailMean,
+          areaTailMin: result.tailMin,
+          areaTailMax: result.tailMax,
+          thickness: result.thickness,
+          settled: result.settled,
+          chunksUsed: result.chunksUsed,
+          driftPerChunk: result.driftPerChunk,
+          driftT: result.driftT,
+          clusterFraction: result.clusterFraction,
+          waterInCore: result.waterInCore,
+          headBuriedFraction: result.headBuriedFraction,
+          acceptedFraction: result.acceptedFraction,
+          trialsTotal: result.trialsTotal,
+          stepsPerSec: result.stepsPerSec,
+          amphiphileCount: result.amphiphileCount,
+          events: result.events,
+          corridors: { area: [AREA_MIN, AREA_MAX], thickness: [THICKNESS_MIN, THICKNESS_MAX] },
+          verdict: result.settled && inArea && inThickness ? 'passed' : 'FAILED',
+        },
+        null,
+        2,
+      ),
+    )
+    console.log(`WATER-BILAYER-AREAMOVE WROTE ${ARTIFACT}`)
 
     expect(result.meanTail).toBe(2)
     // Recognised-lipid count falls slowly over a run this long (372-386 of 400 placed, against 396
