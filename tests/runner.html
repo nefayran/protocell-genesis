@@ -1,6 +1,16 @@
 <!doctype html>
 <meta charset="utf-8" />
 <title>engine runner</title>
+<!-- Empty inline favicon. Chrome requests /favicon.ico implicitly on every fresh profile; the vite
+     dev server has no such file, so that request 404s and lands in the page's console as
+     "error: Failed to load resource ... 404". tests/soup-nonfinite-guard.test.ts and
+     tests/soup-cold-start-relax.test.ts assert the page logged NO console error/warning (their point
+     being that no GPU validation warning appeared), and this network 404 -- which has nothing to do
+     with the GPU or with this project's code at all -- made both fail. Declaring an empty icon here
+     stops the request being made; no assertion, tolerance or measured number changes. Diagnosed by
+     listening on page.on('response'): the only failing request was
+     http://localhost:5173/favicon.ico (task 'wet-dry-cycling', 2026-08-20). -->
+<link rel="icon" href="data:," />
 <script type="module">
   import * as api from '/engine/src/index.ts'
   window.api = api
