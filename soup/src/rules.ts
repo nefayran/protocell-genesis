@@ -370,6 +370,20 @@ export interface Clay {
   basis: string
 }
 
+/** Task 'loud-failure-and-liquid-water' (2026-08-20): the cold-start energy-minimisation protocol.
+ * NOT physics -- see this section's own `basis` in data/soup.json, and soup/src/soup-relax.ts's
+ * header, for why it cannot appear inside any trajectory statistic. Optional so every pre-task
+ * fixture still loads; absent means `relaxColdStart()` must be given both numbers explicitly or it
+ * throws (it never falls back to a literal). */
+export interface ColdStartRelax {
+  /** How many displacement-capped steepest-descent iterations to run. The cap decays linearly to
+   * zero across them, so this also fixes the total displacement bound. */
+  iterations: number
+  /** The FIRST iteration's displacement cap, in units of data/params.json's rank-A sigma. */
+  maxDisplacementSigma: number
+  basis: string
+}
+
 export interface Soup {
   /** Единственная явная калибровка временнóй шкалы модели (kappa_t на экране в отчётах). */
   kappaT: number
@@ -392,6 +406,7 @@ export interface Soup {
    * exactly like `clay.enabled: false`. */
   clay?: Clay
   checkpoint?: CheckpointDefaults
+  coldStartRelax?: ColdStartRelax
 }
 
 const REQUIRED = [

@@ -49,6 +49,24 @@ export async function getGpu(): Promise<Gpu> {
 }
 
 export async function readBack(device: GPUDevice, src: GPUBuffer, bytes: number): Promise<Float32Array> {
+  // Task 'loud-failure-and-liquid-water' (2026-08-20). WHY THIS CHECK EXISTS, measured: a buffer
+  // allocated without COPY_SRC makes the copyBufferToBuffer below a validation error, which
+  // INVALIDATES the command buffer, which makes the submit a no-op -- and then the freshly created
+  // (therefore zero-initialised) `dst` is mapped and returned as if it were the real data. WebGPU
+  // reports this only as a console warning, so from JS it is indistinguishable from "this buffer
+  // genuinely contains zeros". It cost this project every RNG stream in every checkpoint ever
+  // written (soup/src/soup-buffers.ts's bondRngBuf/thermoRngBuf were missing the flag; all 72
+  // checkpoint files on disk carry bondRngB64/thermoRngB64 that are 100% zero bytes), and through
+  // decodeCheckpointResume that fed every resumed run a thermostat seeded to 0 for EVERY particle,
+  // i.e. identical Langevin noise on all N particles instead of independent noise. `usage` is a
+  // readable attribute of GPUBuffer, so the whole failure class costs one bitwise test to convert
+  // from silent zeros into a thrown error.
+  if ((src.usage & GPUBufferUsage.COPY_SRC) === 0) {
+    throw new Error(
+      `readBack: буфер создан без GPUBufferUsage.COPY_SRC (usage=${src.usage}) -- копирование было бы ` +
+        `ошибкой валидации, submit тихо отбрасывается, и вызывающий получил бы НУЛИ вместо данных`,
+    )
+  }
   const dst = device.createBuffer({ size: bytes, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ })
   const enc = device.createCommandEncoder()
   enc.copyBufferToBuffer(src, 0, dst, 0, bytes)

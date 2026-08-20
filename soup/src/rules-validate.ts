@@ -337,6 +337,24 @@ export function assertRulesConsistent(s: Soup): void {
 
   // Checkpoint/resume: optional (see CheckpointDefaults' own doc comment for why), but validated
   // the same way as every other section here whenever it IS present.
+  // Task 'loud-failure-and-liquid-water' (2026-08-20): the cold-start minimisation protocol. Same
+  // shape as every other optional section -- a present section must be internally sensible and must
+  // carry a substantive basis, an absent one is simply "this file predates the stage".
+  if (s.coldStartRelax) {
+    const cr = s.coldStartRelax
+    if (!Number.isInteger(cr.iterations) || cr.iterations < 1) {
+      throw new Error(`data/soup.json: coldStartRelax.iterations=${cr.iterations} должно быть целым числом >= 1`)
+    }
+    if (!Number.isFinite(cr.maxDisplacementSigma) || cr.maxDisplacementSigma <= 0) {
+      throw new Error(
+        `data/soup.json: coldStartRelax.maxDisplacementSigma=${cr.maxDisplacementSigma} должно быть конечным положительным числом`,
+      )
+    }
+    if (!cr.basis || cr.basis.trim().length <= 10) {
+      throw new Error('data/soup.json: coldStartRelax не имеет содержательного обоснования (basis)')
+    }
+  }
+
   if (s.checkpoint) {
     const cp = s.checkpoint
     if (!Number.isInteger(cp.everySteps) || cp.everySteps < 1) {

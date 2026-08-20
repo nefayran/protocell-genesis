@@ -66,6 +66,11 @@ import {
   type CycleSchedule,
 } from './soup-box-scale'
 import { makeSoupAreaMove } from './soup-area-move'
+// Task 'loud-failure-and-liquid-water' (2026-08-20): the cold-start minimiser (opt-in, before step 1
+// only) and the non-finite state guard. The guard's own per-chunk hook lives in
+// soup/src/soup-integrate.ts's stepper; what is wired HERE is only the two public methods.
+import { makeRelaxColdStart } from './soup-relax'
+import { scanNonFinite } from './soup-health'
 import { clayEnabled, planClay, type ClayLayout } from './soup-clay'
 import * as readback from './soup-readback'
 import type { SoupRuntime } from './soup-runtime'
@@ -312,6 +317,8 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     rngState: () => readback.rngState(rt),
     events: () => readback.events(rt),
     invariants: () => readback.invariants(rt, soup),
+    nonFiniteCount: () => scanNonFinite(rt),
+    relaxColdStart: makeRelaxColdStart(rt, () => readback.forces(rt)),
     get box(): [number, number, number] {
       return [rt.live.liveBox[0], rt.live.liveBox[1], rt.live.liveBox[2]]
     },

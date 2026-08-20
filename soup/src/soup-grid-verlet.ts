@@ -84,6 +84,18 @@ export async function assertVerletSafety(rt: SoupRuntime): Promise<void> {
   const rawDrift = await readBack(device, buf.maxDriftSqBuf, 4)
   const drift = Math.sqrt(Math.max(0, rawDrift[0]))
   const bound = verlet.skin / 2
+  // Task 'loud-failure-and-liquid-water' (2026-08-20): the measured drift itself can be NaN, and
+  // when it is, EVERY comparison below is false -- which is exactly how three separate divergences
+  // (rho_tot 0.8444 / 0.75 / 0.80) passed this guard in silence while producing 68 049 / 60 495 /
+  // 366 282 non-finite coordinates. soup/src/soup-health.ts's assertStateFinite now runs BEFORE this
+  // function at every call site, so a NaN drift should be unreachable; this branch exists so that if
+  // it ever IS reached the failure is loud instead of a false pass.
+  if (!Number.isFinite(drift)) {
+    throw new Error(
+      `список Верле: измеренный дрейф не является числом (${drift}) -- состояние уже нефинитно, ` +
+        `см. soup/src/soup-health.ts's assertStateFinite`,
+    )
+  }
   if (drift > bound + 1e-6) {
     throw new Error(
       `список Верле: измеренный дрейф ${drift.toFixed(4)} превышает skin/2=${bound.toFixed(4)} -- ` +

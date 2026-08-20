@@ -12,6 +12,15 @@
 import forcesWgsl from '../../engine/wgsl/forces.wgsl?raw'
 import neighborWgsl from '../../engine/wgsl/neighbor.wgsl?raw'
 import stepWgsl from '../wgsl/step.wgsl?raw'
+// Task 'loud-failure-and-liquid-water' (2026-08-20): two NEW files, not additions to step.wgsl --
+// that file stands at 596 lines against CLAUDE.md's hard 600 limit, and the rule is "split first,
+// then add". Order matters twice over: health.wgsl's soupNonFinite() is called by relax.wgsl, and
+// BOTH reuse pos2/velRW/posRW/forceRO/frozenRO/GB declared by forces.wgsl and step.wgsl above, so
+// they must come last. WGSL does not care about source-file boundaries, only the token stream, so
+// this changes nothing about the previously compiled entry points -- no binding index moved, no
+// existing kernel body was touched.
+import healthWgsl from '../wgsl/health.wgsl?raw'
+import relaxWgsl from '../wgsl/relax.wgsl?raw'
 import bondCommonWgsl from '../wgsl/bond-common.wgsl?raw'
 import bondValenceWgsl from '../wgsl/bond-valence.wgsl?raw'
 import bondAdsorptionWgsl from '../wgsl/bond-adsorption.wgsl?raw'
@@ -52,6 +61,14 @@ export interface SoupPipelines {
   maxDrift: GPUComputePipeline
   soupForceList: GPUComputePipeline
   bondFormList: GPUComputePipeline
+  /** Task 'loud-failure-and-liquid-water' (2026-08-20): the non-finite state guard (soup/wgsl/
+   * health.wgsl) and the cold-start minimiser's one iteration (soup/wgsl/relax.wgsl). Neither is
+   * dispatched inside encodeOneIntegrationStep: the scan runs once per step()-CHUNK at the sync point
+   * assertVerletSafety already uses, and the minimiser runs only before step 1, from
+   * soup/src/soup-relax.ts. */
+  resetNonFinite: GPUComputePipeline
+  scanNonFinite: GPUComputePipeline
+  relaxStep: GPUComputePipeline
 }
 
 let cached: SoupPipelines | undefined
@@ -64,7 +81,7 @@ let cached: SoupPipelines | undefined
 // explicitly documents that dependency rather than leaving it implicit.
 export function getSoupPipelines(device: GPUDevice, sortedGather: boolean): SoupPipelines {
   if (cached && cached.device === device && cached.sortedGather === sortedGather) return cached
-  const forceModule = device.createShaderModule({ code: `${forcesWgsl}\n${stepWgsl}` })
+  const forceModule = device.createShaderModule({ code: `${forcesWgsl}\n${stepWgsl}\n${healthWgsl}\n${relaxWgsl}` })
   const bondModule = device.createShaderModule({ code: `${forcesWgsl}\n${bondWgsl}` })
   const neighborModule = device.createShaderModule({ code: neighborWgsl })
   const cp = (module: GPUShaderModule, entryPoint: string) =>
@@ -90,6 +107,9 @@ export function getSoupPipelines(device: GPUDevice, sortedGather: boolean): Soup
     maxDrift: cp(forceModule, 'soup_max_drift_main'),
     soupForceList: cp(forceModule, 'soup_force_list_main'),
     bondFormList: cp(bondModule, 'bond_form_list_main'),
+    resetNonFinite: cp(forceModule, 'soup_reset_nonfinite_main'),
+    scanNonFinite: cp(forceModule, 'soup_scan_nonfinite_main'),
+    relaxStep: cp(forceModule, 'soup_relax_step_main'),
   }
   return cached
 }

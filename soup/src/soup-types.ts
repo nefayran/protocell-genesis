@@ -5,6 +5,8 @@
 // straight move of sim.ts's own CreateSoupOpts/SoupSystem/NONE_U32, unchanged.
 
 import type { Stage, StageEvidence } from './stages'
+import type { RelaxColdStartResult } from './soup-relax'
+import type { NonFiniteCount } from './soup-health'
 
 export const NONE_U32 = 0xffffffff
 
@@ -224,6 +226,24 @@ export interface SoupSystem {
    * must be EXACTLY unchanged (nothing here ever creates or destroys a particle), bonds must be
    * able to change (that is the whole point of this task). */
   invariants(): Promise<{ monomers: Record<string, number>; bonds: number; charge: number }>
+  /** Task 'loud-failure-and-liquid-water' (2026-08-20): how many position/velocity COMPONENTS of the
+   * live state are Inf or NaN, measured by the same O(N) GPU scan step() now runs once per
+   * 1000-step chunk (soup/wgsl/health.wgsl). Published so a caller can pay for the check explicitly
+   * -- e.g. to time it, or to read the count without provoking the throw that step() would. A
+   * healthy system returns {pos: 0, vel: 0}. */
+  nonFiniteCount(): Promise<NonFiniteCount>
+  /** Task 'loud-failure-and-liquid-water' (2026-08-20): displacement-capped steepest-descent energy
+   * minimisation of the INITIAL coordinates -- the standard MD cure for a cold start whose lattice
+   * puts unlike-radius pairs inside each other's repulsive cores, which is what has blown up every
+   * attempt at liquid-density water in this project.
+   *
+   * OPT-IN BY DESIGN, and that is the measurement-neutrality argument: nothing in createSoup calls
+   * this, so every existing caller, test, gate and checkpoint lineage is bit-identical to before the
+   * stage existed. THROWS if the system has already taken a step, so it cannot be inside a
+   * trajectory. Reads its two numbers from data/soup.json's `coldStartRelax` unless the caller
+   * overrides them explicitly (a sweep does; a real run does not). See soup/src/soup-relax.ts and
+   * soup/wgsl/relax.wgsl for what it does and does not touch. */
+  relaxColdStart(opts?: { iterations?: number; maxDisplacementSigma?: number }): Promise<RelaxColdStartResult>
   /** The system's CURRENT box -- a live snapshot, mirroring engine/src/sim.ts's own `System.box`
    * getter (its doc comment: "a live snapshot, since areaMove() mutates L_x, L_y in place"). Equal
    * to `CreateSoupOpts.box` for the system's whole lifetime UNLESS dry-wet cycling is enabled, in

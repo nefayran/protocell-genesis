@@ -82,6 +82,15 @@ export interface SoupBuffers {
   // soup/src/soup-attraction.ts from data/soup.json's solvent.attractionScale, optionally with
   // CreateSoupOpts.solventAttractionScaleOverride replacing the file's global epsilonScale.
   attrScaleUniform: GPUBuffer
+  /** Task 'loud-failure-and-liquid-water' (2026-08-20): two u32 counters -- [nonFinitePosComponents,
+   * nonFiniteVelComponents] -- written by soup/wgsl/health.wgsl's scan kernel and read back once per
+   * step()-chunk by soup/src/soup-health.ts. 8 bytes, COPY_SRC so readBack can reach it. */
+  healthBuf: GPUBuffer
+  /** Task 'loud-failure-and-liquid-water' (2026-08-20): RX (soup/wgsl/relax.wgsl) -- x = this
+   * minimisation iteration's displacement cap in sigma, rewritten by soup/src/soup-relax.ts before
+   * every iteration's submit. Untouched (and the kernel never dispatched) on any system that does not
+   * ask for relaxation. */
+  relaxUniform: GPUBuffer
 }
 
 export interface SoupGridState {
@@ -183,9 +192,23 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
   })
   device.queue.writeBuffer(desorbEventsBuf, 0, desorbEventsInit)
 
-  const bondRngBuf = device.createBuffer({ size: bondRng0.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST })
+  // COPY_SRC (task 'loud-failure-and-liquid-water', 2026-08-20): these two were the ONLY readable
+  // buffers in this file missing the flag, and soup/src/soup-readback.ts's rngState() reads both --
+  // so every rngState() call, and therefore the bondRngB64/thermoRngB64 field of EVERY checkpoint
+  // this project has ever written, silently returned all zeros (verified on disk: 81 000 and 426 904
+  // zero bytes in two checkpoints from different campaigns). decodeCheckpointResume fed those zeros
+  // back in, giving every resumed run a per-particle RNG seed of 0 for all N particles -- identical
+  // Langevin noise on every particle instead of independent noise. engine/src/gpu.ts's readBack now
+  // THROWS on a buffer without the flag rather than returning zeros, so this cannot recur silently.
+  const bondRngBuf = device.createBuffer({
+    size: bondRng0.byteLength,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+  })
   device.queue.writeBuffer(bondRngBuf, 0, bondRng0)
-  const thermoRngBuf = device.createBuffer({ size: thermoRng0.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST })
+  const thermoRngBuf = device.createBuffer({
+    size: thermoRng0.byteLength,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+  })
   device.queue.writeBuffer(thermoRngBuf, 0, thermoRng0)
 
   const eventsBuf = device.createBuffer({
@@ -314,6 +337,14 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
     )
   }
 
+  const healthBuf = device.createBuffer({
+    size: 8,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+  })
+  device.queue.writeBuffer(healthBuf, 0, new Uint32Array([0, 0]))
+  const relaxUniform = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
+  device.queue.writeBuffer(relaxUniform, 0, new Float32Array([0, 0, 0, 0]))
+
   const buf: SoupBuffers = {
     posBuf,
     velBuf,
@@ -343,6 +374,8 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
     speciesUniform,
     bondParamsUniform,
     attrScaleUniform,
+    healthBuf,
+    relaxUniform,
   }
   const grid: SoupGridState = { dims, ncells, wgCells: Math.ceil(ncells / 64) }
   return { buf, grid }
@@ -430,4 +463,6 @@ export function disposeSoupBuffers(buf: SoupBuffers): void {
   buf.speciesUniform.destroy()
   buf.bondParamsUniform.destroy()
   buf.attrScaleUniform.destroy()
+  buf.healthBuf.destroy()
+  buf.relaxUniform.destroy()
 }

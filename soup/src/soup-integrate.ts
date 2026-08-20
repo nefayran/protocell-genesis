@@ -6,6 +6,7 @@
 
 import { encodeGridRebuild, encodeVerletRebuild, encodeMaxDrift, assertVerletSafety } from './soup-grid-verlet'
 import { encodeBondChemistry } from './soup-bond-chemistry'
+import { assertStateFinite } from './soup-health'
 import type { SoupRuntime } from './soup-runtime'
 
 export function encodeSoupForce(rt: SoupRuntime, pass: GPUComputePassEncoder): void {
@@ -97,6 +98,7 @@ export function buildStepper(rt: SoupRuntime): (n: number) => Promise<void> {
     let done = 0
     while (done < n) {
       const chunk = Math.min(STEP_CHUNK, n - done)
+      const chunkStart = rt.live.globalStep
       const enc = rt.device.createCommandEncoder()
       const pass = enc.beginComputePass()
       for (let k = 0; k < chunk; k++) {
@@ -111,6 +113,12 @@ export function buildStepper(rt: SoupRuntime): (n: number) => Promise<void> {
       pass.end()
       rt.device.queue.submit([enc.finish()])
       await rt.device.queue.onSubmittedWorkDone()
+      // Task 'loud-failure-and-liquid-water' (2026-08-20): the non-finite guard, at the SAME cadence
+      // and the SAME sync point assertVerletSafety already uses, and deliberately BEFORE it -- once
+      // positions are NaN the measured drift is NaN, `NaN > skin/2` is false, and assertVerletSafety
+      // reports a clean run forever (three measured instances; see soup/wgsl/health.wgsl's header).
+      // Checking finiteness first is what makes the thrown message name the real cause.
+      await assertStateFinite(rt, chunkStart)
       if (rt.verlet.enabled) await assertVerletSafety(rt)
       done += chunk
     }

@@ -39,6 +39,14 @@ interface Args {
   start: Record<string, number>
   catalyst?: number
   cycle: boolean
+  /** Task 'loud-failure-and-liquid-water' (2026-08-20): run the cold-start energy minimisation
+   * (SoupSystem.relaxColdStart, soup/src/soup-relax.ts) once, on a FRESH run only, before the first
+   * step. Skipped on every resume by construction -- relaxColdStart itself throws at globalStep != 0,
+   * and the resumed state is a already-relaxed trajectory, not a cold lattice. Deliberately NOT part
+   * of the checkpoint config signature: it is a property of how step 0 was reached, not of the
+   * composition/box/seed a resume has to match, and adding it would orphan every existing checkpoint
+   * lineage in data/checkpoints. */
+  relax: boolean
   /** box-expansion task (2026-08-18, .superpowers/sdd/2026-08-16-soup-to-vesicle/expanded-box-
    * report.md): a ONE-TIME ramped box change applied right after this call's system is created
    * (resumed or fresh), before the main step loop, via SoupSystem.growBoxTo (soup/src/sim.ts) --
@@ -103,6 +111,8 @@ function printUsage(): void {
       '  --kT <n>          (по умолчанию data/params.json thermostat.kT)',
       '  --catalyst <n>    переопределяет число катализатора отдельно от --start (как CreateSoupOpts.catalystCount)',
       '  --cycle           включает сухо-влажное циклирование (data/soup.json dryWetCycle) для ЭТОЙ системы',
+      '  --relax           минимизация энергии холодного старта (data/soup.json coldStartRelax) ДО первого шага;',
+      '                    только для СВЕЖЕГО прогона, при резюме молча пропускается',
       '  --expandTo <n>            одноразовое рамп-расширение живого бокса до [n,n,n] сразу после создания/резюме,',
       '                            ДО основного цикла шагов (idempotent: пропускается, если бокс уже расширен)',
       '  --expandRampSteps <n>     шагов рампы для --expandTo (по умолчанию 15)',
@@ -129,6 +139,7 @@ function parseCliArgs(): Args {
       start: { type: 'string' },
       catalyst: { type: 'string' },
       cycle: { type: 'boolean', default: false },
+      relax: { type: 'boolean', default: false },
       expandTo: { type: 'string' },
       expandRampSteps: { type: 'string' },
       expandRampRelaxSteps: { type: 'string' },
@@ -156,6 +167,7 @@ function parseCliArgs(): Args {
     start: JSON.parse(String(values.start)),
     catalyst: values.catalyst !== undefined ? Number(values.catalyst) : undefined,
     cycle: Boolean(values.cycle),
+    relax: Boolean(values.relax),
     expandTo: values.expandTo !== undefined ? Number(values.expandTo) : undefined,
     expandRampSteps: values.expandRampSteps !== undefined ? Number(values.expandRampSteps) : 15,
     expandRampRelaxSteps: values.expandRampRelaxSteps !== undefined ? Number(values.expandRampRelaxSteps) : 60,
@@ -269,6 +281,23 @@ async function main(): Promise<void> {
       found ? JSON.stringify(found.file) : null,
     )
     console.log(`[campaign] система готова N=${created.N} стартовый_шаг=${created.steps} цель=${targetStep}`)
+
+    // Task 'loud-failure-and-liquid-water' (2026-08-20): the cold-start minimisation, BEFORE any
+    // step and before the box-expansion block below. Fresh runs only: a resumed run's positions are
+    // an already-relaxed trajectory, and relaxColdStart refuses a nonzero step counter anyway, so
+    // the guard here is about not printing a confusing skip line rather than about safety.
+    if (args.relax) {
+      if (startStep !== 0) {
+        console.log(`[campaign] --relax пропущен: это резюме с шага=${startStep}, минимизация допустима только на свежем старте`)
+      } else {
+        const r = await page.evaluate(async () => (window as any).__sys.relaxColdStart())
+        console.log(
+          `[campaign] минимизация холодного старта: итераций=${r.iterations} шаг_первой=${r.maxDisplacementStart} ` +
+            `граница_суммарного_смещения=${r.displacementBound.toFixed(4)} max|F| ${r.maxForceBefore.toExponential(4)} -> ${r.maxForceAfter.toExponential(4)} ` +
+            `нефинитных_до=${r.nonFiniteBefore} нефинитных_после=${r.nonFiniteAfter} шаг_системы=${await page.evaluate(() => (window as any).__sys.steps)}`,
+        )
+      }
+    }
 
     // box-expansion task: one-time ramped box change, BEFORE the main step loop -- see Args.expandTo's
     // own doc comment for why this is idempotent (skipped on a resume that already landed at the

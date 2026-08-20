@@ -58,6 +58,14 @@ export interface SoupBindGroups {
   bondFormListGroup0: GPUBindGroup
   bondFormListGroup1: GPUBindGroup
   bondFormListGroup2: GPUBindGroup
+  /** Task 'loud-failure-and-liquid-water' (2026-08-20): none of these three reference an ncells-sized
+   * buffer, so like snapshotPositions/resetMaxDrift/maxDrift they never need rebinding on a resize.
+   * relaxStepBind DOES reference the grid UNIFORM (binding 3, for the box the wrap uses) -- that
+   * buffer object is never reallocated by resizeSoupGrid (only rewritten), so it is not
+   * grid-dependent in the bind-group sense either. */
+  resetNonFiniteBind: GPUBindGroup
+  scanNonFiniteBind: GPUBindGroup
+  relaxStepBind: GPUBindGroup
 }
 
 /** Rebuilds every bind group that references countsBuf/cellStartBuf/cursorBuf -- called once at
@@ -269,6 +277,28 @@ export function buildBindGroups(device: GPUDevice, pipe: SoupPipelines, sb: Soup
     { binding: 22, resource: buf(sb.desorbEventsBuf) },
   ], device)
   bind_.bondFormListGroup2 = bind(pipe.bondFormList, 2, [{ binding: 0, resource: buf(sb.bondParamsUniform) }], device)
+
+  // Task 'loud-failure-and-liquid-water' (2026-08-20). The scan reads BOTH state arrays the
+  // integrator writes -- positions through forces.wgsl's own read-only view (binding 0) and
+  // velocities through step.wgsl's velRW (binding 10) -- and writes only its own 2-slot counter
+  // (binding 22). The minimiser writes positions (binding 6, step.wgsl's posRW), reads the force the
+  // real force kernel just produced (binding 11) and the immobility flag (binding 21), and needs the
+  // grid uniform (binding 3) for the box its periodic wrap uses plus its own displacement cap
+  // (binding 23). Neither kernel references Params, so neither pipeline has a group 0 at all -- the
+  // same shape maxDrift/snapshotPositions already have.
+  bind_.resetNonFiniteBind = bind(pipe.resetNonFinite, 1, [{ binding: 22, resource: buf(sb.healthBuf) }], device)
+  bind_.scanNonFiniteBind = bind(pipe.scanNonFinite, 1, [
+    { binding: 0, resource: buf(sb.posBuf) },
+    { binding: 10, resource: buf(sb.velBuf) },
+    { binding: 22, resource: buf(sb.healthBuf) },
+  ], device)
+  bind_.relaxStepBind = bind(pipe.relaxStep, 1, [
+    { binding: 6, resource: buf(sb.posBuf) },
+    { binding: 3, resource: buf(sb.gridUniform) },
+    { binding: 11, resource: buf(sb.forceBuf) },
+    { binding: 21, resource: buf(sb.frozenBuf) },
+    { binding: 23, resource: buf(sb.relaxUniform) },
+  ], device)
 
   return bind_
 }

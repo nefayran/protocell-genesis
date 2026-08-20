@@ -8,6 +8,7 @@
 
 import { resizeSoupGrid } from './soup-buffers'
 import { encodeGridRebuild, encodeVerletRebuild, assertVerletSafety } from './soup-grid-verlet'
+import { assertStateFinite } from './soup-health'
 import { rebindGridDependent } from './soup-bindgroups'
 import type { SoupRuntime } from './soup-runtime'
 import { scaleMoleculesRigid, proximityPairs, mi3Distance, cyclePhaseAt, nextCycleTransition, type CycleSchedule } from './soup-box-scale-math'
@@ -173,6 +174,7 @@ export async function applyBoxScaleOnce(
   pass.end()
   rt.device.queue.submit([enc.finish()])
   await rt.device.queue.onSubmittedWorkDone()
+  await assertStateFinite(rt)
   if (rt.verlet.enabled) await assertVerletSafety(rt)
 }
 
@@ -313,6 +315,7 @@ export function makeGrowBoxTo(rt: SoupRuntime, step: (n: number) => Promise<void
       pass.end()
       rt.device.queue.submit([enc.finish()])
       await rt.device.queue.onSubmittedWorkDone()
+      await assertStateFinite(rt)
       if (rt.verlet.enabled) await assertVerletSafety(rt)
       if (s < rampSteps && rampRelaxSteps > 0) await step(rampRelaxSteps)
     }
