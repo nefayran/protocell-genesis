@@ -1,30 +1,11 @@
 [
   {
-    "file": "data/checkpoints/lrB54pH70/lrB54pH70-step41600.json",
-    "step": 41600,
-    "box": 54,
-    "aggregates": 2,
-    "amphiphilesInLargest": 2341,
-    "particlesInLargest": 12555,
-    "wrapsX": true,
-    "wrapsY": true,
-    "wrapsZ": true,
-    "wrappingAxes": 3,
-    "slabsTouchedOfTotal": [
-      19,
-      19,
-      19,
-      19
-    ],
-    "role": "campaign"
-  },
-  {
-    "file": "data/checkpoints/lrB54pH70/lrB54pH70-step54600.json",
-    "step": 54600,
+    "file": "data/checkpoints/swB54/swB54-step45400.json",
+    "step": 45400,
     "box": 54,
     "aggregates": 1,
-    "amphiphilesInLargest": 2290,
-    "particlesInLargest": 12967,
+    "amphiphilesInLargest": 1596,
+    "particlesInLargest": 8887,
     "wrapsX": true,
     "wrapsY": true,
     "wrapsZ": true,
@@ -38,31 +19,12 @@
     "role": "campaign"
   },
   {
-    "file": "data/checkpoints/lrB54pH70/lrB54pH70-step66600.json",
-    "step": 66600,
-    "box": 54,
-    "aggregates": 3,
-    "amphiphilesInLargest": 2270,
-    "particlesInLargest": 13244,
-    "wrapsX": true,
-    "wrapsY": true,
-    "wrapsZ": true,
-    "wrappingAxes": 3,
-    "slabsTouchedOfTotal": [
-      19,
-      19,
-      19,
-      19
-    ],
-    "role": "campaign"
-  },
-  {
-    "file": "data/checkpoints/lrB54pH70/lrB54pH70-step78600.json",
-    "step": 78600,
+    "file": "data/checkpoints/swB54/swB54-step60400.json",
+    "step": 60400,
     "box": 54,
     "aggregates": 2,
-    "amphiphilesInLargest": 2234,
-    "particlesInLargest": 13443,
+    "amphiphilesInLargest": 1567,
+    "particlesInLargest": 9232,
     "wrapsX": true,
     "wrapsY": true,
     "wrapsZ": true,
@@ -76,12 +38,107 @@
     "role": "campaign"
   },
   {
-    "file": "data/checkpoints/lrB54pH70/lrB54pH70-step90600.json",
-    "step": 90600,
+    "file": "data/checkpoints/swB54/swB54-step74400.json",
+    "step": 74400,
+    "box": 54,
+    "aggregates": 1,
+    "amphiphilesInLargest": 1565,
+    "particlesInLargest": 9554,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      19,
+      19,
+      19,
+      19
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/swB54/swB54-step88400.json",
+    "step": 88400,
     "box": 54,
     "aggregates": 2,
-    "amphiphilesInLargest": 2223,
-    "particlesInLargest": 13690,
+    "amphiphilesInLargest": 1554,
+    "particlesInLargest": 9805,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      19,
+      19,
+      19,
+      19
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/swB54/swB54-step102400.json",
+    "step": 102400,
+    "box": 54,
+    "aggregates": 1,
+    "amphiphilesInLargest": 1551,
+    "particlesInLargest": 10059,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      19,
+      19,
+      19,
+      19
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/swB54/swB54-step116400.json",
+    "step": 116400,
+    "box": 54,
+    "aggregates": 2,
+    "amphiphilesInLargest": 1545,
+    "particlesInLargest": 10134,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      19,
+      19,
+      19,
+      19
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/swB54/swB54-step130400.json",
+    "step": 130400,
+    "box": 54,
+    "aggregates": 1,
+    "amphiphilesInLargest": 1545,
+    "particlesInLargest": 10212,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      19,
+      19,
+      19,
+      19
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/swB54/swB54-step144400.json",
+    "step": 144400,
+    "box": 54,
+    "aggregates": 1,
+    "amphiphilesInLargest": 1542,
+    "particlesInLargest": 10305,
     "wrapsX": true,
     "wrapsY": true,
     "wrapsZ": true,
@@ -128,6 +185,25 @@
       7,
       7,
       10,
+      19
+    ],
+    "role": "control"
+  },
+  {
+    "file": "data/checkpoints/lrB54pH70/lrB54pH70-step90600.json",
+    "step": 90600,
+    "box": 54,
+    "aggregates": 2,
+    "amphiphilesInLargest": 2223,
+    "particlesInLargest": 13690,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      19,
+      19,
+      19,
       19
     ],
     "role": "control"
