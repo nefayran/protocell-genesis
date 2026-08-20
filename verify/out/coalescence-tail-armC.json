@@ -1,0 +1,236 @@
+[
+ {
+  "step": 36800,
+  "file": "data/checkpoints/ocC19/ocC19-step36800.json",
+  "box": [
+   30,
+   30,
+   30
+  ],
+  "N": 32884,
+  "amphiphileCount": 376,
+  "meanPerTail": 2.363,
+  "twoTailedHeads": 106,
+  "freeHeads": 3052,
+  "water": 21600,
+  "aggregateCount": 1,
+  "coverage": {
+   "contactDistance": 1.0663,
+   "freeHeadsInContact": 53,
+   "waterInContact": 1404,
+   "headSites": 375,
+   "freeHeadsPerHeadSite": 0.1413,
+   "waterPerHeadSite": 3.744,
+   "freeHeadContactFractionOfPool": 0.017366,
+   "waterContactFractionOfPool": 0.065,
+   "enrichmentVsWater": 0.2672,
+   "gRatioByBin": [
+    -1,
+    -1,
+    -1,
+    0.2904,
+    0.2914,
+    0.4477,
+    0.8493,
+    0.7209,
+    0.9602,
+    1.2988,
+    1.2202,
+    0.9858,
+    1.1353,
+    1.2343,
+    1.0313,
+    1.0076,
+    0.9746,
+    1.0813,
+    1.2145,
+    1.1887,
+    1.0185,
+    1.2609,
+    1.0871,
+    1.4952
+   ]
+  },
+  "contacts": {
+   "clusteringForContacts": "periodic3d",
+   "pairsUnder8": 0,
+   "pairsUnder4": 0,
+   "pairsUnderCutoff": 0,
+   "closestGaps": [],
+   "bridgingWaterTopPairs": [],
+   "bridgingWaterTotal": 0
+  },
+  "transition": null,
+  "shapes": [
+   {
+    "n": 375,
+    "rg": 15.23,
+    "flat": 0.5363,
+    "inPl": 0.6447
+   }
+  ],
+  "shapeSummary": {
+   "sizes": [
+    375
+   ],
+   "sizeMean": 375,
+   "sizeSd": 0,
+   "sizeMax": 375,
+   "inPlaneMean": 0.6447,
+   "inPlaneSd": 0,
+   "inPlaneMax": 0.6447,
+   "aboveLamellar": 1,
+   "flatMean": 0.5363
+  },
+  "periodic3d": {
+   "aggregateCount": 1,
+   "shapeSummary": {
+    "sizes": [
+     375
+    ],
+    "sizeMean": 375,
+    "sizeSd": 0,
+    "sizeMax": 375,
+    "inPlaneMean": 0.6447,
+    "inPlaneSd": 0,
+    "inPlaneMax": 0.6447,
+    "aboveLamellar": 1,
+    "flatMean": 0.5363
+   },
+   "shapes": [
+    {
+     "n": 375,
+     "rg": 15.23,
+     "flat": 0.5363,
+     "inPl": 0.6447
+    }
+   ]
+  },
+  "lamellarCount": 0,
+  "lamellarCount3d": 0
+ },
+ {
+  "step": 40000,
+  "file": "data/checkpoints/ocC19/ocC19-step40000.json",
+  "box": [
+   30,
+   30,
+   30
+  ],
+  "N": 32884,
+  "amphiphileCount": 371,
+  "meanPerTail": 2.394,
+  "twoTailedHeads": 116,
+  "freeHeads": 3051,
+  "water": 21600,
+  "aggregateCount": 1,
+  "coverage": {
+   "contactDistance": 1.0663,
+   "freeHeadsInContact": 43,
+   "waterInContact": 1221,
+   "headSites": 370,
+   "freeHeadsPerHeadSite": 0.1162,
+   "waterPerHeadSite": 3.3,
+   "freeHeadContactFractionOfPool": 0.014094,
+   "waterContactFractionOfPool": 0.056528,
+   "enrichmentVsWater": 0.2493,
+   "gRatioByBin": [
+    -1,
+    -1,
+    -1,
+    0.2863,
+    0.1989,
+    0.3976,
+    0.6285,
+    0.8226,
+    1.0256,
+    1.3604,
+    1.1699,
+    0.9866,
+    1.1744,
+    1.1923,
+    0.8626,
+    1.1907,
+    1.1434,
+    1.0379,
+    1.2338,
+    1.0453,
+    1.1081,
+    1.1691,
+    1.0686,
+    1.28
+   ]
+  },
+  "contacts": {
+   "clusteringForContacts": "periodic3d",
+   "pairsUnder8": 0,
+   "pairsUnder4": 0,
+   "pairsUnderCutoff": 0,
+   "closestGaps": [],
+   "bridgingWaterTopPairs": [],
+   "bridgingWaterTotal": 0
+  },
+  "transition": {
+   "fromStep": 36800,
+   "merges": 0,
+   "fissions": 0,
+   "persisted": 1,
+   "exchangedFraction": 0,
+   "matchedHeads": 370,
+   "detail": [],
+   "encounters": {
+    "gap": 4,
+    "merged": 0,
+    "stillInContact": 0,
+    "driftedApart": 0
+   }
+  },
+  "shapes": [
+   {
+    "n": 370,
+    "rg": 15.31,
+    "flat": 0.5188,
+    "inPl": 0.7019
+   }
+  ],
+  "shapeSummary": {
+   "sizes": [
+    370
+   ],
+   "sizeMean": 370,
+   "sizeSd": 0,
+   "sizeMax": 370,
+   "inPlaneMean": 0.7019,
+   "inPlaneSd": 0,
+   "inPlaneMax": 0.7019,
+   "aboveLamellar": 1,
+   "flatMean": 0.5188
+  },
+  "periodic3d": {
+   "aggregateCount": 1,
+   "shapeSummary": {
+    "sizes": [
+     370
+    ],
+    "sizeMean": 370,
+    "sizeSd": 0,
+    "sizeMax": 370,
+    "inPlaneMean": 0.7019,
+    "inPlaneSd": 0,
+    "inPlaneMax": 0.7019,
+    "aboveLamellar": 1,
+    "flatMean": 0.5188
+   },
+   "shapes": [
+    {
+     "n": 370,
+     "rg": 15.31,
+     "flat": 0.5188,
+     "inPl": 0.7019
+    }
+   ]
+  },
+  "lamellarCount": 0,
+  "lamellarCount3d": 0
+ }
+]
