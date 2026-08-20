@@ -70,6 +70,9 @@ import { makeSoupAreaMove } from './soup-area-move'
 // only) and the non-finite state guard. The guard's own per-chunk hook lives in
 // soup/src/soup-integrate.ts's stepper; what is wired HERE is only the two public methods.
 import { makeRelaxColdStart } from './soup-relax'
+// Task 'evaporation' (2026-08-20): real solvent removal/return. planEvaporation is pure (no GPU) and
+// carries its own throwing preconditions; nothing here changes for a system that does not ask for it.
+import { planEvaporation, evaporateSolventTo, rehydrateSolventTo } from './soup-evaporate'
 import { scanNonFinite } from './soup-health'
 import { clayEnabled, planClay, type ClayLayout } from './soup-clay'
 import * as readback from './soup-readback'
@@ -123,9 +126,19 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     startCounts[soup.clay.mineralId] = 0
   }
 
+  // Task 'evaporation' (2026-08-20): CAPACITY vs ACTIVE. `capacityN` is the creation (wet)
+  // composition and is what every GPU buffer is sized for -- so the slots a dry phase empties are
+  // still there for rehydration to write into. `N` is the LIVE count, equal to capacityN except when
+  // resuming a checkpoint taken mid dry-phase, which carries its own (smaller) census. Both are the
+  // same number for every caller that does not evaporate, so nothing below changes for them.
   const countsByKind = soup.monomers.map((m) => startCounts[m.id] ?? 0)
-  const N = countsByKind.reduce((a, b) => a + b, 0)
-  if (N === 0) throw new Error('createSoup: стартовый состав пуст')
+  const capacityN = countsByKind.reduce((a, b) => a + b, 0)
+  const activeCounts: Record<string, number> = opts.resume?.activeCounts ? { ...opts.resume.activeCounts } : { ...startCounts }
+  const N = soup.monomers.reduce((sum, m) => sum + (activeCounts[m.id] ?? 0), 0)
+  if (capacityN === 0) throw new Error('createSoup: стартовый состав пуст')
+  if (N > capacityN) {
+    throw new Error(`createSoup: живой состав (${N}) больше стартового (${capacityN}) -- буферы выделяются под стартовый`)
+  }
 
   // Neighbour-grid/Verlet-list geometry, WITH its three throwing completeness guards (walk-radius
   // coverage, list coverage, drift-safety bound) -- see soup/src/soup-plan.ts's deriveGridGeometry.
@@ -142,20 +155,25 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   const plan: SoupPlan = planSoupGrid(initialLiveBox, startCounts)
   if (!plan.valid) throw new Error(plan.reason!)
 
+  // Task 'evaporation' (2026-08-20): resolved BEFORE the cycle config, because the dry box a cycle
+  // with solvent removal targets is sized for what is LEFT, not for the wet N.
+  const evapRequested = (opts.dryWetCycle ?? soup.dryWetCycle.enabled) && (opts.evaporateSolvent ?? soup.dryWetCycle.evaporateSolvent ?? false)
+  const evap = evapRequested ? planEvaporation(soup, p, box, startCounts) : undefined
+
   // Dry-wet cycling setup (task 'wet-dry-cycle'), with its own throwing validation -- see
   // soup/src/soup-box-scale.ts's deriveCycleConfig.
-  const { cycleCfg, dryBox } = deriveCycleConfig(soup, opts, box, N, startCounts)
+  const { cycleCfg, dryBox } = deriveCycleConfig(soup, opts, box, capacityN, startCounts, evap?.dryBox)
 
   const { device } = await getGpu()
   const sortedGather = soup.neighborGrid.sortedGather
   const pipe = getSoupPipelines(device, sortedGather)
 
-  const initial = buildInitialState(soup, opts, N, countsByKind, box, rules, eventRuleIds, clay)
+  const initial = buildInitialState(soup, opts, capacityN, countsByKind, box, rules, eventRuleIds, clay, N)
   const { buf, grid } = allocateSoupBuffers({
     device,
     soup,
     p,
-    N,
+    N: capacityN,
     dims: plan.dims,
     ncells: plan.ncells,
     effectiveWalkRadius,
@@ -170,7 +188,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     solventAttractionScaleOverride: opts.solventAttractionScaleOverride,
     claySurfaceChemistry: opts.claySurfaceChemistry,
   })
-  const bind = buildBindGroups(device, pipe, buf)
+  const bind = buildBindGroups(device, pipe, buf, N)
 
   const rt: SoupRuntime = {
     device,
@@ -196,6 +214,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     box,
     dryBox,
     cycleCfg,
+    evap,
     buf,
     bind,
     grid,
@@ -246,10 +265,16 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     attractionOverride: opts.solventAttractionScaleOverride,
     claySurfaceChemistry: opts.claySurfaceChemistry,
   })
-  const stepCycled = makeStepCycled(rt, particles, bonds, step, {
-    rampSteps: soup.dryWetCycle.rampSteps,
-    rampRelaxSteps: soup.dryWetCycle.rampRelaxSteps,
-  })
+  const stepCycled = makeStepCycled(
+    rt,
+    particles,
+    bonds,
+    step,
+    { rampSteps: soup.dryWetCycle.rampSteps, rampRelaxSteps: soup.dryWetCycle.rampRelaxSteps },
+    () => readback.forces(rt),
+    () => readback.centerLinks(rt),
+    opts.seed,
+  )
 
   // Task 4: the continuous soup->vesicle run. Declared with `let sys!` and assigned AFTER the
   // object literal below so runUntil's own closure can call detectStage(sys) -- detectStage only
@@ -319,6 +344,14 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     invariants: () => readback.invariants(rt, soup),
     nonFiniteCount: () => scanNonFinite(rt),
     relaxColdStart: makeRelaxColdStart(rt, () => readback.forces(rt)),
+    evaporateDEBUG: async (targetSolvent: number) => {
+      if (!evap) throw new Error('evaporateDEBUG: система создана без испарения растворителя (CreateSoupOpts.evaporateSolvent)')
+      await evaporateSolventTo(rt, evap, targetSolvent, rt.live.liveBox)
+    },
+    rehydrateDEBUG: async (targetSolvent: number) => {
+      if (!evap) throw new Error('rehydrateDEBUG: система создана без испарения растворителя (CreateSoupOpts.evaporateSolvent)')
+      return rehydrateSolventTo(rt, evap, targetSolvent, rt.live.liveBox, particles, () => readback.forces(rt), opts.seed)
+    },
     get box(): [number, number, number] {
       return [rt.live.liveBox[0], rt.live.liveBox[1], rt.live.liveBox[2]]
     },

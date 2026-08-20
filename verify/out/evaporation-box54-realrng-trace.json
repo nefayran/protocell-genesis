@@ -1,0 +1,1127 @@
+[
+ {
+  "step": 15000,
+  "N": 106729,
+  "box": [
+   54,
+   54,
+   54
+  ],
+  "stage": "bilayer",
+  "species": {
+   "C": 10844,
+   "O": 43376,
+   "H": 10844,
+   "M": 722,
+   "W": 40943
+  },
+  "bonds": 5332,
+  "events": {
+   "cc_bond": 3219,
+   "cc_break": 0,
+   "co_bond": 2121,
+   "co_break": 8
+  },
+  "invariants": {
+   "nonFinitePositions": 0,
+   "nonFiniteVelocities": 0,
+   "valence": {
+    "carbonCCover2": 0,
+    "carbonCOover1": 0,
+    "headOverChainCapacity": 0,
+    "nonBondableBonded": 0,
+    "degreeOver3": 0,
+    "headNotTerminal": 0,
+    "headChainCapacity": 2,
+    "headsWithTwoTails": 429
+   }
+  },
+  "amphiphileCount": 1431,
+  "amphiphileFraction": 0.37394,
+  "meanTailLength": 2.834,
+  "meanPerTail": 2.317,
+  "twoTailedHeads": 319,
+  "alphaEvent": 0.6028,
+  "asfMeanFromEventAlpha": 2.518,
+  "alphaRecovered": 0.302,
+  "alphaRecoveredR2": 0.998,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.39731179455851084,
+   "2": 0.2395031211018439,
+   "3": 0.14437463423723515,
+   "4": 0.08703032726772657,
+   "5": 0.05246266357206215,
+   "6": 0.03162496517574308,
+   "7": 0.019063813277287824,
+   "8": 0.011491838003668448,
+   "9": 0.006927383246031598,
+   "10": 0.004175888889321295,
+   "11": 0.002517263358562781,
+   "12": 0.0015174289796280138,
+   "13": 0.0009147198287308196,
+   "14": 0.0005514013349596458,
+   "15": 0.00033238968113016854,
+   "16": 0.00020036748755768022
+  },
+  "lengthHistogram": {
+   "2": 859,
+   "3": 191,
+   "4": 235,
+   "5": 81,
+   "6": 45,
+   "7": 12,
+   "8": 7,
+   "9": 1
+  },
+  "perTailHistogram": {
+   "2": 1349,
+   "3": 293,
+   "4": 77,
+   "5": 20,
+   "6": 8,
+   "7": 2,
+   "8": 1
+  },
+  "aggregateCount": 73,
+  "qualifyingAggregateCount": 37,
+  "amphiphilesInQualifying": 1300,
+  "amphiphileShareInQualifying": 0.9085,
+  "hasLamellarAggregate": true,
+  "hasVesicleAggregate": false,
+  "largestAggregateFraction": 0.0702,
+  "boxWideEnclosedVolume": 4.25,
+  "sizeHistogramTop": [
+   100,
+   89,
+   90,
+   77,
+   61,
+   60,
+   61,
+   51,
+   49,
+   36
+  ],
+  "largest": [
+   {
+    "amphiphileCount": 100,
+    "particleCount": 385,
+    "radiusOfGyration": 8.214,
+    "principalMoments": [
+     5.597,
+     13.923,
+     47.956
+    ],
+    "flatnessRatio": 0.1167,
+    "inPlaneSymmetry": 0.2903,
+    "radialHeadShells": 1,
+    "transverseHeadShells": 0,
+    "cavityVolume": 0.25,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.2605703775654779,
+     "encapsulationThresholdCount": 96.63658941804749,
+     "closed": false,
+     "seedDistFromCentre": 46.38996720170443,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1257031,
+     "unreachedCells": 4
+    }
+   },
+   {
+    "amphiphileCount": 89,
+    "particleCount": 342,
+    "radiusOfGyration": 5.849,
+    "principalMoments": [
+     5.709,
+     8.394,
+     20.112
+    ],
+    "flatnessRatio": 0.2839,
+    "inPlaneSymmetry": 0.4174,
+    "radialHeadShells": 1,
+    "transverseHeadShells": 0,
+    "cavityVolume": 0.75,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.2605040613291319,
+     "encapsulationThresholdCount": 96.61199500726529,
+     "closed": false,
+     "seedDistFromCentre": 46.577311325151534,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1257348,
+     "unreachedCells": 1
+    }
+   },
+   {
+    "amphiphileCount": 90,
+    "particleCount": 335,
+    "radiusOfGyration": 7.945,
+    "principalMoments": [
+     5.85,
+     23.267,
+     34.001
+    ],
+    "flatnessRatio": 0.1721,
+    "inPlaneSymmetry": 0.6843,
+    "radialHeadShells": 2,
+    "transverseHeadShells": 1,
+    "cavityVolume": 0.25,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.2604914236270168,
+     "encapsulationThresholdCount": 96.60730811828776,
+     "closed": false,
+     "seedDistFromCentre": 46.52269704878418,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1257410,
+     "unreachedCells": 2
+    }
+   }
+  ],
+  "closureThreshold": 370.8656,
+  "minAmphiphilesPerAggregate": 13
+ },
+ {
+  "step": 30000,
+  "N": 106729,
+  "box": [
+   54,
+   54,
+   54
+  ],
+  "stage": "micelles",
+  "species": {
+   "C": 10844,
+   "O": 43376,
+   "H": 10844,
+   "M": 722,
+   "W": 40943
+  },
+  "bonds": 8001,
+  "events": {
+   "cc_bond": 4798,
+   "cc_break": 0,
+   "co_bond": 3234,
+   "co_break": 31
+  },
+  "invariants": {
+   "nonFinitePositions": 0,
+   "nonFiniteVelocities": 0,
+   "valence": {
+    "carbonCCover2": 0,
+    "carbonCOover1": 0,
+    "headOverChainCapacity": 0,
+    "nonBondableBonded": 0,
+    "degreeOver3": 0,
+    "headNotTerminal": 0,
+    "headChainCapacity": 2,
+    "headsWithTwoTails": 904
+   }
+  },
+  "amphiphileCount": 1729,
+  "amphiphileFraction": 0.51263,
+  "meanTailLength": 3.215,
+  "meanPerTail": 2.413,
+  "twoTailedHeads": 575,
+  "alphaEvent": 0.5974,
+  "asfMeanFromEventAlpha": 2.484,
+  "alphaRecovered": 0.3735,
+  "alphaRecoveredR2": 0.99,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.40274532254165424,
+   "2": 0.24058417051230788,
+   "3": 0.14371549428760624,
+   "4": 0.08584996782768109,
+   "5": 0.05128338466598779,
+   "6": 0.030634671268352762,
+   "7": 0.018299944315930846,
+   "8": 0.010931664943704704,
+   "9": 0.006530145468114438,
+   "10": 0.0039008513391450544,
+   "11": 0.0023302147317253445,
+   "12": 0.0013919783718648162,
+   "13": 0.0008315129766194457,
+   "14": 0.0004967130555054905,
+   "15": 0.0002967167878878665,
+   "16": 0.0001772469059120995
+  },
+  "lengthHistogram": {
+   "2": 822,
+   "3": 235,
+   "4": 372,
+   "5": 164,
+   "6": 80,
+   "7": 33,
+   "8": 17,
+   "9": 5,
+   "10": 1
+  },
+  "perTailHistogram": {
+   "2": 1659,
+   "3": 443,
+   "4": 133,
+   "5": 44,
+   "6": 19,
+   "7": 2,
+   "8": 4
+  },
+  "aggregateCount": 42,
+  "qualifyingAggregateCount": 29,
+  "amphiphilesInQualifying": 1673,
+  "amphiphileShareInQualifying": 0.9676,
+  "hasLamellarAggregate": false,
+  "hasVesicleAggregate": false,
+  "largestAggregateFraction": 0.1367,
+  "boxWideEnclosedVolume": 15.75,
+  "sizeHistogramTop": [
+   226,
+   130,
+   124,
+   121,
+   108,
+   88,
+   94,
+   95,
+   78,
+   73
+  ],
+  "largest": [
+   {
+    "amphiphileCount": 226,
+    "particleCount": 996,
+    "radiusOfGyration": 9.417,
+    "principalMoments": [
+     10.343,
+     20.276,
+     58.058
+    ],
+    "flatnessRatio": 0.1782,
+    "inPlaneSymmetry": 0.3492,
+    "radialHeadShells": 1,
+    "transverseHeadShells": 0,
+    "cavityVolume": 6.25,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.2614451705391273,
+     "encapsulationThresholdCount": 96.96102003909576,
+     "closed": false,
+     "seedDistFromCentre": 46.52860950970155,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1252868,
+     "unreachedCells": 47
+    }
+   },
+   {
+    "amphiphileCount": 130,
+    "particleCount": 568,
+    "radiusOfGyration": 6.68,
+    "principalMoments": [
+     9.37,
+     15.562,
+     19.697
+    ],
+    "flatnessRatio": 0.4757,
+    "inPlaneSymmetry": 0.7901,
+    "radialHeadShells": 1,
+    "transverseHeadShells": 0,
+    "cavityVolume": 1.75,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.2608285030136576,
+     "encapsulationThresholdCount": 96.73231926726193,
+     "closed": false,
+     "seedDistFromCentre": 46.462983287762995,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1255796,
+     "unreachedCells": 13
+    }
+   },
+   {
+    "amphiphileCount": 124,
+    "particleCount": 515,
+    "radiusOfGyration": 6.957,
+    "principalMoments": [
+     7.358,
+     9.678,
+     31.36
+    ],
+    "flatnessRatio": 0.2346,
+    "inPlaneSymmetry": 0.3086,
+    "radialHeadShells": 1,
+    "transverseHeadShells": 0,
+    "cavityVolume": 2.375,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.26074461843658625,
+     "encapsulationThresholdCount": 96.70120936325561,
+     "closed": false,
+     "seedDistFromCentre": 46.403360776237825,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1256201,
+     "unreachedCells": 14
+    }
+   }
+  ],
+  "closureThreshold": 370.8656,
+  "minAmphiphilesPerAggregate": 13
+ },
+ {
+  "step": 45000,
+  "N": 106729,
+  "box": [
+   54,
+   54,
+   54
+  ],
+  "stage": "micelles",
+  "species": {
+   "C": 10844,
+   "O": 43376,
+   "H": 10844,
+   "M": 722,
+   "W": 40943
+  },
+  "bonds": 9160,
+  "events": {
+   "cc_bond": 5488,
+   "cc_break": 0,
+   "co_bond": 3722,
+   "co_break": 50
+  },
+  "invariants": {
+   "nonFinitePositions": 0,
+   "nonFiniteVelocities": 0,
+   "valence": {
+    "carbonCCover2": 0,
+    "carbonCOover1": 0,
+    "headOverChainCapacity": 0,
+    "nonBondableBonded": 0,
+    "degreeOver3": 0,
+    "headNotTerminal": 0,
+    "headChainCapacity": 2,
+    "headsWithTwoTails": 1136
+   }
+  },
+  "amphiphileCount": 1749,
+  "amphiphileFraction": 0.53919,
+  "meanTailLength": 3.343,
+  "meanPerTail": 2.424,
+  "twoTailedHeads": 663,
+  "alphaEvent": 0.5959,
+  "asfMeanFromEventAlpha": 2.474,
+  "alphaRecovered": 0.4011,
+  "alphaRecoveredR2": 0.977,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.4042280670489606,
+   "2": 0.24086901541419062,
+   "3": 0.14352759572128967,
+   "4": 0.0855243697414156,
+   "5": 0.05096175256687175,
+   "6": 0.03036678589435311,
+   "7": 0.01809477969470248,
+   "8": 0.010782209659557786,
+   "9": 0.0064248389372044655,
+   "10": 0.003828394797760923,
+   "11": 0.002281241112932893,
+   "12": 0.0013593323808659844,
+   "13": 0.00080999089100896,
+   "14": 0.00048265255264464405,
+   "15": 0.0002876001312609996,
+   "16": 0.00017137345497940997
+  },
+  "lengthHistogram": {
+   "2": 781,
+   "3": 214,
+   "4": 400,
+   "5": 196,
+   "6": 90,
+   "7": 37,
+   "8": 20,
+   "9": 7,
+   "10": 3,
+   "11": 1
+  },
+  "perTailHistogram": {
+   "2": 1732,
+   "3": 458,
+   "4": 145,
+   "5": 45,
+   "6": 24,
+   "7": 4,
+   "8": 4
+  },
+  "aggregateCount": 32,
+  "qualifyingAggregateCount": 23,
+  "amphiphilesInQualifying": 1711,
+  "amphiphileShareInQualifying": 0.9783,
+  "hasLamellarAggregate": false,
+  "hasVesicleAggregate": false,
+  "largestAggregateFraction": 0.1357,
+  "boxWideEnclosedVolume": 22.125,
+  "sizeHistogramTop": [
+   232,
+   225,
+   137,
+   125,
+   109,
+   123,
+   109,
+   97,
+   68,
+   74
+  ],
+  "largest": [
+   {
+    "amphiphileCount": 232,
+    "particleCount": 1031,
+    "radiusOfGyration": 7.862,
+    "principalMoments": [
+     11.459,
+     12.267,
+     38.081
+    ],
+    "flatnessRatio": 0.3009,
+    "inPlaneSymmetry": 0.3221,
+    "radialHeadShells": 1,
+    "transverseHeadShells": 0,
+    "cavityVolume": 7.25,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.2614785644320371,
+     "encapsulationThresholdCount": 96.97340468522609,
+     "closed": false,
+     "seedDistFromCentre": 46.628147941649004,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1252696,
+     "unreachedCells": 35
+    }
+   },
+   {
+    "amphiphileCount": 225,
+    "particleCount": 1015,
+    "radiusOfGyration": 12.97,
+    "principalMoments": [
+     10.791,
+     19.019,
+     138.417
+    ],
+    "flatnessRatio": 0.078,
+    "inPlaneSymmetry": 0.1374,
+    "radialHeadShells": 1,
+    "transverseHeadShells": 0,
+    "cavityVolume": 4.375,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.26146124028532564,
+     "encapsulationThresholdCount": 96.96697975516146,
+     "closed": false,
+     "seedDistFromCentre": 46.59390700446077,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1252776,
+     "unreachedCells": 32
+    }
+   },
+   {
+    "amphiphileCount": 137,
+    "particleCount": 618,
+    "radiusOfGyration": 6.718,
+    "principalMoments": [
+     8.895,
+     11.797,
+     24.438
+    ],
+    "flatnessRatio": 0.364,
+    "inPlaneSymmetry": 0.4827,
+    "radialHeadShells": 1,
+    "transverseHeadShells": 0,
+    "cavityVolume": 2.375,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.26089269869387977,
+     "encapsulationThresholdCount": 96.75612723672492,
+     "closed": false,
+     "seedDistFromCentre": 46.537621697593906,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1255491,
+     "unreachedCells": 17
+    }
+   }
+  ],
+  "closureThreshold": 370.8656,
+  "minAmphiphilesPerAggregate": 13
+ },
+ {
+  "step": 60000,
+  "N": 106729,
+  "box": [
+   54,
+   54,
+   54
+  ],
+  "stage": "micelles",
+  "species": {
+   "C": 10844,
+   "O": 43376,
+   "H": 10844,
+   "M": 722,
+   "W": 40943
+  },
+  "bonds": 9759,
+  "events": {
+   "cc_bond": 5846,
+   "cc_break": 0,
+   "co_bond": 3984,
+   "co_break": 71
+  },
+  "invariants": {
+   "nonFinitePositions": 0,
+   "nonFiniteVelocities": 0,
+   "valence": {
+    "carbonCCover2": 0,
+    "carbonCOover1": 0,
+    "headOverChainCapacity": 0,
+    "nonBondableBonded": 0,
+    "degreeOver3": 0,
+    "headNotTerminal": 0,
+    "headChainCapacity": 2,
+    "headsWithTwoTails": 1273
+   }
+  },
+  "amphiphileCount": 1735,
+  "amphiphileFraction": 0.5498,
+  "meanTailLength": 3.436,
+  "meanPerTail": 2.447,
+  "twoTailedHeads": 701,
+  "alphaEvent": 0.5947,
+  "asfMeanFromEventAlpha": 2.467,
+  "alphaRecovered": 0.3911,
+  "alphaRecoveredR2": 0.958,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.40538918480769837,
+   "2": 0.24108903096498518,
+   "3": 0.14337807477327602,
+   "4": 0.08526838505845083,
+   "5": 0.05070996735012243,
+   "6": 0.030157728293877493,
+   "7": 0.0179351047412012,
+   "8": 0.010666187417808976,
+   "9": 0.0063432890787905654,
+   "10": 0.003772417899756831,
+   "11": 0.0022434949178004515,
+   "12": 0.00133422902232568,
+   "13": 0.0007934794368785276,
+   "14": 0.0004718902124101599,
+   "15": 0.0002806378618260219,
+   "16": 0.00016689816279093832
+  },
+  "lengthHistogram": {
+   "2": 735,
+   "3": 206,
+   "4": 406,
+   "5": 211,
+   "6": 99,
+   "7": 41,
+   "8": 25,
+   "9": 8,
+   "10": 2,
+   "11": 2
+  },
+  "perTailHistogram": {
+   "2": 1725,
+   "3": 474,
+   "4": 149,
+   "5": 50,
+   "6": 27,
+   "7": 6,
+   "8": 5
+  },
+  "aggregateCount": 27,
+  "qualifyingAggregateCount": 22,
+  "amphiphilesInQualifying": 1707,
+  "amphiphileShareInQualifying": 0.9839,
+  "hasLamellarAggregate": false,
+  "hasVesicleAggregate": false,
+  "largestAggregateFraction": 0.1618,
+  "boxWideEnclosedVolume": 27,
+  "sizeHistogramTop": [
+   281,
+   224,
+   211,
+   140,
+   124,
+   114,
+   94,
+   67,
+   66,
+   61
+  ],
+  "largest": [
+   {
+    "amphiphileCount": 281,
+    "particleCount": 1245,
+    "radiusOfGyration": 9.074,
+    "principalMoments": [
+     9.875,
+     16.554,
+     55.909
+    ],
+    "flatnessRatio": 0.1766,
+    "inPlaneSymmetry": 0.2961,
+    "radialHeadShells": 1,
+    "transverseHeadShells": 0,
+    "cavityVolume": 6.375,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.2617983248756525,
+     "encapsulationThresholdCount": 97.09199283400379,
+     "closed": false,
+     "seedDistFromCentre": 46.577451122647666,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1251184,
+     "unreachedCells": 53
+    }
+   },
+   {
+    "amphiphileCount": 224,
+    "particleCount": 1015,
+    "radiusOfGyration": 7.653,
+    "principalMoments": [
+     10.914,
+     12.328,
+     35.325
+    ],
+    "flatnessRatio": 0.3089,
+    "inPlaneSymmetry": 0.349,
+    "radialHeadShells": 1,
+    "transverseHeadShells": 0,
+    "cavityVolume": 6.875,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.2614691715374557,
+     "encapsulationThresholdCount": 96.96992118374142,
+     "closed": false,
+     "seedDistFromCentre": 46.615802341463386,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1252770,
+     "unreachedCells": 64
+    }
+   },
+   {
+    "amphiphileCount": 211,
+    "particleCount": 973,
+    "radiusOfGyration": 8.206,
+    "principalMoments": [
+     9.889,
+     11.883,
+     45.572
+    ],
+    "flatnessRatio": 0.217,
+    "inPlaneSymmetry": 0.2607,
+    "radialHeadShells": 1,
+    "transverseHeadShells": 0,
+    "cavityVolume": 4.625,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.26140051953856036,
+     "encapsulationThresholdCount": 96.94446051897991,
+     "closed": false,
+     "seedDistFromCentre": 46.41904640490394,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1253065,
+     "unreachedCells": 30
+    }
+   }
+  ],
+  "closureThreshold": 370.8656,
+  "minAmphiphilesPerAggregate": 13
+ },
+ {
+  "step": 75000,
+  "N": 106729,
+  "box": [
+   54,
+   54,
+   54
+  ],
+  "stage": "micelles",
+  "species": {
+   "C": 10844,
+   "O": 43376,
+   "H": 10844,
+   "M": 722,
+   "W": 40943
+  },
+  "bonds": 10092,
+  "events": {
+   "cc_bond": 6061,
+   "cc_break": 0,
+   "co_bond": 4130,
+   "co_break": 99
+  },
+  "invariants": {
+   "nonFinitePositions": 0,
+   "nonFiniteVelocities": 0,
+   "valence": {
+    "carbonCCover2": 0,
+    "carbonCOover1": 0,
+    "headOverChainCapacity": 0,
+    "nonBondableBonded": 0,
+    "degreeOver3": 0,
+    "headNotTerminal": 0,
+    "headChainCapacity": 2,
+    "headsWithTwoTails": 1338
+   }
+  },
+  "amphiphileCount": 1708,
+  "amphiphileFraction": 0.54666,
+  "meanTailLength": 3.471,
+  "meanPerTail": 2.455,
+  "twoTailedHeads": 707,
+  "alphaEvent": 0.5947,
+  "asfMeanFromEventAlpha": 2.468,
+  "alphaRecovered": 0.4031,
+  "alphaRecoveredR2": 0.942,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.4053588724974189,
+   "2": 0.2410833211860324,
+   "3": 0.14338200468143872,
+   "4": 0.08527507902798549,
+   "5": 0.05071653949451674,
+   "6": 0.03016317788992895,
+   "7": 0.017939262210858536,
+   "8": 0.010669205010304543,
+   "9": 0.00634540786649552,
+   "10": 0.0037738707760601848,
+   "11": 0.002244473631017641,
+   "12": 0.0013348792736333941,
+   "13": 0.0007939067095959182,
+   "14": 0.00047216843949179275,
+   "15": 0.00028081767361002414,
+   "16": 0.00016701363161126056
+  },
+  "lengthHistogram": {
+   "2": 705,
+   "3": 216,
+   "4": 389,
+   "5": 213,
+   "6": 102,
+   "7": 44,
+   "8": 26,
+   "9": 9,
+   "10": 4
+  },
+  "perTailHistogram": {
+   "2": 1691,
+   "3": 489,
+   "4": 149,
+   "5": 50,
+   "6": 25,
+   "7": 5,
+   "8": 6
+  },
+  "aggregateCount": 26,
+  "qualifyingAggregateCount": 21,
+  "amphiphilesInQualifying": 1690,
+  "amphiphileShareInQualifying": 0.9895,
+  "hasLamellarAggregate": false,
+  "hasVesicleAggregate": false,
+  "largestAggregateFraction": 0.2025,
+  "boxWideEnclosedVolume": 36.125,
+  "sizeHistogramTop": [
+   333,
+   272,
+   223,
+   146,
+   110,
+   92,
+   64,
+   61,
+   60,
+   53
+  ],
+  "largest": [
+   {
+    "amphiphileCount": 333,
+    "particleCount": 1546,
+    "radiusOfGyration": 13.112,
+    "principalMoments": [
+     11.173,
+     27.223,
+     133.52
+    ],
+    "flatnessRatio": 0.0837,
+    "inPlaneSymmetry": 0.2039,
+    "radialHeadShells": 2,
+    "transverseHeadShells": 0,
+    "cavityVolume": 11.625,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.26222400128092227,
+     "encapsulationThresholdCount": 97.24986156945,
+     "closed": false,
+     "seedDistFromCentre": 46.57480783206775,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1249163,
+     "unreachedCells": 63
+    }
+   },
+   {
+    "amphiphileCount": 272,
+    "particleCount": 1217,
+    "radiusOfGyration": 8.344,
+    "principalMoments": [
+     11.022,
+     14.902,
+     43.699
+    ],
+    "flatnessRatio": 0.2522,
+    "inPlaneSymmetry": 0.341,
+    "radialHeadShells": 1,
+    "transverseHeadShells": 0,
+    "cavityVolume": 6.5,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.2617569000638521,
+     "encapsulationThresholdCount": 97.07662979632055,
+     "closed": false,
+     "seedDistFromCentre": 46.39312888673816,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1251380,
+     "unreachedCells": 51
+    }
+   },
+   {
+    "amphiphileCount": 223,
+    "particleCount": 1012,
+    "radiusOfGyration": 7.478,
+    "principalMoments": [
+     11.542,
+     12.532,
+     31.843
+    ],
+    "flatnessRatio": 0.3625,
+    "inPlaneSymmetry": 0.3935,
+    "radialHeadShells": 2,
+    "transverseHeadShells": 0,
+    "cavityVolume": 4.75,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.2614516399396547,
+     "encapsulationThresholdCount": 96.963419317204,
+     "closed": false,
+     "seedDistFromCentre": 46.587562765693654,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1252833,
+     "unreachedCells": 43
+    }
+   }
+  ],
+  "closureThreshold": 370.8656,
+  "minAmphiphilesPerAggregate": 13
+ },
+ {
+  "step": 90000,
+  "N": 106729,
+  "box": [
+   54,
+   54,
+   54
+  ],
+  "stage": "bilayer",
+  "species": {
+   "C": 10844,
+   "O": 43376,
+   "H": 10844,
+   "M": 722,
+   "W": 40943
+  },
+  "bonds": 10311,
+  "events": {
+   "cc_bond": 6197,
+   "cc_break": 0,
+   "co_bond": 4237,
+   "co_break": 123
+  },
+  "invariants": {
+   "nonFinitePositions": 0,
+   "nonFiniteVelocities": 0,
+   "valence": {
+    "carbonCCover2": 0,
+    "carbonCOover1": 0,
+    "headOverChainCapacity": 0,
+    "nonBondableBonded": 0,
+    "degreeOver3": 0,
+    "headNotTerminal": 0,
+    "headChainCapacity": 2,
+    "headsWithTwoTails": 1380
+   }
+  },
+  "amphiphileCount": 1670,
+  "amphiphileFraction": 0.53412,
+  "meanTailLength": 3.468,
+  "meanPerTail": 2.459,
+  "twoTailedHeads": 685,
+  "alphaEvent": 0.5939,
+  "asfMeanFromEventAlpha": 2.463,
+  "alphaRecovered": 0.4101,
+  "alphaRecoveredR2": 0.928,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.4061736539433479,
+   "2": 0.24123616383811836,
+   "3": 0.14327587764086824,
+   "4": 0.08509494093736444,
+   "5": 0.05053990310416403,
+   "6": 0.030016846802425192,
+   "7": 0.017827717043763555,
+   "8": 0.010588303864309253,
+   "9": 0.006288644723703702,
+   "10": 0.003734975211116719,
+   "11": 0.00221829033767398,
+   "12": 0.0013174952293047398,
+   "13": 0.0007824916557409883,
+   "14": 0.0004647403479611754,
+   "15": 0.000276020312086966,
+   "16": 0.00016393500805088446
+  },
+  "lengthHistogram": {
+   "2": 701,
+   "3": 210,
+   "4": 372,
+   "5": 205,
+   "6": 97,
+   "7": 42,
+   "8": 26,
+   "9": 12,
+   "10": 3,
+   "11": 1,
+   "14": 1
+  },
+  "perTailHistogram": {
+   "2": 1648,
+   "3": 479,
+   "4": 139,
+   "5": 51,
+   "6": 24,
+   "7": 8,
+   "8": 6
+  },
+  "aggregateCount": 22,
+  "qualifyingAggregateCount": 19,
+  "amphiphilesInQualifying": 1661,
+  "amphiphileShareInQualifying": 0.9946,
+  "hasLamellarAggregate": true,
+  "hasVesicleAggregate": false,
+  "largestAggregateFraction": 0.3602,
+  "boxWideEnclosedVolume": 29.75,
+  "sizeHistogramTop": [
+   588,
+   217,
+   138,
+   108,
+   92,
+   92,
+   63,
+   52,
+   55,
+   44
+  ],
+  "largest": [
+   {
+    "amphiphileCount": 588,
+    "particleCount": 2688,
+    "radiusOfGyration": 14.928,
+    "principalMoments": [
+     18.234,
+     56.617,
+     147.992
+    ],
+    "flatnessRatio": 0.1232,
+    "inPlaneSymmetry": 0.3826,
+    "radialHeadShells": 1,
+    "transverseHeadShells": 0,
+    "cavityVolume": 17.125,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.2638700467571304,
+     "encapsulationThresholdCount": 97.8603232126112,
+     "closed": false,
+     "seedDistFromCentre": 46.518484057913376,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1241418,
+     "unreachedCells": 110
+    }
+   },
+   {
+    "amphiphileCount": 217,
+    "particleCount": 979,
+    "radiusOfGyration": 7.438,
+    "principalMoments": [
+     11.064,
+     12.892,
+     31.361
+    ],
+    "flatnessRatio": 0.3528,
+    "inPlaneSymmetry": 0.4111,
+    "radialHeadShells": 2,
+    "transverseHeadShells": 0,
+    "cavityVolume": 6.125,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.2614142887812867,
+     "encapsulationThresholdCount": 96.94956705744515,
+     "closed": false,
+     "seedDistFromCentre": 46.58895297811777,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1253023,
+     "unreachedCells": 54
+    }
+   },
+   {
+    "amphiphileCount": 138,
+    "particleCount": 650,
+    "radiusOfGyration": 6.751,
+    "principalMoments": [
+     7.826,
+     13.098,
+     24.646
+    ],
+    "flatnessRatio": 0.3175,
+    "inPlaneSymmetry": 0.5315,
+    "radialHeadShells": 1,
+    "transverseHeadShells": 2,
+    "cavityVolume": 5,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 40943,
+     "bulkWaterDensity": 0.2609367606125255,
+     "encapsulationThresholdCount": 96.77246828662064,
+     "closed": false,
+     "seedDistFromCentre": 46.48736178928055,
+     "theoreticalMaxDist": 46.76537180435968,
+     "totalEmptyCells": 1255294,
+     "unreachedCells": 32
+    }
+   }
+  ],
+  "closureThreshold": 370.8656,
+  "minAmphiphilesPerAggregate": 13
+ }
+]

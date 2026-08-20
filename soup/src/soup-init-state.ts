@@ -64,6 +64,7 @@ export function buildInitialState(
   rules: ResolvedRule[],
   eventRuleIds: [string, string][],
   clay: ClayLayout | null,
+  activeN: number = N,
 ): InitialState {
   const rng = mulberry32(opts.seed)
 
@@ -86,14 +87,18 @@ export function buildInitialState(
   // trajectory", not "restart with the right particle count". `rng` above is still consumed further
   // down (bondRng0/thermoRng0's own fallback branch), so it is not wasted even on a resume; it is
   // simply not this block's OWN source of positions/velocities any more.
+  // Task 'evaporation' (2026-08-20): the arrays above are sized N = CAPACITY (the creation/wet
+  // composition, so rehydration has slots to write into), while a checkpoint carries only the
+  // ACTIVE particles -- fewer than capacity whenever it was taken mid dry-phase. activeN defaults to
+  // N, so a caller that never evaporates sees the identical check it always did.
   if (opts.resume) {
-    if (opts.resume.positions.length !== N * 4) {
+    if (opts.resume.positions.length !== activeN * 4) {
       throw new Error(
-        `createSoup: резюме содержит ${opts.resume.positions.length / 4} частиц, а состав этого вызова даёт N=${N} -- checkpoint не соответствует конфигурации`,
+        `createSoup: резюме содержит ${opts.resume.positions.length / 4} частиц, а состав этого вызова даёт N=${activeN} -- checkpoint не соответствует конфигурации`,
       )
     }
-    if (opts.resume.velocities.length !== N * 4) {
-      throw new Error(`createSoup: резюме содержит ${opts.resume.velocities.length / 4} скоростей, а N=${N}`)
+    if (opts.resume.velocities.length !== activeN * 4) {
+      throw new Error(`createSoup: резюме содержит ${opts.resume.velocities.length / 4} скоростей, а N=${activeN}`)
     }
     positions0.set(opts.resume.positions)
     velocities0.set(opts.resume.velocities)
@@ -259,12 +264,12 @@ export function buildInitialState(
   const eventsInit = new Uint32Array(rules.length * 2)
   if (opts.resume) {
     const r = opts.resume
-    if (r.bondSlots.length !== N * 3) throw new Error(`createSoup: резюме содержит ${r.bondSlots.length} bondSlots-слотов, ожидалось ${N * 3}`)
-    if (r.centerLink.length !== N) throw new Error(`createSoup: резюме содержит ${r.centerLink.length} centerLink-записей, ожидалось ${N}`)
-    if (r.centerHeldSteps.length !== N) throw new Error(`createSoup: резюме содержит ${r.centerHeldSteps.length} centerHeldSteps-записей, ожидалось ${N}`)
+    if (r.bondSlots.length !== activeN * 3) throw new Error(`createSoup: резюме содержит ${r.bondSlots.length} bondSlots-слотов, ожидалось ${activeN * 3}`)
+    if (r.centerLink.length !== activeN) throw new Error(`createSoup: резюме содержит ${r.centerLink.length} centerLink-записей, ожидалось ${activeN}`)
+    if (r.centerHeldSteps.length !== activeN) throw new Error(`createSoup: резюме содержит ${r.centerHeldSteps.length} centerHeldSteps-записей, ожидалось ${activeN}`)
     if (r.desorbEvents.length !== 2) throw new Error(`createSoup: резюме содержит ${r.desorbEvents.length} desorbEvents-счётчиков, ожидалось 2`)
-    if (r.bondRng.length !== N) throw new Error(`createSoup: резюме содержит ${r.bondRng.length} bondRng-состояний, ожидалось ${N}`)
-    if (r.thermoRng.length !== N) throw new Error(`createSoup: резюме содержит ${r.thermoRng.length} thermoRng-состояний, ожидалось ${N}`)
+    if (r.bondRng.length !== activeN) throw new Error(`createSoup: резюме содержит ${r.bondRng.length} bondRng-состояний, ожидалось ${activeN}`)
+    if (r.thermoRng.length !== activeN) throw new Error(`createSoup: резюме содержит ${r.thermoRng.length} thermoRng-состояний, ожидалось ${activeN}`)
     bondSlots0.set(r.bondSlots)
     centerLink0.set(r.centerLink)
     centerHeldSteps0.set(r.centerHeldSteps)

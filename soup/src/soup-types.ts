@@ -7,6 +7,7 @@
 import type { Stage, StageEvidence } from './stages'
 import type { RelaxColdStartResult } from './soup-relax'
 import type { NonFiniteCount } from './soup-health'
+import type { RehydrationReport } from './soup-evaporate'
 
 export const NONE_U32 = 0xffffffff
 
@@ -29,6 +30,13 @@ export interface CreateSoupOpts {
    * targetDryDensity/rampSteps/rampRelaxSteps) always comes from data/soup.json -- this override is a
    * plain boolean switch, never a number. */
   dryWetCycle?: boolean
+  /** Task 'evaporation' (2026-08-20): overrides data/soup.json's dryWetCycle.evaporateSolvent for
+   * THIS system -- the same boolean-only convenience pattern `dryWetCycle` itself uses. `true` makes
+   * the dry phase REMOVE solvent beads from the system (and rehydration put them back) instead of
+   * merely compressing the box at fixed composition; `false`/`undefined` defers to the file, which
+   * defaults to off so no existing caller changes behaviour. Requires `dryWetCycle` as well (solvent
+   * removal happens at a wet<->dry transition; there is no other trigger for it). */
+  evaporateSolvent?: boolean
   /** Water-calibration task (2026-08-19): overrides data/soup.json's `solvent.attractionScale.
    * epsilonScale` for THIS system only -- the same "convenience override, file's own default when
    * absent" pattern `catalystCount` already uses. Exists so the calibration sweep
@@ -83,6 +91,14 @@ export interface CreateSoupOpts {
   resume?: {
     globalStep: number
     liveBox: [number, number, number]
+    /** Task 'evaporation' (2026-08-20): the LIVE per-monomer census at checkpoint time, which can
+     * differ from `start` above because a checkpoint taken mid dry-phase carries FEWER solvent beads
+     * than the composition the run was created with. When present it is what N is taken from (so the
+     * arrays below match), while `start` stays the creation composition -- the wet/dry box pair and
+     * the whole cycle schedule are derived from THAT, so a resumed evaporating run reproduces the
+     * same ladder the original did. Absent (every pre-task checkpoint) reads as "the census equals
+     * `start`", i.e. exactly the previous behaviour. */
+    activeCounts?: Record<string, number>
     positions: Float32Array
     velocities: Float32Array
     bondSlots: Uint32Array
@@ -244,6 +260,15 @@ export interface SoupSystem {
    * overrides them explicitly (a sweep does; a real run does not). See soup/src/soup-relax.ts and
    * soup/wgsl/relax.wgsl for what it does and does not touch. */
   relaxColdStart(opts?: { iterations?: number; maxDisplacementSigma?: number }): Promise<RelaxColdStartResult>
+  /** Task 'evaporation' (2026-08-20): removes/returns solvent beads AT THE CURRENT BOX, with no ramp
+   * and no dynamics. Exists so the two operations can be proved in ISOLATION -- inside a real
+   * wet<->dry transition they are inseparable from the box change and the ramp's relaxation steps, so
+   * "removal did not touch the bond graph" and "rehydration did not move a single pre-existing
+   * particle" would not be checkable claims. Never called by stepCycled, the CLI, the viewer or any
+   * measurement path: only by tests/soup-evaporation.test.ts. Throws unless this system was created
+   * with solvent evaporation. */
+  evaporateDEBUG(targetSolvent: number): Promise<void>
+  rehydrateDEBUG(targetSolvent: number): Promise<RehydrationReport>
   /** The system's CURRENT box -- a live snapshot, mirroring engine/src/sim.ts's own `System.box`
    * getter (its doc comment: "a live snapshot, since areaMove() mutates L_x, L_y in place"). Equal
    * to `CreateSoupOpts.box` for the system's whole lifetime UNLESS dry-wet cycling is enabled, in

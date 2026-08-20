@@ -72,6 +72,72 @@ function forceStats(f: Float32Array, n: number): { max: number; nonFinite: numbe
  * computed, exactly like soup/src/soup-integrate.ts's own STEP_CHUNK. */
 const RELAX_SYNC_EVERY = 25
 
+/** The minimisation loop itself: `iterations` displacement-capped steepest-descent steps with the
+ * cap decaying linearly from `d0` (sigma) to zero, then one final grid/list/force rebuild so the
+ * caller's next kick sees the force of the RELAXED configuration, then the loud finiteness/Verlet
+ * checks. Extracted from relaxColdStart (below) verbatim -- not one dispatch, order or check changed
+ * -- because task 'evaporation' (2026-08-20) needs the SAME minimiser after re-inserting solvent
+ * beads mid-run (soup/src/soup-evaporate.ts's rehydrateSolventTo), and duplicating a minimiser is
+ * exactly how two of them drift apart.
+ *
+ * This function carries NO precondition of its own: relaxColdStart keeps the "globalStep must be 0"
+ * refusal that makes cold-start minimisation provably outside the trajectory, and the rehydration
+ * caller instead makes its own use provably harmless a different way (it marks every pre-existing
+ * particle immobile, so only the freshly inserted beads can move at all). */
+export async function relaxIterations(rt: SoupRuntime, iterations: number, d0: number): Promise<void> {
+  for (let k = 0; k < iterations; k++) {
+    // Linear decay to zero over the iteration count -- see soup/wgsl/relax.wgsl's header for why a
+    // normalised descent needs the cap to close, and why the alternative (an adaptive step-size
+    // search) needs a global energy reduction this engine has no kernel for.
+    const d = d0 * (1 - k / iterations)
+    rt.device.queue.writeBuffer(rt.buf.relaxUniform, 0, new Float32Array([d, 0, 0, 0]))
+    const enc = rt.device.createCommandEncoder()
+    const pass = enc.beginComputePass()
+    // Rebuild the neighbour structure EVERY iteration: a minimisation displacement is bounded by
+    // the cap, not by the Verlet skin, so a list reused across iterations could miss a pair -- and
+    // the pairs at stake here are precisely the overlapping ones. The rebuild also re-takes the
+    // drift snapshot and zeroes the drift counter, which is why assertVerletSafety below reads a
+    // clean slate rather than the accumulated minimisation travel.
+    if (rt.verlet.enabled) {
+      encodeVerletRebuild(rt, pass)
+      encodeSoupForceList(rt, pass)
+    } else {
+      encodeGridRebuild(rt, pass)
+      encodeSoupForce(rt, pass)
+    }
+    pass.setPipeline(rt.pipe.relaxStep)
+    pass.setBindGroup(1, rt.bind.relaxStepBind)
+    pass.dispatchWorkgroups(rt.wgN)
+    pass.end()
+    rt.device.queue.submit([enc.finish()])
+    if ((k + 1) % RELAX_SYNC_EVERY === 0) await rt.device.queue.onSubmittedWorkDone()
+  }
+
+  // The positions moved, so the caller's priming F(x0) is stale: rebuild the grid/list and the
+  // force one final time, so the first kick after this sees the force of the RELAXED configuration.
+  // Without this the first half-kick would use the force of the last pre-minimisation geometry --
+  // i.e. the very overlap spike this stage exists to remove.
+  {
+    const enc = rt.device.createCommandEncoder()
+    const pass = enc.beginComputePass()
+    if (rt.verlet.enabled) {
+      encodeVerletRebuild(rt, pass)
+      encodeSoupForceList(rt, pass)
+    } else {
+      encodeGridRebuild(rt, pass)
+      encodeSoupForce(rt, pass)
+    }
+    pass.end()
+    rt.device.queue.submit([enc.finish()])
+  }
+  await rt.device.queue.onSubmittedWorkDone()
+  // Fail loudly here too: an unrelaxable configuration (a pair at exactly r = 0, whose force
+  // direction is undefined -- see relax.wgsl's guard) must not be handed to the step loop as if it
+  // were fine.
+  await assertStateFinite(rt)
+  if (rt.verlet.enabled) await assertVerletSafety(rt)
+}
+
 export function makeRelaxColdStart(
   rt: SoupRuntime,
   forces: () => Promise<Float32Array>,
@@ -102,58 +168,7 @@ export function makeRelaxColdStart(
     const d0 = maxDisplacementSigma * rt.p.sigma
 
     const before = forceStats(await forces(), rt.N)
-
-    for (let k = 0; k < iterations; k++) {
-      // Linear decay to zero over the iteration count -- see soup/wgsl/relax.wgsl's header for why a
-      // normalised descent needs the cap to close, and why the alternative (an adaptive step-size
-      // search) needs a global energy reduction this engine has no kernel for.
-      const d = d0 * (1 - k / iterations)
-      rt.device.queue.writeBuffer(rt.buf.relaxUniform, 0, new Float32Array([d, 0, 0, 0]))
-      const enc = rt.device.createCommandEncoder()
-      const pass = enc.beginComputePass()
-      // Rebuild the neighbour structure EVERY iteration: a minimisation displacement is bounded by
-      // the cap, not by the Verlet skin, so a list reused across iterations could miss a pair -- and
-      // the pairs at stake here are precisely the overlapping ones. The rebuild also re-takes the
-      // drift snapshot and zeroes the drift counter, which is why assertVerletSafety below reads a
-      // clean slate rather than the accumulated minimisation travel.
-      if (rt.verlet.enabled) {
-        encodeVerletRebuild(rt, pass)
-        encodeSoupForceList(rt, pass)
-      } else {
-        encodeGridRebuild(rt, pass)
-        encodeSoupForce(rt, pass)
-      }
-      pass.setPipeline(rt.pipe.relaxStep)
-      pass.setBindGroup(1, rt.bind.relaxStepBind)
-      pass.dispatchWorkgroups(rt.wgN)
-      pass.end()
-      rt.device.queue.submit([enc.finish()])
-      if ((k + 1) % RELAX_SYNC_EVERY === 0) await rt.device.queue.onSubmittedWorkDone()
-    }
-
-    // The positions moved, so createSoup's own priming F(x0) is stale: rebuild the grid/list and the
-    // force one final time, exactly as that priming block does, so the first kick of step 1 sees the
-    // force of the RELAXED configuration. Without this the first half-kick would use the force of
-    // the last pre-minimisation geometry -- i.e. the very overlap spike this stage exists to remove.
-    {
-      const enc = rt.device.createCommandEncoder()
-      const pass = enc.beginComputePass()
-      if (rt.verlet.enabled) {
-        encodeVerletRebuild(rt, pass)
-        encodeSoupForceList(rt, pass)
-      } else {
-        encodeGridRebuild(rt, pass)
-        encodeSoupForce(rt, pass)
-      }
-      pass.end()
-      rt.device.queue.submit([enc.finish()])
-    }
-    await rt.device.queue.onSubmittedWorkDone()
-    // Fail loudly here too: an unrelaxable start (a pair at exactly r = 0, whose force direction is
-    // undefined -- see relax.wgsl's guard) must not be handed to the step loop as if it were fine.
-    await assertStateFinite(rt)
-    if (rt.verlet.enabled) await assertVerletSafety(rt)
-
+    await relaxIterations(rt, iterations, d0)
     const after = forceStats(await forces(), rt.N)
     // sum_{k=0}^{it-1} d0*(1 - k/it) = d0*(it+1)/2
     const displacementBound = (d0 * (iterations + 1)) / 2

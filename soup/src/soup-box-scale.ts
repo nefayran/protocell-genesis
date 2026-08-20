@@ -12,6 +12,8 @@ import { assertStateFinite } from './soup-health'
 import { rebindGridDependent } from './soup-bindgroups'
 import type { SoupRuntime } from './soup-runtime'
 import { scaleMoleculesRigid, proximityPairs, mi3Distance, cyclePhaseAt, nextCycleTransition, type CycleSchedule } from './soup-box-scale-math'
+import { evaporationLadder, rehydrationLadder, evaporateSolventTo, rehydrateSolventTo, desorbOverstretchedTethers, type EvaporationPlan, type RehydrationReport } from './soup-evaporate'
+import { relaxIterations } from './soup-relax'
 
 export {
   scaleMoleculesRigid,
@@ -151,7 +153,7 @@ export async function applyBoxScaleOnce(
   // (box floats only), which is exactly what let a dims change silently desync the fixed-size grid
   // buffers from the live box (wet-dry-cycle-report.md's own measured blocker at box 46).
   resizeSoupGrid(rt.device, rt.buf, rt.grid, rt.startCounts, targetBox, rt.effectiveWalkRadius, () =>
-    rebindGridDependent(rt.device, rt.pipe, rt.buf, rt.bind),
+    rebindGridDependent(rt.device, rt.pipe, rt.buf, rt.bind, rt.N),
   )
 
   // Force an immediate rebuild (and, when the Verlet list is enabled, a fresh drift-safety
@@ -164,6 +166,26 @@ export async function applyBoxScaleOnce(
   // waiting up to `verletList.rebuildEvery` real steps for the next scheduled rebuild -- now ALSO
   // exercised against a freshly reallocated grid, not merely a rewritten uniform, whenever this
   // box change actually crossed a cell-count bracket.
+  // Task 'evaporation' (2026-08-20) -- A PRE-EXISTING DEFECT DIAGNOSED HERE AND DELIBERATELY NOT
+  // PATCHED IN THIS SHARED PATH. This block rebuilds the grid and the Verlet list and stops, leaving
+  // forceBuf holding the force of the configuration that existed BEFORE the coordinate remap; but
+  // soup/src/soup-integrate.ts's step() opens with kick_drift_wrap, which consumes forceBuf as
+  // F(x_n), so the first half-kick after every box change applies a force computed for geometry that
+  // no longer exists. A velocity-Verlet integrator requires F(x_n) there -- this is the same
+  // staleness soup/src/soup-relax.ts fixes for its own case in its closing block ("the positions
+  // moved, so createSoup's own priming F(x0) is stale").
+  //
+  // Measured, and NOT introduced by this task: tests/soup-grid-resize.test.ts (a bracket-crossing box
+  // change followed by real steps) FAILS on the pre-task tree with assertVerletSafety reporting a
+  // drift of 8.7e5 sigma at a FINITE state -- verified by stashing every change of this task and
+  // running that test alone. Adding the missing force rebuild here was tried and does NOT cure it
+  // (drift 1.94e8 with the rebuild in place), so the box change that test picks is simply too large
+  // for its own ramp at that composition, and the staleness is a second, independent defect rather
+  // than the cause. The rebuild is therefore withheld from this shared path, because it WOULD change
+  // the trajectory of every published dry-wet box-scaling number (wet-dry-cycling-report.md's own
+  // 0.711...0.926 series) and this task's budget could not re-run them. The evaporating transition
+  // does refresh F(x_n) explicitly -- see applyEvaporatingTransition, where the per-increment
+  // forces() call is documented as load-bearing rather than diagnostic.
   const enc = rt.device.createCommandEncoder()
   const pass = enc.beginComputePass()
   if (rt.verlet.enabled) {
@@ -303,7 +325,7 @@ export function makeGrowBoxTo(rt: SoupRuntime, step: (n: number) => Promise<void
             ]
       rt.live.liveBox = interp
       resizeSoupGrid(rt.device, rt.buf, rt.grid, rt.startCounts, interp, rt.effectiveWalkRadius, () =>
-        rebindGridDependent(rt.device, rt.pipe, rt.buf, rt.bind),
+        rebindGridDependent(rt.device, rt.pipe, rt.buf, rt.bind, rt.N),
       )
       const enc = rt.device.createCommandEncoder()
       const pass = enc.beginComputePass()
@@ -322,12 +344,130 @@ export function makeGrowBoxTo(rt: SoupRuntime, step: (n: number) => Promise<void
   }
 }
 
+/** Task 'evaporation' (2026-08-20): one wet<->dry transition WITH solvent removal/return, walked as
+ * a ladder of (active particle count, box) pairs -- soup/src/soup-evaporate.ts owns both ladders and
+ * the arithmetic behind them; this function is only the driver that applies them to a live system,
+ * reusing applyBoxScaleOnce VERBATIM for every box change (same rigid-CoM map, same per-increment
+ * bonded-distance self-check, same resizeSoupGrid reallocation, same finiteness/Verlet guards).
+ *
+ * ORDER WITHIN AN INCREMENT, and why each way round:
+ *  - drying: REMOVE first, then CONTRACT. Removal can never create an overlap (it only takes
+ *    particles away), and doing it before the contraction means the organics are never compressed
+ *    against solvent that is about to leave anyway. The ORGANIC density -- the one the chemistry
+ *    responds to -- is therefore monotone non-decreasing across the whole transition: removing
+ *    solvent at fixed box leaves it exactly unchanged, and every contraction raises it.
+ *  - rehydrating: EXPAND first, then INSERT. Expansion is what creates the room; there is no room to
+ *    insert into before it (dryWetCycle.basis item 5 gives the measured reason), and the whole pool
+ *    returns on the final increment, at the wet box.
+ * `rampRelaxSteps` of ordinary dynamics run between increments in BOTH directions -- an affine
+ * contraction of a dense liquid genuinely does push contacting pairs into each other's cores, and an
+ * affine expansion can too for two multi-bead molecules whose centres are closer than their own bead
+ * offsets, so neither direction is safe to jump. */
+export async function applyEvaporatingTransition(
+  rt: SoupRuntime,
+  plan: EvaporationPlan,
+  phase: 'wet' | 'dry',
+  particles: () => Promise<Float32Array>,
+  bonds: () => Promise<Uint32Array>,
+  forces: () => Promise<Float32Array>,
+  centerLinks: () => Promise<Uint32Array>,
+  step: (n: number) => Promise<void>,
+  cfg: CycleSchedule & { rampSteps: number; rampRelaxSteps: number },
+  targetDryDensity: number,
+  seed: number,
+): Promise<RehydrationReport[]> {
+  const ladder = phase === 'dry' ? evaporationLadder(plan, targetDryDensity) : rehydrationLadder(plan)
+  const reports: RehydrationReport[] = []
+  const d0 = (rt.soup.coldStartRelax?.maxDisplacementSigma ?? 0.1) * rt.p.sigma
+  for (let s = 0; s < ladder.length; s++) {
+    const rung = ladder[s]
+    if (phase === 'dry') {
+      await evaporateSolventTo(rt, plan, rung.solvent, rt.live.liveBox)
+      await applyBoxScaleOnce(rt, particles, bonds, rung.box)
+    } else {
+      await applyBoxScaleOnce(rt, particles, bonds, rung.box)
+      if (rung.solvent > rt.N - plan.solventBlockStart) {
+        reports.push(await rehydrateSolventTo(rt, plan, rung.solvent, rung.box, particles, forces, seed))
+      }
+    }
+    // THE forces() CALL BELOW IS LOAD-BEARING, NOT A DIAGNOSTIC, and that was found the hard way.
+    // applyBoxScaleOnce rebuilds the neighbour grid and the Verlet list after a box change but does
+    // NOT recompute the force -- harmless at the pre-existing path's 0.53 % increments, and not
+    // harmless at this path's 3.18 % ones. soup/src/soup-integrate.ts's step() opens with
+    // kick_drift_wrap, which consumes forceBuf as F(x_n); after a box change that buffer still holds
+    // the force of the PREVIOUS configuration, so the first half-kick applies a force from geometry
+    // that no longer exists (dv = F*dt/2, and F can be ~1e4 right after a contraction, i.e. a shove
+    // of order one sigma in a single step -- straight into a neighbour's core, whence the correct
+    // force is astronomical). This is exactly the staleness soup/src/soup-relax.ts fixes for itself
+    // ("the positions moved, so createSoup's own priming F(x0) is stale"). Two runs of this
+    // transition WITHOUT this call diverged inside the ramp's own relaxation steps (assertVerletSafety
+    // threw drifts of 2.98e7 and 2.13e14 sigma with the state still finite); runs with it have not.
+    // readback.forces() rebuilds grid+list+force and reads the result back, so it both refreshes
+    // F(x_n) and supplies the spike measurement below -- one round trip, both jobs.
+    //
+    // MEASURED, not assumed: an affine contraction of material that has already aggregated pushes
+    // contacting pairs of DIFFERENT molecules into each other's cores -- the amplification is
+    // |dCOM|/d for a pair whose centre separation is much larger than its bead-bead separation, so a
+    // 3.2 % box step can be a ~10 % approach for two interpenetrating multi-bead molecules. The first
+    // run of this transition at box 30 blew up on exactly that in the SECOND cycle (the first cycle
+    // had nothing aggregated yet to squeeze): assertVerletSafety threw a drift of 2.98e7 sigma inside
+    // the ramp's own relaxation steps. The cure is the same minimiser the cold start and the solvent
+    // insertion use, run only when the increment actually left a force spike the integrator cannot
+    // absorb, and only for as many iterations as the spike needs -- so an increment that was already
+    // clean pays one force readback and nothing else.
+    // The adsorption tether is the ONE distance a box change is allowed to alter, and FENE's force
+    // changes SIGN past r_inf -- see desorbOverstretchedTethers' own doc comment for the two measured
+    // divergences that led here. Threshold derived from the ramp's own per-increment factor.
+    const lambda = Math.exp(Math.abs(Math.log(plan.wetBox[0] / plan.dryBox[0])) / ladder.length)
+    const tether = await desorbOverstretchedTethers(rt, particles, centerLinks, rung.box, rt.p.fene.rInf / lambda)
+    const spike = maxAbsForce(await forces(), rt.N)
+    let relaxed = 0
+    // The trigger is DERIVED, and the FIRST derivation of it was measurably too permissive. With
+    // m = 1 in these units a force F displaces a bead by F*dt^2 in one step, and the first version
+    // required only that this stay under one sigma (F < sigma/dt^2 = 1e4) -- which never fired, and
+    // the ramp diverged anyway. The real condition for a Verlet integrator is that the force must not
+    // change appreciably ACROSS that displacement, and for a WCA r^-12 core d(ln F)/d(ln r) = -13, so
+    // F changes e-fold over dr = r/13. Requiring F*dt^2 <= sigma/13 gives F <= sigma/(13*dt^2) = 769
+    // -- BELOW the 0.9e3-2.7e3 spikes actually measured, which is exactly why the run kept diverging.
+    if (spike > rt.p.sigma / (13 * rt.p.integrator.dt * rt.p.integrator.dt)) {
+      relaxed = plan.relaxIterations
+      await relaxIterations(rt, relaxed, d0)
+    }
+    const after = relaxed > 0 ? maxAbsForce(await forces(), rt.N) : spike
+    console.log(
+      `[evaporation] ${phase === 'dry' ? 'испарение' : 'регидратация'} приращение=${s + 1}/${ladder.length} ` +
+        `box=${rung.box[0].toFixed(4)} растворителя=${rt.N - plan.solventBlockStart} N=${rt.N} ` +
+        `max|F|=${spike.toExponential(3)} итераций_минимизации=${relaxed} max|F|_после=${after.toExponential(3)} ` +
+        `перетянутых_привязок=${tether.cleared} самая_длинная=${tether.longest.toFixed(4)} порог=${tether.maxLength.toFixed(4)}`,
+    )
+    if (s < ladder.length - 1 && cfg.rampRelaxSteps > 0) await step(cfg.rampRelaxSteps)
+  }
+  return reports
+}
+
+/** max over all particles and components of |F| -- a scalar computed from a plain force readback, the
+ * same reduction soup/src/soup-relax.ts's own forceStats makes; never transfers the array anywhere. */
+function maxAbsForce(f: Float32Array, n: number): number {
+  let m = 0
+  for (let i = 0; i < n; i++) {
+    for (let c = 0; c < 3; c++) {
+      const v = Math.abs(f[i * 4 + c])
+      if (!Number.isFinite(v)) return Number.POSITIVE_INFINITY
+      if (v > m) m = v
+    }
+  }
+  return m
+}
+
 export function makeStepCycled(
   rt: SoupRuntime,
   particles: () => Promise<Float32Array>,
   bonds: () => Promise<Uint32Array>,
   step: (n: number) => Promise<void>,
   dryWetCycleSchedule: { rampSteps: number; rampRelaxSteps: number },
+  forces: () => Promise<Float32Array>,
+  centerLinks: () => Promise<Uint32Array>,
+  seed: number,
 ): (n: number) => Promise<void> {
   return async function stepCycled(n: number): Promise<void> {
     if (!rt.cycleCfg) {
@@ -345,7 +485,23 @@ export function makeStepCycled(
       }
       if (next !== Infinity && rt.live.globalStep === next) {
         const { phase, cycleIndex } = cyclePhaseAt(rt.live.globalStep, cfg)
-        await applyBoxScale(rt, particles, bonds, step, phase === 'dry' ? rt.dryBox : rt.box, cfg)
+        if (rt.evap) {
+          // Task 'evaporation': the SAME transition point, but the solvent actually leaves/returns.
+          // rt.evap is undefined for every system that did not ask for it, so the branch below is the
+          // untouched pre-task path.
+          const evapCfg = { ...cfg, rampSteps: rt.evap.rampSteps }
+          const reports = await applyEvaporatingTransition(rt, rt.evap, phase, particles, bonds, forces, centerLinks, step, evapCfg, rt.soup.dryWetCycle.targetDryDensity, seed)
+          for (const r of reports) {
+            console.log(
+              `[evaporation] регидратация: вставлено=${r.inserted} ниже_порога=${r.shortOfFloor} ` +
+                `минимальное_расстояние=${r.minAchieved.toFixed(4)} итераций_минимизации=${r.relaxIterations} ` +
+                `max|F| ${r.maxForceBefore.toExponential(4)} -> ${r.maxForceAfter.toExponential(4)} ` +
+                `смещение_прежних rms=${r.preexistingRmsDisplacement.toFixed(4)} max=${r.preexistingMaxDisplacement.toFixed(4)} граница=${r.displacementBound.toFixed(4)}`,
+            )
+          }
+        } else {
+          await applyBoxScale(rt, particles, bonds, step, phase === 'dry' ? rt.dryBox : rt.box, cfg)
+        }
         rt.live.cyclePhase = phase
         rt.live.cycleIndex = cycleIndex
       } else if (advance === 0 && remaining > 0) {

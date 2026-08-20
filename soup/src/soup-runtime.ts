@@ -16,6 +16,7 @@ import type { Soup } from './rules'
 import type { Params } from '../../engine/src/params'
 import type { CycleSchedule } from './soup-box-scale-math'
 import type { ClayLayout } from './soup-clay'
+import type { EvaporationPlan } from './soup-evaporate'
 
 /** Mutated by soup/src/soup-box-scale.ts (liveBox, cyclePhase, cycleIndex) and
  * soup/src/soup-integrate.ts (globalStep) -- the exact fields the original sim.ts exposed through
@@ -36,6 +37,10 @@ export interface SoupRuntime {
   catalystKind: number
   eventRuleIds: [string, string][]
   startCounts: Record<string, number>
+  /** LIVE active particle count. Constant for a system that does not evaporate its solvent; mutated
+   * by soup/src/soup-evaporate.ts's setActiveCount when solvent beads leave or return (task
+   * 'evaporation', 2026-08-20) -- every readback, dispatch size and census reads it, which is why it
+   * is the single source of truth rather than being re-derived anywhere. */
   N: number
   wgN: number
   verlet: Soup['verletList']
@@ -53,6 +58,10 @@ export interface SoupRuntime {
   box: [number, number, number]
   dryBox: [number, number, number]
   cycleCfg: CycleSchedule | undefined
+  /** Task 'evaporation' (2026-08-20): resolved once at creation when the run asked for solvent
+   * removal, `undefined` otherwise -- and `undefined` is what makes the pre-existing box-scaling-only
+   * cycle path byte-for-byte unchanged. */
+  evap: EvaporationPlan | undefined
   buf: SoupBuffers
   bind: SoupBindGroups
   grid: SoupGridState

@@ -74,6 +74,10 @@ export interface CheckpointConfig {
   start?: Record<string, number>
   catalystCount?: number
   dryWetCycle?: boolean
+  /** Task 'evaporation' (2026-08-20): whether this lineage's dry phase removes solvent beads. Part of
+   * the config (and therefore of soup/cli/campaign.ts's own resume signature) because two runs that
+   * differ in it are different experiments, not two snapshots of one. */
+  evaporateSolvent?: boolean
 }
 
 export interface CheckpointFile {
@@ -88,6 +92,12 @@ export interface CheckpointFile {
   liveBox: [number, number, number]
   cyclePhase: 'wet' | 'dry' | 'none'
   cycleIndex: number
+  /** Task 'evaporation' (2026-08-20): the LIVE per-monomer census, which is NOT redundant with
+   * `config.start` once the solvent can leave: a checkpoint taken mid dry-phase has fewer solvent
+   * beads than the composition its run was created with, and `N`/the base64 payloads below are sized
+   * for THAT. Written by every checkpoint (also by non-evaporating ones, where it simply equals
+   * config.start after catalystCount/clay resolution) so a reader never has to guess which. */
+  activeCounts: Record<string, number>
   /** Keyed by data/soup.json rule id, mirroring SoupSystem.events()'s own return shape exactly. */
   events: Record<string, number>
   desorbEvents: { stretch: number; timeout: number }
@@ -111,6 +121,7 @@ export interface CheckpointableSystem {
   desorbEvents(): Promise<{ stretch: number; timeout: number }>
   rngState(): Promise<{ bond: Uint32Array; thermo: Uint32Array }>
   events(): Promise<Record<string, number>>
+  invariants(): Promise<{ monomers: Record<string, number>; bonds: number; charge: number }>
   readonly box: [number, number, number]
   readonly cyclePhase: 'wet' | 'dry' | 'none'
   readonly cycleIndex: number
@@ -127,7 +138,7 @@ export interface CheckpointableSystem {
  * GPUCommandEncoder compute pass or a writeBuffer call, so a caller inserting a checkpoint between
  * two step() calls submits the EXACT SAME sequence of compute dispatches either way. */
 export async function encodeCheckpoint(sys: CheckpointableSystem, config: CheckpointConfig): Promise<CheckpointFile> {
-  const [positions, velocities, bondSlots, centerLink, centerHeldSteps, desorb, rng, events] = await Promise.all([
+  const [positions, velocities, bondSlots, centerLink, centerHeldSteps, desorb, rng, events, inv] = await Promise.all([
     sys.particles(),
     sys.velocities(),
     sys.bondSlots(),
@@ -136,6 +147,9 @@ export async function encodeCheckpoint(sys: CheckpointableSystem, config: Checkp
     sys.desorbEvents(),
     sys.rngState(),
     sys.events(),
+    // invariants() is another pure readback (it recomputes the census from the positions buffer's own
+    // species slot), so it joins the same concurrent batch and keeps this function trajectory-neutral.
+    sys.invariants(),
   ])
   return {
     version: 1,
@@ -146,6 +160,7 @@ export async function encodeCheckpoint(sys: CheckpointableSystem, config: Checkp
     liveBox: sys.box,
     cyclePhase: sys.cyclePhase,
     cycleIndex: sys.cycleIndex,
+    activeCounts: inv.monomers,
     events,
     desorbEvents: desorb,
     positionsB64: encodeTyped(positions),
@@ -165,6 +180,7 @@ export function decodeCheckpointResume(file: CheckpointFile): NonNullable<Create
   return {
     globalStep: file.globalStep,
     liveBox: file.liveBox,
+    activeCounts: file.activeCounts,
     positions: decodeFloat32(file.positionsB64),
     velocities: decodeFloat32(file.velocitiesB64),
     bondSlots: decodeUint32(file.bondSlotsB64),

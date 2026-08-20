@@ -280,12 +280,27 @@ test('continuous-run checkpoints: invariants hold and the stage ladder is reprod
       vDeg: 0,
       vTerminal: 0,
     })
-    // Monomer conservation against the composition THIS checkpoint declares (config.start), not a
-    // literal -- every checkpoint must reproduce its own requested census exactly. Ids the
-    // composition asked zero of are absent from `species` by construction (nothing is counted), so
-    // the comparison is over the requested keys.
-    const requested = JSON.parse(JSON.stringify(JSON.parse(readFileSync(path, 'utf8')).config.start ?? {})) as Record<string, number>
-    expect(species, `${path}: monomer conservation vs its own config.start`).toEqual(requested)
+    // Monomer conservation against the composition THIS checkpoint declares, not a literal -- every
+    // checkpoint must reproduce its own requested census exactly. Ids the composition asked zero of
+    // are absent from `species` by construction (nothing is counted), so the comparison is over the
+    // requested keys.
+    //
+    // Task 'evaporation' (2026-08-20): with solvent removal a checkpoint's SOLVENT count legitimately
+    // differs from config.start (that is the whole mechanism), so the census is compared against the
+    // checkpoint's own recorded live census `activeCounts` when it has one -- and, STRICTLY IN
+    // ADDITION, every NON-SOLVENT count is compared against config.start regardless, because organics
+    // may never be created or destroyed by anything. That is two assertions where there was one, not
+    // a weakened one; a pre-task checkpoint (no activeCounts) takes the identical single comparison it
+    // always did.
+    const raw = JSON.parse(readFileSync(path, 'utf8')) as { config: { start?: Record<string, number> }; activeCounts?: Record<string, number> }
+    const requestedStart = JSON.parse(JSON.stringify(raw.config.start ?? {})) as Record<string, number>
+    const requested = raw.activeCounts ? (JSON.parse(JSON.stringify(raw.activeCounts)) as Record<string, number>) : requestedStart
+    const nonZero = (o: Record<string, number>) => Object.fromEntries(Object.entries(o).filter(([, v]) => v > 0))
+    expect(species, `${path}: monomer conservation vs its own live census`).toEqual(nonZero(requested))
+    const solventId = soup.solvent.waterId
+    const organicsSeen = Object.fromEntries(Object.entries(species).filter(([k]) => k !== solventId))
+    const organicsAsked = Object.fromEntries(Object.entries(nonZero(requestedStart)).filter(([k]) => k !== solventId))
+    expect(organicsSeen, `${path}: NON-solvent conservation vs config.start`).toEqual(organicsAsked)
     // Every bond is one the rules declare (C-C or C-O); nothing else may ever be bonded.
     expect(vOther, `${path}: only carbon/head may carry bonds`).toBe(0)
   }

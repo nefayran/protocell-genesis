@@ -197,6 +197,29 @@ export interface DryWetCycle {
   /** Real dynamics steps run between two consecutive ramp increments, letting WCA overlaps introduced
    * by that increment's compression relax before the next one lands -- see rampSteps' own comment. */
   rampRelaxSteps: number
+  /** Task 'evaporation' (2026-08-20): whether the dry phase REMOVES SOLVENT BEADS FROM THE SYSTEM
+   * (and rehydration puts them back), instead of merely compressing the box at fixed composition.
+   * Optional and default-off (see the basis, item 1): a system that does not ask for it takes the
+   * pre-existing box-scaling-only path byte for byte, which is what tests/soup-drywet-cycling.test.ts
+   * pins. Overridable per system by CreateSoupOpts.evaporateSolvent, the same boolean-only pattern
+   * `enabled` itself uses. */
+  evaporateSolvent?: boolean
+  /** Fraction of the wet solvent pool that REMAINS in the dry phase -- 1/1400, straight from
+   * Ross & Deamer 2016's own measured ~1400-fold volume reduction (basis item 2). Not a free
+   * parameter: the volume of an aqueous solution IS essentially the volume of its water, so a
+   * 1400-fold volume reduction at fixed solute content maps one-to-one onto removing 1 - 1/1400 of
+   * the solvent. */
+  residualSolventFraction?: number
+  /** How many log-linear increments the EVAPORATING wet<->dry transition is spread over -- separate
+   * from `rampSteps` because removing the solvent makes the box change an order of magnitude larger
+   * (|ln(L_wet/L_dry)| 0.388 against 0.032), so reusing `rampSteps` would make each increment 6.3 %
+   * linear instead of the 3.2 % this project has actually measured safe (basis item 8). */
+  evaporationRampSteps?: number
+  /** Minimum separation (in sigma) a returning solvent bead is placed at from every particle already
+   * present, by rejection sampling against a cell list -- derived from the random-sequential-addition
+   * saturation fraction, basis item 6. Deliberately INSIDE the WCA core, which is why the insertion
+   * is followed by a minimisation that moves ONLY the inserted beads (basis item 7). */
+  insertionMinSeparationSigma?: number
   basis: string
 }
 

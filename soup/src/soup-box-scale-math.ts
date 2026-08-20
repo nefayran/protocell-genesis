@@ -297,6 +297,12 @@ export function deriveCycleConfig(
   box: [number, number, number],
   N: number,
   startCounts: Record<string, number>,
+  /** Task 'evaporation' (2026-08-20): when the dry phase REMOVES solvent, the dry box is not
+   * N/targetDryDensity for the wet N -- it is sized for whatever is LEFT (soup/src/soup-evaporate.ts's
+   * planEvaporation, which owns that arithmetic and its own preconditions). Passed in rather than
+   * recomputed here so this function keeps exactly one derivation, and `undefined` (every pre-task
+   * caller) keeps the original one byte for byte. */
+  dryBoxOverride?: [number, number, number],
 ): { cycleCfg: CycleSchedule | undefined; dryBox: [number, number, number] } {
   const cycleEnabled = opts.dryWetCycle ?? soup.dryWetCycle.enabled
   let cycleCfg: CycleSchedule | undefined
@@ -311,7 +317,7 @@ export function deriveCycleConfig(
           `плотность бульона ${wetDensity.toFixed(4)} (N=${N}, box=[${box}]) -- сухая фаза обязана концентрировать, не разбавлять`,
       )
     }
-    dryBox = computeDryBox(box, N, dwc.targetDryDensity)
+    dryBox = dryBoxOverride ?? computeDryBox(box, N, dwc.targetDryDensity)
     // Guard: the neighbour grid must stay VALID (task requirement 2 -- "fewer than three cells on a
     // periodic axis, or a box too small for the minimum-image convention" -- exactly planSoupGrid's
     // own `valid`, generalised from a fixed "3" to this soup's own minCells=2*effectiveWalkRadius+1)

@@ -39,6 +39,11 @@ interface Args {
   start: Record<string, number>
   catalyst?: number
   cycle: boolean
+  /** Task 'evaporation' (2026-08-20): make the dry phase REMOVE solvent beads from the system (and
+   * rehydration put them back) instead of only compressing the box -- data/soup.json's
+   * dryWetCycle.evaporateSolvent for THIS run. Part of the checkpoint config signature, since a run
+   * with it and one without are different experiments, not two snapshots of one. Requires --cycle. */
+  evaporate: boolean
   /** Task 'loud-failure-and-liquid-water' (2026-08-20): run the cold-start energy minimisation
    * (SoupSystem.relaxColdStart, soup/src/soup-relax.ts) once, on a FRESH run only, before the first
    * step. Skipped on every resume by construction -- relaxColdStart itself throws at globalStep != 0,
@@ -111,6 +116,7 @@ function printUsage(): void {
       '  --kT <n>          (по умолчанию data/params.json thermostat.kT)',
       '  --catalyst <n>    переопределяет число катализатора отдельно от --start (как CreateSoupOpts.catalystCount)',
       '  --cycle           включает сухо-влажное циклирование (data/soup.json dryWetCycle) для ЭТОЙ системы',
+      '  --evaporate       сухая фаза УБИРАЕТ биды растворителя из системы, регидратация возвращает их (требует --cycle)',
       '  --relax           минимизация энергии холодного старта (data/soup.json coldStartRelax) ДО первого шага;',
       '                    только для СВЕЖЕГО прогона, при резюме молча пропускается',
       '  --expandTo <n>            одноразовое рамп-расширение живого бокса до [n,n,n] сразу после создания/резюме,',
@@ -139,6 +145,7 @@ function parseCliArgs(): Args {
       start: { type: 'string' },
       catalyst: { type: 'string' },
       cycle: { type: 'boolean', default: false },
+      evaporate: { type: 'boolean', default: false },
       relax: { type: 'boolean', default: false },
       expandTo: { type: 'string' },
       expandRampSteps: { type: 'string' },
@@ -167,6 +174,7 @@ function parseCliArgs(): Args {
     start: JSON.parse(String(values.start)),
     catalyst: values.catalyst !== undefined ? Number(values.catalyst) : undefined,
     cycle: Boolean(values.cycle),
+    evaporate: Boolean(values.evaporate),
     relax: Boolean(values.relax),
     expandTo: values.expandTo !== undefined ? Number(values.expandTo) : undefined,
     expandRampSteps: values.expandRampSteps !== undefined ? Number(values.expandRampSteps) : 15,
@@ -187,6 +195,7 @@ function configSignature(c: CheckpointConfig): string {
     start: startSorted,
     catalystCount: c.catalystCount ?? null,
     dryWetCycle: c.dryWetCycle ?? null,
+    evaporateSolvent: c.evaporateSolvent ?? null,
   })
 }
 
@@ -237,6 +246,7 @@ async function main(): Promise<void> {
     start: args.start,
     catalystCount: args.catalyst,
     dryWetCycle: args.cycle || undefined,
+    evaporateSolvent: args.evaporate || undefined,
   }
   mkdirSync(args.dir, { recursive: true })
   const sig = configSignature(config)
@@ -257,6 +267,16 @@ async function main(): Promise<void> {
 
   const page = await gpuPage()
   page.on('pageerror', (e) => console.error(`[campaign] page error: ${e.message}`))
+  // Task 'evaporation' (2026-08-20): the solvent-removal/insertion ramp logs one line per increment
+  // from INSIDE the page (soup/src/soup-box-scale.ts's applyEvaporatingTransition, soup/src/
+  // soup-evaporate.ts's rehydrateSolventTo) -- the force spike each increment left, whether the
+  // minimiser had to run, how much solvent is live. Those lines are the only record of what happens
+  // during a transition, so they are forwarded to this process's stdout; every other page message is
+  // left alone so no existing invocation's output changes.
+  page.on('console', (m) => {
+    const t = m.text()
+    if (t.startsWith('[evaporation]')) console.log(t)
+  })
 
   try {
     const startStep = found?.file.globalStep ?? 0
@@ -273,7 +293,7 @@ async function main(): Promise<void> {
         // drives dry-wet box cycling, which applyBoxScaleOnce refuses on a system with an immobile
         // phase. Pinned clay-free so every existing campaign stays reproducible; a clay campaign is its
         // own measurement with its own checkpoint lineage, not a silent change to this one.
-        const sys = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, resume, clay: false })
+        const sys = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, evaporateSolvent: cfg.evaporateSolvent, resume, clay: false })
         ;(window as any).__sys = sys
         return { N: (await sys.particles()).length / 4, steps: sys.steps }
       },
@@ -336,7 +356,7 @@ async function main(): Promise<void> {
               const api = (window as any).api
               const cfg = JSON.parse(cfgJson2)
               const resume = checkpointJson2 ? api.decodeCheckpointResume(JSON.parse(checkpointJson2)) : undefined
-              const probe = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, resume, clay: false })
+              const probe = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, evaporateSolvent: cfg.evaporateSolvent, resume, clay: false })
               try {
                 if (expandToBox2 !== null) await probe.growBoxTo([expandToBox2, expandToBox2, expandToBox2], rampSteps2, rampRelaxSteps2)
                 const debug = await probe.stepPhasesDEBUG(n2)
@@ -516,12 +536,21 @@ async function main(): Promise<void> {
         const { stage, evidence } = await api.stageOf(sys)
         const aggs = evidence.aggregateAnalysis.aggregates as Array<{ amphiphileCount: number; radialHeadShells: unknown; cavityVolume: number }>
         const largest = aggs.length > 0 ? aggs.reduce((a, b) => (b.amphiphileCount > a.amphiphileCount ? b : a)) : null
+        // Task 'evaporation' (2026-08-20): N and the live box are printed because with solvent removal
+        // they are no longer constants of the run -- a dry-phase progress line has to show how much
+        // solvent actually left, or the trace cannot be read.
+        const inv = await sys.invariants()
         return {
           stage,
           aggregateCount: evidence.aggregateAnalysis.aggregateCount,
           largestAggregateSize: largest?.amphiphileCount ?? 0,
           headShells: largest ? String(largest.radialHeadShells) : 'n/a',
           cavityVolume: largest?.cavityVolume ?? 0,
+          census: inv.monomers,
+          bonds: inv.bonds,
+          box: sys.box[0],
+          phase: sys.cyclePhase,
+          cycleIndex: sys.cycleIndex,
         }
       })
       const progressMs = Date.now() - t2
@@ -529,6 +558,7 @@ async function main(): Promise<void> {
       console.log(
         `[campaign] шаг=${currentStep}/${targetStep} stage=${progress.stage} агрегатов=${progress.aggregateCount} ` +
           `крупнейший=${progress.largestAggregateSize} headShells=${progress.headShells} cavityVolume=${progress.cavityVolume.toFixed(3)} ` +
+          `фаза=${progress.phase}/${progress.cycleIndex} box=${progress.box.toFixed(4)} связей=${progress.bonds} census=${JSON.stringify(progress.census)} ` +
           `stepMs=${stepMs} checkpointMs=${checkpointMs} progressMs=${progressMs} сохранено=${savedPath}`,
       )
     }

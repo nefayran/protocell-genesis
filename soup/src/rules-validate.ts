@@ -221,6 +221,33 @@ export function assertRulesConsistent(s: Soup): void {
   if (!dwc.basis || dwc.basis.trim().length <= 10) {
     throw new Error('data/soup.json: dryWetCycle не имеет содержательного обоснования (basis)')
   }
+  // Task 'evaporation' (2026-08-20): the four solvent-removal fields. Optional (like saltPhLimitation/
+  // clay/coldStartRelax) so every pre-task Soup literal in tests/fixtures stays valid, and validated
+  // the same way as everything else whenever present.
+  if (dwc.evaporateSolvent !== undefined && typeof dwc.evaporateSolvent !== 'boolean') {
+    throw new Error('data/soup.json: dryWetCycle.evaporateSolvent должен быть булевым значением')
+  }
+  if (dwc.residualSolventFraction !== undefined && !(dwc.residualSolventFraction >= 0 && dwc.residualSolventFraction < 1)) {
+    throw new Error(
+      `data/soup.json: dryWetCycle.residualSolventFraction=${dwc.residualSolventFraction} должен лежать в [0,1) -- ` +
+        `сухая фаза обязана УБИРАТЬ растворитель, а не сохранять его целиком`,
+    )
+  }
+  if (dwc.evaporationRampSteps !== undefined && (!Number.isInteger(dwc.evaporationRampSteps) || dwc.evaporationRampSteps < 1)) {
+    throw new Error(`data/soup.json: dryWetCycle.evaporationRampSteps=${dwc.evaporationRampSteps} должен быть целым числом >= 1`)
+  }
+  if (dwc.insertionMinSeparationSigma !== undefined && !(dwc.insertionMinSeparationSigma > 0)) {
+    throw new Error(
+      `data/soup.json: dryWetCycle.insertionMinSeparationSigma=${dwc.insertionMinSeparationSigma} должен быть положительным`,
+    )
+  }
+  if (dwc.evaporateSolvent) {
+    for (const k of ['residualSolventFraction', 'evaporationRampSteps', 'insertionMinSeparationSigma'] as const) {
+      if (dwc[k] === undefined) {
+        throw new Error(`data/soup.json: dryWetCycle.evaporateSolvent=true, но поле ${k} не задано`)
+      }
+    }
+  }
 
   // Salt/pH limitation (task 'broth-composition'): optional (mirrors CheckpointDefaults' own
   // pattern) so every pre-existing Soup literal in tests/fixtures stays valid, but validated the
