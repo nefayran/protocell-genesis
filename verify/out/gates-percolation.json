@@ -1,24 +1,5 @@
 [
   {
-    "file": "data/checkpoints/bbB76/bbB76-step36400.json",
-    "step": 36400,
-    "box": 76,
-    "aggregates": 1,
-    "amphiphilesInLargest": 4825,
-    "particlesInLargest": 25550,
-    "wrapsX": true,
-    "wrapsY": true,
-    "wrapsZ": true,
-    "wrappingAxes": 3,
-    "slabsTouchedOfTotal": [
-      27,
-      27,
-      27,
-      27
-    ],
-    "role": "campaign"
-  },
-  {
     "file": "data/checkpoints/bbB76/bbB76-step41100.json",
     "step": 41100,
     "box": 76,
@@ -196,6 +177,253 @@
     "aggregates": 2,
     "amphiphilesInLargest": 4589,
     "particlesInLargest": 28681,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      27,
+      27,
+      27,
+      27
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/bbB76/bbB76-step91500.json",
+    "step": 91500,
+    "box": 76,
+    "aggregates": 2,
+    "amphiphilesInLargest": 4570,
+    "particlesInLargest": 28761,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      27,
+      27,
+      27,
+      27
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/bbB76/bbB76-step96500.json",
+    "step": 96500,
+    "box": 76,
+    "aggregates": 2,
+    "amphiphilesInLargest": 4565,
+    "particlesInLargest": 28876,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      27,
+      27,
+      27,
+      27
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/bbB76/bbB76-step101200.json",
+    "step": 101200,
+    "box": 76,
+    "aggregates": 3,
+    "amphiphilesInLargest": 4548,
+    "particlesInLargest": 29003,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      27,
+      27,
+      27,
+      27
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/bbB76/bbB76-step105900.json",
+    "step": 105900,
+    "box": 76,
+    "aggregates": 3,
+    "amphiphilesInLargest": 4551,
+    "particlesInLargest": 29212,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      27,
+      27,
+      27,
+      27
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/bbB76/bbB76-step110600.json",
+    "step": 110600,
+    "box": 76,
+    "aggregates": 3,
+    "amphiphilesInLargest": 4553,
+    "particlesInLargest": 29413,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      27,
+      27,
+      27,
+      27
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/bbB76/bbB76-step115300.json",
+    "step": 115300,
+    "box": 76,
+    "aggregates": 3,
+    "amphiphilesInLargest": 4546,
+    "particlesInLargest": 29541,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      27,
+      27,
+      27,
+      27
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/bbB76/bbB76-step120000.json",
+    "step": 120000,
+    "box": 76,
+    "aggregates": 4,
+    "amphiphilesInLargest": 4531,
+    "particlesInLargest": 29622,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      27,
+      27,
+      27,
+      27
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/bbB76/bbB76-step124700.json",
+    "step": 124700,
+    "box": 76,
+    "aggregates": 4,
+    "amphiphilesInLargest": 4526,
+    "particlesInLargest": 29757,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      27,
+      27,
+      27,
+      27
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/bbB76/bbB76-step129400.json",
+    "step": 129400,
+    "box": 76,
+    "aggregates": 4,
+    "amphiphilesInLargest": 4518,
+    "particlesInLargest": 29846,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      27,
+      27,
+      27,
+      27
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/bbB76/bbB76-step134100.json",
+    "step": 134100,
+    "box": 76,
+    "aggregates": 4,
+    "amphiphilesInLargest": 4524,
+    "particlesInLargest": 30044,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      27,
+      27,
+      27,
+      27
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/bbB76/bbB76-step138800.json",
+    "step": 138800,
+    "box": 76,
+    "aggregates": 3,
+    "amphiphilesInLargest": 4521,
+    "particlesInLargest": 30138,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      27,
+      27,
+      27,
+      27
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/bbB76/bbB76-step143500.json",
+    "step": 143500,
+    "box": 76,
+    "aggregates": 3,
+    "amphiphilesInLargest": 4521,
+    "particlesInLargest": 30311,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      27,
+      27,
+      27,
+      27
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/bbB76/bbB76-step148200.json",
+    "step": 148200,
+    "box": 76,
+    "aggregates": 4,
+    "amphiphilesInLargest": 4512,
+    "particlesInLargest": 30361,
     "wrapsX": true,
     "wrapsY": true,
     "wrapsZ": true,
