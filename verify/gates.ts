@@ -26,6 +26,10 @@ export interface GateTarget {
 
 export type GateRank = 'A' | 'B' | 'C' | 'D'
 export type GateVerdict = 'passed' | 'failed' | 'unproven'
+/** Where a measured value fell relative to its own window, independently of `verdict`: `outside`
+ *  on a rank-D gate means the number missed its stated window even though rank D forbids calling
+ *  that a failure. `none` = no window is stated, or nothing was measured. */
+export type GateCorridor = 'inside' | 'outside' | 'none'
 
 export interface GateResult {
   id: string
@@ -35,6 +39,9 @@ export interface GateResult {
   unit: string
   rank: GateRank
   verdict: GateVerdict
+  /** Where the measured value fell relative to its own window -- see GateCorridor. Kept separate
+   *  from `verdict` so the rank-D convention never hides an out-of-window number. */
+  corridor: GateCorridor
   source: string
   /** Not in the brief's minimal Interfaces list, but the report table needs a "условия" column and
    * data/literature.json already carries one per gate -- attaching it here is a superset, not a
@@ -83,6 +90,19 @@ export function evaluateGates(metrics: Record<string, number>, context: GateCont
     const raw = metrics[g.metric]
     const value = raw === undefined || Number.isNaN(raw) ? null : raw
 
+    // Rank D stays `unproven` whatever the number says (rule 1 above) -- but a rank-D gate whose
+    // measured value lies OUTSIDE its own stated window is a different thing from one that simply
+    // cannot be judged, and publishing both as a bare "unproven" understates the first. The verdict
+    // field keeps the convention; `corridor` records where the number actually fell, so a reader of
+    // the report cannot mistake "we cannot prove this" for "this is fine". Measured case that forced
+    // this: mean-tail-length 3.490 beads against its own 2-3 window (final campaign, O:C = 0.333).
+    const inWindow =
+      value !== null &&
+      (g.target.min === undefined || value >= g.target.min) &&
+      (g.target.max === undefined || value <= g.target.max)
+    const hasWindow = g.target.min !== undefined || g.target.max !== undefined
+    const corridor: GateCorridor = value === null || !hasWindow ? 'none' : inWindow ? 'inside' : 'outside'
+
     let verdict: GateVerdict
     if (g.rank === 'D') {
       verdict = 'unproven'
@@ -102,6 +122,7 @@ export function evaluateGates(metrics: Record<string, number>, context: GateCont
       unit: g.unit,
       rank: g.rank,
       verdict,
+      corridor,
       source: g.source,
       conditions: g.conditions,
       provenance: context.provenance?.[g.id],
