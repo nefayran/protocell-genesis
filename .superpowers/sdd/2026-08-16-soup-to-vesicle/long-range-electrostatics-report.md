@@ -42,7 +42,8 @@ checkpoint in §7.2. No fusion probe. `tests/soup-vesicle.test.ts` never run.
 7. **NO VESICLE, and closure is further away than before, not nearer.** `encapsulatedWater` is
    **`null(centre-untrusted)` at every wet checkpoint** — the instrument refuses to name a centre for an
    object that wraps all three axes, which is the percolation verdict restated in the closure
-   instrument's own voice. `hasVesicleAggregate` **false** at all 12 checkpoints; cavity plateau
+   instrument's own voice. **[WRONG — corrected in §7.3 below: `centre-untrusted` is a Rayleigh
+   significance test for how uniformly the object fills the box, not a wrapping verdict.]** `hasVesicleAggregate` **false** at all 12 checkpoints; cavity plateau
    **36.2 ± 6.7 σ³** against 370.8656 — **10.2× short**; flatness **0.7313–0.7668** against ≤ 0.35
    (§7.3).
 8. **`radialHeadShells` went BACK to 1.** The predecessor's one improvement (1 → 2 at 6 of 10 wet
@@ -613,7 +614,10 @@ rInf 1.5 with **0** over. Final events `{cc_bond:14226, cc_break:0, co_bond:5517
 **There is no step at which anything closed, and closure is FURTHER away than in either predecessor.**
 `encapsulatedWater` is not 0 here — it is *unreportable*, because the closure instrument refuses to
 trust a centre for an object that wraps all three axes. That refusal is the percolation verdict spoken
-by the closure instrument, and it is the honest form of the answer. And it is not a proto-membrane that
+by the closure instrument, and it is the honest form of the answer.
+
+> **CORRECTION (task 'supply-window', confirmed and extended by task 'big-box', 2026-08-21).** `centre-untrusted` is NOT a wrapping verdict and must not be read as one. Reading `soup/src/water-closure.ts`: it is a **Rayleigh test for circular uniformity, per axis** — `trusted = R >= sqrt(-ln(1e-6)/n)`, i.e. it asks whether the object's mass distribution along each axis is far enough from uniform for a circular mean to be a meaningful centre. It measures how uniformly an object FILLS the box, not whether it wraps, and the two demonstrably come apart: `supply-window`'s object cleared the stricter bar (0.0366 at n = 10 305) while wrapping the same 3 axes this one does, and `big-box`'s object at box 76 reports a NUMBER (`encapsulatedWater` 0 of 314.37) at ten of eleven wet checkpoints while wrapping 3 of 3 axes and 27 of 27 slabs. So the sentences below — "the percolation verdict restated in the closure instrument's own voice" and "the instrument refuses to name a centre for an object that wraps all three axes" — are wrong about the mechanism. What this run's refusal actually says is that its object filled the box too uniformly for a circular mean to be significant, which is a *consequence* of percolation at that particular material budget, not the test for it.
+ And it is not a proto-membrane that
 failed to close: at flatness 0.76 it is not a sheet either.
 
 ### 7.4 Percolation, measured directly
@@ -1053,7 +1057,11 @@ nice -n 15 npm run verify                                        # 180 s
    plateau.
 2. **`encapsulatedWater` is unreportable rather than 0, and that is weaker evidence than the
    predecessor's 0.** The closure instrument declines to name a centre for an object that wraps all three
-   axes, so at every wet checkpoint it returns `centre-untrusted` instead of a number. The verdict rests
+   axes, so at every wet checkpoint it returns `centre-untrusted` instead of a number. **[The clause
+   "for an object that wraps all three axes" is WRONG — see the correction in §7.3: the refusal is a
+   Rayleigh test on how uniformly the object fills the box, and two later runs report a number while
+   wrapping all three axes. The rest of this concern — that an unreportable number is weaker evidence
+   than a measured 0 — stands.]** The verdict rests
    on `hasVesicleAggregate` = false (all 12), `closed` never true, `transverseHeadShells` = 0 and the
    percolation instrument. That is enough to say NO VESICLE, but a reader who wants "encapsulated water
    was 0" gets "encapsulated water could not be defined", which is a different sentence.
