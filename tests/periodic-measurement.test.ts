@@ -257,7 +257,7 @@ function findLargestMembers(positions: Float32Array, bonds: Uint32Array, box: [n
   for (let k = 0; k < idxArr.length; k++) memberPositions.set(positions.subarray(idxArr[k] * 4, idxArr[k] * 4 + 4), k * 4)
   const memberRadii = monomers.filter((m) => m.kind === 'carbon' || m.kind === 'head').map((m) => m.radiusSigma)
   const cutoff = wcaCutoff(params.sigma * Math.max(...memberRadii)) + params.attraction.wc
-  const components = clusterComponents(memberPositions, box, cutoff)
+  const components = clusterComponents(memberPositions, box, cutoff, true) // z periodic: bulk soup
   const largestLocal = components[0]
   const aggOriginalIdx = largestLocal.map((k) => idxArr[k])
   const aggSet = new Set(aggOriginalIdx)

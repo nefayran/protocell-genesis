@@ -1,0 +1,110 @@
+[
+  {
+    "file": "data/checkpoints/zfB54/zfB54-step104400.json",
+    "step": 104400,
+    "box": 54,
+    "aggregates": 2,
+    "amphiphilesInLargest": 2122,
+    "particlesInLargest": 13786,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      19,
+      19,
+      19,
+      19
+    ]
+  },
+  {
+    "file": "data/checkpoints/zfB54/zfB54-step140400.json",
+    "step": 140400,
+    "box": 54,
+    "aggregates": 2,
+    "amphiphilesInLargest": 2096,
+    "particlesInLargest": 14072,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      19,
+      19,
+      19,
+      19
+    ]
+  },
+  {
+    "file": "data/checkpoints/zfB54/zfB54-step176400.json",
+    "step": 176400,
+    "box": 54,
+    "aggregates": 2,
+    "amphiphilesInLargest": 2077,
+    "particlesInLargest": 14265,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      19,
+      19,
+      19,
+      19
+    ]
+  },
+  {
+    "file": "data/checkpoints/zfB54/zfB54-step41400.json",
+    "step": 41400,
+    "box": 54,
+    "aggregates": 2,
+    "amphiphilesInLargest": 2211,
+    "particlesInLargest": 11842,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      19,
+      19,
+      19,
+      19
+    ]
+  },
+  {
+    "file": "data/checkpoints/zfB54/zfB54-step77400.json",
+    "step": 77400,
+    "box": 54,
+    "aggregates": 2,
+    "amphiphilesInLargest": 2153,
+    "particlesInLargest": 13245,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      19,
+      19,
+      19,
+      19
+    ]
+  },
+  {
+    "file": "data/checkpoints/dec54/dec54-step41400.json",
+    "step": 41400,
+    "box": 54,
+    "aggregates": 22,
+    "amphiphilesInLargest": 200,
+    "particlesInLargest": 704,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      12,
+      13,
+      12,
+      19
+    ]
+  }
+]

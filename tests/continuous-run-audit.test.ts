@@ -221,7 +221,10 @@ test('continuous-run checkpoints: invariants hold and the stage ladder is reprod
     if (memberIdx.size > 0) {
       const out = pos.slice()
       for (let i = 0; i < N; i++) out[i * 4 + 3] = memberIdx.has(i) ? 1 : 0
-      largestAggregateFraction = largestClusterFraction(out, box, cutoff)
+      // `true` = z periodic: the soup wraps all three axes (soup/src/sim.ts), the same argument
+      // soup/src/stages.ts's own detectStage now passes -- this auditor must not measure a
+      // different connectivity rule from the live run it audits.
+      largestAggregateFraction = largestClusterFraction(out, box, cutoff, true)
       enclosedVolume = enclosedVolumeFromPositions(positionsFor(pos, memberIdx), box, { cell: t.closureCell, radius: t.closureRadius })
     }
     const evidence = {

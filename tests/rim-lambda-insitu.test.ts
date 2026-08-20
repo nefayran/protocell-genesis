@@ -98,7 +98,7 @@ test('lambda in situ: rim of the largest aggregate in the 250000-step vesicle-93
   // SAME cutoff soup/src/stages.ts's detectStage/analyzeAggregates already use for "connected
   // amphiphile aggregate" -- re-derived here from the same params, not re-typed as a literal.
 
-  const components = clusterComponents(memberPositions, box, cutoff)
+  const components = clusterComponents(memberPositions, box, cutoff, true) // z periodic: bulk soup
   console.log(`RIM-LAMBDA amphiphiles=${amphiphiles.length} members=${memberIdx.size} aggregates=${components.length} cutoff=${cutoff.toFixed(4)}`)
   expect(components.length).toBeGreaterThan(0)
 

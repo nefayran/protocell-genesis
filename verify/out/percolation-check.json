@@ -1,0 +1,110 @@
+[
+  {
+    "file": "data/checkpoints/zfB54/zfB54-step41400.json",
+    "step": 41400,
+    "box": 54,
+    "aggregates": 2,
+    "amphiphilesInLargest": 2211,
+    "particlesInLargest": 11842,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      19,
+      19,
+      19,
+      19
+    ]
+  },
+  {
+    "file": "data/checkpoints/zfB54/zfB54-step68400.json",
+    "step": 68400,
+    "box": 54,
+    "aggregates": 2,
+    "amphiphilesInLargest": 2173,
+    "particlesInLargest": 13066,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      19,
+      19,
+      19,
+      19
+    ]
+  },
+  {
+    "file": "data/checkpoints/dec54/dec54-step174400.json",
+    "step": 174400,
+    "box": 54,
+    "aggregates": 25,
+    "amphiphilesInLargest": 151,
+    "particlesInLargest": 596,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      7,
+      7,
+      10,
+      19
+    ]
+  },
+  {
+    "file": "data/checkpoints/ocB19/ocB19-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 1,
+    "amphiphilesInLargest": 394,
+    "particlesInLargest": 2025,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ]
+  },
+  {
+    "file": "data/checkpoints/ocC19/ocC19-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 2,
+    "amphiphilesInLargest": 370,
+    "particlesInLargest": 1534,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ]
+  },
+  {
+    "file": "data/checkpoints/evapFIX29/evapFIX29-step36800.json",
+    "step": 36800,
+    "box": 30,
+    "aggregates": 4,
+    "amphiphilesInLargest": 154,
+    "particlesInLargest": 520,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      11,
+      9,
+      7,
+      11
+    ]
+  }
+]

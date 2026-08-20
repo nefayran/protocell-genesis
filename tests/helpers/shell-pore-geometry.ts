@@ -40,7 +40,7 @@ export function findLargest(positions: Float32Array, bonds: Uint32Array, box: [n
   const idxArr = Array.from(memberIdx)
   const memberRadii = monomers.filter((m) => m.kind === 'carbon' || m.kind === 'head').map((m) => m.radiusSigma)
   const cutoff = wcaCutoff(params.sigma * Math.max(...memberRadii)) + params.attraction.wc
-  const components = clusterComponents(memberPositions, box, cutoff)
+  const components = clusterComponents(memberPositions, box, cutoff, true) // z periodic: bulk soup
   const largest = components[0]
   const aggOriginalIdx = largest.map((k) => idxArr[k])
   const aggSet = new Set(aggOriginalIdx)

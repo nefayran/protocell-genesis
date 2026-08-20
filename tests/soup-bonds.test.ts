@@ -182,7 +182,8 @@ test(
         for (let i = 0; i < n; i++) {
           remapped[i * 4 + 3] = memberKinds.has(Math.round(particles[i * 4 + 3])) ? 1 : 0
         }
-        out[String(kT)] = api.largestClusterFraction(remapped, box, cutoff)
+        // `true` = z periodic, the soup's own boundary condition (soup/src/stages.ts passes the same)
+        out[String(kT)] = api.largestClusterFraction(remapped, box, cutoff, true)
       }
       return out
     })

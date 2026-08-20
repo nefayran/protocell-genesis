@@ -234,7 +234,8 @@ export async function detectStage(sys: SoupSystem): Promise<{ stage: Stage; evid
   if (memberIdx.size > 0) {
     const out = particles.slice()
     for (let i = 0; i < n; i++) out[i * 4 + 3] = memberIdx.has(i) ? 1 : 0
-    largestAggregateFraction = largestClusterFraction(out, box, cutoff)
+    // `true` = z periodic, the soup's own boundary condition -- see analyzeAggregates' call.
+    largestAggregateFraction = largestClusterFraction(out, box, cutoff, true)
   }
 
   // --- headPeaks: DIAGNOSTIC only (task-3c) -- box-wide, see StageEvidence's own doc comment.

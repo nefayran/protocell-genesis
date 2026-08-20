@@ -513,7 +513,10 @@ export function analyzeAggregates(
 
   const idxArr = Array.from(memberIdx)
   const memberPositions = positionsFor(particles, memberIdx)
-  const components = clusterComponents(memberPositions, box, cutoff)
+  // `true` = z is periodic: the soup wraps all three axes every step (soup/src/sim.ts), so leaving
+  // z open here SPLIT every z-straddling aggregate and counted it twice -- coalescence-report.md §6
+  // measured that at +11.9 % on the largest aggregate of the decisive box-54 lineage.
+  const components = clusterComponents(memberPositions, box, cutoff, true)
   if (components.length === 0) return emptyAggregateAnalysis()
 
   const prepared = components.map((local) => {

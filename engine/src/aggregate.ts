@@ -50,24 +50,34 @@ function wrap1(v: number, box: number): number {
  * (x, y, z, type) — the type field is not consulted here; callers decide which bead subset defines
  * connectivity and pass just that subset in.
  *
- * x and y are periodic (minimum-image, matching the engine's box); z is open — exactly the physics
- * (only x,y wrap; z does not). Built on a cell list of side `cutoff` (so cell width is always >=
+ * x and y are always periodic (minimum-image, matching the engine's box). z is periodic only when
+ * the caller says so, via `periodicZ`, and the default is FALSE because that is the membrane
+ * engine's own physics: a bilayer patch in vacuum has no image across z (Task 6/8, engine/src/
+ * closure.ts's open-boundary flood, tests/self-assembly.test.ts). `periodicZ = true` is the SOUP's
+ * physics: soup/src/sim.ts wraps all three axes every step ("a bulk soup has no preferred axis"),
+ * so with z left open an aggregate straddling the z face is split and counted TWICE -- the
+ * measurement defect coalescence-report.md §6 sized at +11.9 % on the largest aggregate and fixed
+ * here. Every soup call site therefore passes true; every membrane call site keeps the default.
+ * Built on a cell list of side `cutoff` (so cell width is always >=
  * cutoff, guaranteeing any pair within cutoff shares a cell or one of its 26 neighbors) plus
  * union-find, not an O(N^2) double loop: the self-assembly test runs this on ~3600 beads every time
  * it samples the trajectory, and a double loop there would be the dominant cost of the whole test. */
-function buildClusterUnionFind(positions: Float32Array, box: [number, number, number], cutoff: number): { uf: UnionFind; n: number } {
+function buildClusterUnionFind(positions: Float32Array, box: [number, number, number], cutoff: number, periodicZ = false): { uf: UnionFind; n: number } {
   const n = positions.length / 4
   const uf = new UnionFind(n)
   if (n === 0) return { uf, n }
 
-  const [Lx, Ly] = box
+  const [Lx, Ly, Lz] = box
   // Cells tile the periodic x,y plane exactly: nx/ny cells of width Lx/nx, Ly/ny, each >= cutoff
-  // since nx = floor(Lx/cutoff) <= Lx/cutoff. z is unbounded (open boundary) so it gets a plain
-  // integer cell index of width `cutoff` with no wrapping and no fixed cell count.
+  // since nx = floor(Lx/cutoff) <= Lx/cutoff. When z is periodic it tiles the same way; when it is
+  // open (the default) it gets a plain integer cell index of width `cutoff` with no wrapping and no
+  // fixed cell count.
   const nx = Math.max(1, Math.floor(Lx / cutoff))
   const ny = Math.max(1, Math.floor(Ly / cutoff))
+  const nz = periodicZ ? Math.max(1, Math.floor(Lz / cutoff)) : 0
   const wx = Lx / nx
   const wy = Ly / ny
+  const wz = periodicZ ? Lz / nz : cutoff
 
   const cellX = new Int32Array(n)
   const cellY = new Int32Array(n)
@@ -77,10 +87,10 @@ function buildClusterUnionFind(positions: Float32Array, box: [number, number, nu
   for (let i = 0; i < n; i++) {
     const x = wrap1(positions[i * 4], Lx)
     const y = wrap1(positions[i * 4 + 1], Ly)
-    const z = positions[i * 4 + 2]
+    const z = periodicZ ? wrap1(positions[i * 4 + 2], Lz) : positions[i * 4 + 2]
     const cx = Math.min(nx - 1, Math.floor(x / wx))
     const cy = Math.min(ny - 1, Math.floor(y / wy))
-    const cz = Math.floor(z / cutoff)
+    const cz = periodicZ ? Math.min(nz - 1, Math.floor(z / wz)) : Math.floor(z / wz)
     cellX[i] = cx
     cellY[i] = cy
     cellZ[i] = cz
@@ -100,14 +110,14 @@ function buildClusterUnionFind(positions: Float32Array, box: [number, number, nu
       for (let dy = -1; dy <= 1; dy++) {
         const ncy = ((cy + dy) % ny + ny) % ny
         for (let dz = -1; dz <= 1; dz++) {
-          const ncz = cz + dz
+          const ncz = periodicZ ? ((cz + dz) % nz + nz) % nz : cz + dz
           const bucket = buckets.get(`${ncx},${ncy},${ncz}`)
           if (!bucket) continue
           for (const j of bucket) {
             if (j <= i) continue // each unordered pair considered once, from the lower index
             const ddx = mi1(xi - positions[j * 4], Lx)
             const ddy = mi1(yi - positions[j * 4 + 1], Ly)
-            const ddz = zi - positions[j * 4 + 2] // z open: no periodic image
+            const ddz = periodicZ ? mi1(zi - positions[j * 4 + 2], Lz) : zi - positions[j * 4 + 2]
             const r2 = ddx * ddx + ddy * ddy + ddz * ddz
             if (r2 <= cutoff2) uf.union(i, j)
           }
@@ -121,8 +131,8 @@ function buildClusterUnionFind(positions: Float32Array, box: [number, number, nu
 
 /** Cluster sizes among the given beads — see buildClusterUnionFind() above for the connectivity
  * rule this reduces to component sizes. */
-export function clusters(positions: Float32Array, box: [number, number, number], cutoff: number): number[] {
-  const { uf, n } = buildClusterUnionFind(positions, box, cutoff)
+export function clusters(positions: Float32Array, box: [number, number, number], cutoff: number, periodicZ = false): number[] {
+  const { uf, n } = buildClusterUnionFind(positions, box, cutoff, periodicZ)
   if (n === 0) return []
   const sizeByRoot = new Map<number, number>()
   for (let i = 0; i < n; i++) {
@@ -188,8 +198,8 @@ export function largestClusterCenter(
  * stage-deciding lamellar/vesicle candidate, by construction, cannot be a small aggregate, so a
  * caller that only wants to spend the expensive shape/cavity work on "the largest few" can just
  * take a prefix of this array. */
-export function clusterComponents(positions: Float32Array, box: [number, number, number], cutoff: number): number[][] {
-  const { uf, n } = buildClusterUnionFind(positions, box, cutoff)
+export function clusterComponents(positions: Float32Array, box: [number, number, number], cutoff: number, periodicZ = false): number[][] {
+  const { uf, n } = buildClusterUnionFind(positions, box, cutoff, periodicZ)
   if (n === 0) return []
   const byRoot = new Map<number, number[]>()
   for (let i = 0; i < n; i++) {
@@ -203,17 +213,19 @@ export function clusterComponents(positions: Float32Array, box: [number, number,
 
 // --- per-aggregate shape: gyration tensor + principal moments (soup-to-vesicle per-aggregate task) -
 //
-// clusters()/largestClusterFraction() above were built for the membrane engine's own periodicity
-// convention (x,y periodic, z open -- a bilayer in vacuum has no image across z). The soup engine
-// (soup/src/sim.ts) is a genuinely BULK system: every one of x,y,z wraps every step (that file's own
-// header: "a bulk soup has no preferred axis"). A micelle/vesicle candidate aggregate can therefore
+// clusters()/largestClusterFraction() above default to the membrane engine's own periodicity
+// convention (x,y periodic, z open -- a bilayer in vacuum has no image across z); the soup engine
+// (soup/src/sim.ts) is a genuinely BULK system where every one of x,y,z wraps every step (that
+// file's own header: "a bulk soup has no preferred axis") and therefore passes `periodicZ = true`
+// to the CONNECTIVITY pass as well (see buildClusterUnionFind's own header for the double-count
+// that flag removes). A micelle/vesicle candidate aggregate can
 // straddle any of the three periodic faces, and computing a gyration tensor directly off wrapped
 // coordinates would blow up (two beads of the same tight cluster reading box[axis] apart instead of
 // a few sigma). unwrapAggregate() below is the fix -- the same minimum-image-relative-to-a-reference
 // technique largestClusterCenter() already uses for x,y, generalised to whichever axes the caller
 // says are periodic (all three, for the soup) -- producing one coherent local frame for shapeOf()
-// to measure. This does not touch clusters()/largestClusterFraction()/largestClusterCenter()
-// themselves: those stay exactly as the membrane-engine tests already pin them.
+// to measure. largestClusterCenter() itself is deliberately NOT given the flag: its z is a plain
+// mean feeding engine/src/closure.ts's open-boundary flood, which is an open-z pipeline end to end.
 
 /** Minimum-image displacement of one coordinate, generalised from mi1() above (kept private to that
  * z-open convention) so this section can apply it per-axis under an explicit `periodic` flag. */
@@ -365,7 +377,7 @@ export function shapeOf(positions: Float32Array): ShapeMetrics {
  * random lipid solution under the tail-tail attraction is expected to converge toward one dominant
  * aggregate (fraction -> 1), typically passing through a micelle stage where several small clusters
  * coexist (fraction stalled around ~0.2) before coarsening further with more simulation time. */
-export function largestClusterFraction(positions: Float32Array, box: [number, number, number], cutoff: number): number {
+export function largestClusterFraction(positions: Float32Array, box: [number, number, number], cutoff: number, periodicZ = false): number {
   const n = positions.length / 4
   const tailIdx: number[] = []
   for (let i = 0; i < n; i++) if (positions[i * 4 + 3] !== 0) tailIdx.push(i)
@@ -376,7 +388,7 @@ export function largestClusterFraction(positions: Float32Array, box: [number, nu
     tailPos.set(positions.subarray(tailIdx[k] * 4, tailIdx[k] * 4 + 4), k * 4)
   }
 
-  const sizes = clusters(tailPos, box, cutoff)
+  const sizes = clusters(tailPos, box, cutoff, periodicZ)
   const largest = sizes.length ? Math.max(...sizes) : 0
   return largest / tailIdx.length
 }

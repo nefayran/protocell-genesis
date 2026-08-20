@@ -18,12 +18,12 @@
     {
       "step": 160000,
       "amphiphileCount": 1331,
-      "aggregateCount": 8,
-      "particleCount": 11552,
+      "aggregateCount": 3,
+      "particleCount": 11558,
       "circularConcentration": {
-        "Rx": 0.2670783812238368,
-        "Ry": 0.16778117881957821,
-        "Rz": 0.3589334746236876,
+        "Rx": 0.2671942181157347,
+        "Ry": 0.16766317474103828,
+        "Rz": 0.35921977855729526,
         "trusted": [
           true,
           true,
@@ -31,19 +31,19 @@
         ]
       },
       "centre": [
-        49.99920264920439,
-        39.33532725421731,
-        54.030783412556474
+        50.002677159780966,
+        39.33334046811677,
+        54.036271043813585
       ],
       "radial": {
         "trustLimit": 29,
         "headTotal": 1331,
         "headBeyondTrust": 363,
-        "tailTotal": 10221,
+        "tailTotal": 10227,
         "tailBeyondTrust": 2387,
-        "headPeakPrimary": 19.575,
+        "headPeakPrimary": 19.09166666666667,
         "headPeakSecondary": 25.858333333333334,
-        "separation": 6.283333333333335,
+        "separation": 6.766666666666666,
         "bilayerThicknessReference": 4.457,
         "bins": [
           {
@@ -98,25 +98,25 @@
             "rLo": 2.9,
             "rHi": 3.3833333333333333,
             "headCount": 0,
-            "tailCount": 15,
+            "tailCount": 14,
             "headDensity": 0,
-            "tailDensity": 0.24972308202278204
+            "tailDensity": 0.23307487655459655
           },
           {
             "rLo": 3.3833333333333333,
             "rHi": 3.8666666666666667,
             "headCount": 0,
-            "tailCount": 23,
+            "tailCount": 25,
             "headDensity": 0,
-            "tailDensity": 0.2877479773524839
+            "tailDensity": 0.312769540600526
           },
           {
             "rLo": 3.8666666666666667,
             "rHi": 4.35,
             "headCount": 2,
-            "tailCount": 32,
+            "tailCount": 31,
             "headDensity": 0.019486839580272416,
-            "tailDensity": 0.31178943328435865
+            "tailDensity": 0.30204601349422244
           },
           {
             "rLo": 4.35,
@@ -130,17 +130,17 @@
             "rLo": 4.833333333333333,
             "rHi": 5.316666666666666,
             "headCount": 4,
-            "tailCount": 30,
+            "tailCount": 29,
             "headDensity": 0.02555072017473783,
-            "tailDensity": 0.19163040131053374
+            "tailDensity": 0.1852427212668493
           },
           {
             "rLo": 5.316666666666666,
             "rHi": 5.8,
             "headCount": 2,
-            "tailCount": 31,
+            "tailCount": 32,
             "headDensity": 0.010651496697529248,
-            "tailDensity": 0.16509819881170334
+            "tailDensity": 0.17042394716046796
           },
           {
             "rLo": 5.8,
@@ -177,66 +177,66 @@
           {
             "rLo": 7.733333333333333,
             "rHi": 8.216666666666667,
-            "headCount": 4,
+            "headCount": 5,
             "tailCount": 54,
-            "headDensity": 0.010351638161368682,
+            "headDensity": 0.012939547701710854,
             "tailDensity": 0.1397471151784772
           },
           {
             "rLo": 8.216666666666667,
             "rHi": 8.7,
-            "headCount": 7,
-            "tailCount": 67,
-            "headDensity": 0.016104738477929186,
-            "tailDensity": 0.1541453540030365
+            "headCount": 6,
+            "tailCount": 66,
+            "headDensity": 0.013804061552510731,
+            "tailDensity": 0.15184467707761803
           },
           {
             "rLo": 8.7,
             "rHi": 9.183333333333334,
             "headCount": 4,
-            "tailCount": 64,
+            "tailCount": 65,
             "headDensity": 0.008234944866444207,
-            "tailDensity": 0.13175911786310732
+            "tailDensity": 0.13381785407971838
           },
           {
             "rLo": 9.183333333333334,
             "rHi": 9.666666666666666,
             "headCount": 7,
-            "tailCount": 76,
+            "tailCount": 75,
             "headDensity": 0.012971301193003437,
-            "tailDensity": 0.1408312700954659
+            "tailDensity": 0.13897822706789398
           },
           {
             "rLo": 9.666666666666666,
             "rHi": 10.15,
             "headCount": 6,
-            "tailCount": 89,
+            "tailCount": 92,
             "headDensity": 0.01006021615127462,
-            "tailDensity": 0.1492265395772402
+            "tailDensity": 0.1542566476528775
           },
           {
             "rLo": 10.15,
             "rHi": 10.633333333333333,
             "headCount": 6,
-            "tailCount": 109,
+            "tailCount": 106,
             "headDensity": 0.009146310430250444,
-            "tailDensity": 0.16615797281621641
+            "tailDensity": 0.1615848176010912
           },
           {
             "rLo": 10.633333333333333,
             "rHi": 11.116666666666667,
             "headCount": 5,
-            "tailCount": 105,
+            "tailCount": 106,
             "headDensity": 0.00695958556438298,
-            "tailDensity": 0.1461512968520426
+            "tailDensity": 0.14754321396491918
           },
           {
             "rLo": 11.116666666666667,
             "rHi": 11.6,
             "headCount": 7,
-            "tailCount": 127,
+            "tailCount": 128,
             "headDensity": 0.008931958154023492,
-            "tailDensity": 0.1620512407944262
+            "tailDensity": 0.16332723481642958
           },
           {
             "rLo": 11.6,
@@ -266,9 +266,9 @@
             "rLo": 13.05,
             "rHi": 13.533333333333333,
             "headCount": 18,
-            "tailCount": 162,
+            "tailCount": 163,
             "headDensity": 0.01677293860743588,
-            "tailDensity": 0.15095644746692294
+            "tailDensity": 0.15188827738955826
           },
           {
             "rLo": 13.533333333333333,
@@ -290,41 +290,41 @@
             "rLo": 14.5,
             "rHi": 14.983333333333334,
             "headCount": 22,
-            "tailCount": 161,
+            "tailCount": 163,
             "headDensity": 0.016666100350451508,
-            "tailDensity": 0.12196555256466786
+            "tailDensity": 0.12348065259652709
           },
           {
             "rLo": 14.983333333333334,
             "rHi": 15.466666666666667,
             "headCount": 23,
-            "tailCount": 164,
+            "tailCount": 162,
             "headDensity": 0.016335038015643212,
-            "tailDensity": 0.1164759232419777
+            "tailDensity": 0.11505548515366089
           },
           {
             "rLo": 15.466666666666667,
             "rHi": 15.95,
             "headCount": 20,
-            "tailCount": 198,
+            "tailCount": 201,
             "headDensity": 0.013343780968504628,
-            "tailDensity": 0.13210343158819582
+            "tailDensity": 0.1341049987334715
           },
           {
             "rLo": 15.95,
             "rHi": 16.433333333333334,
             "headCount": 21,
-            "tailCount": 219,
+            "tailCount": 218,
             "headDensity": 0.013187040090184296,
-            "tailDensity": 0.13752198951192196
+            "tailDensity": 0.13689403522191318
           },
           {
             "rLo": 16.433333333333334,
             "rHi": 16.916666666666668,
             "headCount": 23,
-            "tailCount": 212,
+            "tailCount": 211,
             "headDensity": 0.013617868432531438,
-            "tailDensity": 0.12552122207376804
+            "tailDensity": 0.12492914083757102
           },
           {
             "rLo": 16.916666666666668,
@@ -338,113 +338,113 @@
             "rLo": 17.4,
             "rHi": 17.883333333333333,
             "headCount": 28,
-            "tailCount": 210,
+            "tailCount": 208,
             "headDensity": 0.014811363183604563,
-            "tailDensity": 0.11108522387703423
+            "tailDensity": 0.11002726936391961
           },
           {
             "rLo": 17.883333333333333,
             "rHi": 18.366666666666667,
             "headCount": 23,
-            "tailCount": 246,
+            "tailCount": 249,
             "headDensity": 0.011526287786814325,
-            "tailDensity": 0.123281165024188
+            "tailDensity": 0.12478459386594638
           },
           {
             "rLo": 18.366666666666667,
             "rHi": 18.85,
-            "headCount": 18,
-            "tailCount": 227,
-            "headDensity": 0.008558083584500106,
-            "tailDensity": 0.10792694298230689
+            "headCount": 17,
+            "tailCount": 225,
+            "headDensity": 0.008082634496472322,
+            "tailDensity": 0.10697604480625131
           },
           {
             "rLo": 18.85,
             "rHi": 19.333333333333332,
-            "headCount": 37,
-            "tailCount": 215,
-            "headDensity": 0.0167122233486443,
-            "tailDensity": 0.09711156810698714
+            "headCount": 39,
+            "tailCount": 214,
+            "headDensity": 0.01761558677289534,
+            "tailDensity": 0.09665988639486162
           },
           {
             "rLo": 19.333333333333332,
             "rHi": 19.816666666666666,
-            "headCount": 38,
-            "tailCount": 226,
-            "headDensity": 0.016326811540228182,
-            "tailDensity": 0.09710156337083077
+            "headCount": 37,
+            "tailCount": 228,
+            "headDensity": 0.01589715860495902,
+            "tailDensity": 0.0979608692413691
           },
           {
             "rLo": 19.816666666666666,
             "rHi": 20.3,
-            "headCount": 37,
-            "tailCount": 242,
-            "headDensity": 0.015140297560480612,
-            "tailDensity": 0.09902572999017048
+            "headCount": 38,
+            "tailCount": 240,
+            "headDensity": 0.015549494791844953,
+            "tailDensity": 0.0982073355274418
           },
           {
             "rLo": 20.3,
             "rHi": 20.783333333333335,
             "headCount": 25,
-            "tailCount": 221,
+            "tailCount": 224,
             "headDensity": 0.009754207854122317,
-            "tailDensity": 0.08622719743044129
+            "tailDensity": 0.08739770237293597
           },
           {
             "rLo": 20.783333333333335,
             "rHi": 21.266666666666666,
-            "headCount": 26,
+            "headCount": 25,
             "tailCount": 185,
-            "headDensity": 0.009683349384525062,
+            "headDensity": 0.009310912869735637,
             "tailDensity": 0.0689007552360437
           },
           {
             "rLo": 21.266666666666666,
             "rHi": 21.75,
-            "headCount": 29,
-            "tailCount": 202,
-            "headDensity": 0.010320710442573123,
-            "tailDensity": 0.07188908653102659
+            "headCount": 28,
+            "tailCount": 201,
+            "headDensity": 0.009964823875587843,
+            "tailDensity": 0.0715331999640413
           },
           {
             "rLo": 21.75,
             "rHi": 22.233333333333334,
             "headCount": 25,
-            "tailCount": 211,
+            "tailCount": 210,
             "headDensity": 0.008510393231603405,
-            "tailDensity": 0.07182771887473273
+            "tailDensity": 0.0714873031454686
           },
           {
             "rLo": 22.233333333333334,
             "rHi": 22.71666666666667,
-            "headCount": 31,
-            "tailCount": 182,
-            "headDensity": 0.010103897784529999,
-            "tailDensity": 0.05931965796078902
+            "headCount": 32,
+            "tailCount": 186,
+            "headDensity": 0.01042982997112774,
+            "tailDensity": 0.06062338670717999
           },
           {
             "rLo": 22.71666666666667,
             "rHi": 23.2,
             "headCount": 28,
-            "tailCount": 217,
+            "tailCount": 214,
             "headDensity": 0.008745903182873091,
-            "tailDensity": 0.06778074966726647
+            "tailDensity": 0.06684368861195863
           },
           {
             "rLo": 23.2,
             "rHi": 23.683333333333334,
             "headCount": 25,
-            "tailCount": 211,
+            "tailCount": 213,
             "headDensity": 0.0074901590422968315,
-            "tailDensity": 0.06321694231698526
+            "tailDensity": 0.063816155040369
           },
           {
             "rLo": 23.683333333333334,
             "rHi": 24.166666666666668,
             "headCount": 22,
-            "tailCount": 176,
+            "tailCount": 175,
             "headDensity": 0.006327722225290453,
-            "tailDensity": 0.050621777802323624
+            "tailDensity": 0.05033415406481042
           },
           {
             "rLo": 24.166666666666668,
@@ -458,82 +458,82 @@
             "rLo": 24.65,
             "rHi": 25.133333333333333,
             "headCount": 26,
-            "tailCount": 180,
+            "tailCount": 181,
             "headDensity": 0.006908680967192203,
-            "tailDensity": 0.0478293297728691
+            "tailDensity": 0.04809504827160726
           },
           {
             "rLo": 25.133333333333333,
             "rHi": 25.616666666666667,
-            "headCount": 21,
-            "tailCount": 191,
-            "headDensity": 0.005369544562057143,
-            "tailDensity": 0.04883728625490069
+            "headCount": 20,
+            "tailCount": 190,
+            "headDensity": 0.005113851963863946,
+            "tailDensity": 0.04858159365670749
           },
           {
             "rLo": 25.616666666666667,
             "rHi": 26.1,
-            "headCount": 33,
-            "tailCount": 160,
-            "headDensity": 0.008125378958561231,
-            "tailDensity": 0.039395776768781726
+            "headCount": 34,
+            "tailCount": 161,
+            "headDensity": 0.008371602563366116,
+            "tailDensity": 0.03964200037358661
           },
           {
             "rLo": 26.1,
             "rHi": 26.583333333333332,
-            "headCount": 33,
-            "tailCount": 160,
-            "headDensity": 0.007829943790502272,
-            "tailDensity": 0.03796336383273829
+            "headCount": 34,
+            "tailCount": 159,
+            "headDensity": 0.008067214814456887,
+            "tailDensity": 0.037726092808783675
           },
           {
             "rLo": 26.583333333333332,
             "rHi": 27.066666666666666,
-            "headCount": 23,
-            "tailCount": 199,
-            "headDensity": 0.005262353443628346,
-            "tailDensity": 0.04553079718617569
+            "headCount": 22,
+            "tailCount": 200,
+            "headDensity": 0.005033555467818418,
+            "tailDensity": 0.04575959516198562
           },
           {
             "rLo": 27.066666666666666,
             "rHi": 27.55,
             "headCount": 24,
-            "tailCount": 167,
+            "tailCount": 165,
             "headDensity": 0.005298499558006609,
-            "tailDensity": 0.03686872609112932
+            "tailDensity": 0.036427184461295434
           },
           {
             "rLo": 27.55,
             "rHi": 28.033333333333335,
             "headCount": 27,
-            "tailCount": 176,
+            "tailCount": 179,
             "headDensity": 0.005755287483658433,
-            "tailDensity": 0.03751594804162534
+            "tailDensity": 0.0381554244286985
           },
           {
             "rLo": 28.033333333333335,
             "rHi": 28.516666666666666,
             "headCount": 28,
-            "tailCount": 161,
+            "tailCount": 159,
             "headDensity": 0.005766145772364627,
-            "tailDensity": 0.03315533819109661
+            "tailDensity": 0.03274347063592771
           },
           {
             "rLo": 28.516666666666666,
             "rHi": 29,
             "headCount": 30,
-            "tailCount": 161,
+            "tailCount": 163,
             "headDensity": 0.005972098939251168,
-            "tailDensity": 0.0320502643073146
+            "tailDensity": 0.03244840423659801
           }
         ]
       },
       "cavity": {
         "volume": 29.125,
         "unreached": 233,
-        "totalEmpty": 1481443,
-        "seedCell": 675161,
-        "seedDistFromCentre": 49.9099202778637,
+        "totalEmpty": 1481400,
+        "seedCell": 675162,
+        "seedDistFromCentre": 49.91531872026206,
         "theoreticalMaxDist": 50.22947341949744
       },
       "hole": {
@@ -542,8 +542,8 @@
           0.25406758448060074,
           -0.8593525696849693
         ],
-        "holeRadiusDeg": 15.94543200389519,
-        "solidAngleFraction": 0.019238112732736845,
+        "holeRadiusDeg": 15.945609448519807,
+        "solidAngleFraction": 0.01923853814067733,
         "headsUsed": 968,
         "headsExcludedBeyondTrust": 363,
         "headsTotal": 1331
@@ -551,13 +551,13 @@
     },
     {
       "step": 170000,
-      "amphiphileCount": 1327,
-      "aggregateCount": 10,
-      "particleCount": 11686,
+      "amphiphileCount": 1328,
+      "aggregateCount": 5,
+      "particleCount": 11693,
       "circularConcentration": {
-        "Rx": 0.2635400224163545,
-        "Ry": 0.1728334389442838,
-        "Rz": 0.3596626560047772,
+        "Rx": 0.2632934379780516,
+        "Ry": 0.17250233905662785,
+        "Rz": 0.35998874679242293,
         "trusted": [
           true,
           true,
@@ -565,16 +565,16 @@
         ]
       },
       "centre": [
-        49.6564364784159,
-        39.088418548223494,
-        54.06741797934856
+        49.6719360702986,
+        39.11678803291453,
+        54.073944556466294
       ],
       "radial": {
         "trustLimit": 29,
-        "headTotal": 1327,
-        "headBeyondTrust": 368,
-        "tailTotal": 10359,
-        "tailBeyondTrust": 2430,
+        "headTotal": 1328,
+        "headBeyondTrust": 367,
+        "tailTotal": 10365,
+        "tailBeyondTrust": 2432,
         "headPeakPrimary": 21.025,
         "headPeakSecondary": 24.891666666666666,
         "separation": 3.866666666666667,
@@ -640,17 +640,17 @@
             "rLo": 3.3833333333333333,
             "rHi": 3.8666666666666667,
             "headCount": 0,
-            "tailCount": 30,
+            "tailCount": 31,
             "headDensity": 0,
-            "tailDensity": 0.3753234487206312
+            "tailDensity": 0.38783423034465225
           },
           {
             "rLo": 3.8666666666666667,
             "rHi": 4.35,
             "headCount": 0,
-            "tailCount": 22,
+            "tailCount": 21,
             "headDensity": 0,
-            "tailDensity": 0.21435523538299656
+            "tailDensity": 0.20461181559286035
           },
           {
             "rLo": 4.35,
@@ -704,33 +704,33 @@
             "rLo": 7.25,
             "rHi": 7.733333333333333,
             "headCount": 2,
-            "tailCount": 55,
+            "tailCount": 56,
             "headDensity": 0.005864971135810141,
-            "tailDensity": 0.16128670623477886
+            "tailDensity": 0.16421919180268393
           },
           {
             "rLo": 7.733333333333333,
             "rHi": 8.216666666666667,
             "headCount": 7,
-            "tailCount": 51,
+            "tailCount": 49,
             "headDensity": 0.018115366782395195,
-            "tailDensity": 0.1319833865574507
+            "tailDensity": 0.12680756747676636
           },
           {
             "rLo": 8.216666666666667,
             "rHi": 8.7,
-            "headCount": 5,
-            "tailCount": 73,
-            "headDensity": 0.011503384627092276,
-            "tailDensity": 0.1679494155555472
+            "headCount": 4,
+            "tailCount": 72,
+            "headDensity": 0.00920270770167382,
+            "tailDensity": 0.16564873863012877
           },
           {
             "rLo": 8.7,
             "rHi": 9.183333333333334,
-            "headCount": 4,
-            "tailCount": 63,
-            "headDensity": 0.008234944866444207,
-            "tailDensity": 0.12970038164649628
+            "headCount": 5,
+            "tailCount": 65,
+            "headDensity": 0.01029368108305526,
+            "tailDensity": 0.13381785407971838
           },
           {
             "rLo": 9.183333333333334,
@@ -744,49 +744,49 @@
             "rLo": 9.666666666666666,
             "rHi": 10.15,
             "headCount": 5,
-            "tailCount": 81,
+            "tailCount": 82,
             "headDensity": 0.008383513459395517,
-            "tailDensity": 0.13581291804220735
+            "tailDensity": 0.13748962073408647
           },
           {
             "rLo": 10.15,
             "rHi": 10.633333333333333,
             "headCount": 7,
-            "tailCount": 104,
+            "tailCount": 105,
             "headDensity": 0.010670695501958852,
-            "tailDensity": 0.15853604745767438
+            "tailDensity": 0.1600604325293828
           },
           {
             "rLo": 10.633333333333333,
             "rHi": 11.116666666666667,
             "headCount": 4,
-            "tailCount": 119,
+            "tailCount": 118,
             "headDensity": 0.005567668451506384,
-            "tailDensity": 0.16563813643231493
+            "tailDensity": 0.16424621931943834
           },
           {
             "rLo": 11.116666666666667,
             "rHi": 11.6,
             "headCount": 10,
-            "tailCount": 118,
+            "tailCount": 119,
             "headDensity": 0.01275994022003356,
-            "tailDensity": 0.150567294596396
+            "tailDensity": 0.15184328861839938
           },
           {
             "rLo": 11.6,
             "rHi": 12.083333333333334,
             "headCount": 11,
-            "tailCount": 148,
+            "tailCount": 145,
             "headDensity": 0.012913682975599696,
-            "tailDensity": 0.1737477345807959
+            "tailDensity": 0.170225821041996
           },
           {
             "rLo": 12.083333333333334,
             "rHi": 12.566666666666666,
             "headCount": 15,
-            "tailCount": 117,
+            "tailCount": 121,
             "headDensity": 0.01625567986514269,
-            "tailDensity": 0.12679430294811297
+            "tailDensity": 0.13112915091215102
           },
           {
             "rLo": 12.566666666666666,
@@ -800,129 +800,129 @@
             "rLo": 13.05,
             "rHi": 13.533333333333333,
             "headCount": 18,
-            "tailCount": 146,
+            "tailCount": 139,
             "headDensity": 0.01677293860743588,
-            "tailDensity": 0.13604716870475772
+            "tailDensity": 0.12952435924631042
           },
           {
             "rLo": 13.533333333333333,
             "rHi": 14.016666666666667,
             "headCount": 18,
-            "tailCount": 171,
+            "tailCount": 175,
             "headDensity": 0.015616658883985219,
-            "tailDensity": 0.14835825939785957
+            "tailDensity": 0.1518286280387452
           },
           {
             "rLo": 14.016666666666667,
             "rHi": 14.5,
             "headCount": 20,
-            "tailCount": 158,
+            "tailCount": 155,
             "headDensity": 0.016195496702103074,
-            "tailDensity": 0.1279444239466143
+            "tailDensity": 0.12551509944129882
           },
           {
             "rLo": 14.5,
             "rHi": 14.983333333333334,
             "headCount": 19,
-            "tailCount": 200,
+            "tailCount": 205,
             "headDensity": 0.014393450302662666,
-            "tailDensity": 0.1515100031859228
+            "tailDensity": 0.15529775326557088
           },
           {
             "rLo": 14.983333333333334,
             "rHi": 15.466666666666667,
-            "headCount": 20,
-            "tailCount": 147,
-            "headDensity": 0.014204380883168012,
-            "tailDensity": 0.10440219949128489
+            "headCount": 18,
+            "tailCount": 145,
+            "headDensity": 0.01278394279485121,
+            "tailDensity": 0.10298176140296808
           },
           {
             "rLo": 15.466666666666667,
             "rHi": 15.95,
-            "headCount": 28,
-            "tailCount": 195,
-            "headDensity": 0.01868129335590648,
-            "tailDensity": 0.13010186444292013
+            "headCount": 30,
+            "tailCount": 201,
+            "headDensity": 0.020015671452756942,
+            "tailDensity": 0.1341049987334715
           },
           {
             "rLo": 15.95,
             "rHi": 16.433333333333334,
-            "headCount": 24,
-            "tailCount": 207,
-            "headDensity": 0.015070902960210625,
-            "tailDensity": 0.12998653803181665
+            "headCount": 25,
+            "tailCount": 200,
+            "headDensity": 0.0156988572502194,
+            "tailDensity": 0.1255908580017552
           },
           {
             "rLo": 16.433333333333334,
             "rHi": 16.916666666666668,
-            "headCount": 22,
-            "tailCount": 214,
-            "headDensity": 0.01302578719633442,
-            "tailDensity": 0.12670538454616206
+            "headCount": 20,
+            "tailCount": 215,
+            "headDensity": 0.01184162472394038,
+            "tailDensity": 0.1272974657823591
           },
           {
             "rLo": 16.916666666666668,
             "rHi": 17.4,
-            "headCount": 18,
-            "tailCount": 227,
-            "headDensity": 0.010065537609170108,
-            "tailDensity": 0.12693761318231192
+            "headCount": 19,
+            "tailCount": 226,
+            "headDensity": 0.010624734143012892,
+            "tailDensity": 0.12637841664846913
           },
           {
             "rLo": 17.4,
             "rHi": 17.883333333333333,
             "headCount": 27,
-            "tailCount": 223,
+            "tailCount": 225,
             "headDensity": 0.014282385927047258,
-            "tailDensity": 0.1179619282122792
+            "tailDensity": 0.11901988272539382
           },
           {
             "rLo": 17.883333333333333,
             "rHi": 18.366666666666667,
             "headCount": 27,
-            "tailCount": 241,
+            "tailCount": 247,
             "headDensity": 0.013530859575825512,
-            "tailDensity": 0.12077545028792401
+            "tailDensity": 0.12378230797144078
           },
           {
             "rLo": 18.366666666666667,
             "rHi": 18.85,
-            "headCount": 26,
-            "tailCount": 229,
-            "headDensity": 0.012361676288722374,
-            "tailDensity": 0.10887784115836245
+            "headCount": 28,
+            "tailCount": 224,
+            "headDensity": 0.01331257446477794,
+            "tailDensity": 0.10650059571822353
           },
           {
             "rLo": 18.85,
             "rHi": 19.333333333333332,
-            "headCount": 30,
-            "tailCount": 206,
-            "headDensity": 0.013550451363765648,
-            "tailDensity": 0.09304643269785745
+            "headCount": 29,
+            "tailCount": 209,
+            "headDensity": 0.013098769651640127,
+            "tailDensity": 0.09440147783423401
           },
           {
             "rLo": 19.333333333333332,
             "rHi": 19.816666666666666,
             "headCount": 33,
-            "tailCount": 229,
+            "tailCount": 236,
             "headDensity": 0.014178546863882369,
-            "tailDensity": 0.09839052217663825
+            "tailDensity": 0.10139809272352239
           },
           {
             "rLo": 19.816666666666666,
             "rHi": 20.3,
             "headCount": 29,
-            "tailCount": 260,
+            "tailCount": 252,
             "headDensity": 0.011866719709565885,
-            "tailDensity": 0.10639128015472862
+            "tailDensity": 0.1031177023038139
           },
           {
             "rLo": 20.3,
             "rHi": 20.783333333333335,
-            "headCount": 27,
-            "tailCount": 214,
-            "headDensity": 0.010534544482452102,
-            "tailDensity": 0.08349601923128704
+            "headCount": 26,
+            "tailCount": 210,
+            "headDensity": 0.01014437616828721,
+            "tailDensity": 0.08193534597462747
           },
           {
             "rLo": 20.783333333333335,
@@ -935,82 +935,82 @@
           {
             "rLo": 21.266666666666666,
             "rHi": 21.75,
-            "headCount": 29,
+            "headCount": 30,
             "tailCount": 204,
-            "headDensity": 0.010320710442573123,
+            "headDensity": 0.010676597009558404,
             "tailDensity": 0.07260085966499714
           },
           {
             "rLo": 21.75,
             "rHi": 22.233333333333334,
-            "headCount": 29,
-            "tailCount": 199,
-            "headDensity": 0.009872056148659948,
-            "tailDensity": 0.06774273012356309
+            "headCount": 26,
+            "tailCount": 205,
+            "headDensity": 0.00885080896086754,
+            "tailDensity": 0.06978522449914791
           },
           {
             "rLo": 22.233333333333334,
             "rHi": 22.71666666666667,
-            "headCount": 31,
-            "tailCount": 202,
-            "headDensity": 0.010103897784529999,
-            "tailDensity": 0.06583830169274386
+            "headCount": 33,
+            "tailCount": 198,
+            "headDensity": 0.010755762157725482,
+            "tailDensity": 0.0645345729463529
           },
           {
             "rLo": 22.71666666666667,
             "rHi": 23.2,
-            "headCount": 18,
-            "tailCount": 221,
-            "headDensity": 0.0056223663318469876,
-            "tailDensity": 0.0690301644076769
+            "headCount": 20,
+            "tailCount": 212,
+            "headDensity": 0.006247073702052209,
+            "tailDensity": 0.0662189812417534
           },
           {
             "rLo": 23.2,
             "rHi": 23.683333333333334,
             "headCount": 26,
-            "tailCount": 204,
+            "tailCount": 209,
             "headDensity": 0.007789765403988704,
-            "tailDensity": 0.061119697785142146
+            "tailDensity": 0.06261772959360151
           },
           {
             "rLo": 23.683333333333334,
             "rHi": 24.166666666666668,
-            "headCount": 28,
-            "tailCount": 207,
-            "headDensity": 0.008053464650369668,
-            "tailDensity": 0.0595381136652329
+            "headCount": 25,
+            "tailCount": 212,
+            "headDensity": 0.00719059343783006,
+            "tailDensity": 0.06097623235279891
           },
           {
             "rLo": 24.166666666666668,
             "rHi": 24.65,
-            "headCount": 22,
-            "tailCount": 205,
-            "headDensity": 0.006079608688813288,
-            "tailDensity": 0.05665089914576018
+            "headCount": 23,
+            "tailCount": 201,
+            "headDensity": 0.0063559545383048005,
+            "tailDensity": 0.05554551574779413
           },
           {
             "rLo": 24.65,
             "rHi": 25.133333333333333,
             "headCount": 34,
-            "tailCount": 191,
+            "tailCount": 190,
             "headDensity": 0.009034428957097496,
-            "tailDensity": 0.05075223325898887
+            "tailDensity": 0.05048651476025071
           },
           {
             "rLo": 25.133333333333333,
             "rHi": 25.616666666666667,
             "headCount": 25,
-            "tailCount": 171,
+            "tailCount": 175,
             "headDensity": 0.006392314954829933,
-            "tailDensity": 0.04372343429103674
+            "tailDensity": 0.044746204683809535
           },
           {
             "rLo": 25.616666666666667,
             "rHi": 26.1,
-            "headCount": 32,
-            "tailCount": 178,
-            "headDensity": 0.007879155353756346,
-            "tailDensity": 0.04382780165526967
+            "headCount": 33,
+            "tailCount": 177,
+            "headDensity": 0.008125378958561231,
+            "tailDensity": 0.04358157805046479
           },
           {
             "rLo": 26.1,
@@ -1023,51 +1023,51 @@
           {
             "rLo": 26.583333333333332,
             "rHi": 27.066666666666666,
-            "headCount": 27,
-            "tailCount": 169,
-            "headDensity": 0.006177545346868059,
-            "tailDensity": 0.03866685791187785
+            "headCount": 28,
+            "tailCount": 172,
+            "headDensity": 0.006406343322677987,
+            "tailDensity": 0.039353251839307636
           },
           {
             "rLo": 27.066666666666666,
             "rHi": 27.55,
-            "headCount": 23,
-            "tailCount": 177,
-            "headDensity": 0.005077728743089666,
-            "tailDensity": 0.03907643424029874
+            "headCount": 22,
+            "tailCount": 178,
+            "headDensity": 0.004856957928172725,
+            "tailDensity": 0.03929720505521568
           },
           {
             "rLo": 27.55,
             "rHi": 28.033333333333335,
-            "headCount": 29,
-            "tailCount": 158,
-            "headDensity": 0.006181605075040539,
-            "tailDensity": 0.033679089719186386
+            "headCount": 28,
+            "tailCount": 157,
+            "headDensity": 0.005968446279349486,
+            "tailDensity": 0.033465930923495334
           },
           {
             "rLo": 28.033333333333335,
             "rHi": 28.516666666666666,
-            "headCount": 25,
-            "tailCount": 171,
-            "headDensity": 0.0051483444396112745,
-            "tailDensity": 0.03521467596694112
+            "headCount": 26,
+            "tailCount": 173,
+            "headDensity": 0.0053542782171957255,
+            "tailDensity": 0.03562654352211002
           },
           {
             "rLo": 28.516666666666666,
             "rHi": 29,
-            "headCount": 24,
-            "tailCount": 153,
-            "headDensity": 0.004777679151400934,
-            "tailDensity": 0.030457704590180955
+            "headCount": 25,
+            "tailCount": 151,
+            "headDensity": 0.00497674911604264,
+            "tailDensity": 0.030059564660897542
           }
         ]
       },
       "cavity": {
         "volume": 29.75,
         "unreached": 238,
-        "totalEmpty": 1480615,
+        "totalEmpty": 1480567,
         "seedCell": 675161,
-        "seedDistFromCentre": 49.976794947652415,
+        "seedDistFromCentre": 50.00589582425156,
         "theoreticalMaxDist": 50.22947341949744
       },
       "hole": {
@@ -1076,22 +1076,22 @@
           0.25406758448060074,
           -0.8593525696849693
         ],
-        "holeRadiusDeg": 16.54401707576968,
-        "solidAngleFraction": 0.020699370414262175,
-        "headsUsed": 959,
-        "headsExcludedBeyondTrust": 368,
-        "headsTotal": 1327
+        "holeRadiusDeg": 16.49595641120062,
+        "solidAngleFraction": 0.02058011171912072,
+        "headsUsed": 961,
+        "headsExcludedBeyondTrust": 367,
+        "headsTotal": 1328
       }
     },
     {
       "step": 180000,
-      "amphiphileCount": 1313,
-      "aggregateCount": 7,
-      "particleCount": 11680,
+      "amphiphileCount": 1317,
+      "aggregateCount": 3,
+      "particleCount": 11687,
       "circularConcentration": {
-        "Rx": 0.2671591079592971,
-        "Ry": 0.17380495214647043,
-        "Rz": 0.35694068109241905,
+        "Rx": 0.26719631681584377,
+        "Ry": 0.17368437961158556,
+        "Rz": 0.3572738023595444,
         "trusted": [
           true,
           true,
@@ -1099,19 +1099,19 @@
         ]
       },
       "centre": [
-        50.01022301245955,
-        39.24337707979146,
-        54.197506607748764
+        50.01880741004842,
+        39.27074531011192,
+        54.203806538385166
       ],
       "radial": {
         "trustLimit": 29,
-        "headTotal": 1313,
-        "headBeyondTrust": 361,
-        "tailTotal": 10367,
-        "tailBeyondTrust": 2367,
+        "headTotal": 1317,
+        "headBeyondTrust": 359,
+        "tailTotal": 10370,
+        "tailBeyondTrust": 2368,
         "headPeakPrimary": 19.09166666666667,
-        "headPeakSecondary": 22.475,
-        "separation": 3.383333333333333,
+        "headPeakSecondary": 21.991666666666667,
+        "separation": 2.8999999999999986,
         "bilayerThicknessReference": 4.457,
         "bins": [
           {
@@ -1150,65 +1150,65 @@
             "rLo": 1.9333333333333333,
             "rHi": 2.4166666666666665,
             "headCount": 0,
-            "tailCount": 4,
+            "tailCount": 3,
             "headDensity": 0,
-            "tailDensity": 0.13864407176783974
+            "tailDensity": 0.10398305382587981
           },
           {
             "rLo": 2.4166666666666665,
             "rHi": 2.9,
             "headCount": 0,
-            "tailCount": 12,
+            "tailCount": 14,
             "headDensity": 0,
-            "tailDensity": 0.27881170476389744
+            "tailDensity": 0.325280322224547
           },
           {
             "rLo": 2.9,
             "rHi": 3.3833333333333333,
             "headCount": 0,
-            "tailCount": 18,
+            "tailCount": 17,
             "headDensity": 0,
-            "tailDensity": 0.2996676984273384
+            "tailDensity": 0.28301949295915296
           },
           {
             "rLo": 3.3833333333333333,
             "rHi": 3.8666666666666667,
             "headCount": 0,
-            "tailCount": 26,
+            "tailCount": 27,
             "headDensity": 0,
-            "tailDensity": 0.32528032222454706
+            "tailDensity": 0.3377911038485681
           },
           {
             "rLo": 3.8666666666666667,
             "rHi": 4.35,
-            "headCount": 2,
+            "headCount": 3,
             "tailCount": 32,
-            "headDensity": 0.019486839580272416,
+            "headDensity": 0.029230259370408622,
             "tailDensity": 0.31178943328435865
           },
           {
             "rLo": 4.35,
             "rHi": 4.833333333333333,
-            "headCount": 4,
+            "headCount": 3,
             "tailCount": 26,
-            "headDensity": 0.031207706191284955,
+            "headDensity": 0.023405779643463714,
             "tailDensity": 0.2028500902433522
           },
           {
             "rLo": 4.833333333333333,
             "rHi": 5.316666666666666,
             "headCount": 4,
-            "tailCount": 34,
+            "tailCount": 32,
             "headDensity": 0.02555072017473783,
-            "tailDensity": 0.21718112148527158
+            "tailDensity": 0.20440576139790265
           },
           {
             "rLo": 5.316666666666666,
             "rHi": 5.8,
             "headCount": 3,
-            "tailCount": 35,
+            "tailCount": 37,
             "headDensity": 0.015977245046293873,
-            "tailDensity": 0.18640119220676182
+            "tailDensity": 0.19705268890429106
           },
           {
             "rLo": 5.8,
@@ -1222,9 +1222,9 @@
             "rLo": 6.283333333333333,
             "rHi": 6.766666666666667,
             "headCount": 2,
-            "tailCount": 37,
+            "tailCount": 35,
             "headDensity": 0.007730610948663818,
-            "tailDensity": 0.14301630255028064
+            "tailDensity": 0.13528569160161683
           },
           {
             "rLo": 6.766666666666667,
@@ -1237,18 +1237,18 @@
           {
             "rLo": 7.25,
             "rHi": 7.733333333333333,
-            "headCount": 4,
-            "tailCount": 51,
-            "headDensity": 0.011729942271620282,
-            "tailDensity": 0.1495567639631586
+            "headCount": 3,
+            "tailCount": 49,
+            "headDensity": 0.008797456703715211,
+            "tailDensity": 0.14369179282734845
           },
           {
             "rLo": 7.733333333333333,
             "rHi": 8.216666666666667,
-            "headCount": 4,
-            "tailCount": 54,
-            "headDensity": 0.010351638161368682,
-            "tailDensity": 0.1397471151784772
+            "headCount": 5,
+            "tailCount": 56,
+            "headDensity": 0.012939547701710854,
+            "tailDensity": 0.14492293425916156
           },
           {
             "rLo": 8.216666666666667,
@@ -1262,265 +1262,265 @@
             "rLo": 8.7,
             "rHi": 9.183333333333334,
             "headCount": 4,
-            "tailCount": 63,
+            "tailCount": 64,
             "headDensity": 0.008234944866444207,
-            "tailDensity": 0.12970038164649628
+            "tailDensity": 0.13175911786310732
           },
           {
             "rLo": 9.183333333333334,
             "rHi": 9.666666666666666,
             "headCount": 7,
-            "tailCount": 78,
+            "tailCount": 75,
             "headDensity": 0.012971301193003437,
-            "tailDensity": 0.14453735615060972
+            "tailDensity": 0.13897822706789398
           },
           {
             "rLo": 9.666666666666666,
             "rHi": 10.15,
             "headCount": 9,
-            "tailCount": 93,
+            "tailCount": 94,
             "headDensity": 0.015090324226911929,
-            "tailDensity": 0.1559333503447566
+            "tailDensity": 0.1576100530366357
           },
           {
             "rLo": 10.15,
             "rHi": 10.633333333333333,
             "headCount": 6,
-            "tailCount": 96,
+            "tailCount": 99,
             "headDensity": 0.009146310430250444,
-            "tailDensity": 0.1463409668840071
+            "tailDensity": 0.15091412209913233
           },
           {
             "rLo": 10.633333333333333,
             "rHi": 11.116666666666667,
             "headCount": 6,
-            "tailCount": 111,
+            "tailCount": 112,
             "headDensity": 0.008351502677259577,
-            "tailDensity": 0.15450279952930215
+            "tailDensity": 0.15589471664217877
           },
           {
             "rLo": 11.116666666666667,
             "rHi": 11.6,
-            "headCount": 7,
-            "tailCount": 110,
-            "headDensity": 0.008931958154023492,
-            "tailDensity": 0.14035934242036915
+            "headCount": 8,
+            "tailCount": 106,
+            "headDensity": 0.010207952176026849,
+            "tailDensity": 0.13525536633235574
           },
           {
             "rLo": 11.6,
             "rHi": 12.083333333333334,
-            "headCount": 8,
-            "tailCount": 130,
-            "headDensity": 0.009391769436799778,
-            "tailDensity": 0.15261625334799642
+            "headCount": 6,
+            "tailCount": 131,
+            "headDensity": 0.0070438270775998344,
+            "tailDensity": 0.1537902245275964
           },
           {
             "rLo": 12.083333333333334,
             "rHi": 12.566666666666666,
             "headCount": 11,
-            "tailCount": 142,
+            "tailCount": 140,
             "headDensity": 0.01192083190110464,
-            "tailDensity": 0.1538871027233508
+            "tailDensity": 0.15171967874133177
           },
           {
             "rLo": 12.566666666666666,
             "rHi": 13.05,
-            "headCount": 15,
-            "tailCount": 142,
-            "headDensity": 0.015052126918316693,
-            "tailDensity": 0.1424934681600647
+            "headCount": 16,
+            "tailCount": 146,
+            "headDensity": 0.016055602046204473,
+            "tailDensity": 0.14650736867161582
           },
           {
             "rLo": 13.05,
             "rHi": 13.533333333333333,
             "headCount": 24,
-            "tailCount": 160,
+            "tailCount": 157,
             "headDensity": 0.02236391814324784,
-            "tailDensity": 0.1490927876216523
+            "tailDensity": 0.1462972978537463
           },
           {
             "rLo": 13.533333333333333,
             "rHi": 14.016666666666667,
             "headCount": 17,
-            "tailCount": 140,
+            "tailCount": 142,
             "headDensity": 0.014749066723763818,
-            "tailDensity": 0.12146290243099615
+            "tailDensity": 0.12319808675143895
           },
           {
             "rLo": 14.016666666666667,
             "rHi": 14.5,
             "headCount": 16,
-            "tailCount": 164,
+            "tailCount": 159,
             "headDensity": 0.01295639736168246,
-            "tailDensity": 0.13280307295724522
+            "tailDensity": 0.12875419878171945
           },
           {
             "rLo": 14.5,
             "rHi": 14.983333333333334,
             "headCount": 17,
-            "tailCount": 200,
+            "tailCount": 204,
             "headDensity": 0.012878350270803439,
-            "tailDensity": 0.1515100031859228
+            "tailDensity": 0.15454020324964127
           },
           {
             "rLo": 14.983333333333334,
             "rHi": 15.466666666666667,
-            "headCount": 23,
-            "tailCount": 173,
-            "headDensity": 0.016335038015643212,
-            "tailDensity": 0.1228678946394033
+            "headCount": 22,
+            "tailCount": 175,
+            "headDensity": 0.015624818971484813,
+            "tailDensity": 0.12428833272772011
           },
           {
             "rLo": 15.466666666666667,
             "rHi": 15.95,
-            "headCount": 29,
-            "tailCount": 191,
-            "headDensity": 0.01934848240433171,
-            "tailDensity": 0.12743310824921922
+            "headCount": 30,
+            "tailCount": 192,
+            "headDensity": 0.020015671452756942,
+            "tailDensity": 0.12810029729764444
           },
           {
             "rLo": 15.95,
             "rHi": 16.433333333333334,
-            "headCount": 23,
-            "tailCount": 202,
-            "headDensity": 0.01444294867020185,
-            "tailDensity": 0.12684676658177277
+            "headCount": 22,
+            "tailCount": 201,
+            "headDensity": 0.013814994380193074,
+            "tailDensity": 0.126218812291764
           },
           {
             "rLo": 16.433333333333334,
             "rHi": 16.916666666666668,
-            "headCount": 18,
-            "tailCount": 223,
-            "headDensity": 0.010657462251546342,
-            "tailDensity": 0.13203411567193524
+            "headCount": 20,
+            "tailCount": 220,
+            "headDensity": 0.01184162472394038,
+            "tailDensity": 0.13025787196334418
           },
           {
             "rLo": 16.916666666666668,
             "rHi": 17.4,
             "headCount": 29,
-            "tailCount": 219,
+            "tailCount": 225,
             "headDensity": 0.01621669948144073,
-            "tailDensity": 0.12246404091156965
+            "tailDensity": 0.12581922011462635
           },
           {
             "rLo": 17.4,
             "rHi": 17.883333333333333,
-            "headCount": 15,
-            "tailCount": 243,
-            "headDensity": 0.007934658848359588,
-            "tailDensity": 0.12854147334342533
+            "headCount": 16,
+            "tailCount": 244,
+            "headDensity": 0.008463636104916893,
+            "tailDensity": 0.12907045059998262
           },
           {
             "rLo": 17.883333333333333,
             "rHi": 18.366666666666667,
-            "headCount": 24,
-            "tailCount": 252,
-            "headDensity": 0.012027430734067122,
-            "tailDensity": 0.12628802270770478
+            "headCount": 22,
+            "tailCount": 248,
+            "headDensity": 0.011025144839561529,
+            "tailDensity": 0.12428345091869358
           },
           {
             "rLo": 18.366666666666667,
             "rHi": 18.85,
             "headCount": 29,
-            "tailCount": 235,
+            "tailCount": 240,
             "headDensity": 0.013788023552805725,
-            "tailDensity": 0.11173053568652914
+            "tailDensity": 0.11410778112666807
           },
           {
             "rLo": 18.85,
             "rHi": 19.333333333333332,
-            "headCount": 35,
-            "tailCount": 242,
-            "headDensity": 0.015808859924393254,
-            "tailDensity": 0.10930697433437622
+            "headCount": 37,
+            "tailCount": 235,
+            "headDensity": 0.0167122233486443,
+            "tailDensity": 0.10614520234949758
           },
           {
             "rLo": 19.333333333333332,
             "rHi": 19.816666666666666,
             "headCount": 32,
-            "tailCount": 217,
+            "tailCount": 226,
             "headDensity": 0.013748893928613207,
-            "tailDensity": 0.09323468695340831
+            "tailDensity": 0.09710156337083077
           },
           {
             "rLo": 19.816666666666666,
             "rHi": 20.3,
-            "headCount": 32,
-            "tailCount": 220,
-            "headDensity": 0.013094311403658907,
-            "tailDensity": 0.09002339090015499
+            "headCount": 31,
+            "tailCount": 214,
+            "headDensity": 0.012685114172294567,
+            "tailDensity": 0.08756820751196893
           },
           {
             "rLo": 20.3,
             "rHi": 20.783333333333335,
-            "headCount": 30,
-            "tailCount": 220,
-            "headDensity": 0.011705049424946781,
-            "tailDensity": 0.0858370291162764
+            "headCount": 28,
+            "tailCount": 221,
+            "headDensity": 0.010924712796616996,
+            "tailDensity": 0.08622719743044129
           },
           {
             "rLo": 20.783333333333335,
             "rHi": 21.266666666666666,
-            "headCount": 20,
+            "headCount": 23,
             "tailCount": 221,
-            "headDensity": 0.007448730295788509,
+            "headDensity": 0.008566039840156785,
             "tailDensity": 0.08230846976846302
           },
           {
             "rLo": 21.266666666666666,
             "rHi": 21.75,
-            "headCount": 29,
-            "tailCount": 196,
-            "headDensity": 0.010320710442573123,
-            "tailDensity": 0.06975376712911491
+            "headCount": 28,
+            "tailCount": 200,
+            "headDensity": 0.009964823875587843,
+            "tailDensity": 0.07117731339705602
           },
           {
             "rLo": 21.75,
             "rHi": 22.233333333333334,
-            "headCount": 28,
-            "tailCount": 199,
-            "headDensity": 0.009531640419395812,
-            "tailDensity": 0.06774273012356309
+            "headCount": 33,
+            "tailCount": 195,
+            "headDensity": 0.011233719065716493,
+            "tailDensity": 0.06638106720650655
           },
           {
             "rLo": 22.233333333333334,
             "rHi": 22.71666666666667,
-            "headCount": 32,
-            "tailCount": 193,
-            "headDensity": 0.01042982997112774,
-            "tailDensity": 0.06290491201336418
+            "headCount": 30,
+            "tailCount": 202,
+            "headDensity": 0.009777965597932257,
+            "tailDensity": 0.06583830169274386
           },
           {
             "rLo": 22.71666666666667,
             "rHi": 23.2,
-            "headCount": 25,
-            "tailCount": 199,
-            "headDensity": 0.00780884212756526,
-            "tailDensity": 0.062158383335419475
+            "headCount": 24,
+            "tailCount": 190,
+            "headDensity": 0.00749648844246265,
+            "tailDensity": 0.05934720016949598
           },
           {
             "rLo": 23.2,
             "rHi": 23.683333333333334,
             "headCount": 29,
-            "tailCount": 209,
+            "tailCount": 207,
             "headDensity": 0.008688584489064325,
-            "tailDensity": 0.06261772959360151
+            "tailDensity": 0.06201851687021776
           },
           {
             "rLo": 23.683333333333334,
             "rHi": 24.166666666666668,
-            "headCount": 23,
-            "tailCount": 221,
-            "headDensity": 0.006615345962803655,
-            "tailDensity": 0.06356484599041773
+            "headCount": 24,
+            "tailCount": 224,
+            "headDensity": 0.006902969700316858,
+            "tailDensity": 0.06442771720295734
           },
           {
             "rLo": 24.166666666666668,
             "rHi": 24.65,
-            "headCount": 28,
-            "tailCount": 188,
-            "headDensity": 0.007737683785762366,
-            "tailDensity": 0.051953019704404454
+            "headCount": 27,
+            "tailCount": 187,
+            "headDensity": 0.007461337936270853,
+            "tailDensity": 0.051676673854912945
           },
           {
             "rLo": 24.65,
@@ -1533,75 +1533,75 @@
           {
             "rLo": 25.133333333333333,
             "rHi": 25.616666666666667,
-            "headCount": 29,
-            "tailCount": 185,
-            "headDensity": 0.007415085347602723,
-            "tailDensity": 0.0473031306657415
+            "headCount": 27,
+            "tailCount": 184,
+            "headDensity": 0.006903700151216327,
+            "tailDensity": 0.047047438067548304
           },
           {
             "rLo": 25.616666666666667,
             "rHi": 26.1,
-            "headCount": 29,
-            "tailCount": 177,
-            "headDensity": 0.0071404845393416875,
-            "tailDensity": 0.04358157805046479
+            "headCount": 32,
+            "tailCount": 171,
+            "headDensity": 0.007879155353756346,
+            "tailDensity": 0.04210423642163547
           },
           {
             "rLo": 26.1,
             "rHi": 26.583333333333332,
-            "headCount": 30,
-            "tailCount": 177,
-            "headDensity": 0.0071181307186384294,
-            "tailDensity": 0.041996971239966735
+            "headCount": 28,
+            "tailCount": 181,
+            "headDensity": 0.006643588670729201,
+            "tailDensity": 0.04294605533578519
           },
           {
             "rLo": 26.583333333333332,
             "rHi": 27.066666666666666,
-            "headCount": 26,
-            "tailCount": 186,
-            "headDensity": 0.00594874737105813,
-            "tailDensity": 0.042556423500646624
+            "headCount": 29,
+            "tailCount": 187,
+            "headDensity": 0.006635141298487915,
+            "tailDensity": 0.04278522147645655
           },
           {
             "rLo": 27.066666666666666,
             "rHi": 27.55,
-            "headCount": 32,
-            "tailCount": 185,
-            "headDensity": 0.007064666077342145,
-            "tailDensity": 0.04084260075963428
+            "headCount": 31,
+            "tailCount": 186,
+            "headDensity": 0.006843895262425203,
+            "tailDensity": 0.04106337157455122
           },
           {
             "rLo": 27.55,
             "rHi": 28.033333333333335,
-            "headCount": 27,
-            "tailCount": 175,
-            "headDensity": 0.005755287483658433,
-            "tailDensity": 0.03730278924593429
+            "headCount": 26,
+            "tailCount": 178,
+            "headDensity": 0.00554212868796738,
+            "tailDensity": 0.03794226563300745
           },
           {
             "rLo": 28.033333333333335,
             "rHi": 28.516666666666666,
-            "headCount": 20,
-            "tailCount": 175,
-            "headDensity": 0.00411867555168902,
-            "tailDensity": 0.036038411077278926
+            "headCount": 19,
+            "tailCount": 178,
+            "headDensity": 0.003912741774104569,
+            "tailDensity": 0.03665621241003228
           },
           {
             "rLo": 28.516666666666666,
             "rHi": 29,
-            "headCount": 27,
-            "tailCount": 183,
-            "headDensity": 0.005374889045326051,
-            "tailDensity": 0.03642980352943212
+            "headCount": 31,
+            "tailCount": 177,
+            "headDensity": 0.006171168903892873,
+            "tailDensity": 0.03523538374158189
           }
         ]
       },
       "cavity": {
         "volume": 33.5,
         "unreached": 268,
-        "totalEmpty": 1480674,
+        "totalEmpty": 1480627,
         "seedCell": 675162,
-        "seedDistFromCentre": 50.05721207801172,
+        "seedDistFromCentre": 50.05761076240148,
         "theoreticalMaxDist": 50.22947341949744
       },
       "hole": {
@@ -1610,22 +1610,22 @@
           0.25406758448060074,
           -0.8593525696849693
         ],
-        "holeRadiusDeg": 16.73628137505146,
-        "solidAngleFraction": 0.02117983116029104,
-        "headsUsed": 952,
-        "headsExcludedBeyondTrust": 361,
-        "headsTotal": 1313
+        "holeRadiusDeg": 16.686178097631643,
+        "solidAngleFraction": 0.021054105416760394,
+        "headsUsed": 958,
+        "headsExcludedBeyondTrust": 359,
+        "headsTotal": 1317
       }
     },
     {
       "step": 190000,
-      "amphiphileCount": 1310,
-      "aggregateCount": 6,
-      "particleCount": 11679,
+      "amphiphileCount": 1311,
+      "aggregateCount": 3,
+      "particleCount": 11683,
       "circularConcentration": {
-        "Rx": 0.26288296624380836,
-        "Ry": 0.1774455986076416,
-        "Rz": 0.3680855030601674,
+        "Rx": 0.2629493555986507,
+        "Ry": 0.17725869722000856,
+        "Rz": 0.36826730711723893,
         "trusted": [
           true,
           true,
@@ -1633,19 +1633,19 @@
         ]
       },
       "centre": [
-        49.980252759514045,
-        39.68511958685979,
-        53.90395406031124
+        49.98596379903412,
+        39.70119207431621,
+        53.907693862465806
       ],
       "radial": {
         "trustLimit": 29,
-        "headTotal": 1310,
-        "headBeyondTrust": 357,
-        "tailTotal": 10369,
-        "tailBeyondTrust": 2325,
+        "headTotal": 1311,
+        "headBeyondTrust": 358,
+        "tailTotal": 10372,
+        "tailBeyondTrust": 2329,
         "headPeakPrimary": 20.058333333333334,
-        "headPeakSecondary": 21.991666666666667,
-        "separation": 1.9333333333333336,
+        "headPeakSecondary": 17.15833333333333,
+        "separation": 2.900000000000002,
         "bilayerThicknessReference": 4.457,
         "bins": [
           {
@@ -1732,25 +1732,25 @@
             "rLo": 4.833333333333333,
             "rHi": 5.316666666666666,
             "headCount": 2,
-            "tailCount": 30,
+            "tailCount": 29,
             "headDensity": 0.012775360087368915,
-            "tailDensity": 0.19163040131053374
+            "tailDensity": 0.1852427212668493
           },
           {
             "rLo": 5.316666666666666,
             "rHi": 5.8,
             "headCount": 2,
-            "tailCount": 33,
+            "tailCount": 35,
             "headDensity": 0.010651496697529248,
-            "tailDensity": 0.17574969550923258
+            "tailDensity": 0.18640119220676182
           },
           {
             "rLo": 5.8,
             "rHi": 6.283333333333333,
             "headCount": 2,
-            "tailCount": 35,
+            "tailCount": 34,
             "headDensity": 0.009016298910275288,
-            "tailDensity": 0.15778523092981755
+            "tailDensity": 0.1532770814746799
           },
           {
             "rLo": 6.283333333333333,
@@ -1764,17 +1764,17 @@
             "rLo": 6.766666666666667,
             "rHi": 7.25,
             "headCount": 0,
-            "tailCount": 29,
+            "tailCount": 30,
             "headDensity": 0,
-            "tailDensity": 0.09717169689275294
+            "tailDensity": 0.10052244506146857
           },
           {
             "rLo": 7.25,
             "rHi": 7.733333333333333,
             "headCount": 2,
-            "tailCount": 46,
+            "tailCount": 45,
             "headDensity": 0.005864971135810141,
-            "tailDensity": 0.13489433612363325
+            "tailDensity": 0.13196185055572818
           },
           {
             "rLo": 7.733333333333333,
@@ -1796,25 +1796,25 @@
             "rLo": 8.7,
             "rHi": 9.183333333333334,
             "headCount": 4,
-            "tailCount": 69,
+            "tailCount": 68,
             "headDensity": 0.008234944866444207,
-            "tailDensity": 0.14205279894616257
+            "tailDensity": 0.13999406272955153
           },
           {
             "rLo": 9.183333333333334,
             "rHi": 9.666666666666666,
             "headCount": 5,
-            "tailCount": 74,
+            "tailCount": 77,
             "headDensity": 0.009265215137859599,
-            "tailDensity": 0.13712518404032206
+            "tailDensity": 0.1426843131230378
           },
           {
             "rLo": 9.666666666666666,
             "rHi": 10.15,
             "headCount": 6,
-            "tailCount": 102,
+            "tailCount": 99,
             "headDensity": 0.01006021615127462,
-            "tailDensity": 0.17102367457166853
+            "tailDensity": 0.16599356649603123
           },
           {
             "rLo": 10.15,
@@ -1828,81 +1828,81 @@
             "rLo": 10.633333333333333,
             "rHi": 11.116666666666667,
             "headCount": 4,
-            "tailCount": 99,
+            "tailCount": 100,
             "headDensity": 0.005567668451506384,
-            "tailDensity": 0.137799794174783
+            "tailDensity": 0.13919171128765961
           },
           {
             "rLo": 11.116666666666667,
             "rHi": 11.6,
-            "headCount": 9,
-            "tailCount": 111,
-            "headDensity": 0.011483946198030205,
-            "tailDensity": 0.14163533644237253
+            "headCount": 8,
+            "tailCount": 109,
+            "headDensity": 0.010207952176026849,
+            "tailDensity": 0.1390833483983658
           },
           {
             "rLo": 11.6,
             "rHi": 12.083333333333334,
-            "headCount": 7,
+            "headCount": 8,
             "tailCount": 118,
-            "headDensity": 0.008217798257199807,
+            "headDensity": 0.009391769436799778,
             "tailDensity": 0.13852859919279675
           },
           {
             "rLo": 12.083333333333334,
             "rHi": 12.566666666666666,
             "headCount": 10,
-            "tailCount": 125,
+            "tailCount": 127,
             "headDensity": 0.010837119910095127,
-            "tailDensity": 0.1354639988761891
+            "tailDensity": 0.13763142285820812
           },
           {
             "rLo": 12.566666666666666,
             "rHi": 13.05,
             "headCount": 19,
-            "tailCount": 153,
+            "tailCount": 147,
             "headDensity": 0.01906602742986781,
-            "tailDensity": 0.15353169456683027
+            "tailDensity": 0.14751084379950358
           },
           {
             "rLo": 13.05,
             "rHi": 13.533333333333333,
             "headCount": 16,
-            "tailCount": 171,
+            "tailCount": 177,
             "headDensity": 0.014909278762165228,
-            "tailDensity": 0.15934291677064089
+            "tailDensity": 0.16493389630645283
           },
           {
             "rLo": 13.533333333333333,
             "rHi": 14.016666666666667,
             "headCount": 25,
-            "tailCount": 149,
+            "tailCount": 146,
             "headDensity": 0.021689804005535027,
-            "tailDensity": 0.12927123187298875
+            "tailDensity": 0.12666845539232455
           },
           {
             "rLo": 14.016666666666667,
             "rHi": 14.5,
-            "headCount": 13,
-            "tailCount": 156,
-            "headDensity": 0.010527072856366998,
-            "tailDensity": 0.126324874276404
+            "headCount": 14,
+            "tailCount": 158,
+            "headDensity": 0.011336847691472153,
+            "tailDensity": 0.1279444239466143
           },
           {
             "rLo": 14.5,
             "rHi": 14.983333333333334,
-            "headCount": 22,
-            "tailCount": 170,
-            "headDensity": 0.016666100350451508,
-            "tailDensity": 0.12878350270803438
+            "headCount": 21,
+            "tailCount": 169,
+            "headDensity": 0.015908550334521893,
+            "tailDensity": 0.12802595269210476
           },
           {
             "rLo": 14.983333333333334,
             "rHi": 15.466666666666667,
             "headCount": 17,
-            "tailCount": 194,
+            "tailCount": 196,
             "headDensity": 0.01207372375069281,
-            "tailDensity": 0.13778249456672972
+            "tailDensity": 0.13920293265504652
           },
           {
             "rLo": 15.466666666666667,
@@ -1940,121 +1940,121 @@
             "rLo": 17.4,
             "rHi": 17.883333333333333,
             "headCount": 18,
-            "tailCount": 255,
+            "tailCount": 254,
             "headDensity": 0.009521590618031506,
-            "tailDensity": 0.134889200422113
+            "tailDensity": 0.13436022316555568
           },
           {
             "rLo": 17.883333333333333,
             "rHi": 18.366666666666667,
             "headCount": 21,
-            "tailCount": 246,
+            "tailCount": 250,
             "headDensity": 0.01052400189230873,
-            "tailDensity": 0.123281165024188
+            "tailDensity": 0.12528573681319918
           },
           {
             "rLo": 18.366666666666667,
             "rHi": 18.85,
             "headCount": 27,
-            "tailCount": 233,
+            "tailCount": 230,
             "headDensity": 0.012837125376750158,
-            "tailDensity": 0.11077963751047358
+            "tailDensity": 0.10935329024639023
           },
           {
             "rLo": 18.85,
             "rHi": 19.333333333333332,
-            "headCount": 36,
-            "tailCount": 256,
-            "headDensity": 0.01626054163651878,
-            "tailDensity": 0.11563051830413353
+            "headCount": 34,
+            "tailCount": 258,
+            "headDensity": 0.015357178212267734,
+            "tailDensity": 0.11653388172838457
           },
           {
             "rLo": 19.333333333333332,
             "rHi": 19.816666666666666,
-            "headCount": 30,
-            "tailCount": 238,
-            "headDensity": 0.01288958805807488,
-            "tailDensity": 0.10225739859406072
+            "headCount": 31,
+            "tailCount": 242,
+            "headDensity": 0.013319240993344044,
+            "tailDensity": 0.10397601033513737
           },
           {
             "rLo": 19.816666666666666,
             "rHi": 20.3,
-            "headCount": 37,
-            "tailCount": 240,
-            "headDensity": 0.015140297560480612,
-            "tailDensity": 0.0982073355274418
+            "headCount": 38,
+            "tailCount": 239,
+            "headDensity": 0.015549494791844953,
+            "tailDensity": 0.09779813829607746
           },
           {
             "rLo": 20.3,
             "rHi": 20.783333333333335,
             "headCount": 31,
-            "tailCount": 212,
+            "tailCount": 210,
             "headDensity": 0.012095217739111673,
-            "tailDensity": 0.08271568260295725
+            "tailDensity": 0.08193534597462747
           },
           {
             "rLo": 20.783333333333335,
             "rHi": 21.266666666666666,
-            "headCount": 22,
-            "tailCount": 223,
-            "headDensity": 0.00819360332536736,
-            "tailDensity": 0.08305334279804187
+            "headCount": 21,
+            "tailCount": 220,
+            "headDensity": 0.007821166810577934,
+            "tailDensity": 0.0819360332536736
           },
           {
             "rLo": 21.266666666666666,
             "rHi": 21.75,
-            "headCount": 26,
-            "tailCount": 197,
-            "headDensity": 0.009253050741617284,
-            "tailDensity": 0.07010965369610019
+            "headCount": 28,
+            "tailCount": 201,
+            "headDensity": 0.009964823875587843,
+            "tailDensity": 0.0715331999640413
           },
           {
             "rLo": 21.75,
             "rHi": 22.233333333333334,
-            "headCount": 36,
-            "tailCount": 192,
-            "headDensity": 0.012254966253508902,
-            "tailDensity": 0.06535982001871414
+            "headCount": 35,
+            "tailCount": 193,
+            "headDensity": 0.011914550524244765,
+            "tailDensity": 0.06570023574797827
           },
           {
             "rLo": 22.233333333333334,
             "rHi": 22.71666666666667,
-            "headCount": 30,
-            "tailCount": 182,
-            "headDensity": 0.009777965597932257,
-            "tailDensity": 0.05931965796078902
+            "headCount": 31,
+            "tailCount": 177,
+            "headDensity": 0.010103897784529999,
+            "tailDensity": 0.05768999702780031
           },
           {
             "rLo": 22.71666666666667,
             "rHi": 23.2,
-            "headCount": 25,
-            "tailCount": 197,
-            "headDensity": 0.00780884212756526,
-            "tailDensity": 0.06153367596521425
+            "headCount": 24,
+            "tailCount": 195,
+            "headDensity": 0.00749648844246265,
+            "tailDensity": 0.06090896859500903
           },
           {
             "rLo": 23.2,
             "rHi": 23.683333333333334,
-            "headCount": 21,
-            "tailCount": 191,
-            "headDensity": 0.006291733595529338,
-            "tailDensity": 0.05722481508314779
+            "headCount": 23,
+            "tailCount": 195,
+            "headDensity": 0.0068909463189130845,
+            "tailDensity": 0.05842324052991529
           },
           {
             "rLo": 23.683333333333334,
             "rHi": 24.166666666666668,
-            "headCount": 22,
+            "headCount": 20,
             "tailCount": 219,
-            "headDensity": 0.006327722225290453,
+            "headDensity": 0.005752474750264048,
             "tailDensity": 0.06298959851539133
           },
           {
             "rLo": 24.166666666666668,
             "rHi": 24.65,
             "headCount": 19,
-            "tailCount": 197,
+            "tailCount": 195,
             "headDensity": 0.005250571140338748,
-            "tailDensity": 0.05444013234982808
+            "tailDensity": 0.053887440650845046
           },
           {
             "rLo": 24.65,
@@ -2067,75 +2067,75 @@
           {
             "rLo": 25.133333333333333,
             "rHi": 25.616666666666667,
-            "headCount": 25,
-            "tailCount": 168,
-            "headDensity": 0.006392314954829933,
-            "tailDensity": 0.04295635649645715
+            "headCount": 22,
+            "tailCount": 174,
+            "headDensity": 0.005625237160250341,
+            "tailDensity": 0.044490512085616336
           },
           {
             "rLo": 25.616666666666667,
             "rHi": 26.1,
-            "headCount": 27,
-            "tailCount": 165,
-            "headDensity": 0.006648037329731916,
-            "tailDensity": 0.04062689479280616
+            "headCount": 30,
+            "tailCount": 164,
+            "headDensity": 0.007386708144146574,
+            "tailDensity": 0.04038067118800127
           },
           {
             "rLo": 26.1,
             "rHi": 26.583333333333332,
-            "headCount": 30,
-            "tailCount": 179,
-            "headDensity": 0.0071181307186384294,
-            "tailDensity": 0.04247151328787596
+            "headCount": 29,
+            "tailCount": 175,
+            "headDensity": 0.006880859694683815,
+            "tailDensity": 0.0415224291920575
           },
           {
             "rLo": 26.583333333333332,
             "rHi": 27.066666666666666,
-            "headCount": 30,
+            "headCount": 31,
             "tailCount": 189,
-            "headDensity": 0.006863939274297843,
+            "headDensity": 0.007092737250107771,
             "tailDensity": 0.04324281742807641
           },
           {
             "rLo": 27.066666666666666,
             "rHi": 27.55,
             "headCount": 32,
-            "tailCount": 175,
+            "tailCount": 179,
             "headDensity": 0.007064666077342145,
-            "tailDensity": 0.038634892610464856
+            "tailDensity": 0.03951797587013262
           },
           {
             "rLo": 27.55,
             "rHi": 28.033333333333335,
-            "headCount": 26,
-            "tailCount": 191,
-            "headDensity": 0.00554212868796738,
-            "tailDensity": 0.04071332997699113
+            "headCount": 25,
+            "tailCount": 190,
+            "headDensity": 0.005328969892276327,
+            "tailDensity": 0.04050017118130008
           },
           {
             "rLo": 28.033333333333335,
             "rHi": 28.516666666666666,
-            "headCount": 23,
-            "tailCount": 172,
-            "headDensity": 0.0047364768844423725,
-            "tailDensity": 0.03542060974452557
+            "headCount": 24,
+            "tailCount": 170,
+            "headDensity": 0.0049424106620268235,
+            "tailDensity": 0.03500874218935667
           },
           {
             "rLo": 28.516666666666666,
             "rHi": 29,
             "headCount": 23,
-            "tailCount": 205,
+            "tailCount": 202,
             "headDensity": 0.004578609186759229,
-            "tailDensity": 0.04080934275154965
+            "tailDensity": 0.040212132857624525
           }
         ]
       },
       "cavity": {
         "volume": 33.5,
         "unreached": 268,
-        "totalEmpty": 1480648,
+        "totalEmpty": 1480620,
         "seedCell": 661821,
-        "seedDistFromCentre": 49.97032987825837,
+        "seedDistFromCentre": 49.974192584029495,
         "theoreticalMaxDist": 50.22947341949744
       },
       "hole": {
@@ -2144,22 +2144,22 @@
           0.25406758448060074,
           -0.8593525696849693
         ],
-        "holeRadiusDeg": 15.411238716036625,
-        "solidAngleFraction": 0.017978351917624535,
+        "holeRadiusDeg": 15.377527204403528,
+        "solidAngleFraction": 0.017900256185496066,
         "headsUsed": 953,
-        "headsExcludedBeyondTrust": 357,
-        "headsTotal": 1310
+        "headsExcludedBeyondTrust": 358,
+        "headsTotal": 1311
       }
     },
     {
       "step": 200000,
-      "amphiphileCount": 1303,
-      "aggregateCount": 5,
-      "particleCount": 11697,
+      "amphiphileCount": 1304,
+      "aggregateCount": 3,
+      "particleCount": 11701,
       "circularConcentration": {
-        "Rx": 0.26254800999042754,
-        "Ry": 0.18196049501106404,
-        "Rz": 0.37082251679795847,
+        "Rx": 0.2627998013879803,
+        "Ry": 0.1817466366036414,
+        "Rz": 0.3710007821825413,
         "trusted": [
           true,
           true,
@@ -2167,16 +2167,16 @@
         ]
       },
       "centre": [
-        49.86467158509209,
-        39.683050204942276,
-        53.70891647233672
+        49.86488437096702,
+        39.69850373837259,
+        53.71274847583882
       ],
       "radial": {
         "trustLimit": 29,
-        "headTotal": 1303,
+        "headTotal": 1304,
         "headBeyondTrust": 355,
-        "tailTotal": 10394,
-        "tailBeyondTrust": 2356,
+        "tailTotal": 10397,
+        "tailBeyondTrust": 2357,
         "headPeakPrimary": 21.025,
         "headPeakSecondary": 19.575,
         "separation": 1.4499999999999993,
@@ -2250,9 +2250,9 @@
             "rLo": 3.8666666666666667,
             "rHi": 4.35,
             "headCount": 0,
-            "tailCount": 29,
+            "tailCount": 28,
             "headDensity": 0,
-            "tailDensity": 0.28255917391395
+            "tailDensity": 0.2728157541238138
           },
           {
             "rLo": 4.35,
@@ -2274,73 +2274,73 @@
             "rLo": 5.316666666666666,
             "rHi": 5.8,
             "headCount": 2,
-            "tailCount": 25,
+            "tailCount": 27,
             "headDensity": 0.010651496697529248,
-            "tailDensity": 0.1331437087191156
+            "tailDensity": 0.14379520541664484
           },
           {
             "rLo": 5.8,
             "rHi": 6.283333333333333,
             "headCount": 1,
-            "tailCount": 42,
+            "tailCount": 40,
             "headDensity": 0.004508149455137644,
-            "tailDensity": 0.18934227711578105
+            "tailDensity": 0.18032597820550575
           },
           {
             "rLo": 6.283333333333333,
             "rHi": 6.766666666666667,
             "headCount": 3,
-            "tailCount": 39,
+            "tailCount": 40,
             "headDensity": 0.011595916422995727,
-            "tailDensity": 0.15074691349894445
+            "tailDensity": 0.15461221897327637
           },
           {
             "rLo": 6.766666666666667,
             "rHi": 7.25,
             "headCount": 2,
-            "tailCount": 36,
+            "tailCount": 35,
             "headDensity": 0.006701496337431238,
-            "tailDensity": 0.12062693407376228
+            "tailDensity": 0.11727618590504665
           },
           {
             "rLo": 7.25,
             "rHi": 7.733333333333333,
             "headCount": 3,
-            "tailCount": 44,
+            "tailCount": 45,
             "headDensity": 0.008797456703715211,
-            "tailDensity": 0.12902936498782308
+            "tailDensity": 0.13196185055572818
           },
           {
             "rLo": 7.733333333333333,
             "rHi": 8.216666666666667,
             "headCount": 5,
-            "tailCount": 62,
+            "tailCount": 61,
             "headDensity": 0.012939547701710854,
-            "tailDensity": 0.16045039150121457
+            "tailDensity": 0.1578624819608724
           },
           {
             "rLo": 8.216666666666667,
             "rHi": 8.7,
             "headCount": 8,
-            "tailCount": 50,
+            "tailCount": 51,
             "headDensity": 0.01840541540334764,
-            "tailDensity": 0.11503384627092275
+            "tailDensity": 0.1173345231963412
           },
           {
             "rLo": 8.7,
             "rHi": 9.183333333333334,
             "headCount": 3,
-            "tailCount": 82,
+            "tailCount": 81,
             "headDensity": 0.006176208649833156,
-            "tailDensity": 0.16881636976210626
+            "tailDensity": 0.1667576335454952
           },
           {
             "rLo": 9.183333333333334,
             "rHi": 9.666666666666666,
             "headCount": 4,
-            "tailCount": 73,
+            "tailCount": 74,
             "headDensity": 0.007412172110287679,
-            "tailDensity": 0.13527214101275015
+            "tailDensity": 0.13712518404032206
           },
           {
             "rLo": 9.666666666666666,
@@ -2361,34 +2361,34 @@
           {
             "rLo": 10.633333333333333,
             "rHi": 11.116666666666667,
-            "headCount": 6,
+            "headCount": 8,
             "tailCount": 108,
-            "headDensity": 0.008351502677259577,
+            "headDensity": 0.011135336903012768,
             "tailDensity": 0.15032704819067239
           },
           {
             "rLo": 11.116666666666667,
             "rHi": 11.6,
-            "headCount": 8,
-            "tailCount": 123,
-            "headDensity": 0.010207952176026849,
-            "tailDensity": 0.1569472647064128
+            "headCount": 6,
+            "tailCount": 126,
+            "headDensity": 0.0076559641320201365,
+            "tailDensity": 0.16077524677242286
           },
           {
             "rLo": 11.6,
             "rHi": 12.083333333333334,
             "headCount": 10,
-            "tailCount": 130,
+            "tailCount": 126,
             "headDensity": 0.011739711795999724,
-            "tailDensity": 0.15261625334799642
+            "tailDensity": 0.1479203686295965
           },
           {
             "rLo": 12.083333333333334,
             "rHi": 12.566666666666666,
             "headCount": 10,
-            "tailCount": 124,
+            "tailCount": 125,
             "headDensity": 0.010837119910095127,
-            "tailDensity": 0.13438028688517958
+            "tailDensity": 0.1354639988761891
           },
           {
             "rLo": 12.566666666666666,
@@ -2402,24 +2402,24 @@
             "rLo": 13.05,
             "rHi": 13.533333333333333,
             "headCount": 15,
-            "tailCount": 163,
+            "tailCount": 161,
             "headDensity": 0.013977448839529902,
-            "tailDensity": 0.15188827738955826
+            "tailDensity": 0.15002461754428761
           },
           {
             "rLo": 13.533333333333333,
             "rHi": 14.016666666666667,
-            "headCount": 21,
-            "tailCount": 152,
-            "headDensity": 0.01821943536464942,
-            "tailDensity": 0.13187400835365296
+            "headCount": 20,
+            "tailCount": 153,
+            "headDensity": 0.017351843204428022,
+            "tailDensity": 0.13274160051387437
           },
           {
             "rLo": 14.016666666666667,
             "rHi": 14.5,
-            "headCount": 17,
+            "headCount": 18,
             "tailCount": 180,
-            "headDensity": 0.013766172196787614,
+            "headDensity": 0.014575947031892767,
             "tailDensity": 0.14575947031892766
           },
           {
@@ -2433,106 +2433,106 @@
           {
             "rLo": 14.983333333333334,
             "rHi": 15.466666666666667,
-            "headCount": 21,
+            "headCount": 22,
             "tailCount": 189,
-            "headDensity": 0.014914599927326412,
+            "headDensity": 0.015624818971484813,
             "tailDensity": 0.1342313993459377
           },
           {
             "rLo": 15.466666666666667,
             "rHi": 15.95,
-            "headCount": 28,
-            "tailCount": 210,
-            "headDensity": 0.01868129335590648,
-            "tailDensity": 0.1401097001692986
+            "headCount": 27,
+            "tailCount": 211,
+            "headDensity": 0.01801410430748125,
+            "tailDensity": 0.14077688921772383
           },
           {
             "rLo": 15.95,
             "rHi": 16.433333333333334,
             "headCount": 24,
-            "tailCount": 215,
+            "tailCount": 214,
             "headDensity": 0.015070902960210625,
-            "tailDensity": 0.13501017235188686
+            "tailDensity": 0.13438221806187808
           },
           {
             "rLo": 16.433333333333334,
             "rHi": 16.916666666666668,
             "headCount": 21,
-            "tailCount": 227,
+            "tailCount": 228,
             "headDensity": 0.0124337059601374,
-            "tailDensity": 0.13440244061672332
+            "tailDensity": 0.13499452185292035
           },
           {
             "rLo": 16.916666666666668,
             "rHi": 17.4,
             "headCount": 29,
-            "tailCount": 236,
+            "tailCount": 238,
             "headDensity": 0.01621669948144073,
-            "tailDensity": 0.13197038198689698
+            "tailDensity": 0.13308877505458253
           },
           {
             "rLo": 17.4,
             "rHi": 17.883333333333333,
             "headCount": 24,
-            "tailCount": 260,
+            "tailCount": 263,
             "headDensity": 0.01269545415737534,
-            "tailDensity": 0.13753408670489953
+            "tailDensity": 0.13912101847457145
           },
           {
             "rLo": 17.883333333333333,
             "rHi": 18.366666666666667,
             "headCount": 20,
-            "tailCount": 245,
+            "tailCount": 238,
             "headDensity": 0.010022858945055934,
-            "tailDensity": 0.1227800220769352
+            "tailDensity": 0.11927202144616562
           },
           {
             "rLo": 18.366666666666667,
             "rHi": 18.85,
             "headCount": 30,
-            "tailCount": 204,
+            "tailCount": 207,
             "headDensity": 0.014263472640833509,
-            "tailDensity": 0.09699161395766785
+            "tailDensity": 0.09841796122175121
           },
           {
             "rLo": 18.85,
             "rHi": 19.333333333333332,
-            "headCount": 31,
-            "tailCount": 247,
-            "headDensity": 0.01400213307589117,
-            "tailDensity": 0.11156538289500384
+            "headCount": 32,
+            "tailCount": 249,
+            "headDensity": 0.01445381478801669,
+            "tailDensity": 0.11246874631925488
           },
           {
             "rLo": 19.333333333333332,
             "rHi": 19.816666666666666,
-            "headCount": 35,
-            "tailCount": 243,
-            "headDensity": 0.015037852734420694,
-            "tailDensity": 0.10440566327040654
+            "headCount": 36,
+            "tailCount": 242,
+            "headDensity": 0.015467505669689857,
+            "tailDensity": 0.10397601033513737
           },
           {
             "rLo": 19.816666666666666,
             "rHi": 20.3,
             "headCount": 28,
-            "tailCount": 252,
+            "tailCount": 253,
             "headDensity": 0.011457522478201544,
-            "tailDensity": 0.1031177023038139
+            "tailDensity": 0.10352689953517824
           },
           {
             "rLo": 20.3,
             "rHi": 20.783333333333335,
-            "headCount": 22,
-            "tailCount": 212,
-            "headDensity": 0.00858370291162764,
-            "tailDensity": 0.08271568260295725
+            "headCount": 20,
+            "tailCount": 211,
+            "headDensity": 0.007803366283297854,
+            "tailDensity": 0.08232551428879237
           },
           {
             "rLo": 20.783333333333335,
             "rHi": 21.266666666666666,
-            "headCount": 36,
-            "tailCount": 223,
-            "headDensity": 0.013407714532419316,
-            "tailDensity": 0.08305334279804187
+            "headCount": 37,
+            "tailCount": 226,
+            "headDensity": 0.013780151047208741,
+            "tailDensity": 0.08417065234241015
           },
           {
             "rLo": 21.266666666666666,
@@ -2546,88 +2546,88 @@
             "rLo": 21.75,
             "rHi": 22.233333333333334,
             "headCount": 25,
-            "tailCount": 204,
+            "tailCount": 201,
             "headDensity": 0.008510393231603405,
-            "tailDensity": 0.06944480876988378
+            "tailDensity": 0.06842356158209137
           },
           {
             "rLo": 22.233333333333334,
             "rHi": 22.71666666666667,
             "headCount": 33,
-            "tailCount": 172,
+            "tailCount": 171,
             "headDensity": 0.010755762157725482,
-            "tailDensity": 0.056060336094811605
+            "tailDensity": 0.05573440390821386
           },
           {
             "rLo": 22.71666666666667,
             "rHi": 23.2,
-            "headCount": 24,
-            "tailCount": 214,
-            "headDensity": 0.00749648844246265,
-            "tailDensity": 0.06684368861195863
+            "headCount": 23,
+            "tailCount": 213,
+            "headDensity": 0.007184134757360039,
+            "tailDensity": 0.06653133492685602
           },
           {
             "rLo": 23.2,
             "rHi": 23.683333333333334,
-            "headCount": 24,
-            "tailCount": 183,
-            "headDensity": 0.007190552680604958,
-            "tailDensity": 0.054827964189612804
+            "headCount": 25,
+            "tailCount": 185,
+            "headDensity": 0.0074901590422968315,
+            "tailDensity": 0.05542717691299655
           },
           {
             "rLo": 23.683333333333334,
             "rHi": 24.166666666666668,
             "headCount": 21,
-            "tailCount": 223,
+            "tailCount": 222,
             "headDensity": 0.006040098487777251,
-            "tailDensity": 0.06414009346544414
+            "tailDensity": 0.06385246972793093
           },
           {
             "rLo": 24.166666666666668,
             "rHi": 24.65,
             "headCount": 22,
-            "tailCount": 182,
+            "tailCount": 184,
             "headDensity": 0.006079608688813288,
-            "tailDensity": 0.05029494460745538
+            "tailDensity": 0.050847636306438404
           },
           {
             "rLo": 24.65,
             "rHi": 25.133333333333333,
             "headCount": 29,
-            "tailCount": 188,
+            "tailCount": 186,
             "headDensity": 0.007705836463406688,
-            "tailDensity": 0.04995507776277439
+            "tailDensity": 0.049423640765298066
           },
           {
             "rLo": 25.133333333333333,
             "rHi": 25.616666666666667,
-            "headCount": 24,
-            "tailCount": 166,
-            "headDensity": 0.006136622356636735,
-            "tailDensity": 0.04244497130007076
+            "headCount": 23,
+            "tailCount": 165,
+            "headDensity": 0.005880929758443538,
+            "tailDensity": 0.04218927870187756
           },
           {
             "rLo": 25.616666666666667,
             "rHi": 26.1,
-            "headCount": 26,
-            "tailCount": 166,
-            "headDensity": 0.006401813724927031,
-            "tailDensity": 0.04087311839761104
+            "headCount": 28,
+            "tailCount": 169,
+            "headDensity": 0.006894260934536802,
+            "tailDensity": 0.0416117892120257
           },
           {
             "rLo": 26.1,
             "rHi": 26.583333333333332,
             "headCount": 32,
-            "tailCount": 163,
+            "tailCount": 161,
             "headDensity": 0.007592672766547658,
-            "tailDensity": 0.038675176904602135
+            "tailDensity": 0.0382006348566929
           },
           {
             "rLo": 26.583333333333332,
             "rHi": 27.066666666666666,
-            "headCount": 29,
+            "headCount": 27,
             "tailCount": 208,
-            "headDensity": 0.006635141298487915,
+            "headDensity": 0.006177545346868059,
             "tailDensity": 0.04758997896846504
           },
           {
@@ -2641,35 +2641,35 @@
           {
             "rLo": 27.55,
             "rHi": 28.033333333333335,
-            "headCount": 27,
-            "tailCount": 182,
-            "headDensity": 0.005755287483658433,
-            "tailDensity": 0.03879490081577166
+            "headCount": 26,
+            "tailCount": 185,
+            "headDensity": 0.00554212868796738,
+            "tailDensity": 0.03943437720284482
           },
           {
             "rLo": 28.033333333333335,
             "rHi": 28.516666666666666,
-            "headCount": 27,
-            "tailCount": 170,
-            "headDensity": 0.0055602119947801764,
-            "tailDensity": 0.03500874218935667
+            "headCount": 29,
+            "tailCount": 169,
+            "headDensity": 0.005972079549949078,
+            "tailDensity": 0.03480280841177222
           },
           {
             "rLo": 28.516666666666666,
             "rHi": 29,
             "headCount": 20,
-            "tailCount": 173,
+            "tailCount": 172,
             "headDensity": 0.003981399292834112,
-            "tailDensity": 0.03443910388301506
+            "tailDensity": 0.03424003391837336
           }
         ]
       },
       "cavity": {
         "volume": 34.625,
         "unreached": 277,
-        "totalEmpty": 1480449,
+        "totalEmpty": 1480421,
         "seedCell": 661821,
-        "seedDistFromCentre": 50.100922497001704,
+        "seedDistFromCentre": 50.11194042209782,
         "theoreticalMaxDist": 50.22947341949744
       },
       "hole": {
@@ -2678,22 +2678,22 @@
           0.25406758448060074,
           -0.8593525696849693
         ],
-        "holeRadiusDeg": 15.505766997822942,
-        "solidAngleFraction": 0.01819822502180307,
-        "headsUsed": 948,
+        "holeRadiusDeg": 15.469021971719865,
+        "solidAngleFraction": 0.018112600124032208,
+        "headsUsed": 949,
         "headsExcludedBeyondTrust": 355,
-        "headsTotal": 1303
+        "headsTotal": 1304
       }
     },
     {
       "step": 210000,
-      "amphiphileCount": 1285,
-      "aggregateCount": 6,
-      "particleCount": 11656,
+      "amphiphileCount": 1287,
+      "aggregateCount": 2,
+      "particleCount": 11661,
       "circularConcentration": {
-        "Rx": 0.2632014176703792,
-        "Ry": 0.18001995808537644,
-        "Rz": 0.3704615749554122,
+        "Rx": 0.2630982906279601,
+        "Ry": 0.17978638545027253,
+        "Rz": 0.37068172590208737,
         "trusted": [
           true,
           true,
@@ -2701,16 +2701,16 @@
         ]
       },
       "centre": [
-        50.01542293712488,
-        38.98471815680372,
-        53.83690901860259
+        50.02528530040257,
+        39.00419829908908,
+        53.841877780048186
       ],
       "radial": {
         "trustLimit": 29,
-        "headTotal": 1285,
-        "headBeyondTrust": 352,
-        "tailTotal": 10371,
-        "tailBeyondTrust": 2432,
+        "headTotal": 1287,
+        "headBeyondTrust": 353,
+        "tailTotal": 10374,
+        "tailBeyondTrust": 2429,
         "headPeakPrimary": 20.058333333333334,
         "headPeakSecondary": 24.891666666666666,
         "separation": 4.833333333333332,
@@ -2776,25 +2776,25 @@
             "rLo": 3.3833333333333333,
             "rHi": 3.8666666666666667,
             "headCount": 0,
-            "tailCount": 17,
+            "tailCount": 16,
             "headDensity": 0,
-            "tailDensity": 0.21268328760835767
+            "tailDensity": 0.20017250598433664
           },
           {
             "rLo": 3.8666666666666667,
             "rHi": 4.35,
             "headCount": 0,
-            "tailCount": 36,
+            "tailCount": 37,
             "headDensity": 0,
-            "tailDensity": 0.3507631124449035
+            "tailDensity": 0.3605065322350397
           },
           {
             "rLo": 4.35,
             "rHi": 4.833333333333333,
             "headCount": 3,
-            "tailCount": 34,
+            "tailCount": 35,
             "headDensity": 0.023405779643463714,
-            "tailDensity": 0.26526550262592213
+            "tailDensity": 0.2730674291737434
           },
           {
             "rLo": 4.833333333333333,
@@ -2808,9 +2808,9 @@
             "rLo": 5.316666666666666,
             "rHi": 5.8,
             "headCount": 1,
-            "tailCount": 30,
+            "tailCount": 28,
             "headDensity": 0.005325748348764624,
-            "tailDensity": 0.1597724504629387
+            "tailDensity": 0.14912095376540946
           },
           {
             "rLo": 5.8,
@@ -2824,17 +2824,17 @@
             "rLo": 6.283333333333333,
             "rHi": 6.766666666666667,
             "headCount": 1,
-            "tailCount": 40,
+            "tailCount": 41,
             "headDensity": 0.003865305474331909,
-            "tailDensity": 0.15461221897327637
+            "tailDensity": 0.15847752444760826
           },
           {
             "rLo": 6.766666666666667,
             "rHi": 7.25,
             "headCount": 4,
-            "tailCount": 43,
+            "tailCount": 42,
             "headDensity": 0.013402992674862476,
-            "tailDensity": 0.1440821712547716
+            "tailDensity": 0.140731423086056
           },
           {
             "rLo": 7.25,
@@ -2848,9 +2848,9 @@
             "rLo": 7.733333333333333,
             "rHi": 8.216666666666667,
             "headCount": 9,
-            "tailCount": 35,
+            "tailCount": 37,
             "headDensity": 0.023291185863079537,
-            "tailDensity": 0.09057683391197598
+            "tailDensity": 0.09575265299266031
           },
           {
             "rLo": 8.216666666666667,
@@ -2872,338 +2872,338 @@
             "rLo": 9.183333333333334,
             "rHi": 9.666666666666666,
             "headCount": 4,
-            "tailCount": 84,
+            "tailCount": 82,
             "headDensity": 0.007412172110287679,
-            "tailDensity": 0.15565561431604125
+            "tailDensity": 0.15194952826089742
           },
           {
             "rLo": 9.666666666666666,
             "rHi": 10.15,
-            "headCount": 7,
+            "headCount": 8,
             "tailCount": 117,
-            "headDensity": 0.011736918843153723,
+            "headDensity": 0.013413621535032826,
             "tailDensity": 0.19617421494985507
           },
           {
             "rLo": 10.15,
             "rHi": 10.633333333333333,
-            "headCount": 9,
-            "tailCount": 99,
-            "headDensity": 0.013719465645375666,
-            "tailDensity": 0.15091412209913233
+            "headCount": 8,
+            "tailCount": 100,
+            "headDensity": 0.01219508057366726,
+            "tailDensity": 0.15243850717084073
           },
           {
             "rLo": 10.633333333333333,
             "rHi": 11.116666666666667,
             "headCount": 9,
-            "tailCount": 109,
+            "tailCount": 106,
             "headDensity": 0.012527254015889364,
-            "tailDensity": 0.15171896530354897
+            "tailDensity": 0.14754321396491918
           },
           {
             "rLo": 11.116666666666667,
             "rHi": 11.6,
             "headCount": 6,
-            "tailCount": 128,
+            "tailCount": 131,
             "headDensity": 0.0076559641320201365,
-            "tailDensity": 0.16332723481642958
+            "tailDensity": 0.16715521688243964
           },
           {
             "rLo": 11.6,
             "rHi": 12.083333333333334,
             "headCount": 10,
-            "tailCount": 148,
+            "tailCount": 146,
             "headDensity": 0.011739711795999724,
-            "tailDensity": 0.1737477345807959
+            "tailDensity": 0.17139979222159596
           },
           {
             "rLo": 12.083333333333334,
             "rHi": 12.566666666666666,
             "headCount": 13,
-            "tailCount": 140,
+            "tailCount": 139,
             "headDensity": 0.014088255883123665,
-            "tailDensity": 0.15171967874133177
+            "tailDensity": 0.15063596675032226
           },
           {
             "rLo": 12.566666666666666,
             "rHi": 13.05,
             "headCount": 14,
-            "tailCount": 146,
+            "tailCount": 145,
             "headDensity": 0.014048651790428912,
-            "tailDensity": 0.14650736867161582
+            "tailDensity": 0.14550389354372803
           },
           {
             "rLo": 13.05,
             "rHi": 13.533333333333333,
             "headCount": 24,
-            "tailCount": 145,
+            "tailCount": 148,
             "headDensity": 0.02236391814324784,
-            "tailDensity": 0.13511533878212237
+            "tailDensity": 0.13791082855002837
           },
           {
             "rLo": 13.533333333333333,
             "rHi": 14.016666666666667,
             "headCount": 10,
-            "tailCount": 176,
+            "tailCount": 177,
             "headDensity": 0.008675921602214011,
-            "tailDensity": 0.1526962201989666
+            "tailDensity": 0.15356381235918798
           },
           {
             "rLo": 14.016666666666667,
             "rHi": 14.5,
             "headCount": 16,
-            "tailCount": 183,
+            "tailCount": 182,
             "headDensity": 0.01295639736168246,
-            "tailDensity": 0.14818879482424313
+            "tailDensity": 0.147379019989138
           },
           {
             "rLo": 14.5,
             "rHi": 14.983333333333334,
             "headCount": 18,
-            "tailCount": 180,
+            "tailCount": 181,
             "headDensity": 0.013635900286733052,
-            "tailDensity": 0.13635900286733052
+            "tailDensity": 0.13711655288326013
           },
           {
             "rLo": 14.983333333333334,
             "rHi": 15.466666666666667,
-            "headCount": 25,
-            "tailCount": 191,
-            "headDensity": 0.017755476103960013,
-            "tailDensity": 0.13565183743425452
+            "headCount": 24,
+            "tailCount": 189,
+            "headDensity": 0.017045257059801613,
+            "tailDensity": 0.1342313993459377
           },
           {
             "rLo": 15.466666666666667,
             "rHi": 15.95,
-            "headCount": 27,
-            "tailCount": 179,
-            "headDensity": 0.01801410430748125,
-            "tailDensity": 0.11942683966811643
+            "headCount": 29,
+            "tailCount": 184,
+            "headDensity": 0.01934848240433171,
+            "tailDensity": 0.12276278491024259
           },
           {
             "rLo": 15.95,
             "rHi": 16.433333333333334,
-            "headCount": 16,
-            "tailCount": 232,
-            "headDensity": 0.010047268640140416,
-            "tailDensity": 0.14568539528203606
+            "headCount": 15,
+            "tailCount": 227,
+            "headDensity": 0.00941931435013164,
+            "tailDensity": 0.14254562383199215
           },
           {
             "rLo": 16.433333333333334,
             "rHi": 16.916666666666668,
             "headCount": 26,
-            "tailCount": 217,
+            "tailCount": 216,
             "headDensity": 0.015394112141122495,
-            "tailDensity": 0.12848162825475312
+            "tailDensity": 0.12788954701855612
           },
           {
             "rLo": 16.916666666666668,
             "rHi": 17.4,
             "headCount": 27,
-            "tailCount": 216,
+            "tailCount": 225,
             "headDensity": 0.015098306413755161,
-            "tailDensity": 0.12078645131004129
+            "tailDensity": 0.12581922011462635
           },
           {
             "rLo": 17.4,
             "rHi": 17.883333333333333,
-            "headCount": 17,
-            "tailCount": 219,
-            "headDensity": 0.0089926133614742,
-            "tailDensity": 0.11584601918604998
+            "headCount": 18,
+            "tailCount": 215,
+            "headDensity": 0.009521590618031506,
+            "tailDensity": 0.11373011015982076
           },
           {
             "rLo": 17.883333333333333,
             "rHi": 18.366666666666667,
-            "headCount": 27,
+            "headCount": 26,
             "tailCount": 252,
-            "headDensity": 0.013530859575825512,
+            "headDensity": 0.013029716628572715,
             "tailDensity": 0.12628802270770478
           },
           {
             "rLo": 18.366666666666667,
             "rHi": 18.85,
-            "headCount": 28,
-            "tailCount": 224,
-            "headDensity": 0.01331257446477794,
-            "tailDensity": 0.10650059571822353
+            "headCount": 29,
+            "tailCount": 225,
+            "headDensity": 0.013788023552805725,
+            "tailDensity": 0.10697604480625131
           },
           {
             "rLo": 18.85,
             "rHi": 19.333333333333332,
-            "headCount": 30,
-            "tailCount": 231,
-            "headDensity": 0.013550451363765648,
-            "tailDensity": 0.1043384755009955
+            "headCount": 29,
+            "tailCount": 235,
+            "headDensity": 0.013098769651640127,
+            "tailDensity": 0.10614520234949758
           },
           {
             "rLo": 19.333333333333332,
             "rHi": 19.816666666666666,
-            "headCount": 26,
-            "tailCount": 234,
-            "headDensity": 0.01117097631699823,
-            "tailDensity": 0.10053878685298408
+            "headCount": 25,
+            "tailCount": 233,
+            "headDensity": 0.010741323381729067,
+            "tailDensity": 0.10010913391771491
           },
           {
             "rLo": 19.816666666666666,
             "rHi": 20.3,
-            "headCount": 33,
-            "tailCount": 236,
-            "headDensity": 0.013503508635023248,
-            "tailDensity": 0.09657054660198444
+            "headCount": 34,
+            "tailCount": 231,
+            "headDensity": 0.01391270586638759,
+            "tailDensity": 0.09452456044516273
           },
           {
             "rLo": 20.3,
             "rHi": 20.783333333333335,
-            "headCount": 31,
-            "tailCount": 229,
-            "headDensity": 0.012095217739111673,
-            "tailDensity": 0.08934854394376043
+            "headCount": 33,
+            "tailCount": 233,
+            "headDensity": 0.01287555436744146,
+            "tailDensity": 0.09090921720042
           },
           {
             "rLo": 20.783333333333335,
             "rHi": 21.266666666666666,
-            "headCount": 25,
-            "tailCount": 200,
-            "headDensity": 0.009310912869735637,
-            "tailDensity": 0.0744873029578851
+            "headCount": 23,
+            "tailCount": 197,
+            "headDensity": 0.008566039840156785,
+            "tailDensity": 0.07336999341351681
           },
           {
             "rLo": 21.266666666666666,
             "rHi": 21.75,
-            "headCount": 27,
-            "tailCount": 201,
-            "headDensity": 0.009608937308602563,
-            "tailDensity": 0.0715331999640413
+            "headCount": 26,
+            "tailCount": 203,
+            "headDensity": 0.009253050741617284,
+            "tailDensity": 0.07224497309801187
           },
           {
             "rLo": 21.75,
             "rHi": 22.233333333333334,
             "headCount": 29,
-            "tailCount": 187,
+            "tailCount": 188,
             "headDensity": 0.009872056148659948,
-            "tailDensity": 0.06365774137239347
+            "tailDensity": 0.0639981571016576
           },
           {
             "rLo": 22.233333333333334,
             "rHi": 22.71666666666667,
-            "headCount": 23,
-            "tailCount": 199,
-            "headDensity": 0.007496440291748063,
-            "tailDensity": 0.06486050513295064
+            "headCount": 24,
+            "tailCount": 196,
+            "headDensity": 0.007822372478345805,
+            "tailDensity": 0.0638827085731574
           },
           {
             "rLo": 22.71666666666667,
             "rHi": 23.2,
-            "headCount": 23,
-            "tailCount": 208,
-            "headDensity": 0.007184134757360039,
-            "tailDensity": 0.06496956650134297
+            "headCount": 22,
+            "tailCount": 203,
+            "headDensity": 0.006871781072257429,
+            "tailDensity": 0.06340779807582991
           },
           {
             "rLo": 23.2,
             "rHi": 23.683333333333334,
             "headCount": 25,
-            "tailCount": 200,
+            "tailCount": 202,
             "headDensity": 0.0074901590422968315,
-            "tailDensity": 0.05992127233837465
+            "tailDensity": 0.060520485061758396
           },
           {
             "rLo": 23.683333333333334,
             "rHi": 24.166666666666668,
             "headCount": 26,
-            "tailCount": 215,
+            "tailCount": 217,
             "headDensity": 0.007478217175343263,
-            "tailDensity": 0.06183910356533852
+            "tailDensity": 0.06241435104036492
           },
           {
             "rLo": 24.166666666666668,
             "rHi": 24.65,
-            "headCount": 28,
-            "tailCount": 176,
-            "headDensity": 0.007737683785762366,
-            "tailDensity": 0.0486368695105063
+            "headCount": 29,
+            "tailCount": 177,
+            "headDensity": 0.00801402963525388,
+            "tailDensity": 0.04891321535999781
           },
           {
             "rLo": 24.65,
             "rHi": 25.133333333333333,
-            "headCount": 31,
-            "tailCount": 193,
-            "headDensity": 0.00823727346088301,
-            "tailDensity": 0.0512836702564652
+            "headCount": 32,
+            "tailCount": 195,
+            "headDensity": 0.008502991959621172,
+            "tailDensity": 0.05181510725394152
           },
           {
             "rLo": 25.133333333333333,
             "rHi": 25.616666666666667,
             "headCount": 25,
-            "tailCount": 168,
+            "tailCount": 161,
             "headDensity": 0.006392314954829933,
-            "tailDensity": 0.04295635649645715
+            "tailDensity": 0.04116650830910477
           },
           {
             "rLo": 25.616666666666667,
             "rHi": 26.1,
             "headCount": 28,
-            "tailCount": 176,
+            "tailCount": 178,
             "headDensity": 0.006894260934536802,
-            "tailDensity": 0.0433353544456599
+            "tailDensity": 0.04382780165526967
           },
           {
             "rLo": 26.1,
             "rHi": 26.583333333333332,
             "headCount": 28,
-            "tailCount": 159,
+            "tailCount": 162,
             "headDensity": 0.006643588670729201,
-            "tailDensity": 0.037726092808783675
+            "tailDensity": 0.03843790588064752
           },
           {
             "rLo": 26.583333333333332,
             "rHi": 27.066666666666666,
             "headCount": 23,
-            "tailCount": 183,
+            "tailCount": 185,
             "headDensity": 0.005262353443628346,
-            "tailDensity": 0.041870029573216845
+            "tailDensity": 0.042327625524836696
           },
           {
             "rLo": 27.066666666666666,
             "rHi": 27.55,
-            "headCount": 21,
-            "tailCount": 143,
-            "headDensity": 0.004636187113255782,
-            "tailDensity": 0.03157022653312271
+            "headCount": 22,
+            "tailCount": 140,
+            "headDensity": 0.004856957928172725,
+            "tailDensity": 0.030907914088371884
           },
           {
             "rLo": 27.55,
             "rHi": 28.033333333333335,
-            "headCount": 27,
-            "tailCount": 167,
-            "headDensity": 0.005755287483658433,
-            "tailDensity": 0.03559751888040586
+            "headCount": 26,
+            "tailCount": 172,
+            "headDensity": 0.00554212868796738,
+            "tailDensity": 0.036663312858861125
           },
           {
             "rLo": 28.033333333333335,
             "rHi": 28.516666666666666,
-            "headCount": 26,
-            "tailCount": 164,
-            "headDensity": 0.0053542782171957255,
-            "tailDensity": 0.033773139523849964
+            "headCount": 25,
+            "tailCount": 160,
+            "headDensity": 0.0051483444396112745,
+            "tailDensity": 0.03294940441351216
           },
           {
             "rLo": 28.516666666666666,
             "rHi": 29,
-            "headCount": 30,
-            "tailCount": 161,
-            "headDensity": 0.005972098939251168,
-            "tailDensity": 0.0320502643073146
+            "headCount": 31,
+            "tailCount": 165,
+            "headDensity": 0.006171168903892873,
+            "tailDensity": 0.03284654416588142
           }
         ]
       },
       "cavity": {
         "volume": 31.75,
         "unreached": 254,
-        "totalEmpty": 1480684,
-        "seedCell": 661590,
-        "seedDistFromCentre": 49.90849453117928,
+        "totalEmpty": 1480649,
+        "seedCell": 661706,
+        "seedDistFromCentre": 49.904914529799306,
         "theoreticalMaxDist": 50.22947341949744
       },
       "hole": {
@@ -3212,22 +3212,22 @@
           0.25406758448060074,
           -0.8593525696849693
         ],
-        "holeRadiusDeg": 16.487848310842022,
-        "solidAngleFraction": 0.02056002536912538,
-        "headsUsed": 933,
-        "headsExcludedBeyondTrust": 352,
-        "headsTotal": 1285
+        "holeRadiusDeg": 16.449199064222448,
+        "solidAngleFraction": 0.020464410830507873,
+        "headsUsed": 934,
+        "headsExcludedBeyondTrust": 353,
+        "headsTotal": 1287
       }
     },
     {
       "step": 220000,
-      "amphiphileCount": 1290,
-      "aggregateCount": 8,
-      "particleCount": 11726,
+      "amphiphileCount": 1294,
+      "aggregateCount": 2,
+      "particleCount": 11736,
       "circularConcentration": {
-        "Rx": 0.25731163905280746,
-        "Ry": 0.17964789006810353,
-        "Rz": 0.36614312212217526,
+        "Rx": 0.2575249909422563,
+        "Ry": 0.17925637954967025,
+        "Rz": 0.3665940532263716,
         "trusted": [
           true,
           true,
@@ -3235,19 +3235,19 @@
         ]
       },
       "centre": [
-        50.17088853189114,
-        39.03050162223203,
-        53.89479682852992
+        50.17776511527576,
+        39.071483479210926,
+        53.90426659879208
       ],
       "radial": {
         "trustLimit": 29,
-        "headTotal": 1290,
-        "headBeyondTrust": 361,
-        "tailTotal": 10436,
-        "tailBeyondTrust": 2476,
-        "headPeakPrimary": 18.608333333333334,
-        "headPeakSecondary": 20.541666666666668,
-        "separation": 1.9333333333333336,
+        "headTotal": 1294,
+        "headBeyondTrust": 362,
+        "tailTotal": 10442,
+        "tailBeyondTrust": 2474,
+        "headPeakPrimary": 21.991666666666667,
+        "headPeakSecondary": 25.375,
+        "separation": 3.383333333333333,
         "bilayerThicknessReference": 4.457,
         "bins": [
           {
@@ -3318,17 +3318,17 @@
             "rLo": 3.8666666666666667,
             "rHi": 4.35,
             "headCount": 1,
-            "tailCount": 32,
+            "tailCount": 33,
             "headDensity": 0.009743419790136208,
-            "tailDensity": 0.31178943328435865
+            "tailDensity": 0.32153285307449486
           },
           {
             "rLo": 4.35,
             "rHi": 4.833333333333333,
             "headCount": 6,
-            "tailCount": 35,
+            "tailCount": 34,
             "headDensity": 0.04681155928692743,
-            "tailDensity": 0.2730674291737434
+            "tailDensity": 0.26526550262592213
           },
           {
             "rLo": 4.833333333333333,
@@ -3342,17 +3342,17 @@
             "rLo": 5.316666666666666,
             "rHi": 5.8,
             "headCount": 3,
-            "tailCount": 36,
+            "tailCount": 38,
             "headDensity": 0.015977245046293873,
-            "tailDensity": 0.19172694055552644
+            "tailDensity": 0.2023784372530557
           },
           {
             "rLo": 5.8,
             "rHi": 6.283333333333333,
             "headCount": 1,
-            "tailCount": 31,
+            "tailCount": 28,
             "headDensity": 0.004508149455137644,
-            "tailDensity": 0.13975263310926697
+            "tailDensity": 0.12622818474385403
           },
           {
             "rLo": 6.283333333333333,
@@ -3365,18 +3365,18 @@
           {
             "rLo": 6.766666666666667,
             "rHi": 7.25,
-            "headCount": 4,
-            "tailCount": 43,
-            "headDensity": 0.013402992674862476,
-            "tailDensity": 0.1440821712547716
+            "headCount": 3,
+            "tailCount": 42,
+            "headDensity": 0.010052244506146857,
+            "tailDensity": 0.140731423086056
           },
           {
             "rLo": 7.25,
             "rHi": 7.733333333333333,
             "headCount": 4,
-            "tailCount": 41,
+            "tailCount": 43,
             "headDensity": 0.011729942271620282,
-            "tailDensity": 0.12023190828410789
+            "tailDensity": 0.126096879419918
           },
           {
             "rLo": 7.733333333333333,
@@ -3389,337 +3389,337 @@
           {
             "rLo": 8.216666666666667,
             "rHi": 8.7,
-            "headCount": 2,
+            "headCount": 3,
             "tailCount": 54,
-            "headDensity": 0.00460135385083691,
+            "headDensity": 0.0069020307762553655,
             "tailDensity": 0.12423655397259657
           },
           {
             "rLo": 8.7,
             "rHi": 9.183333333333334,
             "headCount": 4,
-            "tailCount": 69,
+            "tailCount": 68,
             "headDensity": 0.008234944866444207,
-            "tailDensity": 0.14205279894616257
+            "tailDensity": 0.13999406272955153
           },
           {
             "rLo": 9.183333333333334,
             "rHi": 9.666666666666666,
             "headCount": 3,
-            "tailCount": 79,
+            "tailCount": 81,
             "headDensity": 0.005559129082715759,
-            "tailDensity": 0.14639039917818164
+            "tailDensity": 0.1500964852333255
           },
           {
             "rLo": 9.666666666666666,
             "rHi": 10.15,
             "headCount": 7,
-            "tailCount": 106,
+            "tailCount": 103,
             "headDensity": 0.011736918843153723,
-            "tailDensity": 0.17773048533918495
+            "tailDensity": 0.17270037726354764
           },
           {
             "rLo": 10.15,
             "rHi": 10.633333333333333,
             "headCount": 4,
-            "tailCount": 92,
+            "tailCount": 94,
             "headDensity": 0.00609754028683363,
-            "tailDensity": 0.14024342659717348
+            "tailDensity": 0.1432921967405903
           },
           {
             "rLo": 10.633333333333333,
             "rHi": 11.116666666666667,
             "headCount": 12,
-            "tailCount": 110,
+            "tailCount": 112,
             "headDensity": 0.016703005354519154,
-            "tailDensity": 0.15311088241642556
+            "tailDensity": 0.15589471664217877
           },
           {
             "rLo": 11.116666666666667,
             "rHi": 11.6,
-            "headCount": 7,
-            "tailCount": 123,
-            "headDensity": 0.008931958154023492,
-            "tailDensity": 0.1569472647064128
+            "headCount": 6,
+            "tailCount": 119,
+            "headDensity": 0.0076559641320201365,
+            "tailDensity": 0.15184328861839938
           },
           {
             "rLo": 11.6,
             "rHi": 12.083333333333334,
             "headCount": 13,
-            "tailCount": 138,
+            "tailCount": 139,
             "headDensity": 0.01526162533479964,
-            "tailDensity": 0.16200802278479617
+            "tailDensity": 0.16318199396439617
           },
           {
             "rLo": 12.083333333333334,
             "rHi": 12.566666666666666,
-            "headCount": 10,
+            "headCount": 13,
             "tailCount": 136,
-            "headDensity": 0.010837119910095127,
+            "headDensity": 0.014088255883123665,
             "tailDensity": 0.14738483077729372
           },
           {
             "rLo": 12.566666666666666,
             "rHi": 13.05,
-            "headCount": 14,
-            "tailCount": 163,
-            "headDensity": 0.014048651790428912,
-            "tailDensity": 0.16356644584570806
+            "headCount": 12,
+            "tailCount": 158,
+            "headDensity": 0.012041701534653355,
+            "tailDensity": 0.15854907020626915
           },
           {
             "rLo": 13.05,
             "rHi": 13.533333333333333,
             "headCount": 15,
-            "tailCount": 151,
+            "tailCount": 158,
             "headDensity": 0.013977448839529902,
-            "tailDensity": 0.14070631831793434
+            "tailDensity": 0.14722912777638164
           },
           {
             "rLo": 13.533333333333333,
             "rHi": 14.016666666666667,
-            "headCount": 18,
-            "tailCount": 164,
-            "headDensity": 0.015616658883985219,
-            "tailDensity": 0.14228511427630977
+            "headCount": 17,
+            "tailCount": 163,
+            "headDensity": 0.014749066723763818,
+            "tailDensity": 0.14141752211608838
           },
           {
             "rLo": 14.016666666666667,
             "rHi": 14.5,
             "headCount": 13,
-            "tailCount": 179,
+            "tailCount": 175,
             "headDensity": 0.010527072856366998,
-            "tailDensity": 0.14494969548382253
+            "tailDensity": 0.1417105961434019
           },
           {
             "rLo": 14.5,
             "rHi": 14.983333333333334,
-            "headCount": 23,
-            "tailCount": 170,
-            "headDensity": 0.017423650366381122,
-            "tailDensity": 0.12878350270803438
+            "headCount": 21,
+            "tailCount": 168,
+            "headDensity": 0.015908550334521893,
+            "tailDensity": 0.12726840267617515
           },
           {
             "rLo": 14.983333333333334,
             "rHi": 15.466666666666667,
-            "headCount": 22,
-            "tailCount": 172,
-            "headDensity": 0.015624818971484813,
-            "tailDensity": 0.1221576755952449
+            "headCount": 27,
+            "tailCount": 180,
+            "headDensity": 0.019175914192276815,
+            "tailDensity": 0.1278394279485121
           },
           {
             "rLo": 15.466666666666667,
             "rHi": 15.95,
-            "headCount": 25,
-            "tailCount": 207,
-            "headDensity": 0.016679726210630786,
-            "tailDensity": 0.13810813302402292
+            "headCount": 23,
+            "tailCount": 208,
+            "headDensity": 0.015345348113780324,
+            "tailDensity": 0.13877532207244814
           },
           {
             "rLo": 15.95,
             "rHi": 16.433333333333334,
             "headCount": 24,
-            "tailCount": 227,
+            "tailCount": 228,
             "headDensity": 0.015070902960210625,
-            "tailDensity": 0.14254562383199215
+            "tailDensity": 0.14317357812200093
           },
           {
             "rLo": 16.433333333333334,
             "rHi": 16.916666666666668,
-            "headCount": 22,
-            "tailCount": 238,
-            "headDensity": 0.01302578719633442,
-            "tailDensity": 0.14091533421489053
+            "headCount": 21,
+            "tailCount": 236,
+            "headDensity": 0.0124337059601374,
+            "tailDensity": 0.1397311717424965
           },
           {
             "rLo": 16.916666666666668,
             "rHi": 17.4,
-            "headCount": 21,
-            "tailCount": 218,
-            "headDensity": 0.01174312721069846,
-            "tailDensity": 0.12190484437772686
+            "headCount": 22,
+            "tailCount": 217,
+            "headDensity": 0.012302323744541243,
+            "tailDensity": 0.12134564784388407
           },
           {
             "rLo": 17.4,
             "rHi": 17.883333333333333,
-            "headCount": 21,
-            "tailCount": 226,
-            "headDensity": 0.011108522387703422,
-            "tailDensity": 0.11954885998195112
+            "headCount": 20,
+            "tailCount": 231,
+            "headDensity": 0.010579545131146117,
+            "tailDensity": 0.12219374626473765
           },
           {
             "rLo": 17.883333333333333,
             "rHi": 18.366666666666667,
-            "headCount": 27,
-            "tailCount": 234,
-            "headDensity": 0.013530859575825512,
-            "tailDensity": 0.11726744965715444
+            "headCount": 29,
+            "tailCount": 231,
+            "headDensity": 0.014533145470331105,
+            "tailDensity": 0.11576402081539604
           },
           {
             "rLo": 18.366666666666667,
             "rHi": 18.85,
-            "headCount": 33,
+            "headCount": 32,
             "tailCount": 224,
-            "headDensity": 0.01568981990491686,
+            "headDensity": 0.015214370816889075,
             "tailDensity": 0.10650059571822353
           },
           {
             "rLo": 18.85,
             "rHi": 19.333333333333332,
-            "headCount": 22,
-            "tailCount": 247,
-            "headDensity": 0.009936997666761475,
-            "tailDensity": 0.11156538289500384
+            "headCount": 24,
+            "tailCount": 249,
+            "headDensity": 0.010840361091012518,
+            "tailDensity": 0.11246874631925488
           },
           {
             "rLo": 19.333333333333332,
             "rHi": 19.816666666666666,
-            "headCount": 30,
-            "tailCount": 227,
-            "headDensity": 0.01288958805807488,
-            "tailDensity": 0.09753121630609993
+            "headCount": 28,
+            "tailCount": 224,
+            "headDensity": 0.012030282187536556,
+            "tailDensity": 0.09624225750029244
           },
           {
             "rLo": 19.816666666666666,
             "rHi": 20.3,
-            "headCount": 29,
-            "tailCount": 229,
-            "headDensity": 0.011866719709565885,
-            "tailDensity": 0.09370616598243406
+            "headCount": 31,
+            "tailCount": 237,
+            "headDensity": 0.012685114172294567,
+            "tailDensity": 0.09697974383334879
           },
           {
             "rLo": 20.3,
             "rHi": 20.783333333333335,
-            "headCount": 32,
-            "tailCount": 227,
-            "headDensity": 0.012485386053276567,
-            "tailDensity": 0.08856820731543065
+            "headCount": 31,
+            "tailCount": 226,
+            "headDensity": 0.012095217739111673,
+            "tailDensity": 0.08817803900126575
           },
           {
             "rLo": 20.783333333333335,
             "rHi": 21.266666666666666,
-            "headCount": 27,
-            "tailCount": 222,
-            "headDensity": 0.010055785899314487,
-            "tailDensity": 0.08268090628325245
+            "headCount": 25,
+            "tailCount": 217,
+            "headDensity": 0.009310912869735637,
+            "tailDensity": 0.08081872370930532
           },
           {
             "rLo": 21.266666666666666,
             "rHi": 21.75,
             "headCount": 30,
-            "tailCount": 201,
+            "tailCount": 207,
             "headDensity": 0.010676597009558404,
-            "tailDensity": 0.0715331999640413
+            "tailDensity": 0.07366851936595298
           },
           {
             "rLo": 21.75,
             "rHi": 22.233333333333334,
-            "headCount": 32,
-            "tailCount": 215,
-            "headDensity": 0.010893303336452357,
-            "tailDensity": 0.07318938179178927
+            "headCount": 34,
+            "tailCount": 218,
+            "headDensity": 0.01157413479498063,
+            "tailDensity": 0.07421062897958168
           },
           {
             "rLo": 22.233333333333334,
             "rHi": 22.71666666666667,
-            "headCount": 32,
-            "tailCount": 203,
-            "headDensity": 0.01042982997112774,
-            "tailDensity": 0.0661642338793416
+            "headCount": 33,
+            "tailCount": 192,
+            "headDensity": 0.010755762157725482,
+            "tailDensity": 0.06257897982676644
           },
           {
             "rLo": 22.71666666666667,
             "rHi": 23.2,
             "headCount": 21,
-            "tailCount": 202,
+            "tailCount": 201,
             "headDensity": 0.006559427387154819,
-            "tailDensity": 0.0630954443907273
+            "tailDensity": 0.0627830907056247
           },
           {
             "rLo": 23.2,
             "rHi": 23.683333333333334,
-            "headCount": 18,
-            "tailCount": 215,
-            "headDensity": 0.005392914510453719,
-            "tailDensity": 0.06441536776375274
+            "headCount": 16,
+            "tailCount": 213,
+            "headDensity": 0.004793701787069972,
+            "tailDensity": 0.063816155040369
           },
           {
             "rLo": 23.683333333333334,
             "rHi": 24.166666666666668,
-            "headCount": 29,
-            "tailCount": 202,
-            "headDensity": 0.00834108838788287,
-            "tailDensity": 0.05809999497766689
+            "headCount": 30,
+            "tailCount": 203,
+            "headDensity": 0.008628712125396072,
+            "tailDensity": 0.05838761871518009
           },
           {
             "rLo": 24.166666666666668,
             "rHi": 24.65,
-            "headCount": 27,
-            "tailCount": 196,
-            "headDensity": 0.007461337936270853,
-            "tailDensity": 0.05416378650033656
+            "headCount": 30,
+            "tailCount": 201,
+            "headDensity": 0.008290375484745392,
+            "tailDensity": 0.05554551574779413
           },
           {
             "rLo": 24.65,
             "rHi": 25.133333333333333,
-            "headCount": 22,
-            "tailCount": 183,
-            "headDensity": 0.0058458069722395565,
-            "tailDensity": 0.048626485269083586
+            "headCount": 21,
+            "tailCount": 182,
+            "headDensity": 0.005580088473501395,
+            "tailDensity": 0.04836076677034542
           },
           {
             "rLo": 25.133333333333333,
             "rHi": 25.616666666666667,
-            "headCount": 32,
-            "tailCount": 163,
-            "headDensity": 0.008182163142182314,
-            "tailDensity": 0.04167789350549116
+            "headCount": 33,
+            "tailCount": 164,
+            "headDensity": 0.008437855740375512,
+            "tailDensity": 0.04193358610368436
           },
           {
             "rLo": 25.616666666666667,
             "rHi": 26.1,
-            "headCount": 25,
+            "headCount": 23,
             "tailCount": 159,
-            "headDensity": 0.006155590120122145,
+            "headDensity": 0.005663142910512373,
             "tailDensity": 0.03914955316397684
           },
           {
             "rLo": 26.1,
             "rHi": 26.583333333333332,
-            "headCount": 25,
-            "tailCount": 171,
-            "headDensity": 0.005931775598865358,
-            "tailDensity": 0.04057334509623905
+            "headCount": 26,
+            "tailCount": 168,
+            "headDensity": 0.006169046622819972,
+            "tailDensity": 0.0398615320243752
           },
           {
             "rLo": 26.583333333333332,
             "rHi": 27.066666666666666,
             "headCount": 25,
-            "tailCount": 165,
+            "tailCount": 168,
             "headDensity": 0.0057199493952482024,
-            "tailDensity": 0.037751666008638135
+            "tailDensity": 0.03843805993606792
           },
           {
             "rLo": 27.066666666666666,
             "rHi": 27.55,
             "headCount": 29,
-            "tailCount": 184,
+            "tailCount": 183,
             "headDensity": 0.006402353632591319,
-            "tailDensity": 0.04062182994471733
+            "tailDensity": 0.04040105912980039
           },
           {
             "rLo": 27.55,
             "rHi": 28.033333333333335,
-            "headCount": 21,
-            "tailCount": 140,
-            "headDensity": 0.004476334709512114,
-            "tailDensity": 0.02984223139674743
+            "headCount": 23,
+            "tailCount": 144,
+            "headDensity": 0.0049026523008942205,
+            "tailDensity": 0.03069486657951164
           },
           {
             "rLo": 28.033333333333335,
             "rHi": 28.516666666666666,
-            "headCount": 23,
+            "headCount": 21,
             "tailCount": 152,
-            "headDensity": 0.0047364768844423725,
+            "headDensity": 0.0043246093292734706,
             "tailDensity": 0.03130193419283655
           },
           {
@@ -3735,9 +3735,9 @@
       "cavity": {
         "volume": 28.375,
         "unreached": 227,
-        "totalEmpty": 1480340,
+        "totalEmpty": 1480269,
         "seedCell": 661706,
-        "seedDistFromCentre": 49.973571186860255,
+        "seedDistFromCentre": 49.99569821455198,
         "theoreticalMaxDist": 50.22947341949744
       },
       "hole": {
@@ -3746,22 +3746,22 @@
           -0.8247809762202754,
           0.1638116468202147
         ],
-        "holeRadiusDeg": 15.22802854135531,
-        "solidAngleFraction": 0.017555940700695105,
-        "headsUsed": 929,
-        "headsExcludedBeyondTrust": 361,
-        "headsTotal": 1290
+        "holeRadiusDeg": 15.162187852584156,
+        "solidAngleFraction": 0.01740534243195735,
+        "headsUsed": 932,
+        "headsExcludedBeyondTrust": 362,
+        "headsTotal": 1294
       }
     },
     {
       "step": 230000,
-      "amphiphileCount": 1283,
-      "aggregateCount": 7,
-      "particleCount": 11662,
+      "amphiphileCount": 1285,
+      "aggregateCount": 4,
+      "particleCount": 11666,
       "circularConcentration": {
-        "Rx": 0.2627259647427347,
-        "Ry": 0.18162053542055695,
-        "Rz": 0.3715839380320685,
+        "Rx": 0.262727069163584,
+        "Ry": 0.18146700378714614,
+        "Rz": 0.37176903707991177,
         "trusted": [
           true,
           true,
@@ -3769,16 +3769,16 @@
         ]
       },
       "centre": [
-        49.79981522147063,
-        38.687755419296145,
-        54.12360536142338
+        49.80729946765507,
+        38.70422994539271,
+        54.127108805819084
       ],
       "radial": {
         "trustLimit": 29,
-        "headTotal": 1283,
+        "headTotal": 1285,
         "headBeyondTrust": 353,
-        "tailTotal": 10379,
-        "tailBeyondTrust": 2421,
+        "tailTotal": 10381,
+        "tailBeyondTrust": 2420,
         "headPeakPrimary": 20.541666666666668,
         "headPeakSecondary": 21.991666666666667,
         "separation": 1.4499999999999993,
@@ -3844,9 +3844,9 @@
             "rLo": 3.3833333333333333,
             "rHi": 3.8666666666666667,
             "headCount": 0,
-            "tailCount": 22,
+            "tailCount": 23,
             "headDensity": 0,
-            "tailDensity": 0.2752371957284629
+            "tailDensity": 0.2877479773524839
           },
           {
             "rLo": 3.8666666666666667,
@@ -3860,9 +3860,9 @@
             "rLo": 4.35,
             "rHi": 4.833333333333333,
             "headCount": 4,
-            "tailCount": 37,
+            "tailCount": 36,
             "headDensity": 0.031207706191284955,
-            "tailDensity": 0.2886712822693858
+            "tailDensity": 0.2808693557215646
           },
           {
             "rLo": 4.833333333333333,
@@ -3876,17 +3876,17 @@
             "rLo": 5.316666666666666,
             "rHi": 5.8,
             "headCount": 1,
-            "tailCount": 35,
+            "tailCount": 36,
             "headDensity": 0.005325748348764624,
-            "tailDensity": 0.18640119220676182
+            "tailDensity": 0.19172694055552644
           },
           {
             "rLo": 5.8,
             "rHi": 6.283333333333333,
             "headCount": 2,
-            "tailCount": 45,
+            "tailCount": 44,
             "headDensity": 0.009016298910275288,
-            "tailDensity": 0.20286672548119397
+            "tailDensity": 0.19835857602605633
           },
           {
             "rLo": 6.283333333333333,
@@ -3908,9 +3908,9 @@
             "rLo": 7.25,
             "rHi": 7.733333333333333,
             "headCount": 2,
-            "tailCount": 47,
+            "tailCount": 46,
             "headDensity": 0.005864971135810141,
-            "tailDensity": 0.13782682169153831
+            "tailDensity": 0.13489433612363325
           },
           {
             "rLo": 7.733333333333333,
@@ -3924,40 +3924,40 @@
             "rLo": 8.216666666666667,
             "rHi": 8.7,
             "headCount": 5,
-            "tailCount": 50,
+            "tailCount": 51,
             "headDensity": 0.011503384627092276,
-            "tailDensity": 0.11503384627092275
+            "tailDensity": 0.1173345231963412
           },
           {
             "rLo": 8.7,
             "rHi": 9.183333333333334,
-            "headCount": 5,
+            "headCount": 4,
             "tailCount": 78,
-            "headDensity": 0.01029368108305526,
+            "headDensity": 0.008234944866444207,
             "tailDensity": 0.16058142489566204
           },
           {
             "rLo": 9.183333333333334,
             "rHi": 9.666666666666666,
-            "headCount": 3,
-            "tailCount": 79,
-            "headDensity": 0.005559129082715759,
-            "tailDensity": 0.14639039917818164
+            "headCount": 4,
+            "tailCount": 81,
+            "headDensity": 0.007412172110287679,
+            "tailDensity": 0.1500964852333255
           },
           {
             "rLo": 9.666666666666666,
             "rHi": 10.15,
-            "headCount": 8,
-            "tailCount": 107,
-            "headDensity": 0.013413621535032826,
-            "tailDensity": 0.17940718803106404
+            "headCount": 9,
+            "tailCount": 105,
+            "headDensity": 0.015090324226911929,
+            "tailDensity": 0.17605378264730584
           },
           {
             "rLo": 10.15,
             "rHi": 10.633333333333333,
-            "headCount": 6,
+            "headCount": 5,
             "tailCount": 89,
-            "headDensity": 0.009146310430250444,
+            "headDensity": 0.007621925358542037,
             "tailDensity": 0.13567027138204826
           },
           {
@@ -3971,58 +3971,58 @@
           {
             "rLo": 11.116666666666667,
             "rHi": 11.6,
-            "headCount": 9,
-            "tailCount": 135,
-            "headDensity": 0.011483946198030205,
-            "tailDensity": 0.17225919297045306
+            "headCount": 8,
+            "tailCount": 136,
+            "headDensity": 0.010207952176026849,
+            "tailDensity": 0.17353518699245643
           },
           {
             "rLo": 11.6,
             "rHi": 12.083333333333334,
-            "headCount": 13,
+            "headCount": 14,
             "tailCount": 137,
-            "headDensity": 0.01526162533479964,
+            "headDensity": 0.016435596514399613,
             "tailDensity": 0.1608340516051962
           },
           {
             "rLo": 12.083333333333334,
             "rHi": 12.566666666666666,
             "headCount": 12,
-            "tailCount": 152,
+            "tailCount": 148,
             "headDensity": 0.013004543892114152,
-            "tailDensity": 0.16472422263344594
+            "tailDensity": 0.16038937466940786
           },
           {
             "rLo": 12.566666666666666,
             "rHi": 13.05,
             "headCount": 12,
-            "tailCount": 138,
+            "tailCount": 141,
             "headDensity": 0.012041701534653355,
-            "tailDensity": 0.13847956764851357
+            "tailDensity": 0.1414899930321769
           },
           {
             "rLo": 13.05,
             "rHi": 13.533333333333333,
             "headCount": 18,
-            "tailCount": 158,
+            "tailCount": 156,
             "headDensity": 0.01677293860743588,
-            "tailDensity": 0.14722912777638164
+            "tailDensity": 0.14536546793111096
           },
           {
             "rLo": 13.533333333333333,
             "rHi": 14.016666666666667,
             "headCount": 19,
-            "tailCount": 148,
+            "tailCount": 152,
             "headDensity": 0.01648425104420662,
-            "tailDensity": 0.12840363971276736
+            "tailDensity": 0.13187400835365296
           },
           {
             "rLo": 14.016666666666667,
             "rHi": 14.5,
             "headCount": 15,
-            "tailCount": 188,
+            "tailCount": 185,
             "headDensity": 0.012146622526577307,
-            "tailDensity": 0.1522376689997689
+            "tailDensity": 0.14980834449445343
           },
           {
             "rLo": 14.5,
@@ -4044,234 +4044,234 @@
             "rLo": 15.466666666666667,
             "rHi": 15.95,
             "headCount": 24,
-            "tailCount": 192,
+            "tailCount": 190,
             "headDensity": 0.016012537162205555,
-            "tailDensity": 0.12810029729764444
+            "tailDensity": 0.12676591920079397
           },
           {
             "rLo": 15.95,
             "rHi": 16.433333333333334,
-            "headCount": 29,
-            "tailCount": 204,
-            "headDensity": 0.018210674410254507,
-            "tailDensity": 0.1281026751617903
+            "headCount": 30,
+            "tailCount": 209,
+            "headDensity": 0.01883862870026328,
+            "tailDensity": 0.1312424466118342
           },
           {
             "rLo": 16.433333333333334,
             "rHi": 16.916666666666668,
-            "headCount": 22,
-            "tailCount": 238,
-            "headDensity": 0.01302578719633442,
-            "tailDensity": 0.14091533421489053
+            "headCount": 21,
+            "tailCount": 237,
+            "headDensity": 0.0124337059601374,
+            "tailDensity": 0.14032325297869352
           },
           {
             "rLo": 16.916666666666668,
             "rHi": 17.4,
             "headCount": 26,
-            "tailCount": 209,
+            "tailCount": 210,
             "headDensity": 0.014539109879912377,
-            "tailDensity": 0.1168720755731418
+            "tailDensity": 0.11743127210698459
           },
           {
             "rLo": 17.4,
             "rHi": 17.883333333333333,
-            "headCount": 21,
-            "tailCount": 226,
-            "headDensity": 0.011108522387703422,
-            "tailDensity": 0.11954885998195112
+            "headCount": 22,
+            "tailCount": 225,
+            "headDensity": 0.011637499644260729,
+            "tailDensity": 0.11901988272539382
           },
           {
             "rLo": 17.883333333333333,
             "rHi": 18.366666666666667,
-            "headCount": 18,
+            "headCount": 17,
             "tailCount": 219,
-            "headDensity": 0.00902057305055034,
+            "headDensity": 0.008519430103297544,
             "tailDensity": 0.10975030544836248
           },
           {
             "rLo": 18.366666666666667,
             "rHi": 18.85,
-            "headCount": 26,
+            "headCount": 25,
             "tailCount": 249,
-            "headDensity": 0.012361676288722374,
+            "headDensity": 0.01188622720069459,
             "tailDensity": 0.11838682291891812
           },
           {
             "rLo": 18.85,
             "rHi": 19.333333333333332,
-            "headCount": 33,
-            "tailCount": 223,
-            "headDensity": 0.014905496500142213,
-            "tailDensity": 0.10072502180399132
+            "headCount": 34,
+            "tailCount": 226,
+            "headDensity": 0.015357178212267734,
+            "tailDensity": 0.10208006694036788
           },
           {
             "rLo": 19.333333333333332,
             "rHi": 19.816666666666666,
-            "headCount": 29,
-            "tailCount": 240,
-            "headDensity": 0.012459935122805719,
-            "tailDensity": 0.10311670446459904
+            "headCount": 30,
+            "tailCount": 233,
+            "headDensity": 0.01288958805807488,
+            "tailDensity": 0.10010913391771491
           },
           {
             "rLo": 19.816666666666666,
             "rHi": 20.3,
-            "headCount": 32,
-            "tailCount": 234,
-            "headDensity": 0.013094311403658907,
-            "tailDensity": 0.09575215213925575
+            "headCount": 31,
+            "tailCount": 241,
+            "headDensity": 0.012685114172294567,
+            "tailDensity": 0.09861653275880615
           },
           {
             "rLo": 20.3,
             "rHi": 20.783333333333335,
-            "headCount": 37,
-            "tailCount": 240,
-            "headDensity": 0.01443622762410103,
-            "tailDensity": 0.09364039539957425
+            "headCount": 38,
+            "tailCount": 237,
+            "headDensity": 0.014826395938265922,
+            "tailDensity": 0.09246989045707957
           },
           {
             "rLo": 20.783333333333335,
             "rHi": 21.266666666666666,
-            "headCount": 19,
-            "tailCount": 219,
-            "headDensity": 0.007076293780999084,
-            "tailDensity": 0.08156359673888418
+            "headCount": 20,
+            "tailCount": 221,
+            "headDensity": 0.007448730295788509,
+            "tailDensity": 0.08230846976846302
           },
           {
             "rLo": 21.266666666666666,
             "rHi": 21.75,
-            "headCount": 26,
-            "tailCount": 210,
-            "headDensity": 0.009253050741617284,
-            "tailDensity": 0.07473617906690883
+            "headCount": 25,
+            "tailCount": 211,
+            "headDensity": 0.008897164174632002,
+            "tailDensity": 0.0750920656338941
           },
           {
             "rLo": 21.75,
             "rHi": 22.233333333333334,
-            "headCount": 37,
-            "tailCount": 210,
-            "headDensity": 0.012595381982773038,
-            "tailDensity": 0.0714873031454686
+            "headCount": 38,
+            "tailCount": 207,
+            "headDensity": 0.012935797712037175,
+            "tailDensity": 0.07046605595767619
           },
           {
             "rLo": 22.233333333333334,
             "rHi": 22.71666666666667,
-            "headCount": 25,
-            "tailCount": 202,
-            "headDensity": 0.008148304664943547,
-            "tailDensity": 0.06583830169274386
+            "headCount": 24,
+            "tailCount": 198,
+            "headDensity": 0.007822372478345805,
+            "tailDensity": 0.0645345729463529
           },
           {
             "rLo": 22.71666666666667,
             "rHi": 23.2,
-            "headCount": 28,
-            "tailCount": 228,
-            "headDensity": 0.008745903182873091,
-            "tailDensity": 0.07121664020339517
+            "headCount": 27,
+            "tailCount": 229,
+            "headDensity": 0.008433549497770481,
+            "tailDensity": 0.07152899388849779
           },
           {
             "rLo": 23.2,
             "rHi": 23.683333333333334,
             "headCount": 23,
-            "tailCount": 204,
+            "tailCount": 206,
             "headDensity": 0.0068909463189130845,
-            "tailDensity": 0.061119697785142146
+            "tailDensity": 0.06171891050852589
           },
           {
             "rLo": 23.683333333333334,
             "rHi": 24.166666666666668,
-            "headCount": 24,
-            "tailCount": 204,
-            "headDensity": 0.006902969700316858,
-            "tailDensity": 0.05867524245269329
+            "headCount": 25,
+            "tailCount": 207,
+            "headDensity": 0.00719059343783006,
+            "tailDensity": 0.0595381136652329
           },
           {
             "rLo": 24.166666666666668,
             "rHi": 24.65,
-            "headCount": 29,
-            "tailCount": 205,
-            "headDensity": 0.00801402963525388,
-            "tailDensity": 0.05665089914576018
+            "headCount": 30,
+            "tailCount": 206,
+            "headDensity": 0.008290375484745392,
+            "tailDensity": 0.056927244995251695
           },
           {
             "rLo": 24.65,
             "rHi": 25.133333333333333,
-            "headCount": 23,
-            "tailCount": 167,
-            "headDensity": 0.006111525470977718,
-            "tailDensity": 0.044374989289273
+            "headCount": 21,
+            "tailCount": 165,
+            "headDensity": 0.005580088473501395,
+            "tailDensity": 0.04384355229179667
           },
           {
             "rLo": 25.133333333333333,
             "rHi": 25.616666666666667,
-            "headCount": 25,
-            "tailCount": 182,
-            "headDensity": 0.006392314954829933,
-            "tailDensity": 0.046536052871161915
+            "headCount": 27,
+            "tailCount": 179,
+            "headDensity": 0.006903700151216327,
+            "tailDensity": 0.04576897507658232
           },
           {
             "rLo": 25.616666666666667,
             "rHi": 26.1,
             "headCount": 24,
-            "tailCount": 165,
+            "tailCount": 167,
             "headDensity": 0.005909366515317259,
-            "tailDensity": 0.04062689479280616
+            "tailDensity": 0.041119342002415925
           },
           {
             "rLo": 26.1,
             "rHi": 26.583333333333332,
-            "headCount": 28,
-            "tailCount": 153,
-            "headDensity": 0.006643588670729201,
-            "tailDensity": 0.03630246666505599
+            "headCount": 27,
+            "tailCount": 151,
+            "headDensity": 0.006406317646774586,
+            "tailDensity": 0.03582792461714676
           },
           {
             "rLo": 26.583333333333332,
             "rHi": 27.066666666666666,
-            "headCount": 27,
-            "tailCount": 144,
-            "headDensity": 0.006177545346868059,
-            "tailDensity": 0.032946908516629646
+            "headCount": 28,
+            "tailCount": 147,
+            "headDensity": 0.006406343322677987,
+            "tailDensity": 0.03363330244405943
           },
           {
             "rLo": 27.066666666666666,
             "rHi": 27.55,
-            "headCount": 20,
-            "tailCount": 163,
-            "headDensity": 0.004415416298338841,
-            "tailDensity": 0.03598564283146155
+            "headCount": 22,
+            "tailCount": 161,
+            "headDensity": 0.004856957928172725,
+            "tailDensity": 0.03554410120162767
           },
           {
             "rLo": 27.55,
             "rHi": 28.033333333333335,
-            "headCount": 23,
-            "tailCount": 163,
-            "headDensity": 0.0049026523008942205,
-            "tailDensity": 0.03474488369764165
+            "headCount": 21,
+            "tailCount": 165,
+            "headDensity": 0.004476334709512114,
+            "tailDensity": 0.035171201289023755
           },
           {
             "rLo": 28.033333333333335,
             "rHi": 28.516666666666666,
             "headCount": 26,
-            "tailCount": 149,
+            "tailCount": 148,
             "headDensity": 0.0053542782171957255,
-            "tailDensity": 0.0306841328600832
+            "tailDensity": 0.03047819908249875
           },
           {
             "rLo": 28.516666666666666,
             "rHi": 29,
             "headCount": 28,
-            "tailCount": 161,
+            "tailCount": 163,
             "headDensity": 0.0055739590099677565,
-            "tailDensity": 0.0320502643073146
+            "tailDensity": 0.03244840423659801
           }
         ]
       },
       "cavity": {
         "volume": 30.625,
         "unreached": 245,
-        "totalEmpty": 1480692,
+        "totalEmpty": 1480662,
         "seedCell": 675045,
-        "seedDistFromCentre": 50.09183540244072,
+        "seedDistFromCentre": 50.09904948019263,
         "theoreticalMaxDist": 50.22947341949744
       },
       "hole": {
@@ -4280,22 +4280,22 @@
           0.25406758448060074,
           -0.8593525696849693
         ],
-        "holeRadiusDeg": 14.941597922247684,
-        "solidAngleFraction": 0.016905429542712014,
-        "headsUsed": 930,
+        "holeRadiusDeg": 14.965132763438277,
+        "solidAngleFraction": 0.016958424371973813,
+        "headsUsed": 932,
         "headsExcludedBeyondTrust": 353,
-        "headsTotal": 1283
+        "headsTotal": 1285
       }
     },
     {
       "step": 240000,
-      "amphiphileCount": 1288,
-      "aggregateCount": 5,
-      "particleCount": 11741,
+      "amphiphileCount": 1289,
+      "aggregateCount": 3,
+      "particleCount": 11745,
       "circularConcentration": {
-        "Rx": 0.26686710983496403,
-        "Ry": 0.18792554566519934,
-        "Rz": 0.3702975866571849,
+        "Rx": 0.26695059979004665,
+        "Ry": 0.1877541786815329,
+        "Rz": 0.37047796947448175,
         "trusted": [
           true,
           true,
@@ -4303,16 +4303,16 @@
         ]
       },
       "centre": [
-        49.774518277223216,
-        38.77330665386324,
-        54.04638122059166
+        49.77448289953671,
+        38.78031595362529,
+        54.050056904289754
       ],
       "radial": {
         "trustLimit": 29,
-        "headTotal": 1288,
+        "headTotal": 1289,
         "headBeyondTrust": 349,
-        "tailTotal": 10453,
-        "tailBeyondTrust": 2419,
+        "tailTotal": 10456,
+        "tailBeyondTrust": 2420,
         "headPeakPrimary": 19.575,
         "headPeakSecondary": 22.958333333333336,
         "separation": 3.3833333333333364,
@@ -4378,17 +4378,17 @@
             "rLo": 3.3833333333333333,
             "rHi": 3.8666666666666667,
             "headCount": 0,
-            "tailCount": 28,
+            "tailCount": 29,
             "headDensity": 0,
-            "tailDensity": 0.3503018854725891
+            "tailDensity": 0.36281266709661014
           },
           {
             "rLo": 3.8666666666666667,
             "rHi": 4.35,
             "headCount": 0,
-            "tailCount": 30,
+            "tailCount": 29,
             "headDensity": 0,
-            "tailDensity": 0.29230259370408623
+            "tailDensity": 0.28255917391395
           },
           {
             "rLo": 4.35,
@@ -4410,17 +4410,17 @@
             "rLo": 5.316666666666666,
             "rHi": 5.8,
             "headCount": 3,
-            "tailCount": 39,
+            "tailCount": 40,
             "headDensity": 0.015977245046293873,
-            "tailDensity": 0.20770418560182033
+            "tailDensity": 0.21302993395058495
           },
           {
             "rLo": 5.8,
             "rHi": 6.283333333333333,
             "headCount": 2,
-            "tailCount": 41,
+            "tailCount": 40,
             "headDensity": 0.009016298910275288,
-            "tailDensity": 0.18483412766064342
+            "tailDensity": 0.18032597820550575
           },
           {
             "rLo": 6.283333333333333,
@@ -4466,17 +4466,17 @@
             "rLo": 8.7,
             "rHi": 9.183333333333334,
             "headCount": 7,
-            "tailCount": 66,
+            "tailCount": 65,
             "headDensity": 0.014411153516277362,
-            "tailDensity": 0.13587659029632942
+            "tailDensity": 0.13381785407971838
           },
           {
             "rLo": 9.183333333333334,
             "rHi": 9.666666666666666,
             "headCount": 5,
-            "tailCount": 81,
+            "tailCount": 82,
             "headDensity": 0.009265215137859599,
-            "tailDensity": 0.1500964852333255
+            "tailDensity": 0.15194952826089742
           },
           {
             "rLo": 9.666666666666666,
@@ -4490,49 +4490,49 @@
             "rLo": 10.15,
             "rHi": 10.633333333333333,
             "headCount": 6,
-            "tailCount": 115,
+            "tailCount": 117,
             "headDensity": 0.009146310430250444,
-            "tailDensity": 0.17530428324646685
+            "tailDensity": 0.17835305338988366
           },
           {
             "rLo": 10.633333333333333,
             "rHi": 11.116666666666667,
             "headCount": 8,
-            "tailCount": 100,
+            "tailCount": 96,
             "headDensity": 0.011135336903012768,
-            "tailDensity": 0.13919171128765961
+            "tailDensity": 0.13362404283615323
           },
           {
             "rLo": 11.116666666666667,
             "rHi": 11.6,
             "headCount": 13,
-            "tailCount": 131,
+            "tailCount": 133,
             "headDensity": 0.016587922286043628,
-            "tailDensity": 0.16715521688243964
+            "tailDensity": 0.16970720492644636
           },
           {
             "rLo": 11.6,
             "rHi": 12.083333333333334,
             "headCount": 10,
-            "tailCount": 148,
+            "tailCount": 146,
             "headDensity": 0.011739711795999724,
-            "tailDensity": 0.1737477345807959
+            "tailDensity": 0.17139979222159596
           },
           {
             "rLo": 12.083333333333334,
             "rHi": 12.566666666666666,
             "headCount": 10,
-            "tailCount": 137,
+            "tailCount": 139,
             "headDensity": 0.010837119910095127,
-            "tailDensity": 0.14846854276830324
+            "tailDensity": 0.15063596675032226
           },
           {
             "rLo": 12.566666666666666,
             "rHi": 13.05,
             "headCount": 18,
-            "tailCount": 169,
+            "tailCount": 168,
             "headDensity": 0.01806255230198003,
-            "tailDensity": 0.16958729661303473
+            "tailDensity": 0.16858382148514695
           },
           {
             "rLo": 13.05,
@@ -4546,145 +4546,145 @@
             "rLo": 13.533333333333333,
             "rHi": 14.016666666666667,
             "headCount": 18,
-            "tailCount": 155,
+            "tailCount": 153,
             "headDensity": 0.015616658883985219,
-            "tailDensity": 0.13447678483431716
+            "tailDensity": 0.13274160051387437
           },
           {
             "rLo": 14.016666666666667,
             "rHi": 14.5,
             "headCount": 15,
-            "tailCount": 178,
+            "tailCount": 182,
             "headDensity": 0.012146622526577307,
-            "tailDensity": 0.14413992064871736
+            "tailDensity": 0.147379019989138
           },
           {
             "rLo": 14.5,
             "rHi": 14.983333333333334,
             "headCount": 23,
-            "tailCount": 169,
+            "tailCount": 167,
             "headDensity": 0.017423650366381122,
-            "tailDensity": 0.12802595269210476
+            "tailDensity": 0.12651085266024553
           },
           {
             "rLo": 14.983333333333334,
             "rHi": 15.466666666666667,
             "headCount": 24,
-            "tailCount": 175,
+            "tailCount": 176,
             "headDensity": 0.017045257059801613,
-            "tailDensity": 0.12428833272772011
+            "tailDensity": 0.1249985517718785
           },
           {
             "rLo": 15.466666666666667,
             "rHi": 15.95,
             "headCount": 23,
-            "tailCount": 192,
+            "tailCount": 189,
             "headDensity": 0.015345348113780324,
-            "tailDensity": 0.12810029729764444
+            "tailDensity": 0.12609873015236875
           },
           {
             "rLo": 15.95,
             "rHi": 16.433333333333334,
             "headCount": 16,
-            "tailCount": 218,
+            "tailCount": 220,
             "headDensity": 0.010047268640140416,
-            "tailDensity": 0.13689403522191318
+            "tailDensity": 0.13814994380193074
           },
           {
             "rLo": 16.433333333333334,
             "rHi": 16.916666666666668,
             "headCount": 26,
-            "tailCount": 248,
+            "tailCount": 250,
             "headDensity": 0.015394112141122495,
-            "tailDensity": 0.14683614657686073
+            "tailDensity": 0.14802030904925476
           },
           {
             "rLo": 16.916666666666668,
             "rHi": 17.4,
             "headCount": 26,
-            "tailCount": 217,
+            "tailCount": 215,
             "headDensity": 0.014539109879912377,
-            "tailDensity": 0.12134564784388407
+            "tailDensity": 0.12022725477619851
           },
           {
             "rLo": 17.4,
             "rHi": 17.883333333333333,
             "headCount": 26,
-            "tailCount": 217,
+            "tailCount": 216,
             "headDensity": 0.013753408670489952,
-            "tailDensity": 0.11478806467293537
+            "tailDensity": 0.11425908741637807
           },
           {
             "rLo": 17.883333333333333,
             "rHi": 18.366666666666667,
             "headCount": 21,
-            "tailCount": 236,
+            "tailCount": 239,
             "headDensity": 0.01052400189230873,
-            "tailDensity": 0.11826973555166002
+            "tailDensity": 0.11977316439341841
           },
           {
             "rLo": 18.366666666666667,
             "rHi": 18.85,
-            "headCount": 29,
+            "headCount": 28,
             "tailCount": 246,
-            "headDensity": 0.013788023552805725,
+            "headDensity": 0.01331257446477794,
             "tailDensity": 0.11696047565483476
           },
           {
             "rLo": 18.85,
             "rHi": 19.333333333333332,
-            "headCount": 23,
-            "tailCount": 231,
-            "headDensity": 0.010388679378886996,
-            "tailDensity": 0.1043384755009955
+            "headCount": 24,
+            "tailCount": 232,
+            "headDensity": 0.010840361091012518,
+            "tailDensity": 0.10479015721312102
           },
           {
             "rLo": 19.333333333333332,
             "rHi": 19.816666666666666,
-            "headCount": 41,
-            "tailCount": 230,
-            "headDensity": 0.01761577034603567,
-            "tailDensity": 0.09882017511190742
+            "headCount": 42,
+            "tailCount": 231,
+            "headDensity": 0.01804542328130483,
+            "tailDensity": 0.09924982804717658
           },
           {
             "rLo": 19.816666666666666,
             "rHi": 20.3,
             "headCount": 31,
-            "tailCount": 263,
+            "tailCount": 261,
             "headDensity": 0.012685114172294567,
-            "tailDensity": 0.10761887184882164
+            "tailDensity": 0.10680047738609295
           },
           {
             "rLo": 20.3,
             "rHi": 20.783333333333335,
             "headCount": 32,
-            "tailCount": 250,
+            "tailCount": 251,
             "headDensity": 0.012485386053276567,
-            "tailDensity": 0.09754207854122318
+            "tailDensity": 0.09793224685538807
           },
           {
             "rLo": 20.783333333333335,
             "rHi": 21.266666666666666,
-            "headCount": 25,
+            "headCount": 24,
             "tailCount": 211,
-            "headDensity": 0.009310912869735637,
+            "headDensity": 0.00893847635494621,
             "tailDensity": 0.07858410462056876
           },
           {
             "rLo": 21.266666666666666,
             "rHi": 21.75,
-            "headCount": 30,
-            "tailCount": 224,
-            "headDensity": 0.010676597009558404,
-            "tailDensity": 0.07971859100470274
+            "headCount": 31,
+            "tailCount": 225,
+            "headDensity": 0.011032483576543684,
+            "tailDensity": 0.08007447757168802
           },
           {
             "rLo": 21.75,
             "rHi": 22.233333333333334,
             "headCount": 29,
-            "tailCount": 215,
+            "tailCount": 214,
             "headDensity": 0.009872056148659948,
-            "tailDensity": 0.07318938179178927
+            "tailDensity": 0.07284896606252514
           },
           {
             "rLo": 22.233333333333334,
@@ -4698,65 +4698,65 @@
             "rLo": 22.71666666666667,
             "rHi": 23.2,
             "headCount": 32,
-            "tailCount": 211,
+            "tailCount": 213,
             "headDensity": 0.009995317923283533,
-            "tailDensity": 0.0659066275566508
+            "tailDensity": 0.06653133492685602
           },
           {
             "rLo": 23.2,
             "rHi": 23.683333333333334,
             "headCount": 26,
-            "tailCount": 219,
+            "tailCount": 217,
             "headDensity": 0.007789765403988704,
-            "tailDensity": 0.06561379321052024
+            "tailDensity": 0.0650145804871365
           },
           {
             "rLo": 23.683333333333334,
             "rHi": 24.166666666666668,
             "headCount": 20,
-            "tailCount": 206,
+            "tailCount": 205,
             "headDensity": 0.005752474750264048,
-            "tailDensity": 0.059250489927719696
+            "tailDensity": 0.05896286619020649
           },
           {
             "rLo": 24.166666666666668,
             "rHi": 24.65,
             "headCount": 29,
-            "tailCount": 185,
+            "tailCount": 186,
             "headDensity": 0.00801402963525388,
-            "tailDensity": 0.05112398215592992
+            "tailDensity": 0.05140032800542143
           },
           {
             "rLo": 24.65,
             "rHi": 25.133333333333333,
             "headCount": 31,
-            "tailCount": 174,
+            "tailCount": 175,
             "headDensity": 0.00823727346088301,
-            "tailDensity": 0.046235018780440125
+            "tailDensity": 0.04650073727917829
           },
           {
             "rLo": 25.133333333333333,
             "rHi": 25.616666666666667,
             "headCount": 24,
-            "tailCount": 161,
+            "tailCount": 160,
             "headDensity": 0.006136622356636735,
-            "tailDensity": 0.04116650830910477
+            "tailDensity": 0.04091081571091157
           },
           {
             "rLo": 25.616666666666667,
             "rHi": 26.1,
             "headCount": 28,
-            "tailCount": 163,
+            "tailCount": 162,
             "headDensity": 0.006894260934536802,
-            "tailDensity": 0.040134447583196384
+            "tailDensity": 0.0398882239783915
           },
           {
             "rLo": 26.1,
             "rHi": 26.583333333333332,
             "headCount": 29,
-            "tailCount": 180,
+            "tailCount": 183,
             "headDensity": 0.006880859694683815,
-            "tailDensity": 0.042708784311830575
+            "tailDensity": 0.04342059738369442
           },
           {
             "rLo": 26.583333333333332,
@@ -4770,25 +4770,25 @@
             "rLo": 27.066666666666666,
             "rHi": 27.55,
             "headCount": 21,
-            "tailCount": 166,
+            "tailCount": 164,
             "headDensity": 0.004636187113255782,
-            "tailDensity": 0.036647955276212375
+            "tailDensity": 0.03620641364637849
           },
           {
             "rLo": 27.55,
             "rHi": 28.033333333333335,
             "headCount": 29,
-            "tailCount": 131,
+            "tailCount": 130,
             "headDensity": 0.006181605075040539,
-            "tailDensity": 0.027923802235527952
+            "tailDensity": 0.0277106434398369
           },
           {
             "rLo": 28.033333333333335,
             "rHi": 28.516666666666666,
             "headCount": 18,
-            "tailCount": 163,
+            "tailCount": 164,
             "headDensity": 0.003706807996520118,
-            "tailDensity": 0.03356720574626551
+            "tailDensity": 0.033773139523849964
           },
           {
             "rLo": 28.516666666666666,
@@ -4803,9 +4803,9 @@
       "cavity": {
         "volume": 29.875,
         "unreached": 239,
-        "totalEmpty": 1480257,
+        "totalEmpty": 1480233,
         "seedCell": 675045,
-        "seedDistFromCentre": 50.0845172657645,
+        "seedDistFromCentre": 50.0825964051021,
         "theoreticalMaxDist": 50.22947341949744
       },
       "hole": {
@@ -4814,22 +4814,22 @@
           0.25406758448060074,
           -0.8593525696849693
         ],
-        "holeRadiusDeg": 15.703063741799928,
-        "solidAngleFraction": 0.01866136230009885,
-        "headsUsed": 939,
+        "holeRadiusDeg": 15.713839236114127,
+        "solidAngleFraction": 0.01868682127551957,
+        "headsUsed": 940,
         "headsExcludedBeyondTrust": 349,
-        "headsTotal": 1288
+        "headsTotal": 1289
       }
     },
     {
       "step": 250000,
-      "amphiphileCount": 1282,
-      "aggregateCount": 5,
-      "particleCount": 11685,
+      "amphiphileCount": 1284,
+      "aggregateCount": 3,
+      "particleCount": 11688,
       "circularConcentration": {
-        "Rx": 0.25755519513782515,
-        "Ry": 0.18968557708581735,
-        "Rz": 0.37002625268535466,
+        "Rx": 0.2575778576473474,
+        "Ry": 0.1895150388620462,
+        "Rz": 0.37015881030132186,
         "trusted": [
           true,
           true,
@@ -4837,16 +4837,16 @@
         ]
       },
       "centre": [
-        50.15990904033367,
-        38.846238620333054,
-        53.771700255526355
+        50.16104953546335,
+        38.85716645658671,
+        53.77466188472985
       ],
       "radial": {
         "trustLimit": 29,
-        "headTotal": 1282,
-        "headBeyondTrust": 350,
-        "tailTotal": 10403,
-        "tailBeyondTrust": 2413,
+        "headTotal": 1284,
+        "headBeyondTrust": 351,
+        "tailTotal": 10404,
+        "tailBeyondTrust": 2412,
         "headPeakPrimary": 19.09166666666667,
         "headPeakSecondary": 21.508333333333333,
         "separation": 2.4166666666666643,
@@ -4896,17 +4896,17 @@
             "rLo": 2.4166666666666665,
             "rHi": 2.9,
             "headCount": 0,
-            "tailCount": 9,
+            "tailCount": 10,
             "headDensity": 0,
-            "tailDensity": 0.20910877857292307
+            "tailDensity": 0.23234308730324785
           },
           {
             "rLo": 2.9,
             "rHi": 3.3833333333333333,
             "headCount": 0,
-            "tailCount": 14,
+            "tailCount": 13,
             "headDensity": 0,
-            "tailDensity": 0.23307487655459655
+            "tailDensity": 0.2164266710864111
           },
           {
             "rLo": 3.3833333333333333,
@@ -4920,33 +4920,33 @@
             "rLo": 3.8666666666666667,
             "rHi": 4.35,
             "headCount": 1,
-            "tailCount": 27,
+            "tailCount": 29,
             "headDensity": 0.009743419790136208,
-            "tailDensity": 0.2630723343336776
+            "tailDensity": 0.28255917391395
           },
           {
             "rLo": 4.35,
             "rHi": 4.833333333333333,
             "headCount": 3,
-            "tailCount": 26,
+            "tailCount": 25,
             "headDensity": 0.023405779643463714,
-            "tailDensity": 0.2028500902433522
+            "tailDensity": 0.19504816369553096
           },
           {
             "rLo": 4.833333333333333,
             "rHi": 5.316666666666666,
             "headCount": 3,
-            "tailCount": 37,
+            "tailCount": 35,
             "headDensity": 0.019163040131053376,
-            "tailDensity": 0.23634416161632496
+            "tailDensity": 0.22356880152895603
           },
           {
             "rLo": 5.316666666666666,
             "rHi": 5.8,
             "headCount": 3,
-            "tailCount": 29,
+            "tailCount": 30,
             "headDensity": 0.015977245046293873,
-            "tailDensity": 0.15444670211417408
+            "tailDensity": 0.1597724504629387
           },
           {
             "rLo": 5.8,
@@ -4968,17 +4968,17 @@
             "rLo": 6.766666666666667,
             "rHi": 7.25,
             "headCount": 1,
-            "tailCount": 47,
+            "tailCount": 45,
             "headDensity": 0.003350748168715619,
-            "tailDensity": 0.15748516392963408
+            "tailDensity": 0.15078366759220285
           },
           {
             "rLo": 7.25,
             "rHi": 7.733333333333333,
             "headCount": 3,
-            "tailCount": 45,
+            "tailCount": 47,
             "headDensity": 0.008797456703715211,
-            "tailDensity": 0.13196185055572818
+            "tailDensity": 0.13782682169153831
           },
           {
             "rLo": 7.733333333333333,
@@ -5008,25 +5008,25 @@
             "rLo": 9.183333333333334,
             "rHi": 9.666666666666666,
             "headCount": 7,
-            "tailCount": 75,
+            "tailCount": 77,
             "headDensity": 0.012971301193003437,
-            "tailDensity": 0.13897822706789398
+            "tailDensity": 0.1426843131230378
           },
           {
             "rLo": 9.666666666666666,
             "rHi": 10.15,
             "headCount": 6,
-            "tailCount": 109,
+            "tailCount": 107,
             "headDensity": 0.01006021615127462,
-            "tailDensity": 0.18276059341482226
+            "tailDensity": 0.17940718803106404
           },
           {
             "rLo": 10.15,
             "rHi": 10.633333333333333,
             "headCount": 8,
-            "tailCount": 101,
+            "tailCount": 100,
             "headDensity": 0.01219508057366726,
-            "tailDensity": 0.15396289224254914
+            "tailDensity": 0.15243850717084073
           },
           {
             "rLo": 10.633333333333333,
@@ -5039,98 +5039,98 @@
           {
             "rLo": 11.116666666666667,
             "rHi": 11.6,
-            "headCount": 6,
-            "tailCount": 117,
-            "headDensity": 0.0076559641320201365,
-            "tailDensity": 0.14929130057439266
+            "headCount": 7,
+            "tailCount": 116,
+            "headDensity": 0.008931958154023492,
+            "tailDensity": 0.14801530655238931
           },
           {
             "rLo": 11.6,
             "rHi": 12.083333333333334,
-            "headCount": 9,
-            "tailCount": 131,
-            "headDensity": 0.010565740616399751,
-            "tailDensity": 0.1537902245275964
+            "headCount": 8,
+            "tailCount": 133,
+            "headDensity": 0.009391769436799778,
+            "tailDensity": 0.15613816688679633
           },
           {
             "rLo": 12.083333333333334,
             "rHi": 12.566666666666666,
-            "headCount": 11,
-            "tailCount": 149,
-            "headDensity": 0.01192083190110464,
-            "tailDensity": 0.1614730866604174
+            "headCount": 12,
+            "tailCount": 151,
+            "headDensity": 0.013004543892114152,
+            "tailDensity": 0.16364051064243643
           },
           {
             "rLo": 12.566666666666666,
             "rHi": 13.05,
-            "headCount": 20,
-            "tailCount": 127,
-            "headDensity": 0.02006950255775559,
-            "tailDensity": 0.127441341241748
+            "headCount": 19,
+            "tailCount": 123,
+            "headDensity": 0.01906602742986781,
+            "tailDensity": 0.12342744073019687
           },
           {
             "rLo": 13.05,
             "rHi": 13.533333333333333,
             "headCount": 18,
-            "tailCount": 148,
+            "tailCount": 149,
             "headDensity": 0.01677293860743588,
-            "tailDensity": 0.13791082855002837
+            "tailDensity": 0.1388426584726637
           },
           {
             "rLo": 13.533333333333333,
             "rHi": 14.016666666666667,
             "headCount": 8,
-            "tailCount": 180,
+            "tailCount": 179,
             "headDensity": 0.006940737281771209,
-            "tailDensity": 0.15616658883985218
+            "tailDensity": 0.1552989966796308
           },
           {
             "rLo": 14.016666666666667,
             "rHi": 14.5,
-            "headCount": 13,
-            "tailCount": 175,
-            "headDensity": 0.010527072856366998,
-            "tailDensity": 0.1417105961434019
+            "headCount": 12,
+            "tailCount": 177,
+            "headDensity": 0.009717298021261846,
+            "tailDensity": 0.14333014581361223
           },
           {
             "rLo": 14.5,
             "rHi": 14.983333333333334,
-            "headCount": 24,
-            "tailCount": 171,
-            "headDensity": 0.018181200382310737,
-            "tailDensity": 0.129541052723964
+            "headCount": 25,
+            "tailCount": 172,
+            "headDensity": 0.01893875039824035,
+            "tailDensity": 0.1302986027398936
           },
           {
             "rLo": 14.983333333333334,
             "rHi": 15.466666666666667,
-            "headCount": 25,
-            "tailCount": 186,
-            "headDensity": 0.017755476103960013,
-            "tailDensity": 0.13210074221346252
+            "headCount": 24,
+            "tailCount": 183,
+            "headDensity": 0.017045257059801613,
+            "tailDensity": 0.1299700850809873
           },
           {
             "rLo": 15.466666666666667,
             "rHi": 15.95,
             "headCount": 23,
-            "tailCount": 198,
+            "tailCount": 197,
             "headDensity": 0.015345348113780324,
-            "tailDensity": 0.13210343158819582
+            "tailDensity": 0.1314362425397706
           },
           {
             "rLo": 15.95,
             "rHi": 16.433333333333334,
-            "headCount": 27,
-            "tailCount": 218,
-            "headDensity": 0.016954765830236952,
-            "tailDensity": 0.13689403522191318
+            "headCount": 28,
+            "tailCount": 223,
+            "headDensity": 0.01758272012024573,
+            "tailDensity": 0.14003380667195706
           },
           {
             "rLo": 16.433333333333334,
             "rHi": 16.916666666666668,
             "headCount": 23,
-            "tailCount": 227,
+            "tailCount": 226,
             "headDensity": 0.013617868432531438,
-            "tailDensity": 0.13440244061672332
+            "tailDensity": 0.1338103593805263
           },
           {
             "rLo": 16.916666666666668,
@@ -5143,114 +5143,114 @@
           {
             "rLo": 17.4,
             "rHi": 17.883333333333333,
-            "headCount": 14,
-            "tailCount": 238,
-            "headDensity": 0.0074056815918022816,
-            "tailDensity": 0.1258965870606388
+            "headCount": 13,
+            "tailCount": 240,
+            "headDensity": 0.006876704335244976,
+            "tailDensity": 0.1269545415737534
           },
           {
             "rLo": 17.883333333333333,
             "rHi": 18.366666666666667,
-            "headCount": 25,
-            "tailCount": 243,
-            "headDensity": 0.012528573681319918,
-            "tailDensity": 0.1217777361824296
+            "headCount": 26,
+            "tailCount": 237,
+            "headDensity": 0.013029716628572715,
+            "tailDensity": 0.11877087849891282
           },
           {
             "rLo": 18.366666666666667,
             "rHi": 18.85,
-            "headCount": 31,
-            "tailCount": 241,
-            "headDensity": 0.014738921728861293,
-            "tailDensity": 0.11458323021469585
+            "headCount": 30,
+            "tailCount": 247,
+            "headDensity": 0.014263472640833509,
+            "tailDensity": 0.11743592474286256
           },
           {
             "rLo": 18.85,
             "rHi": 19.333333333333332,
-            "headCount": 36,
-            "tailCount": 244,
-            "headDensity": 0.01626054163651878,
-            "tailDensity": 0.11021033775862726
+            "headCount": 38,
+            "tailCount": 243,
+            "headDensity": 0.01716390506076982,
+            "tailDensity": 0.10975865604650174
           },
           {
             "rLo": 19.333333333333332,
             "rHi": 19.816666666666666,
-            "headCount": 30,
+            "headCount": 31,
             "tailCount": 242,
-            "headDensity": 0.01288958805807488,
+            "headDensity": 0.013319240993344044,
             "tailDensity": 0.10397601033513737
           },
           {
             "rLo": 19.816666666666666,
             "rHi": 20.3,
-            "headCount": 29,
-            "tailCount": 273,
-            "headDensity": 0.011866719709565885,
-            "tailDensity": 0.11171084416246505
+            "headCount": 28,
+            "tailCount": 272,
+            "headDensity": 0.011457522478201544,
+            "tailDensity": 0.11130164693110071
           },
           {
             "rLo": 20.3,
             "rHi": 20.783333333333335,
             "headCount": 27,
-            "tailCount": 240,
+            "tailCount": 239,
             "headDensity": 0.010534544482452102,
-            "tailDensity": 0.09364039539957425
+            "tailDensity": 0.09325022708540935
           },
           {
             "rLo": 20.783333333333335,
             "rHi": 21.266666666666666,
-            "headCount": 31,
-            "tailCount": 197,
-            "headDensity": 0.011545531958472188,
-            "tailDensity": 0.07336999341351681
+            "headCount": 32,
+            "tailCount": 199,
+            "headDensity": 0.011917968473261615,
+            "tailDensity": 0.07411486644309566
           },
           {
             "rLo": 21.266666666666666,
             "rHi": 21.75,
-            "headCount": 36,
-            "tailCount": 240,
-            "headDensity": 0.012811916411470083,
-            "tailDensity": 0.08541277607646723
+            "headCount": 35,
+            "tailCount": 241,
+            "headDensity": 0.012456029844484804,
+            "tailDensity": 0.08576866264345251
           },
           {
             "rLo": 21.75,
             "rHi": 22.233333333333334,
             "headCount": 29,
-            "tailCount": 223,
+            "tailCount": 221,
             "headDensity": 0.009872056148659948,
-            "tailDensity": 0.07591270762590237
+            "tailDensity": 0.07523187616737409
           },
           {
             "rLo": 22.233333333333334,
             "rHi": 22.71666666666667,
             "headCount": 22,
-            "tailCount": 181,
+            "tailCount": 182,
             "headDensity": 0.0071705081051503215,
-            "tailDensity": 0.058993725774191284
+            "tailDensity": 0.05931965796078902
           },
           {
             "rLo": 22.71666666666667,
             "rHi": 23.2,
             "headCount": 31,
-            "tailCount": 207,
+            "tailCount": 204,
             "headDensity": 0.009682964238180923,
-            "tailDensity": 0.06465721281624036
+            "tailDensity": 0.06372015176093253
           },
           {
             "rLo": 23.2,
             "rHi": 23.683333333333334,
             "headCount": 21,
-            "tailCount": 207,
+            "tailCount": 210,
             "headDensity": 0.006291733595529338,
-            "tailDensity": 0.06201851687021776
+            "tailDensity": 0.06291733595529338
           },
           {
             "rLo": 23.683333333333334,
             "rHi": 24.166666666666668,
             "headCount": 26,
-            "tailCount": 231,
+            "tailCount": 230,
             "headDensity": 0.007478217175343263,
-            "tailDensity": 0.06644108336554976
+            "tailDensity": 0.06615345962803655
           },
           {
             "rLo": 24.166666666666668,
@@ -5263,34 +5263,34 @@
           {
             "rLo": 24.65,
             "rHi": 25.133333333333333,
-            "headCount": 33,
-            "tailCount": 155,
-            "headDensity": 0.008768710458359334,
-            "tailDensity": 0.04118636730441506
+            "headCount": 34,
+            "tailCount": 156,
+            "headDensity": 0.009034428957097496,
+            "tailDensity": 0.04145208580315322
           },
           {
             "rLo": 25.133333333333333,
             "rHi": 25.616666666666667,
-            "headCount": 26,
-            "tailCount": 161,
-            "headDensity": 0.00664800755302313,
-            "tailDensity": 0.04116650830910477
+            "headCount": 25,
+            "tailCount": 162,
+            "headDensity": 0.006392314954829933,
+            "tailDensity": 0.041422200907297965
           },
           {
             "rLo": 25.616666666666667,
             "rHi": 26.1,
             "headCount": 21,
-            "tailCount": 181,
+            "tailCount": 177,
             "headDensity": 0.005170695700902602,
-            "tailDensity": 0.04456647246968433
+            "tailDensity": 0.04358157805046479
           },
           {
             "rLo": 26.1,
             "rHi": 26.583333333333332,
             "headCount": 21,
-            "tailCount": 180,
+            "tailCount": 182,
             "headDensity": 0.0049826915030469,
-            "tailDensity": 0.042708784311830575
+            "tailDensity": 0.0431833263597398
           },
           {
             "rLo": 26.583333333333332,
@@ -5304,17 +5304,17 @@
             "rLo": 27.066666666666666,
             "rHi": 27.55,
             "headCount": 27,
-            "tailCount": 153,
+            "tailCount": 149,
             "headDensity": 0.005960812002757435,
-            "tailDensity": 0.03377793468229213
+            "tailDensity": 0.03289485142262436
           },
           {
             "rLo": 27.55,
             "rHi": 28.033333333333335,
             "headCount": 29,
-            "tailCount": 136,
+            "tailCount": 141,
             "headDensity": 0.006181605075040539,
-            "tailDensity": 0.028989596213983216
+            "tailDensity": 0.030055390192438483
           },
           {
             "rLo": 28.033333333333335,
@@ -5337,9 +5337,9 @@
       "cavity": {
         "volume": 24.875,
         "unreached": 199,
-        "totalEmpty": 1480681,
+        "totalEmpty": 1480659,
         "seedCell": 661590,
-        "seedDistFromCentre": 50.1094015000544,
+        "seedDistFromCentre": 50.1020442128226,
         "theoreticalMaxDist": 50.22947341949744
       },
       "hole": {
@@ -5348,11 +5348,11 @@
           0.7321652065081352,
           -0.4954549374856416
         ],
-        "holeRadiusDeg": 15.476105442636246,
-        "solidAngleFraction": 0.01812909092388093,
-        "headsUsed": 932,
-        "headsExcludedBeyondTrust": 350,
-        "headsTotal": 1282
+        "holeRadiusDeg": 15.457469672157444,
+        "solidAngleFraction": 0.01808572138972242,
+        "headsUsed": 933,
+        "headsExcludedBeyondTrust": 351,
+        "headsTotal": 1284
       }
     }
   ]

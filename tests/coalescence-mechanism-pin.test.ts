@@ -12,9 +12,15 @@
 //  2. THE AGGREGATES DO NOT EXCHANGE MATERIAL. Over the decisive lineage's 126 000 settled wet steps
 //     the trace carries at most one merge per interval and zero fissions -- the frozen-distribution
 //     claim, pinned against the artifact so a future change that unfreezes it is visible.
-//  3. THE PROJECT'S CLUSTERING RULE TREATS z AS AN OPEN BOUNDARY while the soup wraps all three axes,
-//     so an aggregate straddling the z face is counted twice. Pinned on synthetic geometry, both
-//     ways, so the defect cannot be silently "fixed" or silently widened.
+//  3. THE CLUSTERING RULE'S DEFAULT LEAVES z OPEN -- correct for the membrane engine (a bilayer patch
+//     in vacuum has no image across z) and WRONG for the soup, which wraps all three axes, where it
+//     split every z-straddling aggregate and counted it twice. Task 'final-campaign' (2026-08-20)
+//     fixed that by giving buildClusterUnionFind a `periodicZ` flag every soup call site passes.
+//     Both branches are pinned on synthetic geometry so neither can move silently.
+//  4. AND THE SAME CLASS OF DEFECT ON x AND y, which nobody has measured because x and y were
+//     periodic from the start: a blob straddling the x face and one straddling the y face must each
+//     read as ONE aggregate under both branches. This is the test that would have caught the z bug
+//     if it had been written for z, and it is now written for all three axes.
 import { expect, test } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { clusterComponents } from '../engine/src/aggregate'
@@ -83,7 +89,7 @@ test('the aggregates do not exchange material: at most one merge per interval, z
   expect(encMerged / encTotal, 'merge probability per encounter-interval').toBeLessThan(0.1)
 })
 
-test('the clustering rule leaves z open, so an aggregate across the z face is counted twice', () => {
+test('the DEFAULT clustering rule leaves z open, so an aggregate across the z face is counted twice', () => {
   const box: [number, number, number] = [20, 20, 20]
   const cutoff = 2
   // One compact blob straddling the z = 0 face: half at z = 19.5, half at z = 0.5, i.e. 1.0 apart
@@ -99,4 +105,58 @@ test('the clustering rule leaves z open, so an aggregate across the z face is co
   expect(zOpen.length, 'engine/src/aggregate.ts splits a z-straddling aggregate -- see its own comment').toBe(2)
   expect(full.length, 'with the z image restored it is ONE aggregate').toBe(1)
   expect(full[0].length).toBe(8)
+})
+
+test('periodicZ = true joins the z-straddling blob, and agrees with the independent 3D implementation', () => {
+  const box: [number, number, number] = [20, 20, 20]
+  const cutoff = 2
+  const pts: number[] = []
+  const push = (x: number, y: number, z: number) => pts.push(x, y, z, 1)
+  for (let k = 0; k < 4; k++) push(10 + k * 0.5, 10, 19.5)
+  for (let k = 0; k < 4; k++) push(10 + k * 0.5, 10, 0.5)
+  const pos = new Float32Array(pts)
+  // THE FIX: the soup's own argument. One aggregate, and byte-for-byte the same partition the
+  // independent clusterComponents3D helper (a separate implementation, written as the control that
+  // sized the defect) produces -- two implementations agreeing is what makes this a fix and not a
+  // second convention.
+  const fixed = clusterComponents(pos, box, cutoff, true)
+  const control = clusterComponents3D(pos, box, cutoff)
+  expect(fixed.length, 'z periodic: ONE aggregate').toBe(1)
+  expect(fixed[0].length).toBe(8)
+  expect(fixed.map((c) => [...c].sort((a, b) => a - b))).toEqual(control.map((c) => [...c].sort((a, b) => a - b)))
+  // And the flag must not join what is genuinely apart: the same blob moved to mid-box, split in
+  // two by a gap of 4 sigma (> cutoff), stays two aggregates under BOTH branches.
+  const apart: number[] = []
+  for (let k = 0; k < 4; k++) apart.push(10 + k * 0.5, 10, 6, 1)
+  for (let k = 0; k < 4; k++) apart.push(10 + k * 0.5, 10, 14, 1)
+  const apartPos = new Float32Array(apart)
+  expect(clusterComponents(apartPos, box, cutoff, true).length, 'a real 8 sigma gap is still a gap').toBe(2)
+  expect(clusterComponents(apartPos, box, cutoff, false).length).toBe(2)
+  console.log(`COAL-PIN clustering z-periodic: joined=${fixed.map((c) => c.length).join('+')} genuinelyApart=2`)
+})
+
+test('the same defect class on x and y: a blob across the x or y face is ONE aggregate, both branches', () => {
+  const box: [number, number, number] = [20, 20, 20]
+  const cutoff = 2
+  const straddle = (axis: 0 | 1): Float32Array => {
+    const pts: number[] = []
+    for (const near of [19.5, 0.5]) {
+      for (let k = 0; k < 4; k++) {
+        const c = [10, 10, 10]
+        c[axis] = near
+        c[axis === 0 ? 1 : 0] = 10 + k * 0.5
+        pts.push(c[0], c[1], c[2], 1)
+      }
+    }
+    return new Float32Array(pts)
+  }
+  for (const axis of [0, 1] as const) {
+    const name = axis === 0 ? 'x' : 'y'
+    for (const periodicZ of [false, true]) {
+      const comps = clusterComponents(straddle(axis), box, cutoff, periodicZ)
+      expect(comps.length, `${name} face, periodicZ=${periodicZ}: x and y have ALWAYS been periodic`).toBe(1)
+      expect(comps[0].length).toBe(8)
+    }
+  }
+  console.log('COAL-PIN clustering x/y faces: 1 aggregate of 8 on both axes, both periodicZ branches')
 })
