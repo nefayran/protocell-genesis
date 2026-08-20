@@ -72,6 +72,10 @@ export interface SoupBindGroups {
   snapshotPositionsBind: GPUBindGroup
   resetMaxDriftBind: GPUBindGroup
   maxDriftBind: GPUBindGroup
+  buildHeadIndexBind: GPUBindGroup
+  buildEsListBind: GPUBindGroup
+  esForceFarBind: GPUBindGroup
+  esForceFarBruteBind: GPUBindGroup
   soupForceListGroup0: GPUBindGroup
   soupForceListGroup1: GPUBindGroup
   bondFormListGroup0: GPUBindGroup
@@ -138,6 +142,11 @@ export function rebindGridDependent(device: GPUDevice, pipe: SoupPipelines, sb: 
     // bind-group validation outright (which is how a miswiring surfaces here, not silently).
     { binding: 24, resource: buf(sb.chargeBuf) },
     { binding: 25, resource: buf(sb.esUniformBuf) },
+    // Task 'long-range-electrostatics' (2026-08-20): nonbondedSoup now calls esForceNear, which
+    // reads ES2.x (the split radius), so all three pipelines that reach it need binding 26 as well.
+    // `layout: auto` derives each layout from what the entry point USES, so omitting it fails
+    // bind-group validation outright rather than silently dropping the near half of the term.
+    { binding: 26, resource: buf(sb.es2UniformBuf) },
   ], device)
   // --- bond formation (forces.wgsl + bond.wgsl), grid-walk variant -----------------------------
   bind_.bondFormGroup1 = bind(pipe.bondForm, 1, [
@@ -225,6 +234,11 @@ export function buildBindGroups(device: GPUDevice, pipe: SoupPipelines, sb: Soup
     // bind-group validation outright (which is how a miswiring surfaces here, not silently).
     { binding: 24, resource: buf(sb.chargeBuf) },
     { binding: 25, resource: buf(sb.esUniformBuf) },
+    // Task 'long-range-electrostatics' (2026-08-20): nonbondedSoup now calls esForceNear, which
+    // reads ES2.x (the split radius), so all three pipelines that reach it need binding 26 as well.
+    // `layout: auto` derives each layout from what the entry point USES, so omitting it fails
+    // bind-group validation outright rather than silently dropping the near half of the term.
+    { binding: 26, resource: buf(sb.es2UniformBuf) },
   ], device)
   bind_.kickDriftWrapGroup0 = bind(pipe.kickDriftWrap, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
   bind_.kickDriftWrapGroup1 = bind(pipe.kickDriftWrap, 1, [
@@ -269,6 +283,45 @@ export function buildBindGroups(device: GPUDevice, pipe: SoupPipelines, sb: Soup
   // rebindGridDependent above (it references cellStartBuf); snapshotPositions/resetMaxDrift/
   // maxDrift never reference P (no group 0 needed) -- only the geometry/positions and their own list
   // buffers, none of them ncells-sized, so none need rebinding on a resize.
+  // Task 'long-range-electrostatics' (2026-08-20): the dedicated long-range pass. None of these four
+  // reference an ncells-sized buffer (the head-only list is sized maxHeads*listCapacity and the
+  // compaction walks pos2 directly), so none needs rebinding on a grid resize -- the same reason
+  // soupForceListGroup1 does not.
+  bind_.buildHeadIndexBind = bind(pipe.buildHeadIndex, 1, [
+    { binding: 0, resource: pbuf(sb.posBuf, activeN) },
+    { binding: 26, resource: buf(sb.es2UniformBuf) },
+    { binding: 29, resource: buf(sb.headIdxBuf) },
+    { binding: 30, resource: buf(sb.esMetaBuf) },
+  ], device)
+  bind_.buildEsListBind = bind(pipe.buildEsList, 1, [
+    { binding: 0, resource: pbuf(sb.posBuf, activeN) },
+    { binding: 3, resource: buf(sb.gridUniform) },
+    { binding: 26, resource: buf(sb.es2UniformBuf) },
+    { binding: 27, resource: buf(sb.esListBuf) },
+    { binding: 28, resource: buf(sb.esCountBuf) },
+    { binding: 29, resource: buf(sb.headIdxBuf) },
+    { binding: 30, resource: buf(sb.esMetaBuf) },
+  ], device)
+  bind_.esForceFarBind = bind(pipe.esForceFar, 1, [
+    { binding: 0, resource: pbuf(sb.posBuf, activeN) },
+    { binding: 1, resource: buf(sb.forceBuf) },
+    { binding: 3, resource: buf(sb.gridUniform) },
+    { binding: 24, resource: buf(sb.chargeBuf) },
+    { binding: 25, resource: buf(sb.esUniformBuf) },
+    { binding: 26, resource: buf(sb.es2UniformBuf) },
+    { binding: 27, resource: buf(sb.esListBuf) },
+    { binding: 28, resource: buf(sb.esCountBuf) },
+    { binding: 29, resource: buf(sb.headIdxBuf) },
+    { binding: 30, resource: buf(sb.esMetaBuf) },
+  ], device)
+  bind_.esForceFarBruteBind = bind(pipe.esForceFarBrute, 1, [
+    { binding: 0, resource: pbuf(sb.posBuf, activeN) },
+    { binding: 1, resource: buf(sb.forceBuf) },
+    { binding: 3, resource: buf(sb.gridUniform) },
+    { binding: 24, resource: buf(sb.chargeBuf) },
+    { binding: 25, resource: buf(sb.esUniformBuf) },
+    { binding: 26, resource: buf(sb.es2UniformBuf) },
+  ], device)
   bind_.snapshotPositionsBind = bind(pipe.snapshotPositions, 1, [
     { binding: 0, resource: pbuf(sb.posBuf, activeN) },
     { binding: 17, resource: pbuf(sb.posAtRebuildBuf, activeN) },
@@ -300,6 +353,11 @@ export function buildBindGroups(device: GPUDevice, pipe: SoupPipelines, sb: Soup
     // bind-group validation outright (which is how a miswiring surfaces here, not silently).
     { binding: 24, resource: buf(sb.chargeBuf) },
     { binding: 25, resource: buf(sb.esUniformBuf) },
+    // Task 'long-range-electrostatics' (2026-08-20): nonbondedSoup now calls esForceNear, which
+    // reads ES2.x (the split radius), so all three pipelines that reach it need binding 26 as well.
+    // `layout: auto` derives each layout from what the entry point USES, so omitting it fails
+    // bind-group validation outright rather than silently dropping the near half of the term.
+    { binding: 26, resource: buf(sb.es2UniformBuf) },
   ], device)
   bind_.bondFormListGroup0 = bind(pipe.bondFormList, 0, [{ binding: 0, resource: buf(sb.paramsUniform) }], device)
   bind_.bondFormListGroup1 = bind(pipe.bondFormList, 1, [

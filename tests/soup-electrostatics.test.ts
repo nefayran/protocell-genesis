@@ -11,6 +11,8 @@ import {
   pcgNext,
   protonationSweep,
   type PcgState,
+  esRangeSummary,
+  esTotalEnergy,
 } from '../soup/src/electrostatics'
 
 afterAll(shutdownGpu)
@@ -39,7 +41,11 @@ test('электростатика: сила есть -dU/dr, и обе вели
   let worstRel = 0
   let worstAt = 0
   const rows: string[] = []
-  for (const r of [0.6, 0.8, 0.95, 1.2, 1.5, 2.0, 2.4, 2.7]) {
+  // Task 'long-range-electrostatics' (2026-08-20): the grid now REACHES the new cutoff. The old grid
+  // stopped at 2.7 because that WAS the cutoff; with rc_es = 4 lambda_D the interesting region --
+  // the split radius where nonbondedSoup hands over to the dedicated long-range pass (2.9469545), and
+  // the approach to the real cutoff -- was entirely unprobed by it.
+  for (const r of [0.6, 0.8, 0.95, 1.2, 1.5, 2.0, 2.4, 2.7, 2.9469545, 3.2, 3.8, 4.4, 4.8]) {
     const num = -(esPairEnergy(r + h, 1, b) - esPairEnergy(r - h, 1, b)) / (2 * h)
     const ana = esPairForceMag(r, 1, b)
     const rel = Math.abs(num - ana) / Math.max(1e-12, Math.abs(ana))
@@ -69,6 +75,43 @@ test('электростатика: сила есть -dU/dr, и обе вели
   expect(esPairEnergy(b.cutoff, 1, b)).toBe(0)
   expect(esPairForceMag(b.cutoff, 1, b)).toBe(0)
   expect(esPairEnergy(b.cutoff + 0.1, 1, b)).toBe(0)
+  // Task 'long-range-electrostatics' (2026-08-20): THE SPLIT IS EXACT AND SEAMLESS. On the GPU the
+  // term is summed in two halves -- nonbondedSoup adds r < splitRadius (esForceNear) and the
+  // dedicated head-only pass adds splitRadius <= r < rc_es (esForceFar), with the SAME shift
+  // constants -- so near(r) + far(r) must equal the whole term at every r, with no double count at
+  // the seam and no gap. Mirrored here in the same arithmetic the two WGSL functions use, INCLUDING
+  // exactly at r = splitRadius, where an off-by-one in `<` vs `<=` would either double the pair or
+  // drop it.
+  let worstSplit = 0
+  for (const r of [1.0, 2.9, b.splitRadius - 1e-9, b.splitRadius, b.splitRadius + 1e-9, 3.0, 4.0, b.cutoff - 1e-9]) {
+    const whole = esPairForceMag(r, 1, b)
+    const near = r < b.splitRadius ? whole : 0
+    const far = r >= b.splitRadius ? whole : 0
+    worstSplit = Math.max(worstSplit, Math.abs(near + far - whole))
+  }
+  console.log(
+    `ES-SPLIT splitRadius=${b.splitRadius.toFixed(7)} худшее |near+far-whole|=${worstSplit.toExponential(3)} ` +
+      `F(split-)=${esPairForceMag(b.splitRadius - 1e-9, 1, b).toExponential(6)} ` +
+      `F(split+)=${esPairForceMag(b.splitRadius + 1e-9, 1, b).toExponential(6)}`,
+  )
+  expect(worstSplit).toBe(0)
+
+  // The RANGE, in the units that decide whether it is right: Debye lengths, and the fraction of the
+  // integrated interaction still discarded. Printed for both ionic strengths the calibration runs at,
+  // because the whole point of expressing the cutoff as a multiple of lambda_D is that this fraction
+  // is the SAME in both -- which is what makes a salt comparison unbiased by truncation.
+  for (const I of [0.01, 0.1]) {
+    const bi = makeEsBasis(soup, p, { enabled: true, pH: 7, ionicStrengthMolar: I })
+    console.log(esRangeSummary(bi))
+    expect(bi.debyeLengthsSpanned).toBeCloseTo(soup.electrostatics!.longRangeDebyeLengths, 9)
+    expect(bi.cutoff).toBeGreaterThan(bi.nbCutoff)
+  }
+  // And the OLD cutoff's own truncation, restated as the number this task exists to remove: at 10 mM
+  // the Lennard-Jones cutoff spanned 0.716 Debye lengths and discarded 83.8 % of the interaction.
+  const oldAt10 = makeEsBasis(soup, p, { enabled: true, pH: 7, ionicStrengthMolar: 0.01, cutoffSigma: 2.7224620 })
+  console.log(`ES-RANGE-BEFORE ${esRangeSummary(oldAt10)}`)
+  expect(oldAt10.discardedIntegratedFraction).toBeGreaterThan(0.8)
+
   // A run without electrostatics gets a coefficient of exactly zero, which makes the term
   // identically zero -- the bit-identity claim, asserted rather than argued.
   const off = makeEsBasis(soup, p)
@@ -215,16 +258,23 @@ test('электростатика: полная сила GPU есть -grad п�
     const picks: number[] = []
     for (let i = 0; i < q.length && picks.length < 6; i++) if (q[i] !== 0) picks.push(i)
     const h = 2e-3
-    const rows: { i: number; axis: number; num: number; ana: number }[] = []
+    const rows: { i: number; axis: number; num: number; numNominal: number; ana: number }[] = []
     for (const i of picks) {
       for (let axis = 0; axis < 3; axis++) {
+        // Task 'long-range-electrostatics' (2026-08-20): the finite-difference step is MEASURED, not
+        // assumed. `pos` is a Float32Array; at a coordinate of ~16 the float32 spacing is 1.9e-6,
+        // i.e. ~1e-3 of the nominal 2h -- which is exactly the size of the residual this instrument
+        // has always reported on its charge-off control. `numNominal` keeps the old quotient so the
+        // two are printed side by side and the predecessor's published number stays comparable.
         const saved = pos[i * 4 + axis]
         pos[i * 4 + axis] = saved + h
+        const xUp = pos[i * 4 + axis]
         const up = api.soupPotential(pos, bonds, box, basis, links, q).total
         pos[i * 4 + axis] = saved - h
+        const xDn = pos[i * 4 + axis]
         const dn = api.soupPotential(pos, bonds, box, basis, links, q).total
         pos[i * 4 + axis] = saved
-        rows.push({ i, axis, num: -(up - dn) / (2 * h), ana: forces[i * 4 + axis] })
+        rows.push({ i, axis, num: -(up - dn) / (xUp - xDn), numNominal: -(up - dn) / (2 * h), ana: forces[i * 4 + axis] })
       }
     }
     // The SAME comparison with the ES term removed from BOTH sides, as the control: it must also
@@ -232,7 +282,7 @@ test('электростатика: полная сила GPU есть -grad п�
     // this test's own finite-difference step size.
     const basisOff = api.makePotentialBasis(soup, params, undefined, undefined, undefined)
     const zeroQ = new Float32Array(q.length)
-    const rowsOff: { i: number; axis: number; num: number; ana: number; u: number; d: number }[] = []
+    const rowsOff: { i: number; axis: number; num: number; numNominal: number; ana: number; u: number; d: number }[] = []
     const sysOff = await api.createSoup({
       box: [16, 16, 16],
       seed: 5,
@@ -261,11 +311,13 @@ test('электростатика: полная сила GPU есть -grad п�
       for (let axis = 0; axis < 3; axis++) {
         const saved = posOff[i * 4 + axis]
         posOff[i * 4 + axis] = saved + h
+        const xUp = posOff[i * 4 + axis]
         const up = api.soupPotential(posOff, bondsOff, box, basisOff, linksOff, zeroQ).total
         posOff[i * 4 + axis] = saved - h
+        const xDn = posOff[i * 4 + axis]
         const dn = api.soupPotential(posOff, bondsOff, box, basisOff, linksOff, zeroQ).total
         posOff[i * 4 + axis] = saved
-        rowsOff.push({ i, axis, num: -(up - dn) / (2 * h), ana: forcesOff[i * 4 + axis], u: up, d: dn })
+        rowsOff.push({ i, axis, num: -(up - dn) / (xUp - xDn), numNominal: -(up - dn) / (2 * h), ana: forcesOff[i * 4 + axis], u: up, d: dn })
       }
     }
     let chargedBeads = 0
@@ -275,21 +327,23 @@ test('электростатика: полная сила GPU есть -grad п�
     return { rows, rowsOff, picks, chargedBeads, es: sys.electrostatics() }
   })
   expect(warnings, `GPU-предупреждение:\n${warnings.join('\n')}`).toEqual([])
-  const rel = (rows: { num: number; ana: number }[]): { worst: number; meanAbs: number } => {
+  const rel = (rows: { num: number; numNominal: number; ana: number }[]): { worst: number; worstNominal: number; meanAbs: number } => {
     let worst = 0
+    let worstNominal = 0
     let sum = 0
     for (const x of rows) {
       sum += Math.abs(x.ana)
       worst = Math.max(worst, Math.abs(x.num - x.ana) / Math.max(1, Math.abs(x.ana)))
+      worstNominal = Math.max(worstNominal, Math.abs(x.numNominal - x.ana) / Math.max(1, Math.abs(x.ana)))
     }
-    return { worst, meanAbs: sum / rows.length }
+    return { worst, worstNominal, meanAbs: sum / rows.length }
   }
   const on = rel(r.rows)
   const off = rel(r.rowsOff)
   console.log(
     `ES-FULL-GRADIENT заряженных=${r.chargedBeads} проверено_частиц=${r.picks.length} компонент=${r.rows.length}\n` +
-      `  С ЗАРЯДОМ:  худшая отн. невязка=${on.worst.toExponential(3)} при mean|F|=${on.meanAbs.toFixed(4)}\n` +
-      `  БЕЗ ЗАРЯДА (контроль): худшая отн. невязка=${off.worst.toExponential(3)} при mean|F|=${off.meanAbs.toFixed(4)}\n` +
+      `  С ЗАРЯДОМ:  худшая отн. невязка=${on.worst.toExponential(3)} (при номинальном шаге 2h: ${on.worstNominal.toExponential(3)}) при mean|F|=${on.meanAbs.toFixed(4)}\n` +
+      `  БЕЗ ЗАРЯДА (контроль): худшая отн. невязка=${off.worst.toExponential(3)} (при номинальном шаге 2h: ${off.worstNominal.toExponential(3)}) при mean|F|=${off.meanAbs.toFixed(4)}\n` +
       `  первые три компоненты с зарядом: ` +
       r.rows
         .slice(0, 3)
@@ -421,4 +475,97 @@ test('электростатика: кажущаяся pKa читается об
   console.log(`ES-PCG mean=${(s / 100000).toFixed(5)} min=${min.toExponential(3)} max=${max.toFixed(6)}`)
   expect(s / 100000).toBeGreaterThan(0.49)
   expect(s / 100000).toBeLessThan(0.51)
+})
+
+// Task 'long-range-electrostatics' (2026-08-20): THE NEW TERM'S OWN GRADIENT, OVER THE WHOLE FIELD,
+// ISOLATED. The full-field test above differentiates the WHOLE potential, so its residual is set by
+// the finite difference's cancellation against the WCA core of whichever particle it picks -- which is
+// why its charge-off control sits at ~1e-3 and always has. That test proves the GPU force is the
+// gradient of the CPU potential; it cannot say how accurate the ELECTROSTATIC part of that gradient
+// is, and after this task the electrostatic part reaches five times further than it did.
+//
+// So this one differentiates esTotalEnergy ALONE -- the antiderivative the GPU's two half-sums must
+// add up to -- against the analytic ES force summed pair by pair over the same configuration, on
+// every charged head, at both ionic strengths, in float64 with nothing else in the sum to cancel
+// against. A wrong shift constant, a wrong sign, a missed pair beyond the split radius or a
+// double-counted one at it all show up here directly, and the number is not diluted by WCA.
+test('дальнодействие: -grad(esTotalEnergy) по ВСЕМУ полю совпадает с аналитической силой', () => {
+  // A deterministic pseudo-configuration: a fixed lattice of the titratable kind plus filler, jittered
+  // by the module's own PCG so it is a real disordered configuration rather than a symmetric lattice
+  // (where every force would cancel and the test would pass on nothing).
+  const chargedKind = soup.monomers.findIndex((m) => m.id === soup.electrostatics!.chargedKind)
+  const box: [number, number, number] = [24, 24, 24]
+  const n = 1200
+  const rng: PcgState = { state: 12345 }
+  const pos = new Float32Array(n * 4)
+  const charges = new Float32Array(n)
+  let charged = 0
+  for (let i = 0; i < n; i++) {
+    pos[i * 4] = pcgNext(rng) * box[0]
+    pos[i * 4 + 1] = pcgNext(rng) * box[1]
+    pos[i * 4 + 2] = pcgNext(rng) * box[2]
+    // Every third bead is titratable; of those, half carry the charge -- so both like and unlike
+    // neighbours exist and the sum is not a single sign.
+    const isHead = i % 3 === 0
+    pos[i * 4 + 3] = isHead ? chargedKind : (chargedKind + 1) % soup.monomers.length
+    if (isHead && pcgNext(rng) < 0.5) {
+      charges[i] = soup.electrostatics!.chargeDeprotonated
+      charged++
+    }
+  }
+  const mi = (d: number, L: number): number => d - Math.round(d / L) * L
+  const lines: string[] = []
+  for (const I of [0.01, 0.1]) {
+    // The cutoff is capped by the minimum image for this box: 0.45*24 = 10.8, so the 10 mM arm runs
+    // at 2.842 lambda_D here rather than 4 -- which is itself worth exercising, since it is the same
+    // capping path the box-30 sweep takes.
+    const b = makeEsBasis(soup, p, { enabled: true, pH: 7, ionicStrengthMolar: I, minBoxSigma: box[0] })
+    const h = 1e-4
+    let worstAbs = 0
+    let worstRel = 0
+    let sumAbs = 0
+    let checked = 0
+    for (let i = 0; i < n; i++) {
+      if (charges[i] === 0) continue
+      // Analytic ES force on i: every charged partner within the cutoff, minimum image.
+      const fAna = [0, 0, 0]
+      for (let j = 0; j < n; j++) {
+        if (j === i || charges[j] === 0) continue
+        const d = [mi(pos[i * 4] - pos[j * 4], box[0]), mi(pos[i * 4 + 1] - pos[j * 4 + 1], box[1]), mi(pos[i * 4 + 2] - pos[j * 4 + 2], box[2])]
+        const r = Math.hypot(d[0], d[1], d[2])
+        const fm = esPairForceMag(r, charges[i] * charges[j], b)
+        if (fm === 0) continue
+        for (let a = 0; a < 3; a++) fAna[a] += (fm * d[a]) / r
+      }
+      for (let axis = 0; axis < 3; axis++) {
+        const saved = pos[i * 4 + axis]
+        // The step is measured, not assumed: `pos` is a Float32Array, so fl32(saved+h) - fl32(saved-h)
+        // is NOT 2h -- at a coordinate of ~12 the float32 spacing is 1.4e-6, i.e. 0.7 % of 2h. Using
+        // the nominal 2h here would put a 1e-2 quantisation error in the quotient and read as a force
+        // disagreement. (This is also, measured, the whole reason the WHOLE-potential test above sits
+        // at ~1e-3 on its charge-off control and always has.)
+        pos[i * 4 + axis] = saved + h
+        const xUp = pos[i * 4 + axis]
+        const up = esTotalEnergy(pos, charges, box, b)
+        pos[i * 4 + axis] = saved - h
+        const xDn = pos[i * 4 + axis]
+        const dn = esTotalEnergy(pos, charges, box, b)
+        pos[i * 4 + axis] = saved
+        const num = -(up - dn) / (xUp - xDn)
+        const abs = Math.abs(num - fAna[axis])
+        worstAbs = Math.max(worstAbs, abs)
+        worstRel = Math.max(worstRel, abs / Math.max(1e-6, Math.abs(fAna[axis])))
+        sumAbs += Math.abs(fAna[axis])
+        checked++
+      }
+    }
+    lines.push(
+      `  I=${I} rc_es=${b.cutoff.toFixed(4)} (=${b.debyeLengthsSpanned.toFixed(3)} lambdaD) заряженных=${charged} ` +
+        `компонент=${checked} худшая_абс=${worstAbs.toExponential(3)} худшая_отн=${worstRel.toExponential(3)} ` +
+        `mean|F_es|=${(sumAbs / checked).toFixed(6)}`,
+    )
+    expect(worstAbs).toBeLessThan(1e-6)
+    expect(worstRel).toBeLessThan(1e-4)
+  }
+  console.log(`ES-FIELD-ONLY-GRADIENT N=${n} box=${box[0]}\n${lines.join('\n')}`)
 })

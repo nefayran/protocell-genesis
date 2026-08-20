@@ -137,3 +137,63 @@ test('электростатика: сетка, список Верле и по�
   // And it was actually switched on: essentially every head is charged at pH 7 / pKa 4.9.
   expect(r.chargedBeads).toBeGreaterThan(80)
 })
+
+// Task 'long-range-electrostatics' (2026-08-20): THE SAME GATE AT THE LONG RANGE, and it is the one
+// that matters, because the range is what changed. The screened-Coulomb term is now cut at a multiple
+// of the DEBYE LENGTH (4, data/soup.json's longRangeDebyeLengths) instead of at the Lennard-Jones
+// nonbonded cutoff 2.7224620 sigma, and it is summed in two halves: nonbondedSoup keeps r <
+// interactionRange (2.9469545) from whichever neighbour structure that path uses, and a DEDICATED
+// head-only list adds interactionRange <= r < rc_es. Two things can go wrong and only this test sees
+// them: (a) the head-only list can be INCOMPLETE (a missing neighbour is a silently truncated
+// interaction -- exactly the defect this task exists to remove, reappearing one level down), and
+// (b) the two halves can double-count or leave a gap at the split radius.
+//
+// So the comparison is grid+Verlet+head-list against a pure O(N^2) reference that walks EVERY pair
+// with no list at all (soup_es_force_far_brute_main), at 10 mM -- the low-salt arm, where lambda_D is
+// 3.80 sigma and the cutoff is the longest this engine ever runs (13.5 sigma here, the minimum-image
+// ceiling 0.45*30 biting before 4*lambda_D = 15.2 does). At the short cutoff the same instrument read
+// 2.2888e-5; a broken list would not read anything like it.
+test('дальнодействие: список только по головам ПОЛОН на 13.5 sigma -- перебор согласен', async () => {
+  const page = await gpuPage()
+  const consoleWarnings: string[] = []
+  page.on('console', (msg) => {
+    if (msg.type() === 'warn' || msg.type() === 'error') consoleWarnings.push(`${msg.type()}: ${msg.text()}`)
+  })
+  const r = await page.evaluate(async () => {
+    const api = (window as any).api
+    const sys = await api.createSoup({
+      box: [30, 30, 30],
+      seed: 11,
+      kT: 1.1,
+      clay: false,
+      start: { C: 1200, O: 400, H: 1000, M: 30, W: 3000 },
+      // 10 mM: lambda_D = 3.80 sigma, so 4 lambda_D = 15.2 -- longer than 0.45*30 = 13.5, which is
+      // therefore what the cutoff becomes. pH 7 puts alpha at 0.99, the arm where the term is biggest.
+      electrostatics: { enabled: true, pH: 7, ionicStrengthMolar: 0.01 },
+    })
+    await sys.step(200)
+    const a = await sys.forces()
+    const b = await sys.forcesBruteForce()
+    let max = 0
+    let sumAbs = 0
+    for (let i = 0; i < a.length; i++) {
+      max = Math.max(max, Math.abs(a[i] - b[i]))
+      sumAbs += Math.abs(b[i])
+    }
+    const es = sys.electrostatics()
+    sys.dispose()
+    return { maxDiff: max, meanAbsRef: sumAbs / a.length, es }
+  })
+  expect(consoleWarnings, `браузер сообщил об ошибке/предупреждении GPU во время теста:\n${consoleWarnings.join('\n')}`).toEqual([])
+  const es = r.es as any
+  console.log(
+    `SOUP-FORCES-ES-LONG maxDiff(сетка+Верле+список_голов против полного перебора)=${r.maxDiff.toExponential(4)} ` +
+      `meanAbsRef=${r.meanAbsRef.toFixed(4)} rc_es=${es.cutoff.toFixed(4)} (=${es.debyeLengthsSpanned.toFixed(3)} lambdaD, ` +
+      `цель=${es.targetCutoff.toFixed(4)}, потолок_образа=${es.imageCap.toFixed(4)}) splitRadius=${es.splitRadius.toFixed(7)} ` +
+      `nbCutoff_было=${es.nbCutoff.toFixed(7)} отброшено_интегрально=${es.discardedIntegratedFraction.toFixed(4)}`,
+  )
+  expect(r.maxDiff).toBeLessThan(1e-2)
+  // The cutoff really is the long one, and really was bounded by the minimum image here.
+  expect(es.cutoff).toBeCloseTo(13.5, 6)
+  expect(es.cutoff).toBeGreaterThan(es.nbCutoff * 4)
+})

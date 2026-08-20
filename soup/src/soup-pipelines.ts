@@ -21,6 +21,11 @@ import stepWgsl from '../wgsl/step.wgsl?raw'
 // compiled entry points were built from, so no binding index and no kernel body moved.
 import electrostaticsWgsl from '../wgsl/electrostatics.wgsl?raw'
 import verletWgsl from '../wgsl/verlet.wgsl?raw'
+// Task 'long-range-electrostatics' (2026-08-20): the dedicated long-range pass's four kernels. They
+// call mi3() and read pos2/outForce/GB (step.wgsl / forces.wgsl), so like verlet.wgsl they must come
+// AFTER step.wgsl -- while electrostatics.wgsl, whose esForceNear nonbondedSoup calls, must come
+// BEFORE it. Nothing else moved; no binding index and no existing kernel body changed.
+import electrostaticsLongWgsl from '../wgsl/electrostatics-long.wgsl?raw'
 // Task 'loud-failure-and-liquid-water' (2026-08-20): two NEW files, not additions to step.wgsl --
 // that file stands at 596 lines against CLAUDE.md's hard 600 limit, and the rule is "split first,
 // then add". Order matters twice over: health.wgsl's soupNonFinite() is called by relax.wgsl, and
@@ -78,6 +83,14 @@ export interface SoupPipelines {
   resetNonFinite: GPUComputePipeline
   scanNonFinite: GPUComputePipeline
   relaxStep: GPUComputePipeline
+  /** Task 'long-range-electrostatics' (2026-08-20): the dedicated long-range electrostatic pass --
+   * head-index compaction, its own neighbour list, the force pass that ACCUMULATES into outForce,
+   * and the O(N^2) brute-force reference the list is checked against. Only ever dispatched when
+   * electrostatics is enabled for this system. */
+  buildHeadIndex: GPUComputePipeline
+  buildEsList: GPUComputePipeline
+  esForceFar: GPUComputePipeline
+  esForceFarBrute: GPUComputePipeline
 }
 
 let cached: SoupPipelines | undefined
@@ -91,7 +104,7 @@ let cached: SoupPipelines | undefined
 export function getSoupPipelines(device: GPUDevice, sortedGather: boolean): SoupPipelines {
   if (cached && cached.device === device && cached.sortedGather === sortedGather) return cached
   const forceModule = device.createShaderModule({
-    code: `${forcesWgsl}\n${electrostaticsWgsl}\n${stepWgsl}\n${verletWgsl}\n${healthWgsl}\n${relaxWgsl}`,
+    code: `${forcesWgsl}\n${electrostaticsWgsl}\n${stepWgsl}\n${verletWgsl}\n${electrostaticsLongWgsl}\n${healthWgsl}\n${relaxWgsl}`,
   })
   const bondModule = device.createShaderModule({ code: `${forcesWgsl}\n${bondWgsl}` })
   const neighborModule = device.createShaderModule({ code: neighborWgsl })
@@ -121,6 +134,10 @@ export function getSoupPipelines(device: GPUDevice, sortedGather: boolean): Soup
     resetNonFinite: cp(forceModule, 'soup_reset_nonfinite_main'),
     scanNonFinite: cp(forceModule, 'soup_scan_nonfinite_main'),
     relaxStep: cp(forceModule, 'soup_relax_step_main'),
+    buildHeadIndex: cp(forceModule, 'soup_build_head_index_main'),
+    buildEsList: cp(forceModule, 'soup_build_es_list_main'),
+    esForceFar: cp(forceModule, 'soup_es_force_far_main'),
+    esForceFarBrute: cp(forceModule, 'soup_es_force_far_brute_main'),
   }
   return cached
 }

@@ -363,6 +363,34 @@ export interface Electrostatics {
    * sync point step() already takes, so a sweep costs no extra pipeline stall). */
   sweepEverySteps: number
   sweepEveryStepsRank: 'A' | 'B' | 'C' | 'D'
+  /** Task 'long-range-electrostatics' (2026-08-20): how many DEBYE LENGTHS the screened-Coulomb
+   * cutoff spans, i.e. rc_es = this * lambda_D. A Coulomb term cannot share a Lennard-Jones cutoff
+   * (the first version of this section did, at 2.7224620 sigma, and at 10 mM that discarded 84 % of
+   * the integrated interaction and produced a salt shift of the apparent pKa of -0.124 against the
+   * literature's ~0.7). Expressed as a MULTIPLE of the screening length rather than as a length so
+   * the truncated fraction -- exp(-x)(1+x) with x = rc/lambda_D -- is IDENTICAL in every ionic
+   * strength, which is what makes a salt comparison unbiased by truncation. See the file's own
+   * basis, item 12, for why 4 and why not Ewald/PPPM or Wolf. */
+  longRangeDebyeLengths: number
+  longRangeDebyeLengthsRank: 'A' | 'B' | 'C' | 'D'
+  /** Minimum-image ceiling on rc_es as a fraction of the SMALLEST box side the run will visit (rank
+   * D, engineering: below 0.5 with a margin). When 4*lambda_D exceeds it, the cutoff is truncated by
+   * it and the report must state how many Debye lengths it then spans. */
+  longRangeMaxBoxFraction: number
+  longRangeMaxBoxFractionRank: 'A' | 'B' | 'C' | 'D'
+  /** Per-head capacity of the DEDICATED long-range neighbour list (rank D -- the same number
+   * verletList.listCapacity uses). Overflow is a loud throw, never a silent truncation. */
+  longRangeListCapacity: number
+  longRangeListCapacityRank: 'A' | 'B' | 'C' | 'D'
+  /** Safety factor on the DERIVED per-head capacity (rank D). The capacity is not a typed number: it
+   * is longRangeListSafetyFactor * (4pi/3)*listRange^3 * (heads / min(box)^3), bounded above by the
+   * head count, i.e. the uniform-density occupancy of the TIGHTEST box the run visits times a margin
+   * for the fact that heads sit on an aggregate's surface rather than uniformly. `longRangeListCapacity`
+   * above is only the fallback for a caller that does not know the head count. This exists because
+   * taking 2500 (verletList's own capacity) and checking it against the WET box overflowed on the
+   * first dry step of the campaign -- see the file's basis, item 12. */
+  longRangeListSafetyFactor: number
+  longRangeListSafetyFactorRank: 'A' | 'B' | 'C' | 'D'
   rank: 'A' | 'B' | 'C' | 'D'
   basis: string
 }

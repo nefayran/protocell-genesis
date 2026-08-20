@@ -16,7 +16,7 @@ import type { Soup } from './rules'
 import { ATTR_SCALE_UNIFORM_BYTES, attractionScaleUniform } from './soup-attraction'
 import { attemptProbability, acceptanceProbability } from './rules'
 import type { InitialState } from './soup-init-state'
-import { esUniform, type EsBasis } from './electrostatics'
+import { esUniform, esUniform2, type EsBasis } from './electrostatics'
 
 export interface SoupBuffers {
   posBuf: GPUBuffer
@@ -100,6 +100,19 @@ export interface SoupBuffers {
    * force the GPU applies and the energy the acceptance test uses cannot drift apart. All zeros on a
    * system without electrostatics, which makes the term identically zero. */
   esUniformBuf: GPUBuffer
+  /** Task 'long-range-electrostatics' (2026-08-20): the dedicated long-range pass. ES2 =
+   * [splitRadius, listRange, listCapacity, chargedKind]; headIdxBuf holds the compacted indices of
+   * the titratable beads (rebuilt deterministically every neighbour rebuild, so no evaporation or
+   * insertion can stale it); esListBuf/esCountBuf are that species' OWN neighbour list at the
+   * electrostatic cutoff (maxHeads*listCapacity u32 -- 93 MB at the campaign's 9296 heads, against
+   * the 1.92 GB the main list already costs); esMetaBuf carries [headCount, overflowFlag]. All five
+   * are 16-byte stubs on a system without electrostatics: the bind groups still have to reference
+   * something, but no kernel that touches them is ever dispatched. */
+  es2UniformBuf: GPUBuffer
+  headIdxBuf: GPUBuffer
+  esListBuf: GPUBuffer
+  esCountBuf: GPUBuffer
+  esMetaBuf: GPUBuffer
   /** Task 'loud-failure-and-liquid-water' (2026-08-20): RX (soup/wgsl/relax.wgsl) -- x = this
    * minimisation iteration's displacement cap in sigma, rewritten by soup/src/soup-relax.ts before
    * every iteration's submit. Untouched (and the kernel never dispatched) on any system that does not
@@ -141,10 +154,14 @@ export interface AllocateBuffersInput {
    * checkpoint when there is one, otherwise from an equilibrium Henderson-Hasselbalch draw at this
    * run's own pH (soup/src/soup-init-state.ts). */
   charges0: Float32Array
+  /** Task 'long-range-electrostatics' (2026-08-20): how many beads of the titratable species this
+   * system can ever hold (its CREATION census -- the species is never created or destroyed, only
+   * solvent is), which is what the head-only long-range list is sized for. */
+  maxHeads: number
 }
 
 export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuffers; grid: SoupGridState } {
-  const { device, soup, p, N, dims, ncells, effectiveWalkRadius, initialLiveBox, verlet, listRange, rules, catalystKind, bondAttemptInterval, kT, initial, solventAttractionScaleOverride, claySurfaceChemistry, es, charges0 } = input
+  const { device, soup, p, N, dims, ncells, effectiveWalkRadius, initialLiveBox, verlet, listRange, rules, catalystKind, bondAttemptInterval, kT, initial, solventAttractionScaleOverride, claySurfaceChemistry, es, charges0, maxHeads } = input
   const { positions0, velocities0, bondSlots0, centerLink0, centerHeldSteps0, desorbEventsInit, bondRng0, thermoRng0, eventsInit, frozen0 } = initial
 
   const posBuf = storageBuffer(device, positions0)
@@ -375,6 +392,20 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
   device.queue.writeBuffer(chargeBuf, 0, charges0)
   const esUniformBuf = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
   device.queue.writeBuffer(esUniformBuf, 0, esUniform(es))
+  // Task 'long-range-electrostatics' (2026-08-20): the dedicated long-range pass's own buffers.
+  // Allocated at 16 bytes when charge is off -- a bind group must reference a real buffer, but
+  // soup/src/soup-integrate.ts never dispatches a kernel that reads them, so an uncharged run pays
+  // 80 bytes and nothing else. The arithmetic that has to hold BEFORE a run starts (93 MB here
+  // against the 1.92 GB the main Verlet list already costs, at 9296 heads x 2500 x 4) is in
+  // long-range-electrostatics-report.md and asserted by soup/src/soup-plan.ts.
+  const esHeads = es.enabled ? Math.max(1, maxHeads) : 0
+  const es2UniformBuf = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
+  device.queue.writeBuffer(es2UniformBuf, 0, esUniform2(es))
+  const headIdxBuf = device.createBuffer({ size: Math.max(16, esHeads * 4), usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC })
+  const esListBuf = device.createBuffer({ size: Math.max(16, esHeads * es.listCapacity * 4), usage: GPUBufferUsage.STORAGE })
+  const esCountBuf = device.createBuffer({ size: Math.max(16, esHeads * 4), usage: GPUBufferUsage.STORAGE })
+  const esMetaBuf = device.createBuffer({ size: 16, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC })
+  device.queue.writeBuffer(esMetaBuf, 0, new Uint32Array([0, 0, 0, 0]))
 
   const buf: SoupBuffers = {
     posBuf,
@@ -409,6 +440,11 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
     relaxUniform,
     chargeBuf,
     esUniformBuf,
+    es2UniformBuf,
+    headIdxBuf,
+    esListBuf,
+    esCountBuf,
+    esMetaBuf,
   }
   const grid: SoupGridState = { dims, ncells, wgCells: Math.ceil(ncells / 64) }
   return { buf, grid }
@@ -500,4 +536,9 @@ export function disposeSoupBuffers(buf: SoupBuffers): void {
   buf.relaxUniform.destroy()
   buf.chargeBuf.destroy()
   buf.esUniformBuf.destroy()
+  buf.es2UniformBuf.destroy()
+  buf.headIdxBuf.destroy()
+  buf.esListBuf.destroy()
+  buf.esCountBuf.destroy()
+  buf.esMetaBuf.destroy()
 }

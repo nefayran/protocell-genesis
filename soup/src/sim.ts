@@ -184,11 +184,27 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // Charges: the checkpoint's own array on a resume (the protonation state MUST round-trip -- it is
   // as much of the mutable state as the bond graph is), otherwise an equilibrium Henderson-
   // Hasselbalch draw at this run's pH, which is the correct distribution at a monomers-only step 0.
-  const es = makeEsBasis(soup, p, opts.electrostatics)
+  // Task 'long-range-electrostatics' (2026-08-20): the screened-Coulomb cutoff is now a MULTIPLE OF
+  // THE DEBYE LENGTH, not the Lennard-Jones nonbonded cutoff, and a real-space cutoff is bounded by
+  // the minimum-image convention -- so it must be capped by the SMALLEST box this run will ever
+  // visit, not by the box it starts in. That is min(initialLiveBox, dryBox) and it is known here,
+  // right after deriveCycleConfig: capping it once at creation means the cutoff (and therefore both
+  // shift constants) is ONE number for the whole trajectory instead of jumping at every dry/wet
+  // transition. If even that cap cannot fit the requested multiple, makeEsBasis throws.
+  const minBoxSigma = Math.min(...initialLiveBox, ...dryBox)
+  // The head count is needed for the long-range list's DERIVED capacity, and it is a creation-census
+  // invariant (evaporation removes solvent only), so it is available before any buffer exists.
+  const esMaxHeads = soup.electrostatics ? (startCounts[soup.electrostatics.chargedKind] ?? 0) : 0
+  const es = makeEsBasis(soup, p, { ...opts.electrostatics, minBoxSigma, maxHeads: esMaxHeads })
   const fresh = initialCharges(initial.positions0, es, opts.seed)
   // Sized for CAPACITY, not for the live count: a checkpoint taken mid dry-phase carries only the
   // LIVE beads' charges, and the trailing slots rehydration writes back into are solvent, which is
   // charge 0 by construction -- so a zero-padded copy is exactly right and needs no fixup later.
+  // Task 'long-range-electrostatics' (2026-08-20): the creation census of the titratable species --
+  // what the dedicated head-only long-range list is sized for. Taken from startCounts (the CAPACITY
+  // composition), not from the live one: evaporation only ever removes solvent, so this count is an
+  // invariant of the run and no rehydration can outgrow the list.
+  const esHeads = es.enabled ? esMaxHeads : 0
   const charges0 = new Float32Array(capacityN)
   charges0.set((opts.resume?.charges ?? fresh.charges).subarray(0, capacityN))
   const protonation: ProtonationState = {
@@ -217,6 +233,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     claySurfaceChemistry: opts.claySurfaceChemistry,
     es,
     charges0,
+    maxHeads: esHeads,
   })
   const bind = buildBindGroups(device, pipe, buf, N)
 
@@ -231,6 +248,8 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     startCounts,
     N,
     wgN: Math.ceil(N / 64),
+    esHeads,
+    wgEsHeads: Math.ceil(Math.max(1, esHeads) / 64),
     verlet: soup.verletList,
     effectiveWalkRadius,
     bondAttemptInterval: soup.bondAttemptInterval.steps,

@@ -9,6 +9,22 @@
 import { readBack } from '../../engine/src/gpu'
 import type { SoupRuntime } from './soup-runtime'
 
+// Task 'long-range-electrostatics' (2026-08-20): the dedicated long-range electrostatic list --
+// compact the titratable beads' indices (deterministically, in index order: see
+// soup/wgsl/electrostatics-long.wgsl for why not an atomic append), then build their own neighbour
+// list at rc_es + skin. Rebuilt from INSIDE encodeGridRebuild, i.e. at exactly the same cadence and
+// the same moments the main Verlet list is, so the same drift bound (skin/2, measured every step by
+// soup_max_drift_main) covers it and no separate guard is needed. Skipped entirely without charge.
+function encodeEsListRebuild(rt: SoupRuntime, pass: GPUComputePassEncoder): void {
+  if (!rt.protonation?.es.enabled || rt.esHeads === 0) return
+  pass.setPipeline(rt.pipe.buildHeadIndex)
+  pass.setBindGroup(1, rt.bind.buildHeadIndexBind)
+  pass.dispatchWorkgroups(1)
+  pass.setPipeline(rt.pipe.buildEsList)
+  pass.setBindGroup(1, rt.bind.buildEsListBind)
+  pass.dispatchWorkgroups(rt.wgEsHeads)
+}
+
 export function encodeGridRebuild(rt: SoupRuntime, pass: GPUComputePassEncoder): void {
   const { pipe, bind } = rt
   pass.setPipeline(pipe.clearCounts)
@@ -34,6 +50,7 @@ export function encodeGridRebuild(rt: SoupRuntime, pass: GPUComputePassEncoder):
     pass.setBindGroup(1, bind.gatherSortedBind)
     pass.dispatchWorkgroups(rt.wgN)
   }
+  encodeEsListRebuild(rt, pass)
 }
 
 // perf2-report.md, candidate (c): rebuild the coarse grid (unchanged, cheap -- cellDivisor is
@@ -80,6 +97,22 @@ export async function assertVerletSafety(rt: SoupRuntime): Promise<void> {
       `список Верле: verletList.listCapacity=${verlet.listCapacity} было недостаточно -- ` +
         `хотя бы одна частица нашла больше кандидатов, чем вмещает список (данные могли быть тихо отброшены)`,
     )
+  }
+  // Task 'long-range-electrostatics' (2026-08-20): the SAME guard for the dedicated long-range list.
+  // esMeta[1] is set by either kernel -- by the compaction if there are more titratable beads than
+  // headIdxBuf was sized for, or by the list build if one head found more neighbours within
+  // rc_es+skin than longRangeListCapacity holds. Both are silent physics loss if not thrown on:
+  // a truncated long-range list is exactly the truncated interaction this task exists to remove.
+  if (rt.protonation?.es.enabled && rt.esHeads > 0) {
+    const rawEs = await readBack(rt.device, rt.buf.esMetaBuf, 8)
+    const meta = new Uint32Array(rawEs.buffer, rawEs.byteOffset, 2)
+    if (meta[1] !== 0) {
+      throw new Error(
+        `дальнодействующий список электростатики: longRangeListCapacity=${rt.protonation.es.listCapacity} ` +
+          `или размер headIdx (${rt.esHeads}) было недостаточно при rc_es=${rt.protonation.es.cutoff.toFixed(4)} ` +
+          `(найдено голов=${meta[0]}) -- данные могли быть тихо отброшены`,
+      )
+    }
   }
   const rawDrift = await readBack(device, buf.maxDriftSqBuf, 4)
   const drift = Math.sqrt(Math.max(0, rawDrift[0]))

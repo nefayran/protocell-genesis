@@ -44,6 +44,12 @@ export interface SoupRuntime {
    * is the single source of truth rather than being re-derived anywhere. */
   N: number
   wgN: number
+  /** Task 'long-range-electrostatics' (2026-08-20): the number of titratable beads this system can
+   * hold (its creation census of electrostatics.chargedKind -- the species is never created or
+   * destroyed) and the workgroup count for the head-indexed long-range kernels. 0 without charge,
+   * which is what makes every long-range dispatch a no-op there. */
+  esHeads: number
+  wgEsHeads: number
   verlet: Soup['verletList']
   effectiveWalkRadius: number
   bondAttemptInterval: number

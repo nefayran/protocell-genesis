@@ -1,0 +1,135 @@
+[
+  {
+    "file": "data/checkpoints/ocB19/ocB19-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 1,
+    "amphiphilesInLargest": 394,
+    "particlesInLargest": 2025,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ],
+    "role": "control"
+  },
+  {
+    "file": "data/checkpoints/lrB19pH40/lrB19pH40-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 1,
+    "amphiphilesInLargest": 393,
+    "particlesInLargest": 2080,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ],
+    "role": "control"
+  },
+  {
+    "file": "data/checkpoints/lrB19pH50/lrB19pH50-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 1,
+    "amphiphilesInLargest": 422,
+    "particlesInLargest": 2225,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ],
+    "role": "control"
+  },
+  {
+    "file": "data/checkpoints/lrB19pH60/lrB19pH60-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 1,
+    "amphiphilesInLargest": 377,
+    "particlesInLargest": 2053,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ],
+    "role": "control"
+  },
+  {
+    "file": "data/checkpoints/lrB19pH70/lrB19pH70-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 2,
+    "amphiphilesInLargest": 411,
+    "particlesInLargest": 2196,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ],
+    "role": "control"
+  },
+  {
+    "file": "data/checkpoints/lrB19pH90/lrB19pH90-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 1,
+    "amphiphilesInLargest": 440,
+    "particlesInLargest": 2277,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ],
+    "role": "control"
+  },
+  {
+    "file": "data/checkpoints/lrB19pH60hs/lrB19pH60hs-step40000.json",
+    "step": 40000,
+    "box": 30,
+    "aggregates": 1,
+    "amphiphilesInLargest": 392,
+    "particlesInLargest": 2089,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      11,
+      11,
+      11,
+      11
+    ],
+    "role": "control"
+  }
+]

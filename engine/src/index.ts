@@ -66,8 +66,14 @@ export {
   pairingStats,
   headIndices,
   pcgNext,
+  // Task 'long-range-electrostatics' (2026-08-20): the total energy over the DEDICATED (long) cutoff
+  // -- the antiderivative the GPU's two-half force sum must be the gradient of -- the second uniform,
+  // and the one-line range summary the tests and the campaign both print.
+  esTotalEnergy,
+  esUniform2,
+  esRangeSummary,
 } from '../../soup/src/electrostatics'
-export type { EsBasis, SweepResult, PairingStats, PcgState } from '../../soup/src/electrostatics'
+export type { EsBasis, EsOverrides, SweepResult, PairingStats, PcgState } from '../../soup/src/electrostatics'
 export { initialCharges } from '../../soup/src/soup-protonation'
 export { proposeBox, scaleBeadsAffine, moleculeCount } from '../../soup/src/soup-area-move'
 export { scaleMoleculesRigid as scaleMoleculesRigidSoup } from '../../soup/src/soup-box-scale-math'

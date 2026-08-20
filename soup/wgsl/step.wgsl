@@ -312,7 +312,12 @@ fn nonbondedSoup(xi: vec3<f32>, xj: vec3<f32>, ti: f32, tj: f32, box: vec3<f32>,
   // or Verlet-list coverage guarantee changes. `+`, not `-`: esForce already returns the force ON i
   // (repulsive for like charges points along +d), matching the sign convention the two `-` terms
   // above reach by negating their own dV/dr.
-  f = f + esForce(d, r, qi, qj);
+  // Task 'long-range-electrostatics' (2026-08-20): the NEAR half only. The screened-Coulomb cutoff
+  // is now a multiple of the Debye length (up to 15.2 sigma), which no cell walk or Verlet list in
+  // this engine covers; esForceNear stops at ES2.x = the grid's own interactionRange, and
+  // soup_es_force_far_main (soup/wgsl/electrostatics.wgsl) adds exactly the remainder from a
+  // dedicated head-only list. Same shift constants in both halves, so their sum is the whole term.
+  f = f + esForceNear(d, r, qi, qj);
   return f;
 }
 

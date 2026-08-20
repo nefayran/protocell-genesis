@@ -27,7 +27,7 @@
 import type { Params } from '../../engine/src/params'
 import type { Soup } from './rules'
 import { attractionScaleTable, speciesClasses } from './soup-attraction'
-import { esPairEnergy, makeEsBasis, type EsBasis } from './electrostatics'
+import { esTotalEnergy, makeEsBasis, type EsBasis, type EsOverrides } from './electrostatics'
 import { NONE_U32 } from './soup-types'
 import type { Soup as SoupType } from './rules'
 
@@ -88,7 +88,7 @@ export function makePotentialBasis(
   p: Params,
   attractionOverride?: number,
   claySurfaceChemistry?: string,
-  esOverrides?: { enabled?: boolean; pH?: number; ionicStrengthMolar?: number },
+  esOverrides?: EsOverrides,
 ): PotentialBasis {
   const bRadius = new Float64Array(soup.monomers.map((m) => p.sigma * m.radiusSigma))
   const rcAttr = wcaCut(p.sigma * p.beadSizes.tail_tail)
@@ -223,14 +223,13 @@ export function soupPotential(
           nonbonded += wcaV(r, (bi + basis.bRadius[kj]) / 2, basis.epsilon)
           const sc = attrRow[basis.classes[kj]]
           if (sc > 0) nonbonded += sc * attrV(r, basis.rcAttr, basis.wc, basis.epsilon)
-          // Task 'electrostatics' (2026-08-20): the shifted-force screened-Coulomb energy, whose
-          // -d/dr is exactly what soup/wgsl/electrostatics.wgsl's esForceMag adds to the GPU force --
-          // which is what tests/soup-area-move.test.ts's numerical-gradient comparison verifies, now
-          // with charge on as well as off.
-          if (charges !== undefined) {
-            const qq = charges[i] * charges[j]
-            if (qq !== 0) nonbonded += esPairEnergy(r, qq, basis.es)
-          }
+          // Task 'long-range-electrostatics' (2026-08-20): the screened-Coulomb term is NO LONGER
+          // summed here. This loop's cell list is built at the Lennard-Jones cutoff
+          // (basis.cutoff = 2.7224620 sigma) and the electrostatic cutoff is now a multiple of the
+          // Debye length, i.e. up to 15.2 sigma -- so this walk cannot see the whole range and
+          // adding it here would silently truncate it back to the old, wrong one. It is summed
+          // instead by esTotalEnergy below, over its OWN head-only cell list at its own cutoff,
+          // exactly mirroring the GPU's dedicated long-range pass.
         }
       }
     }
@@ -270,6 +269,11 @@ export function soupPotential(
       tether += feneV(dist(i, owner), basis.feneK, basis.feneRInf)
     }
   }
+
+  // Task 'long-range-electrostatics' (2026-08-20): the whole screened-Coulomb energy, over its own
+  // (long) cutoff and its own head-only cell list -- see esTotalEnergy's header. Identically 0
+  // without charge, so every pre-task potential is bit-identical.
+  nonbonded += esTotalEnergy(positions, charges, box, basis.es)
 
   return { nonbonded, fene, bend, tether, total: nonbonded + fene + bend + tether }
 }

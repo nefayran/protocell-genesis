@@ -70,6 +70,21 @@ fn esForceMag(r: f32, qq: f32) -> f32 {
   return qq * (u * (1.0 / r + ES.y) - ES.w);
 }
 
+/** The NEAR half of the split: everything below ES2.x (the grid's own interactionRange), which is
+ * the part nonbondedSoup adds along with WCA and the attraction. See ES2's own header for why the
+ * term is split by radius instead of being moved wholesale. */
+fn esForceNear(d: vec3<f32>, r: f32, qi: f32, qj: f32) -> vec3<f32> {
+  if (r >= ES2.x) { return vec3<f32>(0.0); }
+  return esForce(d, r, qi, qj);
+}
+
+/** The FAR half: ES2.x <= r < ES.z, added by soup_es_force_far_main from the dedicated head-only
+ * list. Same shift constants as the near half, so near + far is exactly the untruncated term. */
+fn esForceFar(d: vec3<f32>, r: f32, qi: f32, qj: f32) -> vec3<f32> {
+  if (r < ES2.x) { return vec3<f32>(0.0); }
+  return esForce(d, r, qi, qj);
+}
+
 /** The pair force vector, added by nonbondedSoup (soup/wgsl/step.wgsl) to every pair it already
  * visits. `d` is the minimum-image displacement xi - xj the caller already computed and `r` its
  * length, and the two charges are passed in rather than looked up -- so this file needs neither mi3
@@ -82,3 +97,48 @@ fn esForce(d: vec3<f32>, r: f32, qi: f32, qj: f32) -> vec3<f32> {
   if (qq == 0.0) { return vec3<f32>(0.0); }
   return esForceMag(r, qq) * d / r;
 }
+
+
+// ============================================================================================
+// Task 'long-range-electrostatics' (2026-08-20): THE DEDICATED LONG-RANGE PASS.
+//
+// WHY IT EXISTS. The version above shared the engine's Lennard-Jones nonbonded cutoff
+// (2.7224620 sigma) "to add no new constant". Measured consequence: at 10 mM ionic strength
+// lambda_D = 3.80 sigma, so the cutoff spanned 0.72 Debye lengths and discarded
+// exp(-x)*(1+x) = 84 % of the INTEGRATED interaction -- and the salt dependence of the apparent
+// pKa came out -0.124 between 10 and 100 mM against the literature's ~0.7. A Coulomb term cannot
+// share a Lennard-Jones cutoff; that is why every MD package gives electrostatics its own.
+//
+// WHY A REAL-SPACE CUTOFF AND NOT EWALD/PPPM. Mesh methods exist because the lattice sum of 1/r
+// converges only conditionally. Here the screening is physical (a mean-field Debye length), the
+// sum converges ABSOLUTELY and exponentially, and a real-space cutoff at a fixed multiple of
+// lambda_D is accurate to exp(-x)*(1+x) -- 9.2 % at 4 lambda_D -- with no FFT, which this engine
+// does not have. A Wolf / damped-shifted-force scheme with damping alpha = kappa is, term for
+// term, the shifted-force screened Coulomb already implemented above, plus a constant self-energy
+// that produces no force. See data/soup.json's electrostatics.basis item 12.
+//
+// WHY A SEPARATE, HEAD-ONLY LIST. Extending the SHARED cutoff to 15.2 sigma would put ~4370
+// candidates in every particle's Verlet list (against ~449 now), i.e. ~10x the pair work, and
+// would need listCapacity 5000 = 3.84 GB against the measured 4.295 GB ceiling. But charge lives
+// on the titratable species only -- 9296 beads of 191778, 4.85 % -- and every other bead holds
+// exactly 0, so the long range only ever needs head-head pairs. Compacting the head indices and
+// building a list over THEM costs N_h^2 = 86.4 M distance tests per rebuild (8.6 M/step at
+// rebuildEvery = 10) against the main list's own 743 M/rebuild, and 9296*2500*4 = 93 MB.
+//
+// WHY THE COMPACTION IS SERIAL. An atomic append is a one-liner but its ORDER varies run to run,
+// which would make the force sum's rounding vary and break the "a checkpoint does not change what
+// the run computes next" pin. One invocation walking N in index order is deterministic, and it is
+// the same shape as neighbor.wgsl's own prefix_main (also workgroup_size(1) over its whole domain).
+//
+// ES2: x = splitRadius (the grid's interactionRange -- below it nonbondedSoup already sums the term
+//          and the existing walk guarantees completeness, so this pass adds only the remainder),
+//      y = listRange (rc_es + verletList.skin, the radius this list is built to),
+//      z = listCapacity per head, w = the titratable kind index.
+// All four from soup/src/electrostatics.ts, never a WGSL literal.
+@group(1) @binding(26) var<uniform> ES2: vec4<f32>;
+@group(1) @binding(27) var<storage, read_write> esList: array<u32>;
+@group(1) @binding(28) var<storage, read_write> esCount: array<u32>;
+@group(1) @binding(29) var<storage, read_write> headIdx: array<u32>;
+// [0] = number of titratable beads found, [1] = list-overflow flag (a loud throw on the CPU side,
+// never a silent truncation -- soup/src/soup-grid-verlet.ts's assertVerletSafety reads it).
+@group(1) @binding(30) var<storage, read_write> esMeta: array<atomic<u32>>;

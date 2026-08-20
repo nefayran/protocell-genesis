@@ -396,6 +396,11 @@ async function main(): Promise<void> {
           const contact = api.wcaCutoff(params.sigma * params.beadSizes.head_head)
           const pr = api.pairingStats(pos, q, sys.box, es, contact)
           esLine =
+            // Task 'long-range-electrostatics' (2026-08-20): the RANGE, in every progress line, because
+            // it is the thing this run is about and because it is derived (4*lambda_D, capped by the
+            // minimum image) rather than typed -- a report must never have to re-derive which cutoff a
+            // run actually used.
+            ` rc_es=${es.cutoff.toFixed(4)}(=${es.debyeLengthsSpanned.toFixed(3)}lD, отброшено=${es.discardedIntegratedFraction.toFixed(4)})` +
             ` pH=${es.pH} I=${es.ionicStrengthMolar} alpha=${pr.alpha.toFixed(4)} pKaApp=${api.apparentPKa(pr.alpha, es.pH).toFixed(3)}` +
             ` спаренных=${pr.pairedFraction.toFixed(4)} неодинаковых=${pr.unlikeFraction.toFixed(4)}(случайно ${pr.unlikeFractionRandom.toFixed(4)})` +
             ` подметаний=${es.sweeps}` +

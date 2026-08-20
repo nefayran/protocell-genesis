@@ -12,11 +12,27 @@ import { assertStateFinite } from './soup-health'
 // encodeSoupForce/encodeSoupForceList from THIS file) -- see the call site below.
 import type { SoupRuntime } from './soup-runtime'
 
+// Task 'long-range-electrostatics' (2026-08-20): the FAR half of the screened-Coulomb term, added
+// from the dedicated head-only list. Dispatched from inside the three encodeSoupForce* functions
+// below, not at their call sites -- there are eight call sites (step, box scale, evaporation,
+// rehydration, cold-start relax, protonation recompute, two readbacks) and a term that is only added
+// at seven of them is a silent physics bug, exactly the class tests/soup-stale-force.test.ts exists
+// for. It ACCUMULATES into outForce, so it must follow the kernel that wrote it, in the same pass:
+// WebGPU orders dispatches within a compute pass and inserts the barrier between them, which is what
+// the whole existing grid-rebuild-then-force sequence already relies on.
+function encodeEsFar(rt: SoupRuntime, pass: GPUComputePassEncoder, brute: boolean): void {
+  if (!rt.protonation?.es.enabled || rt.esHeads === 0) return
+  pass.setPipeline(brute ? rt.pipe.esForceFarBrute : rt.pipe.esForceFar)
+  pass.setBindGroup(1, brute ? rt.bind.esForceFarBruteBind : rt.bind.esForceFarBind)
+  pass.dispatchWorkgroups(brute ? rt.wgN : rt.wgEsHeads)
+}
+
 export function encodeSoupForce(rt: SoupRuntime, pass: GPUComputePassEncoder): void {
   pass.setPipeline(rt.pipe.soupForce)
   pass.setBindGroup(0, rt.bind.soupForceGroup0)
   pass.setBindGroup(1, rt.bind.soupForceGroup1)
   pass.dispatchWorkgroups(rt.wgN)
+  encodeEsFar(rt, pass, false)
 }
 
 export function encodeSoupForceBrute(rt: SoupRuntime, pass: GPUComputePassEncoder): void {
@@ -24,6 +40,10 @@ export function encodeSoupForceBrute(rt: SoupRuntime, pass: GPUComputePassEncode
   pass.setBindGroup(0, rt.bind.soupForceBruteGroup0)
   pass.setBindGroup(1, rt.bind.soupForceBruteGroup1)
   pass.dispatchWorkgroups(rt.wgN)
+  // The BRUTE reference uses the brute far pass too -- an O(N^2) sum with no list at all, so that
+  // tests/soup-forces.test.ts's grid+Verlet-vs-brute comparison actually tests the head-only list's
+  // completeness over the new range instead of comparing a list against itself.
+  encodeEsFar(rt, pass, true)
 }
 
 export function encodeSoupForceList(rt: SoupRuntime, pass: GPUComputePassEncoder): void {
@@ -31,6 +51,7 @@ export function encodeSoupForceList(rt: SoupRuntime, pass: GPUComputePassEncoder
   pass.setBindGroup(0, rt.bind.soupForceListGroup0)
   pass.setBindGroup(1, rt.bind.soupForceListGroup1)
   pass.dispatchWorkgroups(rt.wgN)
+  encodeEsFar(rt, pass, false)
 }
 
 // doBonds: perf fix (b), perf-report.md. bond_form_main/bond_break_main measured ~42% of a full

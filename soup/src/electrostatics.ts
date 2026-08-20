@@ -81,8 +81,37 @@ export interface EsBasis {
   coeffA: number
   /** kappa = sigma/lambda_D, in sigma^-1. */
   kappa: number
-  /** Shifted-force cutoff, in sigma. */
+  /** Shifted-force cutoff, in sigma. Task 'long-range-electrostatics' (2026-08-20): this is the
+   * DEDICATED electrostatic cutoff, longRangeDebyeLengths * lambda_D capped by the minimum-image
+   * ceiling -- NOT the Lennard-Jones one any more. */
   cutoff: number
+  /** The engine's existing nonbonded cutoff wca_cut(b_tt)+wc = 2.7224620 sigma. Kept only for
+   * reporting: it is what `cutoff` USED to be, and the number every published truncation figure of
+   * the predecessor task was measured at. */
+  nbCutoff: number
+  /** Radius at which the force term is SPLIT between nonbondedSoup (which keeps everything below
+   * it, where the existing neighbour walk already guarantees completeness) and the dedicated
+   * long-range pass (which adds exactly the remainder up to `cutoff`). Equal to the grid's own
+   * interactionRange, so no existing completeness guarantee is relied on beyond its own reach. */
+  splitRadius: number
+  /** cutoff + verletList.skin -- the radius the dedicated head-only list is BUILT to, so it stays
+   * complete for verletList.rebuildEvery steps under the same drift bound the main list uses. */
+  listRange: number
+  /** Per-head capacity of that list (data/soup.json's longRangeListCapacity). */
+  listCapacity: number
+  /** cutoff / lambda_D -- how many Debye lengths the cutoff spans. The number that says whether the
+   * range is right, and the one the report states per ionic strength. */
+  debyeLengthsSpanned: number
+  /** exp(-x)*(1+x) at x = debyeLengthsSpanned: the fraction of the INTEGRATED interaction
+   * (int u(r) 4 pi r^2 dr) still discarded by the truncation. Exact for a Yukawa. */
+  discardedIntegratedFraction: number
+  /** exp(-x): the fraction of the unscreened CONTACT value still standing at the cutoff -- the
+   * quantity the predecessor task reported as "removes 49 %". */
+  discardedContactFraction: number
+  /** longRangeDebyeLengths * lambda_D before the minimum-image cap, and the cap itself, so a report
+   * can say WHICH of the two bound the cutoff. */
+  targetCutoff: number
+  imageCap: number
   /** u1(rc) and f1(rc), the shift constants, for UNIT charge product. */
   shiftU: number
   shiftF: number
@@ -100,6 +129,19 @@ export interface EsOverrides {
   enabled?: boolean
   pH?: number
   ionicStrengthMolar?: number
+  /** Task 'long-range-electrostatics' (2026-08-20): the SMALLEST box side this run will ever visit
+   * (createSoup passes min(liveBox, dryBox)), which is what the minimum-image ceiling
+   * longRangeMaxBoxFraction * this is computed from. Omitted -> no ceiling, which is only correct
+   * for a caller that has already bounded the cutoff itself. */
+  minBoxSigma?: number
+  /** Task 'long-range-electrostatics' (2026-08-20): how many titratable beads the system holds. Used
+   * ONLY to derive the long-range list's per-head capacity from the tightest box's own head density
+   * (see EsBasis.listCapacity). Omitted -> the file's fallback longRangeListCapacity. */
+  maxHeads?: number
+  /** An EXPLICIT cutoff in sigma, bypassing both the lambda_D multiple and the ceiling. Exists for
+   * the range-CONVERGENCE study (tests/es-range-calibration.test.ts), which has to sweep the cutoff
+   * on a frozen configuration; never used by a real run. */
+  cutoffSigma?: number
 }
 
 /** Derives the basis from data/soup.json + data/params.json, with per-run overrides for the two
@@ -110,9 +152,13 @@ export function makeEsBasis(soup: Soup, p: Params, over?: EsOverrides): EsBasis 
   const es = soup.electrostatics
   const kT = p.thermostat.kT
   const cutoff = wcaCutoff(p.sigma * p.beadSizes.tail_tail) + p.attraction.wc
+  const interactionRange = wcaCutoff(p.sigma * Math.max(...soup.monomers.map((m) => m.radiusSigma))) + p.attraction.wc
   if (!es) {
     return {
       enabled: false, chargedKind: -1, chargeDeprotonated: 0, coeffA: 0, kappa: 0, cutoff,
+      nbCutoff: cutoff, splitRadius: interactionRange, listRange: cutoff, listCapacity: 0,
+      debyeLengthsSpanned: 0, discardedIntegratedFraction: 0, discardedContactFraction: 0,
+      targetCutoff: 0, imageCap: 0,
       shiftU: 0, shiftF: 0, pKaIntrinsic: 0, pH: 0, ionicStrengthMolar: 0, sigmaNm: 0,
       debyeSigma: 0, sweepEverySteps: 0, kT,
     }
@@ -129,13 +175,73 @@ export function makeEsBasis(soup: Soup, p: Params, over?: EsOverrides): EsBasis 
   const debyeSigma = es.debyeLengthNmAtUnitMolar / Math.sqrt(ionicStrengthMolar) / sigmaNm
   const coeffA = enabled ? kT * (es.bjerrumLengthNm / sigmaNm) : 0
   const kappa = 1 / debyeSigma
-  const shiftU = coeffA * Math.exp(-kappa * cutoff) / cutoff
-  const shiftF = shiftU * (1 / cutoff + kappa)
+  // Task 'long-range-electrostatics' (2026-08-20). THE CUTOFF IS NO LONGER THE LENNARD-JONES ONE.
+  // rc_es = longRangeDebyeLengths * lambda_D, i.e. a multiple of the interaction's OWN decay length,
+  // capped by the minimum-image ceiling longRangeMaxBoxFraction * min(box) and floored at the old
+  // nonbonded cutoff (so it can only ever be longer, never shorter, than what the predecessor ran).
+  // Expressing it as a multiple of lambda_D rather than as a length is the whole point: the
+  // discarded fraction exp(-x)*(1+x) is then IDENTICAL in every ionic strength, so a salt comparison
+  // is no longer biased by truncation in the low-salt arm alone (which is exactly what made the
+  // predecessor's measured pKa shift a lower bound: 84 % discarded at 10 mM against 34 % at 100 mM).
+  const targetCutoff = es.longRangeDebyeLengths * debyeSigma
+  const imageCap = over?.minBoxSigma !== undefined ? es.longRangeMaxBoxFraction * over.minBoxSigma : Number.POSITIVE_INFINITY
+  const esCutoff = over?.cutoffSigma ?? Math.max(cutoff, Math.min(targetCutoff, imageCap))
+  if (over?.minBoxSigma !== undefined && esCutoff > over.minBoxSigma / 2) {
+    throw new Error(
+      `electrostatics: обрезка rc_es=${esCutoff.toFixed(6)} нарушает соглашение минимального образа ` +
+        `при min(box)=${over.minBoxSigma.toFixed(4)} (нужно rc_es <= ${(over.minBoxSigma / 2).toFixed(4)}) -- ` +
+        `бокс слишком мал для ${es.longRangeDebyeLengths} дебаевских длин при I=${ionicStrengthMolar} М`,
+    )
+  }
+  // The long-range list's per-head capacity, DERIVED from the tightest box this run visits, not typed.
+  // Getting this wrong is not a performance question: an overflow is a silently dropped interaction,
+  // which is the exact defect this task removes. It is computed at the UNIFORM head density of the
+  // SMALLEST box (min(box)^3 under-counts the volume of a non-cubic box, i.e. over-counts the density,
+  // which is the safe direction), times longRangeListSafetyFactor for the fact that heads sit on an
+  // aggregate's surface. Measured on the predecessor's own box-54 wet checkpoint: mean 1154.2, max
+  // 1332 neighbours at listRange 16.7, i.e. an inhomogeneity factor of 1.15 -- and the DRY box of the
+  // same run, at 3.2x the head density, needs ~3690, which is what overflowed a capacity of 2500.
+  const listRange = esCutoff + soup.verletList.skin
+  let listCapacity = es.longRangeListCapacity
+  if (over?.maxHeads !== undefined && over.maxHeads > 0 && over?.minBoxSigma !== undefined) {
+    const uniform = ((4 * Math.PI) / 3) * listRange ** 3 * (over.maxHeads / over.minBoxSigma ** 3)
+    listCapacity = Math.max(64, Math.min(over.maxHeads, Math.ceil(es.longRangeListSafetyFactor * uniform)))
+  }
+  const shiftU = coeffA * Math.exp(-kappa * esCutoff) / esCutoff
+  const shiftF = shiftU * (1 / esCutoff + kappa)
+  const x = esCutoff / debyeSigma
   return {
-    enabled, chargedKind, chargeDeprotonated: es.chargeDeprotonated, coeffA, kappa, cutoff,
+    enabled, chargedKind, chargeDeprotonated: es.chargeDeprotonated, coeffA, kappa, cutoff: esCutoff,
+    nbCutoff: cutoff, splitRadius: interactionRange, listRange, listCapacity,
+    debyeLengthsSpanned: x,
+    discardedIntegratedFraction: Math.exp(-x) * (1 + x),
+    discardedContactFraction: Math.exp(-x),
+    targetCutoff, imageCap,
     shiftU, shiftF, pKaIntrinsic: es.pKaIntrinsic, pH, ionicStrengthMolar, sigmaNm, debyeSigma,
     sweepEverySteps: es.sweepEverySteps, kT,
   }
+}
+
+/** The second vec4 soup/wgsl/electrostatics.wgsl's ES2 uniform expects: [splitRadius, listRange,
+ * listCapacity, 0]. The force term is split BY RADIUS between nonbondedSoup (r < splitRadius) and
+ * the dedicated long-range pass (splitRadius <= r < cutoff), with the same shift constants, so no
+ * force path can lose electrostatics wholesale and the two halves sum to the untruncated term. */
+export function esUniform2(b: EsBasis): Float32Array {
+  return new Float32Array([b.splitRadius, b.listRange, b.listCapacity, b.chargedKind])
+}
+
+/** One line with every number that decides whether the RANGE is right: the cutoff, what bound it,
+ * how many Debye lengths it spans and what fraction of the interaction it still discards. Printed by
+ * the tests and by the campaign so no report has to re-derive it. */
+export function esRangeSummary(b: EsBasis): string {
+  const bound = b.cutoff <= b.nbCutoff + 1e-9 ? 'nbCutoff' : b.cutoff < b.targetCutoff - 1e-9 ? 'minImage' : 'debyeMultiple'
+  return (
+    `ES-RANGE I=${b.ionicStrengthMolar} lambdaD=${b.debyeSigma.toFixed(4)}sig rc_es=${b.cutoff.toFixed(4)}sig ` +
+    `(=${b.debyeLengthsSpanned.toFixed(3)} lambdaD, bound=${bound}, target=${b.targetCutoff.toFixed(4)}, ` +
+    `imageCap=${Number.isFinite(b.imageCap) ? b.imageCap.toFixed(4) : 'none'}) ` +
+    `discarded_integrated=${b.discardedIntegratedFraction.toFixed(4)} discarded_contact=${b.discardedContactFraction.toFixed(4)} ` +
+    `nbCutoff_was=${b.nbCutoff.toFixed(7)} listRange=${b.listRange.toFixed(4)} cap=${b.listCapacity}`
+  )
 }
 
 /** The vec4 soup/wgsl/electrostatics.wgsl's ES uniform expects: [A, kappa, rc, F(rc)]. */
@@ -216,6 +322,37 @@ function headCells(positions: Float32Array, heads: Int32Array, box: [number, num
     if (b) b.push(i)
     else buckets.set(k, [i])
   }
+  // Task 'long-range-electrostatics' (2026-08-20): fills a CALLER-OWNED buffer and returns the count,
+  // instead of allocating a fresh array per call. With the cutoff now up to 15.2 sigma the cell grid
+  // is only 2-3 cells per axis at these boxes, so the walk legitimately returns most of the heads --
+  // 9296 of them, once per attempt, 9296 attempts per sweep. Allocating and growing an array 86
+  // million times per sweep was measured to dominate the sweep's whole cost; the arithmetic itself
+  // does not. Same candidates, same order, no allocation.
+  const neighboursInto = (i: number, out: Int32Array): number => {
+    const x = ((positions[i * 4] % box[0]) + box[0]) % box[0]
+    const y = ((positions[i * 4 + 1] % box[1]) + box[1]) % box[1]
+    const z = ((positions[i * 4 + 2] % box[2]) + box[2]) % box[2]
+    const cx = Math.min(nx - 1, Math.floor(x / wx))
+    const cy = Math.min(ny - 1, Math.floor(y / wy))
+    const cz = Math.min(nz - 1, Math.floor(z / wz))
+    let m = 0
+    const seen = new Set<number>()
+    for (let dz = -1; dz <= 1; dz++) {
+      const az = ((cz + dz) % nz + nz) % nz
+      for (let dy = -1; dy <= 1; dy++) {
+        const ay = ((cy + dy) % ny + ny) % ny
+        for (let dx = -1; dx <= 1; dx++) {
+          const ax = ((cx + dx) % nx + nx) % nx
+          const k = ax + nx * (ay + ny * az)
+          if (seen.has(k)) continue
+          seen.add(k)
+          const bb = buckets.get(k)
+          if (bb) for (let q = 0; q < bb.length; q++) out[m++] = bb[q]
+        }
+      }
+    }
+    return m
+  }
   const neighboursOf = (i: number): number[] => {
     const x = ((positions[i * 4] % box[0]) + box[0]) % box[0]
     const y = ((positions[i * 4 + 1] % box[1]) + box[1]) % box[1]
@@ -241,11 +378,17 @@ function headCells(positions: Float32Array, heads: Int32Array, box: [number, num
     }
     return out
   }
-  return { neighboursOf }
+  return { neighboursOf, neighboursInto }
 }
 
 function mi(d: number, L: number): number {
   return d - Math.round(d / L) * L
+}
+function dist2(positions: Float32Array, i: number, j: number, box: [number, number, number]): number {
+  const dx = mi(positions[i * 4] - positions[j * 4], box[0])
+  const dy = mi(positions[i * 4 + 1] - positions[j * 4 + 1], box[1])
+  const dz = mi(positions[i * 4 + 2] - positions[j * 4 + 2], box[2])
+  return dx * dx + dy * dy + dz * dz
 }
 function dist(positions: Float32Array, i: number, j: number, box: [number, number, number]): number {
   const dx = mi(positions[i * 4] - positions[j * 4], box[0])
@@ -281,16 +424,23 @@ export function protonationSweep(
   let accepted = 0
   let dEsSum = 0
   let dEsCount = 0
+  const nbuf = new Int32Array(heads.length)
+  const cut2 = b.cutoff * b.cutoff
   for (let a = 0; a < heads.length; a++) {
     const i = heads[Math.min(heads.length - 1, Math.floor(pcgNext(rng) * heads.length))]
     attempts++
-    // Electrostatic work of HAVING the charge on i, given every other charge as it stands now.
+    // Electrostatic work of HAVING the charge on i, given every other charge as it stands now. The
+    // reject test is on the SQUARED distance (task 'long-range-electrostatics', 2026-08-20): at the
+    // long cutoff most candidates the cell walk returns are out of range, and a sqrt per rejection is
+    // the single most expensive thing in the sweep.
     let uEs = 0
-    for (const j of cells.neighboursOf(i)) {
+    const m = cells.neighboursInto(i, nbuf)
+    for (let s = 0; s < m; s++) {
+      const j = nbuf[s]
       if (j === i || charges[j] === 0) continue
-      const r = dist(positions, i, j, box)
-      if (r >= b.cutoff) continue
-      uEs += esPairEnergy(r, q * charges[j], b)
+      const r2 = dist2(positions, i, j, box)
+      if (r2 >= cut2) continue
+      uEs += esPairEnergy(Math.sqrt(r2), q * charges[j], b)
     }
     const isCharged = charges[i] !== 0
     // Forward (protonated -> deprotonated) costs +dGintr +uEs; the reverse is the same number negated
@@ -384,4 +534,39 @@ export function pairingStats(
     contactRadius,
     alpha,
   }
+}
+
+/** TOTAL screened-Coulomb energy of a configuration -- every unordered pair of CHARGED beads within
+ * the (now dedicated, long) cutoff, summed with the same shifted-force antiderivative the GPU force
+ * differentiates. Task 'long-range-electrostatics' (2026-08-20): this replaces the term
+ * soup/src/soup-potential.ts used to add inside its own pair loop, because that loop's cell list is
+ * built at the LENNARD-JONES cutoff (2.7224620 sigma) and can no longer see the whole electrostatic
+ * range. Its own cell list is over the titratable beads only -- a few percent of N -- so the longer
+ * range costs almost nothing here, exactly as it does on the GPU (soup/wgsl/electrostatics.wgsl).
+ * Identically 0 when the basis is disabled, which keeps every pre-task potential bit-identical. */
+export function esTotalEnergy(
+  positions: Float32Array,
+  charges: Float32Array | undefined,
+  box: [number, number, number],
+  b: EsBasis,
+): number {
+  if (!b.enabled || b.coeffA === 0 || charges === undefined) return 0
+  const heads = headIndices(positions, b.chargedKind)
+  const cells = headCells(positions, heads, box, b.cutoff)
+  let u = 0
+  const nbuf = new Int32Array(heads.length)
+  const cut2 = b.cutoff * b.cutoff
+  for (let h = 0; h < heads.length; h++) {
+    const i = heads[h]
+    if (charges[i] === 0) continue
+    const m = cells.neighboursInto(i, nbuf)
+    for (let s = 0; s < m; s++) {
+      const j = nbuf[s]
+      if (j <= i || charges[j] === 0) continue
+      const r2 = dist2(positions, i, j, box)
+      if (r2 >= cut2) continue
+      u += esPairEnergy(Math.sqrt(r2), charges[i] * charges[j], b)
+    }
+  }
+  return u
 }
