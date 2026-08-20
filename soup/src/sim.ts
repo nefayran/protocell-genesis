@@ -43,11 +43,11 @@
 
 import { getGpu } from '../../engine/src/gpu'
 import { loadParams, type Params } from '../../engine/src/params'
-import { assertRulesConsistent, loadSoup } from './rules'
+import { assertRulesConsistent, loadSoup, type Soup } from './rules'
 import { detectStage, type Stage, type StageEvidence } from './stages'
 
 import type { CreateSoupOpts, SoupSystem } from './soup-types'
-import { resolveRules, planSoupGrid, deriveGridGeometry, type SoupPlan } from './soup-plan'
+import { resolveRules, planSoupGrid, deriveGridGeometry, deriveListCapacity, densestDensityOf, verletListBytes, type SoupPlan } from './soup-plan'
 import { buildInitialState } from './soup-init-state'
 import { getSoupPipelines } from './soup-pipelines'
 import { allocateSoupBuffers, disposeSoupBuffers } from './soup-buffers'
@@ -192,6 +192,21 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // shift constants) is ONE number for the whole trajectory instead of jumping at every dry/wet
   // transition. If even that cap cannot fit the requested multiple, makeEsBasis throws.
   const minBoxSigma = Math.min(...initialLiveBox, ...dryBox)
+  // Task 'big-box' (2026-08-20): the Verlet list's per-particle capacity, DERIVED from the DENSEST
+  // total number density this run will ever reach (soup/src/soup-plan.ts's densestDensityOf -- the
+  // dry phase, whose density data/soup.json's dryWetCycle.targetDryDensity states exactly) rather
+  // than read as a flat 2500. See deriveListCapacity for why that one unmeasured number WAS this
+  // project's particle ceiling. `verletOverride` is the per-run experiment-design switch the
+  // structure A/B (per-particle list vs cell-list traversal) needs; absent, both fields come from
+  // data/soup.json exactly as before.
+  const densestDensity = densestDensityOf(soup, capacityN, box, N, initialLiveBox, cycleCfg !== undefined)
+  const capFromDensity = deriveListCapacity(soup, listRange, capacityN, densestDensity)
+  const verletCfg: Soup['verletList'] = {
+    ...soup.verletList,
+    enabled: opts.verletOverride?.enabled ?? soup.verletList.enabled,
+    listCapacity: opts.verletOverride?.listCapacity ?? capFromDensity.capacity,
+  }
+  const verletListBytesNeeded = verletCfg.enabled ? verletListBytes(capacityN, verletCfg.listCapacity) : 0
   // The head count is needed for the long-range list's DERIVED capacity, and it is a creation-census
   // invariant (evaporation removes solvent only), so it is available before any buffer exists.
   const esMaxHeads = soup.electrostatics ? (startCounts[soup.electrostatics.chargedKind] ?? 0) : 0
@@ -205,6 +220,33 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // composition), not from the live one: evaporation only ever removes solvent, so this count is an
   // invariant of the run and no rehydration can outgrow the list.
   const esHeads = es.enabled ? esMaxHeads : 0
+  // Task 'big-box' (2026-08-20): THE CEILING, AS A LOUD THROW. Measured first: asking for a
+  // 5 484 474 528-byte Verlet list at box 85 against this device's 4 294 967 292-byte
+  // maxStorageBufferBindingSize produced NO JS error at all -- createBuffer's validation failure is a
+  // console warning, every later dispatch on that bind group is a silent no-op, and the run came back
+  // with max|F| = 0, 0 non-finite, 0 neighbours and 0.04 ms/step, i.e. it looked like a spectacularly
+  // fast success. That is the same silent-zeros failure class engine/src/gpu.ts's readBack guard
+  // exists for, one layer earlier. Every N-scaled buffer is checked, not only the list, and the
+  // message names the byte count that would have been refused and the limit it broke.
+  {
+    const bindingLimit = device.limits.maxStorageBufferBindingSize
+    const bufferLimit = device.limits.maxBufferSize
+    const candidates: [string, number][] = [
+      ['verletList (N*listCapacity*4)', verletListBytesNeeded],
+      ['pos/vel/force/posSorted (N*16)', capacityN * 16],
+      ['esList (heads*longRangeListCapacity*4)', es.enabled ? esMaxHeads * es.listCapacity * 4 : 0],
+    ]
+    for (const [what, bytes] of candidates) {
+      if (bytes > bindingLimit || bytes > bufferLimit) {
+        throw new Error(
+          `буфер ${what} требует ${bytes} байт при N=${capacityN} -- ` +
+            `предел устройства maxStorageBufferBindingSize=${bindingLimit}, maxBufferSize=${bufferLimit}. ` +
+            `WebGPU отказал бы в выделении МОЛЧА (только предупреждение в консоли), и каждый последующий ` +
+            `dispatch стал бы пустой операцией: прогон вернул бы нули, выглядящие как успех`,
+        )
+      }
+    }
+  }
   const charges0 = new Float32Array(capacityN)
   charges0.set((opts.resume?.charges ?? fresh.charges).subarray(0, capacityN))
   const protonation: ProtonationState = {
@@ -222,7 +264,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     ncells: plan.ncells,
     effectiveWalkRadius,
     initialLiveBox,
-    verlet: soup.verletList,
+    verlet: verletCfg,
     listRange,
     rules,
     catalystKind,
@@ -250,7 +292,8 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     wgN: Math.ceil(N / 64),
     esHeads,
     wgEsHeads: Math.ceil(Math.max(1, esHeads) / 64),
-    verlet: soup.verletList,
+    verlet: verletCfg,
+    listRange,
     effectiveWalkRadius,
     bondAttemptInterval: soup.bondAttemptInterval.steps,
     sortedGather,
@@ -454,6 +497,11 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     dispose,
     stepPhasesDEBUG: ((n: number) => readback.stepPhasesDEBUG(rt, n)) as any,
     forceCandidateStatsDEBUG: (() => readback.forceCandidateStatsDEBUG(rt)) as any,
+    // Task 'big-box' (2026-08-20): the per-particle neighbour-count distribution of both lists, the
+    // measurement verletList.listCapacity and electrostatics.longRangeListCapacity are now derived
+    // from -- reduced to scalars inside the page, never a per-particle array over CDP.
+    listOccupancyDEBUG: (() => readback.listOccupancyDEBUG(rt)) as any,
+    verletConfig: () => ({ ...verletCfg, uniformExpected: capFromDensity.uniform, derived: capFromDensity.derived, listRange, bytes: verletListBytesNeeded, densestDensity }),
   }
   return sys
 }

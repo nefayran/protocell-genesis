@@ -261,3 +261,117 @@ export async function forceCandidateStatsDEBUG(rt: SoupRuntime): Promise<{ candi
   const pairsWithinRange = u32[1]
   return { candidatesExamined, pairsWithinRange, ratio: candidatesExamined / Math.max(1, pairsWithinRange) }
 }
+
+// Task 'big-box' (2026-08-20): THE MEASUREMENT data/soup.json's verletList.listCapacity was never
+// based on. The capacity was set as a "safe upper bound" (2500) and the whole particle ceiling
+// (N*listCapacity*4 bytes against the device's 4 294 967 292-byte storage-binding limit, i.e.
+// 429 496 particles) followed from that one unmeasured number. verletCountBuf already holds exactly
+// what is needed -- the number of candidates within listRange each particle actually found at the
+// last rebuild -- so the distribution is one readback away, and the reduction happens HERE, inside
+// the page, so a 2.2e6-element u32 array never crosses the CDP boundary (this project's own measured
+// page-killer: checkpoint-resume-report.md).
+//
+// Rebuilds fresh first, for the same reason forces() does: the count must describe the configuration
+// this call sees, never a list left over from whatever step count the caller happens to sit at.
+// Returns null for the main list on a system with verlet.enabled=false -- there is no per-particle
+// list at all in that configuration, which is the entire point of it.
+export interface ListOccupancy {
+  n: number
+  capacity: number
+  max: number
+  mean: number
+  sd: number
+  p50: number
+  p99: number
+  p999: number
+  /** How many entries sat at the capacity, i.e. how many were (or were about to be) truncated. */
+  atCapacity: number
+  /** max/mean -- the inhomogeneity factor a uniform-density estimate has to be multiplied by. */
+  inhomogeneity: number
+  /** The upper tail as [count, howMany] pairs, coarse-binned in 25s from p99 upward, so a report can
+   * show the SHAPE of the tail rather than only its extreme. */
+  tail: [number, number][]
+}
+
+function occupancyOf(counts: Uint32Array, capacity: number): ListOccupancy {
+  const n = counts.length
+  let max = 0
+  let sum = 0
+  let atCapacity = 0
+  for (let i = 0; i < n; i++) {
+    const c = counts[i]
+    sum += c
+    if (c > max) max = c
+    if (c >= capacity) atCapacity++
+  }
+  const mean = sum / Math.max(1, n)
+  let varSum = 0
+  for (let i = 0; i < n; i++) varSum += (counts[i] - mean) ** 2
+  const sd = Math.sqrt(varSum / Math.max(1, n))
+  // Histogram over the whole integer range (max is a few hundred to a few thousand, so this is a
+  // small dense array) -- exact quantiles, no sort of an N-element array.
+  const hist = new Uint32Array(max + 2)
+  for (let i = 0; i < n; i++) hist[counts[i]]++
+  const quantile = (q: number): number => {
+    const target = q * n
+    let acc = 0
+    for (let c = 0; c <= max; c++) {
+      acc += hist[c]
+      if (acc >= target) return c
+    }
+    return max
+  }
+  const p99 = quantile(0.99)
+  const tail: [number, number][] = []
+  for (let lo = Math.floor(p99 / 25) * 25; lo <= max; lo += 25) {
+    let cnt = 0
+    for (let c = lo; c < lo + 25 && c <= max; c++) cnt += hist[c]
+    if (cnt > 0) tail.push([lo, cnt])
+  }
+  return { n, capacity, max, mean, sd, p50: quantile(0.5), p99, p999: quantile(0.999), atCapacity, inhomogeneity: max / Math.max(1e-9, mean), tail }
+}
+
+export async function listOccupancyDEBUG(rt: SoupRuntime): Promise<{
+  main: ListOccupancy | null
+  es: ListOccupancy | null
+  listRange: number
+  esListRange: number
+  box: [number, number, number]
+  N: number
+  density: number
+  /** The uniform-density expectation (4/3)*pi*listRange^3*rho -- what a DERIVED capacity is a
+   * multiple of, printed beside the measured mean so the two can be compared directly. */
+  uniformExpected: number
+}> {
+  const enc = rt.device.createCommandEncoder()
+  const pass = enc.beginComputePass()
+  if (rt.verlet.enabled) encodeVerletRebuild(rt, pass)
+  else encodeGridRebuild(rt, pass)
+  pass.end()
+  rt.device.queue.submit([enc.finish()])
+  await rt.device.queue.onSubmittedWorkDone()
+
+  let main: ListOccupancy | null = null
+  if (rt.verlet.enabled) {
+    const raw = await readBack(rt.device, rt.buf.verletCountBuf, rt.N * 4)
+    main = occupancyOf(new Uint32Array(raw.buffer, raw.byteOffset, rt.N), rt.verlet.listCapacity)
+  }
+  let es: ListOccupancy | null = null
+  if (rt.protonation?.es.enabled && rt.esHeads > 0) {
+    const raw = await readBack(rt.device, rt.buf.esCountBuf, rt.esHeads * 4)
+    es = occupancyOf(new Uint32Array(raw.buffer, raw.byteOffset, rt.esHeads), rt.protonation.es.listCapacity)
+  }
+  const box = rt.live.liveBox
+  const density = rt.N / (box[0] * box[1] * box[2])
+  const listRange = rt.listRange
+  return {
+    main,
+    es,
+    listRange,
+    esListRange: rt.protonation?.es.listRange ?? 0,
+    box: [box[0], box[1], box[2]],
+    N: rt.N,
+    density,
+    uniformExpected: ((4 * Math.PI) / 3) * listRange ** 3 * density,
+  }
+}

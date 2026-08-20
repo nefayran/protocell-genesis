@@ -50,7 +50,16 @@ export interface SoupRuntime {
    * which is what makes every long-range dispatch a no-op there. */
   esHeads: number
   wgEsHeads: number
+  /** The Verlet-list configuration this system actually runs with -- data/soup.json's own
+   * verletList, EXCEPT that `listCapacity` is derived per system from its own densest box (task
+   * 'big-box', 2026-08-20: soup/src/soup-plan.ts's deriveListCapacity) and `enabled` can be
+   * overridden per run (CreateSoupOpts.verletOverride). Read by every guard and every readback, so
+   * the derived number is the one they check against, never the file's fallback. */
   verlet: Soup['verletList']
+  /** interactionRange + verletList.skin -- the radius the list is built to (soup/src/soup-plan.ts's
+   * deriveGridGeometry). Kept here so the occupancy readback and the capacity guard can quote the
+   * SAME number the build kernel used instead of re-deriving it. */
+  listRange: number
   effectiveWalkRadius: number
   bondAttemptInterval: number
   sortedGather: boolean

@@ -233,3 +233,83 @@ export function deriveGridGeometry(soup: Soup, p: Params, kT: number): GridGeome
 
   return { interactionRange, cellSize, walkRadius, listRange, listBuildWalkRadius, effectiveWalkRadius }
 }
+
+// --- the Verlet list's per-particle capacity, DERIVED (task 'big-box', 2026-08-20) ---------------
+
+/** WHY THIS EXISTS. `data/soup.json`'s `verletList.listCapacity` was 2500, set as a safe upper bound
+ * and never measured -- and because the list is a flat `N * listCapacity * 4` byte buffer against
+ * this device's 4 294 967 292-byte storage-binding limit, that one unmeasured number WAS the
+ * project's particle ceiling (429 496) and therefore its box ceiling (81.27 sigma at liquid-water
+ * density). Deriving it from the density instead is the same treatment the long-range
+ * electrostatic list already gets (soup/src/electrostatics.ts's makeEsBasis, whose own comment
+ * spells out the identical reasoning), and for the identical reason: an overflow is not a
+ * performance problem, it is a silently dropped neighbour.
+ *
+ * The estimate is the UNIFORM expectation (4/3)*pi*listRange^3 * rho at the densest box this run
+ * will ever visit -- rho from the CAPACITY census (the wet composition every buffer is sized for)
+ * over min(box)^3, which under-counts a non-cubic box's volume and therefore over-counts the
+ * density, the safe direction -- times `capacitySafetyFactor`, which is the measured inhomogeneity
+ * headroom (see data/soup.json's verletList.basis for the four configurations it was measured on).
+ * Clamped below by 64 (a tiny system must still hold its handful of neighbours) and above by
+ * capacityN (no particle can have more neighbours than there are other particles).
+ *
+ * It is NOT capped by the file's own listCapacity: that field is the fallback for a caller with no
+ * census/box to derive from, exactly as `electrostatics.longRangeListCapacity` is for its own list. */
+export function deriveListCapacity(
+  soup: Soup,
+  listRange: number,
+  capacityN: number,
+  densestDensity: number,
+): { capacity: number; uniform: number; safetyFactor: number; derived: boolean } {
+  const vl = soup.verletList
+  const f = vl.capacitySafetyFactor
+  if (!(capacityN > 0) || !(densestDensity > 0) || !(f > 0)) {
+    return { capacity: vl.listCapacity, uniform: 0, safetyFactor: f, derived: false }
+  }
+  const uniform = ((4 * Math.PI) / 3) * listRange ** 3 * densestDensity
+  // The FLOOR matters as much as the factor, and it is the part the first version got wrong. In a
+  // DILUTE system the box-average density says almost nothing about the local one: the water-free
+  // broth fixtures sit at rho_box 0.135-0.174, which derives a capacity of 168, and then the organics
+  // collapse into one condensed droplet whose local density is set by the POTENTIAL, not by the box --
+  // and the capacity guard threw (loudly, correctly) on two of them. `capacityFloor` is the largest
+  // neighbour count ever measured inside a condensed phase plus a margin, so the derived capacity can
+  // never fall below what a condensed droplet needs however dilute the box is. Still clamped by
+  // capacityN, which makes a small system overflow-proof by construction.
+  const capacity = Math.max(64, Math.min(capacityN, Math.max(soup.verletList.capacityFloor, Math.ceil(f * uniform))))
+  return { capacity, uniform, safetyFactor: f, derived: true }
+}
+
+/** The DENSEST total number density this run will ever reach -- what the capacity above is derived
+ * from. Three candidates, all real states of a real run and all known at creation: the creation
+ * (wet) composition in the creation box; the live composition in the live box (a checkpoint resumed
+ * mid dry-phase carries FEWER beads in a SMALLER box, and which of the two wins is not obvious); and,
+ * when dry-wet cycling is on, `dryWetCycle.targetDryDensity` itself -- which is exactly the density
+ * the dry phase is CONSTRUCTED to reach (soup/src/soup-box-scale-math.ts's computeDryBox derives the
+ * dry box from it), so it needs no estimate at all.
+ *
+ * Getting this wrong in the safe direction costs memory; getting it wrong in the unsafe direction
+ * costs a thrown run (never a silent truncation -- soup/src/soup-grid-verlet.ts's assertVerletSafety).
+ * The first version of this function used capacityN/min(box)^3, which mixed the WET census with the
+ * DRY box and over-estimated the density by 3.65x on a resumed evaporating checkpoint -- enough to
+ * ask for a 6.25 GB list against a 4.29 GB device limit. */
+export function densestDensityOf(
+  soup: Soup,
+  capacityN: number,
+  creationBox: [number, number, number],
+  liveN: number,
+  liveBox: [number, number, number],
+  cycling: boolean,
+): number {
+  const vol = (b: [number, number, number]) => b[0] * b[1] * b[2]
+  return Math.max(
+    capacityN / vol(creationBox),
+    liveN / vol(liveBox),
+    cycling ? soup.dryWetCycle.targetDryDensity : 0,
+  )
+}
+
+/** The memory arithmetic that made the ceiling, as a function a report and a test can both call
+ * instead of re-deriving it. `bindingLimit` is the device's own maxStorageBufferBindingSize. */
+export function verletListBytes(capacityN: number, listCapacity: number): number {
+  return capacityN * listCapacity * 4
+}

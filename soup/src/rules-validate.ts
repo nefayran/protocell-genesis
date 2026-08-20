@@ -154,6 +154,15 @@ export function assertRulesConsistent(s: Soup): void {
   if (!Number.isInteger(vl.listCapacity) || vl.listCapacity < 1) {
     throw new Error(`data/soup.json: verletList.listCapacity=${vl.listCapacity} должен быть целым числом >= 1`)
   }
+  if (!(vl.capacitySafetyFactor >= 1)) {
+    throw new Error(
+      `data/soup.json: verletList.capacitySafetyFactor=${vl.capacitySafetyFactor} должен быть числом >= 1 ` +
+        `(множитель на равномерную оценку числа соседей, см. soup/src/soup-plan.ts's deriveListCapacity)`,
+    )
+  }
+  if (!Number.isInteger(vl.capacityFloor) || vl.capacityFloor < 1) {
+    throw new Error(`data/soup.json: verletList.capacityFloor=${vl.capacityFloor} должен быть целым числом >= 1`)
+  }
   if (!vl.basis || vl.basis.trim().length <= 10) {
     throw new Error('data/soup.json: verletList не имеет содержательного обоснования (basis)')
   }

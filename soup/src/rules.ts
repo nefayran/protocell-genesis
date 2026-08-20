@@ -105,7 +105,19 @@ export interface VerletList {
   enabled: boolean
   skin: number
   rebuildEvery: number
+  /** FALLBACK ONLY (task 'big-box', 2026-08-20). The per-particle capacity a real system runs with is
+   * DERIVED from its own densest box's density (soup/src/soup-plan.ts's deriveListCapacity); this
+   * value is what a caller with no census/box to derive from gets, the same role
+   * `electrostatics.longRangeListCapacity` plays for the long-range list. */
   listCapacity: number
+  /** Multiplier on the uniform-density expectation that becomes the derived per-particle capacity --
+   * the measured inhomogeneity headroom, not a guess. See this section's `basis` in data/soup.json. */
+  capacitySafetyFactor: number
+  /** Absolute lower bound on the derived per-particle capacity -- the largest neighbour count ever
+   * measured inside a CONDENSED phase, plus a margin. A dilute box derives a tiny capacity from its
+   * own average density and then condenses into a droplet whose local density has nothing to do with
+   * it; this floor is what covers that. */
+  capacityFloor: number
   basis: string
 }
 

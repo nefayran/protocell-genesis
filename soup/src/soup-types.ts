@@ -85,6 +85,14 @@ export interface CreateSoupOpts {
    * rank and basis. Absent defers to the file, which ships `enabled: false`, so every pre-task caller
    * is unchanged. */
   electrostatics?: { enabled?: boolean; pH?: number; ionicStrengthMolar?: number }
+  /** Task 'big-box' (2026-08-20): per-run override of data/soup.json's `verletList` -- ONLY the two
+   * fields that are experiment design rather than model constants. `enabled: false` selects
+   * cell-list traversal (the grid walk every step, no per-particle neighbour array at all, O(N)
+   * memory) instead of the flat N*listCapacity list; `listCapacity` pins the per-particle capacity
+   * instead of letting soup/src/soup-plan.ts's deriveListCapacity derive it from this system's own
+   * densest box. Both exist so the structure/capacity A/B can be measured without rewriting a data
+   * file between arms -- the file's own values are what every real run uses. Absent = the file. */
+  verletOverride?: { enabled?: boolean; listCapacity?: number }
   /** Checkpoint/resume (task 'checkpoint-resume'): when present, createSoup skips the jittered-
    * lattice initial layout and every zero-filled buffer below, loading this system's ENTIRE mutable
    * state from a prior checkpoint instead -- everything step()/stepCycled() can change: positions,
@@ -209,6 +217,14 @@ export interface SoupSystem {
   /** Task 'clay-surface' (2026-08-19): the per-particle immobility flag as the GPU holds it -- 1 for
    * a bead of the rigid mineral platelet, 0 otherwise. All zeros when this system has no platelet. */
   frozen(): Promise<Uint32Array>
+  /** Task 'big-box' (2026-08-20): the measured per-particle neighbour-count distribution of the main
+   * Verlet list and of the long-range electrostatic head list, plus the uniform-density expectation
+   * both derived capacities are a multiple of. `main` is null on a cell-list system (there is no
+   * per-particle list to measure); `es` is null without charge. Reduced to scalars inside the page. */
+  listOccupancyDEBUG(): Promise<Record<string, unknown>>
+  /** The Verlet configuration this system actually runs with, including the DERIVED listCapacity and
+   * the byte size of the list it implies -- synchronous, reads no GPU buffer. */
+  verletConfig(): Record<string, unknown>
   /** Task 'electrostatics' (2026-08-20): per-particle charge in units of e -- 0 for every bead except
    * a deprotonated head. Part of the checkpoint; read by every off-GPU measurement of the
    * deprotonated fraction, the apparent pKa and acid-soap pairing. */

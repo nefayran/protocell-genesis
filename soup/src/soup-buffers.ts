@@ -177,17 +177,34 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
   })
 
+  // Task 'big-box' (2026-08-20): the THREE buffers whose size is what made 429 496 particles a hard
+  // ceiling collapse to 16-byte stubs when the list is disabled, i.e. in the cell-list-traversal
+  // configuration. verletListBuf is N*listCapacity*4 and posAtRebuildBuf/verletCountBuf are another
+  // 20 bytes per particle, and NONE of the five kernels that read them (soup/wgsl/verlet.wgsl's
+  // build/force/snapshot/maxDrift plus bond-verlet.wgsl's bond_form_list_main) is ever dispatched on
+  // a system with verlet.enabled=false (soup/src/soup-integrate.ts's encodeOneIntegrationStep takes
+  // the encodeGridRebuild/encodeSoupForce branch instead). A bind group still has to reference a real
+  // buffer -- exactly the pattern the electrostatics stubs below already use -- so they are allocated
+  // at the minimum size rather than not at all. Before this, a cell-list run paid the whole flat list
+  // anyway and the O(N) memory of that configuration was unobservable.
   const verletListBuf = device.createBuffer({
-    size: N * verlet.listCapacity * 4,
+    size: verlet.enabled ? N * verlet.listCapacity * 4 : 16,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
   })
-  const verletCountBuf = device.createBuffer({ size: Math.max(4, N * 4), usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST })
+  // COPY_SRC (task 'big-box', 2026-08-20): this is the per-particle neighbour COUNT, i.e. the only
+  // direct measurement of what listCapacity actually needs to be -- and without the flag
+  // engine/src/gpu.ts's readBack refuses to read it (and before that guard existed would have
+  // returned silent zeros, which would have read as "no particle has any neighbour").
+  const verletCountBuf = device.createBuffer({
+    size: verlet.enabled ? Math.max(4, N * 4) : 16,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+  })
   const verletOverflowBuf = device.createBuffer({
     size: 4,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
   })
   device.queue.writeBuffer(verletOverflowBuf, 0, new Uint32Array([0]))
-  const posAtRebuildBuf = storageBuffer(device, new Float32Array(N * 4))
+  const posAtRebuildBuf = storageBuffer(device, new Float32Array(verlet.enabled ? N * 4 : 4))
   const maxDriftSqBuf = device.createBuffer({
     size: 4,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
@@ -403,7 +420,9 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
   device.queue.writeBuffer(es2UniformBuf, 0, esUniform2(es))
   const headIdxBuf = device.createBuffer({ size: Math.max(16, esHeads * 4), usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC })
   const esListBuf = device.createBuffer({ size: Math.max(16, esHeads * es.listCapacity * 4), usage: GPUBufferUsage.STORAGE })
-  const esCountBuf = device.createBuffer({ size: Math.max(16, esHeads * 4), usage: GPUBufferUsage.STORAGE })
+  // COPY_SRC (task 'big-box', 2026-08-20): same reason verletCountBuf above carries it -- the
+  // per-head neighbour count is the direct measurement of what longRangeListCapacity needs to be.
+  const esCountBuf = device.createBuffer({ size: Math.max(16, esHeads * 4), usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC })
   const esMetaBuf = device.createBuffer({ size: 16, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC })
   device.queue.writeBuffer(esMetaBuf, 0, new Uint32Array([0, 0, 0, 0]))
 
