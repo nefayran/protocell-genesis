@@ -1,0 +1,56 @@
+[
+ {
+  "variant": {
+   "radial": 16,
+   "hidden": [
+    128,
+    128,
+    64
+   ],
+   "force_weight": 50.0,
+   "lr": 0.002,
+   "epochs": 4000
+  },
+  "test_random": {
+   "energy_mae_mev_per_atom": 6.936457367430973,
+   "force_mae_mev_per_a": 113.5466537475586,
+   "force_rmse_mev_per_a": 195.99810791015625,
+   "n_frames": 700
+  },
+  "test_md": {
+   "energy_mae_mev_per_atom": 11.477185269177426,
+   "force_mae_mev_per_a": 65.03315734863281,
+   "force_rmse_mev_per_a": 87.66976928710938,
+   "n_frames": 120
+  },
+  "seconds": 2235.2604622499784,
+  "n_train": 6300
+ },
+ {
+  "variant": {
+   "radial": 24,
+   "hidden": [
+    128,
+    128,
+    64
+   ],
+   "force_weight": 50.0,
+   "lr": 0.002,
+   "epochs": 4000
+  },
+  "test_random": {
+   "energy_mae_mev_per_atom": 8.27422522019506,
+   "force_mae_mev_per_a": 108.62921142578125,
+   "force_rmse_mev_per_a": 186.14968872070312,
+   "n_frames": 700
+  },
+  "test_md": {
+   "energy_mae_mev_per_atom": 13.183733719375192,
+   "force_mae_mev_per_a": 64.73352813720703,
+   "force_rmse_mev_per_a": 87.60939025878906,
+   "n_frames": 120
+  },
+  "seconds": 2767.537186625006,
+  "n_train": 6300
+ }
+]

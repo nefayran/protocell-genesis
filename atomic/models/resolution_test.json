@@ -1,0 +1,50 @@
+[
+ {
+  "name": "базовый: 8 радиальных, 5.0 Å",
+  "D": 84,
+  "metrics": {
+   "energy_mae_mev_per_atom": 12.811219992745466,
+   "force_mae_mev_per_a": 109.06910705566406,
+   "force_rmse_mev_per_a": 153.08030700683594,
+   "n_frames": 100
+  },
+  "t_desc": 39.897919167007785,
+  "t_train": 462.8685892079957
+ },
+ {
+  "name": "16 радиальных, 5.0 Å",
+  "D": 132,
+  "metrics": {
+   "energy_mae_mev_per_atom": 15.212763550389354,
+   "force_mae_mev_per_a": 71.45343780517578,
+   "force_rmse_mev_per_a": 97.52590942382812,
+   "n_frames": 100
+  },
+  "t_desc": 27.30860758299241,
+  "t_train": 523.007015167037
+ },
+ {
+  "name": "16 радиальных, 6.0 Å",
+  "D": 132,
+  "metrics": {
+   "energy_mae_mev_per_atom": 12.029197317867027,
+   "force_mae_mev_per_a": 90.59980773925781,
+   "force_rmse_mev_per_a": 127.13982391357422,
+   "n_frames": 100
+  },
+  "t_desc": 30.45530279201921,
+  "t_train": 506.32513583404943
+ },
+ {
+  "name": "24 радиальных, 6.0 Å + 5 ширин",
+  "D": 276,
+  "metrics": {
+   "energy_mae_mev_per_atom": 4.698774505359325,
+   "force_mae_mev_per_a": 95.22051239013672,
+   "force_rmse_mev_per_a": 134.28665161132812,
+   "n_frames": 100
+  },
+  "t_desc": 31.1034657919663,
+  "t_train": 835.5713114999817
+ }
+]

@@ -1,0 +1,14 @@
+{
+ "force_mae_mev_per_a": 64.73352813720703,
+ "variant": {
+  "radial": 24,
+  "hidden": [
+   128,
+   128,
+   64
+  ],
+  "force_weight": 50.0,
+  "lr": 0.002,
+  "epochs": 4000
+ }
+}

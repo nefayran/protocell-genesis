@@ -40,13 +40,45 @@ def _rotation(rng: np.random.Generator) -> np.ndarray:
     )
 
 
-def rattled_monomers(rng: np.random.Generator, count: int, max_rattle: float = 0.25):
-    """Мономеры со случайным искажением: покрывают растяжение связей и изменение угла."""
+# Пределы расстояний, ниже которых конфигурация нефизична. Числа взяты не на глаз: связь O-H
+# в воде 0.958 Å, и сжатие её ниже 0.75 Å стоит уже единиц электронвольт; несвязанные пары
+# ближе 1.4 Å в жидкой воде не встречаются вовсе. ИЗМЕРЕННАЯ цена отсутствия этой проверки:
+# в наборе из 330 кадров 78 (24%) имели силу выше 100 эВ/Å, а худший кадр -- 1.1e7 эВ/Å при
+# минимальном расстоянии 0.394 Å; в квадратичной невязке один такой кадр весит как миллион
+# нормальных, и обучение уходило в мусор (невязка 2.9e15).
+MIN_BONDED_A = 0.75
+MIN_NONBONDED_A = 1.35
+
+
+def _too_close(positions: np.ndarray, cell=None, molecule_size: int = 3) -> bool:
+    """Есть ли в конфигурации пара ближе допустимого. Внутримолекулярные пары судятся мягче."""
+    p = np.asarray(positions)
+    d = p[:, None, :] - p[None, :, :]
+    if cell is not None:
+        length = float(cell[0, 0])
+        d -= length * np.round(d / length)
+    r = np.linalg.norm(d, axis=2)
+    np.fill_diagonal(r, np.inf)
+    n = len(p)
+    same_molecule = (np.arange(n)[:, None] // molecule_size) == (np.arange(n)[None, :] // molecule_size)
+    if (r[same_molecule] < MIN_BONDED_A).any():
+        return True
+    return bool((r[~same_molecule] < MIN_NONBONDED_A).any())
+
+
+def rattled_monomers(rng: np.random.Generator, count: int, max_rattle: float = 0.12):
+    """
+    Мономеры со случайным искажением: покрывают растяжение связей и изменение угла.
+
+    Размах искажения снижен с 0.25 до 0.12 Å по замеру: при 0.25 связь O-H уходила ниже 0.7 Å,
+    то есть в область, где энергия растёт на порядки и кадр становится выбросом.
+    """
     out = []
-    for _ in range(count):
+    while len(out) < count:
         scale = float(rng.uniform(0.02, max_rattle))
         pos = WATER + rng.normal(scale=scale, size=WATER.shape)
-        out.append(from_symbols(["O", "H", "H"], pos))
+        if not _too_close(pos):
+            out.append(from_symbols(["O", "H", "H"], pos))
     return out
 
 
@@ -59,12 +91,16 @@ def dimers(rng: np.random.Generator, count: int, r_range=(2.2, 6.0), rattle: flo
     в друга -- это самая частая причина срыва нейросетевого потенциала.
     """
     out = []
-    for _ in range(count):
+    attempts = 0
+    while len(out) < count and attempts < count * 50:
+        attempts += 1
         sep = float(rng.uniform(*r_range))
         a = (WATER - WATER[0]) @ _rotation(rng).T + rng.normal(scale=rattle, size=WATER.shape)
         b = (WATER - WATER[0]) @ _rotation(rng).T + np.array([sep, 0.0, 0.0]) \
             + rng.normal(scale=rattle, size=WATER.shape)
-        out.append(from_symbols(["O", "H", "H"] * 2, np.vstack([a, b])))
+        pos = np.vstack([a, b])
+        if not _too_close(pos):
+            out.append(from_symbols(["O", "H", "H"] * 2, pos))
     return out
 
 
@@ -105,8 +141,11 @@ def clusters(
                     positions.append(mol)
                     placed += 1
         pos = np.vstack(positions)
+        # проверка ВСЕХ пар, а не только кислородных: замер показал, что водороды сходились
+        # до 0.394 Å при целых кислородах, и именно эти кадры отравляли обучение
+        if _too_close(pos, cell=np.eye(3) * box):
+            continue
         oxygens = pos[::3]
-        # проверка минимального расстояния с учётом периодичности
         d = oxygens[:, None, :] - oxygens[None, :, :]
         d -= box * np.round(d / box)
         r = np.linalg.norm(d, axis=2)
@@ -117,6 +156,26 @@ def clusters(
             from_symbols(["O", "H", "H"] * n_mol, pos, cell=np.eye(3) * box, pbc=(True, True, True))
         )
     return out
+
+
+MAX_FORCE_EV_PER_A = 50.0
+
+
+def filter_outliers(frames, max_force=MAX_FORCE_EV_PER_A):
+    """
+    Отбраковка по силе ПОСЛЕ разметки -- вторая линия защиты после геометрической.
+
+    Порог 50 эВ/Å: при 300-1000 K силы в воде редко превышают 20 эВ/Å, поэтому всё выше --
+    это не редкая конфигурация, а нефизичная. Число выброшенных кадров ОБЯЗАНО печататься:
+    молчаливая отбраковка четверти набора выглядела бы как удачное обучение.
+    """
+    kept, dropped = [], []
+    for fr in frames:
+        if np.abs(fr["forces"]).max() > max_force:
+            dropped.append(fr)
+        else:
+            kept.append(fr)
+    return kept, dropped
 
 
 def build_sampled_states(rng: np.random.Generator, n_monomers=800, n_dimers=1200, n_clusters=3000):
