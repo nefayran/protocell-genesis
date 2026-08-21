@@ -40,17 +40,47 @@ try:
 except Exception as exc:
     log(f"nvidia-smi недоступен: {exc}")
 
-# --- 2. зависимости ----------------------------------------------------------------------
+# --- 2. зависимости, НЕ ломая совместимость с выданной картой ------------------------------
+# ИЗМЕРЕННАЯ ловушка (прогон 1, 2026-08-21): выданная карта -- Tesla P100 (Pascal, sm_60), а
+# `pip install mace-torch` подтянул СВЕЖИЙ torch, в чьих сборках ядер под Pascal уже нет.
+# Установка прошла без ошибок, а первый же вызов на карте дал
+# "CUDA error: no kernel image is available for execution on the device". Поэтому:
+#   1. предустановленный torch фиксируется и НЕ обновляется (--no-deps плюс пин версии);
+#   2. работа на карте проверяется крошечным вычислением ДО любых расходов;
+#   3. при отказе карты ядро честно переходит на CPU и говорит об этом в лог, а не падает
+#      посреди разметки.
 log("=== установка зависимостей ===")
+import torch as _torch_pre  # предустановленный Kaggle -- он и умеет эту карту
+
+TORCH_PIN = _torch_pre.__version__.split("+")[0]
+log(f"предустановленный torch {_torch_pre.__version__}, фиксируем {TORCH_PIN}")
+# ФАЙЛ ОГРАНИЧЕНИЙ, а не --no-deps: прогон 2 показал, что --no-deps отрезает и настоящие
+# зависимости тоже (упало на отсутствии matscipy). Ограничение фиксирует ТОЛЬКО torch и
+# позволяет pip доставить всё остальное -- ровно то, что нужно.
+with open("/tmp/constraints.txt", "w") as fh:
+    fh.write(f"torch=={TORCH_PIN}\n")
 subprocess.run(
-    [sys.executable, "-m", "pip", "install", "-q", "ase", "mace-torch"],
+    [sys.executable, "-m", "pip", "install", "-q", "-c", "/tmp/constraints.txt",
+     "mace-torch", "ase"],
     check=True,
 )
 import numpy as np
 import torch
 
-log(f"torch {torch.__version__}, CUDA доступна: {torch.cuda.is_available()}")
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+log(f"torch после установки: {torch.__version__}, CUDA доступна: {torch.cuda.is_available()}")
+
+DEVICE = "cpu"
+if torch.cuda.is_available():
+    try:
+        probe = (torch.randn(64, 64, device="cuda") @ torch.randn(64, 64, device="cuda")).sum()
+        torch.cuda.synchronize()
+        _ = float(probe)
+        DEVICE = "cuda"
+        log(f"карта работает: {torch.cuda.get_device_name(0)}, "
+            f"вычислительная способность {torch.cuda.get_device_capability(0)}")
+    except Exception as exc:
+        log(f"КАРТА НЕ СЧИТАЕТ ({type(exc).__name__}: {str(exc)[:120]}) -- переходим на CPU")
+log(f"вычислитель: {DEVICE}")
 
 # --- 3. груз: искать обходом, поддержать оба вида ------------------------------------------
 log("=== груз ===")
@@ -91,13 +121,14 @@ from train.nn import TrainingConfig, evaluate, train               # noqa: E402
 from mace.calculators import MACECalculator                        # noqa: E402
 
 # --- 4. учитель на карте ------------------------------------------------------------------
+SCALE = 1.0 if DEVICE == "cuda" else 0.25   # на CPU набор меньше: иначе не уложиться в 12 часов
 CONFIG = {
     # диапазон кадров и состав прописаны ЗДЕСЬ: переменные окружения в ядро через API не
     # передать (ловушка 14 скилла), поэтому правка состава = перезаливка кода
-    "n_monomers": 400,
-    "n_dimers": 600,
+    "n_monomers": int(400 * SCALE),
+    "n_dimers": int(600 * SCALE),
     "cluster_sizes": (4, 8, 16),
-    "md_frames_per_cluster": 400,
+    "md_frames_per_cluster": int(400 * SCALE),
     "md_steps_between": 12,
     "md_temperatures": (300.0, 500.0, 700.0),
     "teacher_dtype": "float32",
