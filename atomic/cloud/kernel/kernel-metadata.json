@@ -1,0 +1,13 @@
+{
+  "id": "rodionkazennov/protocell-atomic-train-run",
+  "title": "protocell-atomic-train-run",
+  "code_file": "protocell-atomic-train.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["rodionkazennov/protocell-atomic-payload"],
+  "competition_sources": [],
+  "kernel_sources": []
+}
