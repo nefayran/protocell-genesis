@@ -11,3 +11,5 @@ data/checkpoints/
 atomic/.venv/
 atomic/**/__pycache__/
 atomic/.pytest_cache/
+atomic/models/*.model
+atomic/models/*.pkl
