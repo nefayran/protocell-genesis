@@ -27,12 +27,26 @@ function encodeEsFar(rt: SoupRuntime, pass: GPUComputePassEncoder, brute: boolea
   pass.dispatchWorkgroups(brute ? rt.wgN : rt.wgEsHeads)
 }
 
+// Task 'confined-parcel' (2026-08-21): the confining wall's one-body force. Dispatched from inside
+// the three encodeSoupForce* functions below, for exactly the reason encodeEsFar above is: there are
+// FOUR force kernels and eight call sites, and a term added to three of the four (or seven of the
+// eight) is a silent physics bug. It ACCUMULATES into outForce, so like encodeEsFar it must follow
+// the kernel that wrote it, in the same pass. Not dispatched at all when this system is unconfined,
+// so an unconfined run's dispatch sequence is byte-identical to the pre-task one.
+function encodeWall(rt: SoupRuntime, pass: GPUComputePassEncoder): void {
+  if (!rt.buf.confine) return
+  pass.setPipeline(rt.pipe.wallForce)
+  pass.setBindGroup(1, rt.bind.wallForceBind)
+  pass.dispatchWorkgroups(rt.wgN)
+}
+
 export function encodeSoupForce(rt: SoupRuntime, pass: GPUComputePassEncoder): void {
   pass.setPipeline(rt.pipe.soupForce)
   pass.setBindGroup(0, rt.bind.soupForceGroup0)
   pass.setBindGroup(1, rt.bind.soupForceGroup1)
   pass.dispatchWorkgroups(rt.wgN)
   encodeEsFar(rt, pass, false)
+  encodeWall(rt, pass)
 }
 
 export function encodeSoupForceBrute(rt: SoupRuntime, pass: GPUComputePassEncoder): void {
@@ -44,6 +58,7 @@ export function encodeSoupForceBrute(rt: SoupRuntime, pass: GPUComputePassEncode
   // tests/soup-forces.test.ts's grid+Verlet-vs-brute comparison actually tests the head-only list's
   // completeness over the new range instead of comparing a list against itself.
   encodeEsFar(rt, pass, true)
+  encodeWall(rt, pass)
 }
 
 export function encodeSoupForceList(rt: SoupRuntime, pass: GPUComputePassEncoder): void {
@@ -52,6 +67,7 @@ export function encodeSoupForceList(rt: SoupRuntime, pass: GPUComputePassEncoder
   pass.setBindGroup(1, rt.bind.soupForceListGroup1)
   pass.dispatchWorkgroups(rt.wgN)
   encodeEsFar(rt, pass, false)
+  encodeWall(rt, pass)
 }
 
 // doBonds: perf fix (b), perf-report.md. bond_form_main/bond_break_main measured ~42% of a full

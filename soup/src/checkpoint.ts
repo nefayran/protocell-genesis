@@ -97,6 +97,14 @@ export interface CheckpointConfig {
    * (every pre-task run) omits the key from the signature entirely, so no existing lineage is
    * orphaned. */
   electrostatics?: { enabled: boolean; pH: number; ionicStrengthMolar: number }
+  /** Task 'confined-parcel' (2026-08-21): the finite parcel and its wall -- the WET radius and the
+   * stiffness, exactly what CreateSoupOpts.confine takes. Part of the run's IDENTITY, not a snapshot
+   * detail: a confined run and a periodic one at the same box/composition/seed are not two snapshots
+   * of one experiment, they are the two arms of this task. Undefined (every pre-task run) omits the
+   * key from soup/cli/campaign-config.ts's signature entirely, so no existing lineage is orphaned.
+   * The LIVE radius is not stored: it is derived from this radius and `liveBox` (soup/src/
+   * soup-confine.ts's liveRadius), so a resume cannot disagree with the box it resumes into. */
+  confine?: { radiusSigma: number; stiffness: number }
 }
 
 export interface CheckpointFile {

@@ -39,7 +39,15 @@
   "amphiphileCount": 0,
   "amphiphileFraction": 0,
   "meanTailLength": 0,
+  "meanPerTail": 0,
+  "twoTailedHeads": 0,
+  "alphaEvent": null,
+  "asfMeanFromEventAlpha": null,
+  "alphaRecovered": null,
+  "alphaRecoveredR2": null,
+  "asfPredictionFromEventAlpha": null,
   "lengthHistogram": {},
+  "perTailHistogram": {},
   "aggregateCount": 0,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
@@ -51,7 +59,13 @@
   "sizeHistogramTop": [],
   "largest": [],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 0,
+   "longest": 0,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 40001,
@@ -93,6 +107,30 @@
   "amphiphileCount": 682,
   "amphiphileFraction": 0.08417,
   "meanTailLength": 4.999,
+  "meanPerTail": 4.343,
+  "twoTailedHeads": 103,
+  "alphaEvent": 0.92,
+  "asfMeanFromEventAlpha": 12.501,
+  "alphaRecovered": 0.6304,
+  "alphaRecoveredR2": 0.92,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10860142670879853,
+   "2": 0.09991406799459154,
+   "3": 0.091921637548976,
+   "4": 0.08456854594432789,
+   "5": 0.07780365052055763,
+   "6": 0.07157989967463876,
+   "7": 0.06585400560449985,
+   "8": 0.06058614323112883,
+   "9": 0.05573967320481473,
+   "10": 0.051280887068963096,
+   "11": 0.047178772809033875,
+   "12": 0.04340479915593316,
+   "13": 0.0399327171436335,
+   "14": 0.036738377540803925,
+   "15": 0.03379956288663998,
+   "16": 0.031095832962658686
+  },
   "lengthHistogram": {
    "2": 120,
    "3": 121,
@@ -112,7 +150,23 @@
    "17": 3,
    "22": 1
   },
-  "aggregateCount": 397,
+  "perTailHistogram": {
+   "2": 182,
+   "3": 170,
+   "4": 139,
+   "5": 100,
+   "6": 68,
+   "7": 45,
+   "8": 35,
+   "9": 23,
+   "10": 6,
+   "11": 8,
+   "12": 2,
+   "13": 3,
+   "14": 3,
+   "16": 1
+  },
+  "aggregateCount": 389,
   "qualifyingAggregateCount": 1,
   "amphiphilesInQualifying": 14,
   "amphiphileShareInQualifying": 0.0205,
@@ -124,13 +178,13 @@
    14,
    9,
    6,
+   8,
    6,
    9,
    8,
    6,
    4,
-   7,
-   6
+   7
   ],
   "largest": [
    {
@@ -213,7 +267,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 3564,
+   "longest": 1.1716,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 44001,
@@ -255,6 +315,30 @@
   "amphiphileCount": 690,
   "amphiphileFraction": 0.08617,
   "meanTailLength": 5.058,
+  "meanPerTail": 4.384,
+  "twoTailedHeads": 106,
+  "alphaEvent": 0.9205,
+  "asfMeanFromEventAlpha": 12.578,
+  "alphaRecovered": 0.6366,
+  "alphaRecoveredR2": 0.917,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10826808519316672,
+   "2": 0.09966034479218107,
+   "3": 0.09173695375119903,
+   "4": 0.08444350359311509,
+   "5": 0.07772991152965159,
+   "6": 0.07155007655201175,
+   "7": 0.06586156286368397,
+   "8": 0.06062530848158865,
+   "9": 0.05580535700458475,
+   "10": 0.05136861070743947,
+   "11": 0.047284603264802647,
+   "12": 0.04352529054452274,
+   "13": 0.04006485803372063,
+   "14": 0.036879543575251035,
+   "15": 0.03394747419731551,
+   "16": 0.03124851591576558
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 118,
@@ -274,16 +358,32 @@
    "17": 3,
    "22": 1
   },
-  "aggregateCount": 407,
-  "qualifyingAggregateCount": 0,
-  "amphiphilesInQualifying": 0,
-  "amphiphileShareInQualifying": 0,
+  "perTailHistogram": {
+   "2": 184,
+   "3": 166,
+   "4": 143,
+   "5": 100,
+   "6": 72,
+   "7": 45,
+   "8": 37,
+   "9": 24,
+   "10": 7,
+   "11": 7,
+   "12": 4,
+   "13": 2,
+   "14": 4,
+   "16": 1
+  },
+  "aggregateCount": 388,
+  "qualifyingAggregateCount": 1,
+  "amphiphilesInQualifying": 14,
+  "amphiphileShareInQualifying": 0.0203,
   "hasLamellarAggregate": false,
   "hasVesicleAggregate": false,
-  "largestAggregateFraction": 0.0208,
+  "largestAggregateFraction": 0.0258,
   "boxWideEnclosedVolume": 0.625,
   "sizeHistogramTop": [
-   11,
+   14,
    9,
    7,
    8,
@@ -292,32 +392,32 @@
    9,
    8,
    4,
-   6
+   7
   ],
   "largest": [
    {
-    "amphiphileCount": 11,
-    "particleCount": 87,
-    "radiusOfGyration": 7.983,
+    "amphiphileCount": 14,
+    "particleCount": 108,
+    "radiusOfGyration": 8.78,
     "principalMoments": [
-     3.324,
-     9.536,
-     50.862
+     4.659,
+     12.132,
+     60.302
     ],
-    "flatnessRatio": 0.0654,
-    "inPlaneSymmetry": 0.1875,
+    "flatnessRatio": 0.0773,
+    "inPlaneSymmetry": 0.2012,
     "radialHeadShells": "unavailable",
     "transverseHeadShells": 0,
-    "cavityVolume": 0,
+    "cavityVolume": 0.125,
     "encapsulatedWater": {
      "encapsulatedCount": 0,
      "totalWater": 288900,
-     "bulkWaterDensity": 0.39633747951175996,
-     "encapsulationThresholdCount": 146.98793714161656,
+     "bulkWaterDensity": 0.39634699500313314,
+     "encapsulationThresholdCount": 146.99146611003397,
      "closed": false,
-     "seedDistFromCentre": 77.7670847265457,
+     "seedDistFromCentre": 77.65760820445799,
      "theoreticalMaxDist": 77.94228634059948,
-     "totalEmptyCells": 5831394,
+     "totalEmptyCells": 5831254,
      "unreachedCells": 0
     }
    },
@@ -375,7 +475,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 3138,
+   "longest": 1.1677,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 48001,
@@ -417,6 +523,30 @@
   "amphiphileCount": 702,
   "amphiphileFraction": 0.0881,
   "meanTailLength": 5.083,
+  "meanPerTail": 4.41,
+  "twoTailedHeads": 107,
+  "alphaEvent": 0.9203,
+  "asfMeanFromEventAlpha": 12.548,
+  "alphaRecovered": 0.6313,
+  "alphaRecoveredR2": 0.923,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10839745258103525,
+   "2": 0.0997588401883365,
+   "3": 0.09180867224054294,
+   "4": 0.08449208393620553,
+   "5": 0.07775858286217799,
+   "6": 0.07156170054107605,
+   "7": 0.06585867174826755,
+   "8": 0.06061013938533266,
+   "9": 0.05577988287329967,
+   "10": 0.05133456819127479,
+   "11": 0.04724351783546069,
+   "12": 0.043478499111030834,
+   "13": 0.040013529295843446,
+   "14": 0.03682469633141303,
+   "15": 0.033889993803712035,
+   "16": 0.031189169074990954
+  },
   "lengthHistogram": {
    "2": 123,
    "3": 120,
@@ -437,7 +567,23 @@
    "18": 1,
    "22": 1
   },
-  "aggregateCount": 409,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 170,
+   "4": 142,
+   "5": 102,
+   "6": 74,
+   "7": 46,
+   "8": 39,
+   "9": 25,
+   "10": 6,
+   "11": 8,
+   "12": 4,
+   "13": 3,
+   "14": 4,
+   "16": 1
+  },
+  "aggregateCount": 390,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -454,8 +600,8 @@
    9,
    6,
    7,
-   6,
-   4
+   8,
+   6
   ],
   "largest": [
    {
@@ -538,7 +684,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 2808,
+   "longest": 1.2035,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 52001,
@@ -580,6 +732,30 @@
   "amphiphileCount": 704,
   "amphiphileFraction": 0.08914,
   "meanTailLength": 5.128,
+  "meanPerTail": 4.451,
+  "twoTailedHeads": 107,
+  "alphaEvent": 0.9211,
+  "asfMeanFromEventAlpha": 12.681,
+  "alphaRecovered": 0.6329,
+  "alphaRecoveredR2": 0.919,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10782818479311798,
+   "2": 0.09932516222086067,
+   "3": 0.09149266371430137,
+   "4": 0.08427781366140219,
+   "5": 0.07763190606981732,
+   "6": 0.07151007576259745,
+   "7": 0.0658709955024612,
+   "8": 0.0606765969999814,
+   "9": 0.05589181392226857,
+   "10": 0.0514843451672554,
+   "11": 0.047424436805494685,
+   "12": 0.04368468121740425,
+   "13": 0.04023983206997466,
+   "14": 0.037066633883885224,
+   "15": 0.03414366504047028,
+   "16": 0.03145119316870748
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 120,
@@ -600,27 +776,69 @@
    "18": 1,
    "22": 1
   },
-  "aggregateCount": 409,
+  "perTailHistogram": {
+   "2": 183,
+   "3": 170,
+   "4": 138,
+   "5": 103,
+   "6": 75,
+   "7": 51,
+   "8": 39,
+   "9": 22,
+   "10": 7,
+   "11": 11,
+   "12": 4,
+   "13": 3,
+   "14": 4,
+   "16": 1
+  },
+  "aggregateCount": 390,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
   "hasLamellarAggregate": false,
   "hasVesicleAggregate": false,
-  "largestAggregateFraction": 0.0153,
+  "largestAggregateFraction": 0.0169,
   "boxWideEnclosedVolume": 0.5,
   "sizeHistogramTop": [
+   9,
    7,
    8,
    8,
    6,
+   9,
    6,
    7,
-   5,
    7,
-   8,
-   6
+   8
   ],
   "largest": [
+   {
+    "amphiphileCount": 9,
+    "particleCount": 73,
+    "radiusOfGyration": 6.167,
+    "principalMoments": [
+     0.906,
+     3.606,
+     33.524
+    ],
+    "flatnessRatio": 0.027,
+    "inPlaneSymmetry": 0.1076,
+    "radialHeadShells": "unavailable",
+    "transverseHeadShells": 0,
+    "cavityVolume": 0,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 288900,
+     "bulkWaterDensity": 0.39633041115679024,
+     "encapsulationThresholdCount": 146.9853157319097,
+     "closed": false,
+     "seedDistFromCentre": 77.79974393558989,
+     "theoreticalMaxDist": 77.94228634059948,
+     "totalEmptyCells": 5831498,
+     "unreachedCells": 0
+    }
+   },
    {
     "amphiphileCount": 7,
     "particleCount": 66,
@@ -672,36 +890,16 @@
      "totalEmptyCells": 5831571,
      "unreachedCells": 1
     }
-   },
-   {
-    "amphiphileCount": 8,
-    "particleCount": 59,
-    "radiusOfGyration": 6.24,
-    "principalMoments": [
-     1.214,
-     3.432,
-     34.287
-    ],
-    "flatnessRatio": 0.0354,
-    "inPlaneSymmetry": 0.1001,
-    "radialHeadShells": "unavailable",
-    "transverseHeadShells": 0,
-    "cavityVolume": 0,
-    "encapsulatedWater": {
-     "encapsulatedCount": 0,
-     "totalWater": 288900,
-     "bulkWaterDensity": 0.3963242945146331,
-     "encapsulationThresholdCount": 146.9830472797461,
-     "closed": false,
-     "seedDistFromCentre": 77.71278504776647,
-     "theoreticalMaxDist": 77.94228634059948,
-     "totalEmptyCells": 5831588,
-     "unreachedCells": 0
-    }
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 2484,
+   "longest": 1.1524,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 56001,
@@ -743,6 +941,30 @@
   "amphiphileCount": 710,
   "amphiphileFraction": 0.09109,
   "meanTailLength": 5.196,
+  "meanPerTail": 4.499,
+  "twoTailedHeads": 110,
+  "alphaEvent": 0.9212,
+  "asfMeanFromEventAlpha": 12.695,
+  "alphaRecovered": 0.6437,
+  "alphaRecoveredR2": 0.92,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.1077715365382492,
+   "2": 0.09928196989269514,
+   "3": 0.09146115813497478,
+   "4": 0.08425642094362136,
+   "5": 0.07761922782294182,
+   "6": 0.0715048712057339,
+   "7": 0.06587216530692368,
+   "8": 0.060683168699627386,
+   "9": 0.055902928744933536,
+   "10": 0.051499246153906025,
+   "11": 0.0474424580959181,
+   "12": 0.04370523839235326,
+   "13": 0.04026241344979502,
+   "14": 0.037090792692847055,
+   "15": 0.034169012354393784,
+   "16": 0.03147739157108581
+  },
   "lengthHistogram": {
    "2": 120,
    "3": 121,
@@ -763,7 +985,23 @@
    "18": 1,
    "22": 1
   },
-  "aggregateCount": 395,
+  "perTailHistogram": {
+   "2": 182,
+   "3": 171,
+   "4": 139,
+   "5": 103,
+   "6": 77,
+   "7": 51,
+   "8": 41,
+   "9": 22,
+   "10": 8,
+   "11": 13,
+   "12": 4,
+   "13": 4,
+   "14": 4,
+   "17": 1
+  },
+  "aggregateCount": 387,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -864,7 +1102,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 2266,
+   "longest": 1.1042,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 60001,
@@ -906,6 +1150,30 @@
   "amphiphileCount": 715,
   "amphiphileFraction": 0.09178,
   "meanTailLength": 5.199,
+  "meanPerTail": 4.5,
+  "twoTailedHeads": 111,
+  "alphaEvent": 0.9215,
+  "asfMeanFromEventAlpha": 12.744,
+  "alphaRecovered": 0.6449,
+  "alphaRecoveredR2": 0.933,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.1075635596846256,
+   "2": 0.0991233377225961,
+   "3": 0.09134539717796478,
+   "4": 0.0841777706169598,
+   "5": 0.07757256834995548,
+   "6": 0.0714856584619043,
+   "7": 0.06587637194991708,
+   "8": 0.060707230997900166,
+   "9": 0.05594369857274828,
+   "10": 0.05155394766904741,
+   "11": 0.047508648660522616,
+   "12": 0.0437807733374433,
+   "13": 0.040345414320683816,
+   "14": 0.03717961864587513,
+   "15": 0.034262234405758256,
+   "16": 0.03157376942609827
+  },
   "lengthHistogram": {
    "2": 123,
    "3": 121,
@@ -926,7 +1194,23 @@
    "18": 1,
    "22": 1
   },
-  "aggregateCount": 403,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 171,
+   "4": 139,
+   "5": 103,
+   "6": 77,
+   "7": 53,
+   "8": 42,
+   "9": 22,
+   "10": 8,
+   "11": 13,
+   "12": 4,
+   "13": 4,
+   "14": 4,
+   "17": 1
+  },
+  "aggregateCount": 390,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -943,8 +1227,8 @@
    8,
    6,
    6,
-   8,
-   5
+   7,
+   8
   ],
   "largest": [
    {
@@ -1027,7 +1311,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 2068,
+   "longest": 1.0854,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 64001,
@@ -1069,6 +1359,30 @@
   "amphiphileCount": 715,
   "amphiphileFraction": 0.09195,
   "meanTailLength": 5.208,
+  "meanPerTail": 4.508,
+  "twoTailedHeads": 111,
+  "alphaEvent": 0.9219,
+  "asfMeanFromEventAlpha": 12.806,
+  "alphaRecovered": 0.6451,
+  "alphaRecoveredR2": 0.934,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.1073072909781238,
+   "2": 0.09892774808216136,
+   "3": 0.09120255717388995,
+   "4": 0.08408062041550249,
+   "5": 0.07751483015960577,
+   "6": 0.07146175735835428,
+   "7": 0.06588136430447253,
+   "8": 0.06073673980410749,
+   "9": 0.055993855029827,
+   "10": 0.05162133843886776,
+   "11": 0.04759026826784209,
+   "12": 0.043873981231371824,
+   "13": 0.04044789615929708,
+   "14": 0.037289351405918096,
+   "15": 0.03437745495582311,
+   "16": 0.03169294623483542
+  },
   "lengthHistogram": {
    "2": 122,
    "3": 118,
@@ -1089,7 +1403,23 @@
    "18": 1,
    "22": 1
   },
-  "aggregateCount": 407,
+  "perTailHistogram": {
+   "2": 184,
+   "3": 169,
+   "4": 142,
+   "5": 103,
+   "6": 75,
+   "7": 55,
+   "8": 42,
+   "9": 21,
+   "10": 9,
+   "11": 13,
+   "12": 4,
+   "13": 4,
+   "14": 4,
+   "17": 1
+  },
+  "aggregateCount": 389,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -1106,8 +1436,8 @@
    10,
    6,
    6,
-   7,
-   8
+   4,
+   7
   ],
   "largest": [
    {
@@ -1190,7 +1520,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 1836,
+   "longest": 1.1013,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 68001,
@@ -1232,6 +1568,30 @@
   "amphiphileCount": 718,
   "amphiphileFraction": 0.09235,
   "meanTailLength": 5.209,
+  "meanPerTail": 4.511,
+  "twoTailedHeads": 111,
+  "alphaEvent": 0.9223,
+  "asfMeanFromEventAlpha": 12.865,
+  "alphaRecovered": 0.6461,
+  "alphaRecoveredR2": 0.932,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10706465473227586,
+   "2": 0.09874243740784258,
+   "3": 0.09106711238758086,
+   "4": 0.08398839623897718,
+   "5": 0.07745991409910369,
+   "6": 0.07143889585852144,
+   "7": 0.06588589596104037,
+   "8": 0.06076453498365815,
+   "9": 0.05604126130368724,
+   "10": 0.05168513129167832,
+   "11": 0.04766760659011549,
+   "12": 0.04396236714979308,
+   "13": 0.04054513879901775,
+   "14": 0.037393534215988004,
+   "15": 0.03448690626251205,
+   "16": 0.031806212718207716
+  },
   "lengthHistogram": {
    "2": 123,
    "3": 119,
@@ -1252,7 +1612,23 @@
    "18": 1,
    "22": 1
   },
-  "aggregateCount": 411,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 169,
+   "4": 143,
+   "5": 104,
+   "6": 72,
+   "7": 57,
+   "8": 43,
+   "9": 21,
+   "10": 8,
+   "11": 14,
+   "12": 4,
+   "13": 4,
+   "14": 4,
+   "17": 1
+  },
+  "aggregateCount": 388,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -1263,14 +1639,14 @@
   "sizeHistogramTop": [
    10,
    10,
-   7,
+   8,
+   8,
    8,
    10,
-   8,
+   6,
    6,
    7,
-   6,
-   4
+   6
   ],
   "largest": [
    {
@@ -1326,34 +1702,40 @@
     }
    },
    {
-    "amphiphileCount": 7,
-    "particleCount": 65,
-    "radiusOfGyration": 6.312,
+    "amphiphileCount": 8,
+    "particleCount": 69,
+    "radiusOfGyration": 6.427,
     "principalMoments": [
-     1.143,
-     5.078,
-     33.626
+     1.338,
+     4.876,
+     35.096
     ],
-    "flatnessRatio": 0.034,
-    "inPlaneSymmetry": 0.151,
+    "flatnessRatio": 0.0381,
+    "inPlaneSymmetry": 0.1389,
     "radialHeadShells": "unavailable",
     "transverseHeadShells": 0,
     "cavityVolume": 0.125,
     "encapsulatedWater": {
      "encapsulatedCount": 0,
      "totalWater": 288900,
-     "bulkWaterDensity": 0.39632748873753954,
-     "encapsulationThresholdCount": 146.98423190714084,
+     "bulkWaterDensity": 0.39632939170331954,
+     "encapsulationThresholdCount": 146.9849376516866,
      "closed": false,
-     "seedDistFromCentre": 77.68776351053464,
+     "seedDistFromCentre": 77.66522795762282,
      "theoreticalMaxDist": 77.94228634059948,
-     "totalEmptyCells": 5831541,
+     "totalEmptyCells": 5831513,
      "unreachedCells": 0
     }
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 1674,
+   "longest": 1.0977,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 72001,
@@ -1395,6 +1777,30 @@
   "amphiphileCount": 726,
   "amphiphileFraction": 0.094,
   "meanTailLength": 5.244,
+  "meanPerTail": 4.538,
+  "twoTailedHeads": 113,
+  "alphaEvent": 0.922,
+  "asfMeanFromEventAlpha": 12.825,
+  "alphaRecovered": 0.6465,
+  "alphaRecoveredR2": 0.932,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10722695144689527,
+   "2": 0.09886640321331118,
+   "3": 0.09115773182433463,
+   "4": 0.0840501100604265,
+   "5": 0.07749667373013723,
+   "6": 0.07145421267048448,
+   "7": 0.06588288584021247,
+   "8": 0.06074595862739691,
+   "9": 0.056009560639329686,
+   "10": 0.05164246237766846,
+   "11": 0.04761586932635543,
+   "12": 0.04390323209462185,
+   "13": 0.040480071363253774,
+   "14": 0.03732381647989993,
+   "15": 0.034413656639198056,
+   "16": 0.031730403666474026
+  },
   "lengthHistogram": {
    "2": 123,
    "3": 119,
@@ -1415,7 +1821,23 @@
    "18": 1,
    "22": 1
   },
-  "aggregateCount": 404,
+  "perTailHistogram": {
+   "2": 187,
+   "3": 170,
+   "4": 142,
+   "5": 106,
+   "6": 74,
+   "7": 57,
+   "8": 44,
+   "9": 22,
+   "10": 8,
+   "11": 15,
+   "12": 4,
+   "13": 4,
+   "14": 5,
+   "17": 1
+  },
+  "aggregateCount": 389,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -1431,9 +1853,9 @@
    8,
    10,
    6,
+   9,
    6,
-   7,
-   6
+   7
   ],
   "largest": [
    {
@@ -1516,7 +1938,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 1470,
+   "longest": 1.0568,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 76001,
@@ -1558,6 +1986,30 @@
   "amphiphileCount": 729,
   "amphiphileFraction": 0.09474,
   "meanTailLength": 5.263,
+  "meanPerTail": 4.552,
+  "twoTailedHeads": 114,
+  "alphaEvent": 0.9222,
+  "asfMeanFromEventAlpha": 12.854,
+  "alphaRecovered": 0.6465,
+  "alphaRecoveredR2": 0.932,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10710983084989857,
+   "2": 0.0987769494149749,
+   "3": 0.09109234566341161,
+   "4": 0.08400558518569201,
+   "5": 0.07747015724533117,
+   "6": 0.07144316952676315,
+   "7": 0.06588506663109198,
+   "8": 0.06075937047218094,
+   "9": 0.056032440869287596,
+   "10": 0.05167325476500305,
+   "11": 0.047653202619492796,
+   "12": 0.04394590064476464,
+   "13": 0.04052701764664901,
+   "14": 0.037374115338047284,
+   "15": 0.03446650107541673,
+   "16": 0.031785092051994784
+  },
   "lengthHistogram": {
    "2": 124,
    "3": 119,
@@ -1579,7 +2031,23 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 404,
+  "perTailHistogram": {
+   "2": 188,
+   "3": 170,
+   "4": 143,
+   "5": 104,
+   "6": 74,
+   "7": 60,
+   "8": 44,
+   "9": 22,
+   "10": 8,
+   "11": 15,
+   "12": 4,
+   "13": 5,
+   "14": 5,
+   "17": 1
+  },
+  "aggregateCount": 391,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -1589,13 +2057,13 @@
   "boxWideEnclosedVolume": 0.25,
   "sizeHistogramTop": [
    11,
+   10,
    9,
    8,
    8,
-   7,
+   10,
    6,
    9,
-   6,
    6,
    7
   ],
@@ -1627,6 +2095,32 @@
     }
    },
    {
+    "amphiphileCount": 10,
+    "particleCount": 84,
+    "radiusOfGyration": 5.94,
+    "principalMoments": [
+     2.074,
+     3.455,
+     29.758
+    ],
+    "flatnessRatio": 0.0697,
+    "inPlaneSymmetry": 0.1161,
+    "radialHeadShells": "unavailable",
+    "transverseHeadShells": 0,
+    "cavityVolume": 0,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 288900,
+     "bulkWaterDensity": 0.3963363240903445,
+     "encapsulationThresholdCount": 146.98750863556006,
+     "closed": false,
+     "seedDistFromCentre": 77.78199538058486,
+     "theoreticalMaxDist": 77.94228634059948,
+     "totalEmptyCells": 5831411,
+     "unreachedCells": 0
+    }
+   },
+   {
     "amphiphileCount": 9,
     "particleCount": 74,
     "radiusOfGyration": 6.307,
@@ -1651,36 +2145,16 @@
      "totalEmptyCells": 5831496,
      "unreachedCells": 2
     }
-   },
-   {
-    "amphiphileCount": 8,
-    "particleCount": 66,
-    "radiusOfGyration": 6.712,
-    "principalMoments": [
-     1.043,
-     3.134,
-     40.874
-    ],
-    "flatnessRatio": 0.0255,
-    "inPlaneSymmetry": 0.0767,
-    "radialHeadShells": "unavailable",
-    "transverseHeadShells": 0,
-    "cavityVolume": 0,
-    "encapsulatedWater": {
-     "encapsulatedCount": 0,
-     "totalWater": 288900,
-     "bulkWaterDensity": 0.39632769262585615,
-     "encapsulationThresholdCount": 146.9843075223037,
-     "closed": false,
-     "seedDistFromCentre": 77.78726405198314,
-     "theoreticalMaxDist": 77.94228634059948,
-     "totalEmptyCells": 5831538,
-     "unreachedCells": 0
-    }
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 1264,
+   "longest": 1.1273,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 80001,
@@ -1722,6 +2196,30 @@
   "amphiphileCount": 731,
   "amphiphileFraction": 0.09538,
   "meanTailLength": 5.285,
+  "meanPerTail": 4.572,
+  "twoTailedHeads": 114,
+  "alphaEvent": 0.9226,
+  "asfMeanFromEventAlpha": 12.917,
+  "alphaRecovered": 0.6474,
+  "alphaRecoveredR2": 0.932,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10685413173942655,
+   "2": 0.09858155379830967,
+   "3": 0.09094943350424697,
+   "4": 0.08390818703940205,
+   "5": 0.07741206933312578,
+   "6": 0.0714188768686257,
+   "7": 0.06588967349815146,
+   "8": 0.060788537485391356,
+   "9": 0.05608232813168363,
+   "10": 0.05174047046987587,
+   "11": 0.04773475662704677,
+   "12": 0.04403916256559799,
+   "13": 0.04062967901213234,
+   "14": 0.0374841554757092,
+   "15": 0.0345821563421059,
+   "16": 0.03190482810916868
+  },
   "lengthHistogram": {
    "2": 124,
    "3": 120,
@@ -1743,7 +2241,23 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 400,
+  "perTailHistogram": {
+   "2": 188,
+   "3": 171,
+   "4": 140,
+   "5": 106,
+   "6": 73,
+   "7": 61,
+   "8": 44,
+   "9": 23,
+   "10": 8,
+   "11": 14,
+   "12": 5,
+   "13": 5,
+   "14": 6,
+   "17": 1
+  },
+  "aggregateCount": 389,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -1844,7 +2358,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 1138,
+   "longest": 1.0615,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 84001,
@@ -1886,6 +2406,30 @@
   "amphiphileCount": 732,
   "amphiphileFraction": 0.09568,
   "meanTailLength": 5.294,
+  "meanPerTail": 4.575,
+  "twoTailedHeads": 115,
+  "alphaEvent": 0.9228,
+  "asfMeanFromEventAlpha": 12.954,
+  "alphaRecovered": 0.6475,
+  "alphaRecoveredR2": 0.931,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10670161304878988,
+   "2": 0.09846494007574816,
+   "3": 0.09086408487271348,
+   "4": 0.08384996642870243,
+   "5": 0.07737729246867571,
+   "6": 0.07140426698767889,
+   "7": 0.06589232036145176,
+   "8": 0.06080586029074966,
+   "9": 0.05611204197114884,
+   "10": 0.05178055600425337,
+   "11": 0.047783432680782265,
+   "12": 0.044094861371733796,
+   "13": 0.04069102386138137,
+   "14": 0.03754994054588189,
+   "15": 0.03465132850435478,
+   "16": 0.03197647052595381
+  },
   "lengthHistogram": {
    "2": 124,
    "3": 121,
@@ -1907,7 +2451,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 414,
+  "perTailHistogram": {
+   "2": 188,
+   "3": 172,
+   "4": 139,
+   "5": 107,
+   "6": 73,
+   "7": 62,
+   "8": 44,
+   "9": 23,
+   "10": 8,
+   "11": 14,
+   "12": 5,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 389,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -2008,7 +2569,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 966,
+   "longest": 1.0671,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 88001,
@@ -2050,6 +2617,30 @@
   "amphiphileCount": 732,
   "amphiphileFraction": 0.09575,
   "meanTailLength": 5.298,
+  "meanPerTail": 4.579,
+  "twoTailedHeads": 115,
+  "alphaEvent": 0.923,
+  "asfMeanFromEventAlpha": 12.981,
+  "alphaRecovered": 0.6476,
+  "alphaRecoveredR2": 0.93,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10659433190664916,
+   "2": 0.09838288539412414,
+   "3": 0.09080400397790375,
+   "4": 0.08380895828972719,
+   "5": 0.07735277280634496,
+   "6": 0.07139393667375338,
+   "7": 0.06589413680795435,
+   "8": 0.06081801155617844,
+   "9": 0.056132923334704855,
+   "10": 0.051808748781425024,
+   "11": 0.047817685073909245,
+   "12": 0.04413407116767414,
+   "13": 0.040734222805279906,
+   "14": 0.037596280235427666,
+   "15": 0.03470006766294793,
+   "16": 0.03202696352599594
+  },
   "lengthHistogram": {
    "2": 123,
    "3": 122,
@@ -2071,7 +2662,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 400,
+  "perTailHistogram": {
+   "2": 186,
+   "3": 174,
+   "4": 139,
+   "5": 107,
+   "6": 73,
+   "7": 61,
+   "8": 45,
+   "9": 23,
+   "10": 8,
+   "11": 14,
+   "12": 5,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 389,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -2172,7 +2780,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 794,
+   "longest": 1.0617,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 92001,
@@ -2214,6 +2828,30 @@
   "amphiphileCount": 734,
   "amphiphileFraction": 0.09598,
   "meanTailLength": 5.296,
+  "meanPerTail": 4.578,
+  "twoTailedHeads": 115,
+  "alphaEvent": 0.923,
+  "asfMeanFromEventAlpha": 12.992,
+  "alphaRecovered": 0.6523,
+  "alphaRecoveredR2": 0.933,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10655070718449557,
+   "2": 0.09834951189466369,
+   "3": 0.09077956163322473,
+   "4": 0.08379226954523998,
+   "5": 0.07734278850023064,
+   "6": 0.07138972324602974,
+   "7": 0.06589486471811812,
+   "8": 0.060822944799139134,
+   "9": 0.05614140995454461,
+   "10": 0.051820212291478054,
+   "11": 0.04783161669983098,
+   "12": 0.044150022837629206,
+   "13": 0.040751800818182846,
+   "14": 0.03761513954437687,
+   "15": 0.03471990671665331,
+   "16": 0.0320475196161625
+  },
   "lengthHistogram": {
    "2": 122,
    "3": 124,
@@ -2235,7 +2873,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 399,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 176,
+   "4": 139,
+   "5": 108,
+   "6": 73,
+   "7": 61,
+   "8": 45,
+   "9": 23,
+   "10": 8,
+   "11": 14,
+   "12": 5,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 389,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -2247,13 +2902,13 @@
    11,
    10,
    9,
+   9,
    8,
    10,
    6,
    9,
    8,
-   6,
-   7
+   6
   ],
   "largest": [
    {
@@ -2310,33 +2965,39 @@
    },
    {
     "amphiphileCount": 9,
-    "particleCount": 69,
-    "radiusOfGyration": 4.302,
+    "particleCount": 75,
+    "radiusOfGyration": 6.299,
     "principalMoments": [
-     1.162,
-     5.783,
-     11.565
+     1.248,
+     4.629,
+     33.802
     ],
-    "flatnessRatio": 0.1005,
-    "inPlaneSymmetry": 0.5001,
+    "flatnessRatio": 0.0369,
+    "inPlaneSymmetry": 0.137,
     "radialHeadShells": "unavailable",
-    "transverseHeadShells": "unavailable",
+    "transverseHeadShells": 0,
     "cavityVolume": 0,
     "encapsulatedWater": {
      "encapsulatedCount": 0,
      "totalWater": 288900,
-     "bulkWaterDensity": 0.3963291878132547,
-     "encapsulationThresholdCount": 146.98486203587538,
+     "bulkWaterDensity": 0.3963321102575627,
+     "encapsulationThresholdCount": 146.98594586993713,
      "closed": false,
-     "seedDistFromCentre": 77.73138668902999,
+     "seedDistFromCentre": 77.63951539085573,
      "theoreticalMaxDist": 77.94228634059948,
-     "totalEmptyCells": 5831516,
+     "totalEmptyCells": 5831473,
      "unreachedCells": 0
     }
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 710,
+   "longest": 1.1456,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 96001,
@@ -2378,6 +3039,30 @@
   "amphiphileCount": 735,
   "amphiphileFraction": 0.09622,
   "meanTailLength": 5.302,
+  "meanPerTail": 4.579,
+  "twoTailedHeads": 116,
+  "alphaEvent": 0.9231,
+  "asfMeanFromEventAlpha": 12.997,
+  "alphaRecovered": 0.6526,
+  "alphaRecoveredR2": 0.932,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10653094961135284,
+   "2": 0.09833439578284449,
+   "3": 0.09076848961972099,
+   "4": 0.08378470872022961,
+   "5": 0.07733826402470546,
+   "6": 0.07138781257003884,
+   "7": 0.06589519234498235,
+   "8": 0.06082517754584646,
+   "9": 0.05614525266296549,
+   "10": 0.051825403949083776,
+   "11": 0.047837926932286536,
+   "12": 0.04415724873899884,
+   "13": 0.04075976408755754,
+   "14": 0.03762368390053399,
+   "15": 0.03472889556491358,
+   "16": 0.03205683394393912
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 125,
@@ -2399,7 +3084,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 407,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 177,
+   "4": 139,
+   "5": 108,
+   "6": 73,
+   "7": 62,
+   "8": 45,
+   "9": 23,
+   "10": 8,
+   "11": 14,
+   "12": 5,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 391,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -2413,11 +3115,11 @@
    9,
    9,
    8,
+   10,
    6,
+   9,
    8,
-   6,
-   5,
-   7
+   6
   ],
   "largest": [
    {
@@ -2500,7 +3202,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 592,
+   "longest": 1.0722,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 100001,
@@ -2542,6 +3250,30 @@
   "amphiphileCount": 737,
   "amphiphileFraction": 0.09659,
   "meanTailLength": 5.308,
+  "meanPerTail": 4.586,
+  "twoTailedHeads": 116,
+  "alphaEvent": 0.9231,
+  "asfMeanFromEventAlpha": 13.009,
+  "alphaRecovered": 0.6526,
+  "alphaRecoveredR2": 0.932,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10648382034388032,
+   "2": 0.0982983348729427,
+   "3": 0.09074207337404659,
+   "4": 0.08376666696199914,
+   "5": 0.07732746490151708,
+   "6": 0.07138324879045245,
+   "7": 0.0658959687139525,
+   "8": 0.060830499680633615,
+   "9": 0.05615441678167593,
+   "10": 0.051837787633595214,
+   "11": 0.04785298077608347,
+   "12": 0.04417448879844098,
+   "13": 0.04077876506240284,
+   "14": 0.03764407297619559,
+   "15": 0.034750346855002064,
+   "16": 0.032079063477179405
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 124,
@@ -2563,7 +3295,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 406,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 176,
+   "4": 140,
+   "5": 109,
+   "6": 73,
+   "7": 62,
+   "8": 46,
+   "9": 22,
+   "10": 9,
+   "11": 14,
+   "12": 5,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 391,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -2573,15 +3322,15 @@
   "boxWideEnclosedVolume": 0.5,
   "sizeHistogramTop": [
    12,
+   10,
    9,
-   7,
    9,
    8,
    10,
    6,
    9,
-   6,
-   7
+   8,
+   6
   ],
   "largest": [
    {
@@ -2611,6 +3360,32 @@
     }
    },
    {
+    "amphiphileCount": 10,
+    "particleCount": 84,
+    "radiusOfGyration": 5.959,
+    "principalMoments": [
+     2.087,
+     3.453,
+     29.964
+    ],
+    "flatnessRatio": 0.0697,
+    "inPlaneSymmetry": 0.1152,
+    "radialHeadShells": "unavailable",
+    "transverseHeadShells": 0,
+    "cavityVolume": 0,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 288900,
+     "bulkWaterDensity": 0.3963365959536009,
+     "encapsulationThresholdCount": 146.98760946028975,
+     "closed": false,
+     "seedDistFromCentre": 77.72638967011973,
+     "theoreticalMaxDist": 77.94228634059948,
+     "totalEmptyCells": 5831407,
+     "unreachedCells": 0
+    }
+   },
+   {
     "amphiphileCount": 9,
     "particleCount": 75,
     "radiusOfGyration": 6.3,
@@ -2635,36 +3410,16 @@
      "totalEmptyCells": 5831481,
      "unreachedCells": 0
     }
-   },
-   {
-    "amphiphileCount": 7,
-    "particleCount": 74,
-    "radiusOfGyration": 5.377,
-    "principalMoments": [
-     1.915,
-     3.686,
-     23.313
-    ],
-    "flatnessRatio": 0.0821,
-    "inPlaneSymmetry": 0.1581,
-    "radialHeadShells": "unavailable",
-    "transverseHeadShells": 0,
-    "cavityVolume": 0,
-    "encapsulatedWater": {
-     "encapsulatedCount": 0,
-     "totalWater": 288900,
-     "bulkWaterDensity": 0.39633177043624274,
-     "encapsulationThresholdCount": 146.9858198418994,
-     "closed": false,
-     "seedDistFromCentre": 77.85853099577272,
-     "theoreticalMaxDist": 77.94228634059948,
-     "totalEmptyCells": 5831478,
-     "unreachedCells": 0
-    }
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 536,
+   "longest": 1.167,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 104001,
@@ -2706,6 +3461,30 @@
   "amphiphileCount": 737,
   "amphiphileFraction": 0.09672,
   "meanTailLength": 5.315,
+  "meanPerTail": 4.592,
+  "twoTailedHeads": 116,
+  "alphaEvent": 0.9232,
+  "asfMeanFromEventAlpha": 13.026,
+  "alphaRecovered": 0.6526,
+  "alphaRecoveredR2": 0.932,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10641735423551614,
+   "2": 0.09824747054430154,
+   "3": 0.09070480597545164,
+   "4": 0.08374120760019425,
+   "5": 0.07731221929118862,
+   "6": 0.07137679791131854,
+   "7": 0.06589705129126788,
+   "8": 0.06083799632310759,
+   "9": 0.05616733562554584,
+   "10": 0.051855251355055906,
+   "11": 0.047874214846556476,
+   "12": 0.044198810868376674,
+   "13": 0.040805575369536246,
+   "14": 0.03767284568350783,
+   "15": 0.03478062223215073,
+   "16": 0.0321104408469241
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 122,
@@ -2727,7 +3506,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 403,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 174,
+   "4": 140,
+   "5": 110,
+   "6": 74,
+   "7": 62,
+   "8": 46,
+   "9": 22,
+   "10": 9,
+   "11": 14,
+   "12": 5,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 390,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -2828,7 +3624,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 468,
+   "longest": 1.083,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 108001,
@@ -2870,6 +3672,30 @@
   "amphiphileCount": 737,
   "amphiphileFraction": 0.09674,
   "meanTailLength": 5.316,
+  "meanPerTail": 4.593,
+  "twoTailedHeads": 116,
+  "alphaEvent": 0.9233,
+  "asfMeanFromEventAlpha": 13.045,
+  "alphaRecovered": 0.6525,
+  "alphaRecoveredR2": 0.932,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10633936781088207,
+   "2": 0.09818777837365686,
+   "3": 0.0906610601550687,
+   "4": 0.08371131279864262,
+   "5": 0.0772943078151332,
+   "6": 0.07136920711052851,
+   "7": 0.06589830309067417,
+   "8": 0.06084677868853235,
+   "9": 0.05618248578687882,
+   "10": 0.05187574062631082,
+   "11": 0.047899134896533316,
+   "12": 0.04422736130870077,
+   "13": 0.040837052538749107,
+   "14": 0.03770663251674656,
+   "15": 0.03481617911586232,
+   "16": 0.03214729736709983
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 122,
@@ -2891,7 +3717,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 400,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 174,
+   "4": 140,
+   "5": 110,
+   "6": 74,
+   "7": 61,
+   "8": 47,
+   "9": 22,
+   "10": 9,
+   "11": 14,
+   "12": 5,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 390,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -2992,7 +3835,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 400,
+   "longest": 1.0586,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 112001,
@@ -3034,6 +3883,30 @@
   "amphiphileCount": 737,
   "amphiphileFraction": 0.09679,
   "meanTailLength": 5.319,
+  "meanPerTail": 4.596,
+  "twoTailedHeads": 116,
+  "alphaEvent": 0.9235,
+  "asfMeanFromEventAlpha": 13.064,
+  "alphaRecovered": 0.6526,
+  "alphaRecoveredR2": 0.933,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10626552969026189,
+   "2": 0.09813124971924003,
+   "3": 0.09061962236981454,
+   "4": 0.0836829856130705,
+   "5": 0.07727732579307257,
+   "6": 0.07136199835580365,
+   "7": 0.06589946995539327,
+   "8": 0.060855080301273526,
+   "9": 0.05619682223515917,
+   "10": 0.051895138642418175,
+   "11": 0.047922734909214865,
+   "12": 0.04425440573544763,
+   "13": 0.04086687520459183,
+   "14": 0.037738649095674925,
+   "15": 0.03484987850028871,
+   "16": 0.03218223387927458
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 122,
@@ -3055,7 +3928,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 397,
+  "perTailHistogram": {
+   "2": 184,
+   "3": 175,
+   "4": 140,
+   "5": 110,
+   "6": 74,
+   "7": 60,
+   "8": 48,
+   "9": 22,
+   "10": 9,
+   "11": 14,
+   "12": 5,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 389,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -3156,7 +4046,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 336,
+   "longest": 1.0587,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 116001,
@@ -3198,6 +4094,30 @@
   "amphiphileCount": 738,
   "amphiphileFraction": 0.09691,
   "meanTailLength": 5.318,
+  "meanPerTail": 4.591,
+  "twoTailedHeads": 117,
+  "alphaEvent": 0.9234,
+  "asfMeanFromEventAlpha": 13.059,
+  "alphaRecovered": 0.6525,
+  "alphaRecoveredR2": 0.933,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10628539462128211,
+   "2": 0.09814645893937887,
+   "3": 0.090630772333891,
+   "4": 0.08369060873516589,
+   "5": 0.07728189675642282,
+   "6": 0.07136393983188725,
+   "7": 0.06589915778569404,
+   "8": 0.06085284819047179,
+   "9": 0.05619296600018918,
+   "10": 0.05188992005788867,
+   "11": 0.04791638518609274,
+   "12": 0.04424712866661964,
+   "13": 0.040858850007922304,
+   "14": 0.03773003298244152,
+   "15": 0.034840808994382,
+   "16": 0.032172830910270234
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 123,
@@ -3219,50 +4139,67 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 418,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 176,
+   "4": 140,
+   "5": 110,
+   "6": 74,
+   "7": 60,
+   "8": 48,
+   "9": 22,
+   "10": 9,
+   "11": 14,
+   "12": 5,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 388,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
   "hasLamellarAggregate": false,
   "hasVesicleAggregate": false,
-  "largestAggregateFraction": 0.0217,
+  "largestAggregateFraction": 0.0229,
   "boxWideEnclosedVolume": 0,
   "sizeHistogramTop": [
+   12,
    10,
-   10,
+   9,
    9,
    10,
    8,
    10,
    6,
    8,
-   6,
    6
   ],
   "largest": [
    {
-    "amphiphileCount": 10,
-    "particleCount": 101,
-    "radiusOfGyration": 5.591,
+    "amphiphileCount": 12,
+    "particleCount": 107,
+    "radiusOfGyration": 5.842,
     "principalMoments": [
-     1.986,
-     8.687,
-     20.59
+     2.063,
+     10.363,
+     21.702
     ],
-    "flatnessRatio": 0.0964,
-    "inPlaneSymmetry": 0.4219,
+    "flatnessRatio": 0.095,
+    "inPlaneSymmetry": 0.4775,
     "radialHeadShells": "unavailable",
     "transverseHeadShells": 0,
-    "cavityVolume": 0.25,
+    "cavityVolume": 0.125,
     "encapsulatedWater": {
      "encapsulatedCount": 0,
      "totalWater": 288900,
-     "bulkWaterDensity": 0.3963430528155585,
-     "encapsulationThresholdCount": 146.99000408827376,
+     "bulkWaterDensity": 0.39634577155721773,
+     "encapsulationThresholdCount": 146.99101237603048,
      "closed": false,
-     "seedDistFromCentre": 77.74208288787825,
+     "seedDistFromCentre": 77.771911097518,
      "theoreticalMaxDist": 77.94228634059948,
-     "totalEmptyCells": 5831312,
+     "totalEmptyCells": 5831272,
      "unreachedCells": 0
     }
    },
@@ -3294,33 +4231,39 @@
    },
    {
     "amphiphileCount": 9,
-    "particleCount": 69,
-    "radiusOfGyration": 4.205,
+    "particleCount": 75,
+    "radiusOfGyration": 6.292,
     "principalMoments": [
-     1.203,
-     5.421,
-     11.061
+     1.25,
+     4.592,
+     33.747
     ],
-    "flatnessRatio": 0.1087,
-    "inPlaneSymmetry": 0.4901,
+    "flatnessRatio": 0.037,
+    "inPlaneSymmetry": 0.1361,
     "radialHeadShells": "unavailable",
     "transverseHeadShells": 0,
     "cavityVolume": 0,
     "encapsulatedWater": {
      "encapsulatedCount": 0,
      "totalWater": 288900,
-     "bulkWaterDensity": 0.39632864410744084,
-     "encapsulationThresholdCount": 146.98466039409251,
+     "bulkWaterDensity": 0.3963319743289648,
+     "encapsulationThresholdCount": 146.98589545869612,
      "closed": false,
-     "seedDistFromCentre": 77.63185804514595,
+     "seedDistFromCentre": 77.60801064937334,
      "theoreticalMaxDist": 77.94228634059948,
-     "totalEmptyCells": 5831524,
+     "totalEmptyCells": 5831475,
      "unreachedCells": 0
     }
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 296,
+   "longest": 1.0587,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 120001,
@@ -3362,6 +4305,30 @@
   "amphiphileCount": 739,
   "amphiphileFraction": 0.09711,
   "meanTailLength": 5.322,
+  "meanPerTail": 4.589,
+  "twoTailedHeads": 118,
+  "alphaEvent": 0.9234,
+  "asfMeanFromEventAlpha": 13.055,
+  "alphaRecovered": 0.6524,
+  "alphaRecoveredR2": 0.933,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10630132802756391,
+   "2": 0.09815865746592067,
+   "3": 0.09063971461404093,
+   "4": 0.08369672199486951,
+   "5": 0.07728556188107541,
+   "6": 0.07136549595860724,
+   "7": 0.06589890646399114,
+   "8": 0.060851057150484125,
+   "9": 0.05618987256419526,
+   "10": 0.051885734227632624,
+   "11": 0.04791129243556923,
+   "12": 0.04424129246732583,
+   "13": 0.04085241411117461,
+   "14": 0.037723123481156653,
+   "15": 0.03483353618471574,
+   "16": 0.03216529097167689
+  },
   "lengthHistogram": {
    "2": 122,
    "3": 123,
@@ -3383,7 +4350,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 405,
+  "perTailHistogram": {
+   "2": 186,
+   "3": 176,
+   "4": 140,
+   "5": 110,
+   "6": 75,
+   "7": 60,
+   "8": 48,
+   "9": 22,
+   "10": 9,
+   "11": 14,
+   "12": 5,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 387,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -3393,15 +4377,15 @@
   "boxWideEnclosedVolume": 0.625,
   "sizeHistogramTop": [
    12,
+   10,
    9,
    10,
    9,
    8,
+   10,
    6,
    8,
-   6,
-   6,
-   7
+   6
   ],
   "largest": [
    {
@@ -3431,6 +4415,32 @@
     }
    },
    {
+    "amphiphileCount": 10,
+    "particleCount": 84,
+    "radiusOfGyration": 5.946,
+    "principalMoments": [
+     2.086,
+     3.369,
+     29.894
+    ],
+    "flatnessRatio": 0.0698,
+    "inPlaneSymmetry": 0.1127,
+    "radialHeadShells": "unavailable",
+    "transverseHeadShells": 0,
+    "cavityVolume": 0,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 288900,
+     "bulkWaterDensity": 0.39633571239938126,
+     "encapsulationThresholdCount": 146.98728178042396,
+     "closed": false,
+     "seedDistFromCentre": 77.69603319702813,
+     "theoreticalMaxDist": 77.94228634059948,
+     "totalEmptyCells": 5831420,
+     "unreachedCells": 0
+    }
+   },
+   {
     "amphiphileCount": 9,
     "particleCount": 75,
     "radiusOfGyration": 6.294,
@@ -3455,36 +4465,16 @@
      "totalEmptyCells": 5831480,
      "unreachedCells": 0
     }
-   },
-   {
-    "amphiphileCount": 10,
-    "particleCount": 73,
-    "radiusOfGyration": 5.088,
-    "principalMoments": [
-     2.449,
-     5.692,
-     17.743
-    ],
-    "flatnessRatio": 0.138,
-    "inPlaneSymmetry": 0.3208,
-    "radialHeadShells": "unavailable",
-    "transverseHeadShells": 0,
-    "cavityVolume": 0,
-    "encapsulatedWater": {
-     "encapsulatedCount": 0,
-     "totalWater": 288900,
-     "bulkWaterDensity": 0.3963304791205414,
-     "encapsulationThresholdCount": 146.98534093732707,
-     "closed": false,
-     "seedDistFromCentre": 77.62772970706446,
-     "theoreticalMaxDist": 77.94228634059948,
-     "totalEmptyCells": 5831497,
-     "unreachedCells": 0
-    }
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 292,
+   "longest": 1.0754,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 124001,
@@ -3526,6 +4516,30 @@
   "amphiphileCount": 740,
   "amphiphileFraction": 0.09731,
   "meanTailLength": 5.326,
+  "meanPerTail": 4.588,
+  "twoTailedHeads": 119,
+  "alphaEvent": 0.9234,
+  "asfMeanFromEventAlpha": 13.054,
+  "alphaRecovered": 0.6524,
+  "alphaRecoveredR2": 0.933,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10630561545257572,
+   "2": 0.09816193980423178,
+   "3": 0.09064212069237548,
+   "4": 0.08369836680078493,
+   "5": 0.07728654792724868,
+   "6": 0.07136591451931282,
+   "7": 0.06589883869534571,
+   "8": 0.060850575105010324,
+   "9": 0.05618904010932172,
+   "10": 0.051884607876894265,
+   "11": 0.04790992210049298,
+   "12": 0.04423972213727564,
+   "13": 0.040850682467780876,
+   "14": 0.03772126445336274,
+   "15": 0.0348315794499338,
+   "16": 0.03216326240805254
+  },
   "lengthHistogram": {
    "2": 122,
    "3": 124,
@@ -3547,7 +4561,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 398,
+  "perTailHistogram": {
+   "2": 187,
+   "3": 177,
+   "4": 139,
+   "5": 110,
+   "6": 75,
+   "7": 61,
+   "8": 48,
+   "9": 22,
+   "10": 9,
+   "11": 14,
+   "12": 5,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 387,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -3564,8 +4595,8 @@
    8,
    10,
    6,
-   5,
-   6
+   8,
+   5
   ],
   "largest": [
    {
@@ -3648,7 +4679,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 276,
+   "longest": 1.0777,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 128001,
@@ -3690,6 +4727,30 @@
   "amphiphileCount": 740,
   "amphiphileFraction": 0.09748,
   "meanTailLength": 5.335,
+  "meanPerTail": 4.591,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9234,
+  "asfMeanFromEventAlpha": 13.051,
+  "alphaRecovered": 0.6525,
+  "alphaRecoveredR2": 0.933,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10631740666283619,
+   "2": 0.09817096664317561,
+   "3": 0.09064873753193557,
+   "4": 0.08370288993894678,
+   "5": 0.07728925934200864,
+   "6": 0.07136706527090592,
+   "7": 0.06589865200860365,
+   "8": 0.06084924916089263,
+   "9": 0.05618675057209033,
+   "10": 0.05188151018105317,
+   "11": 0.04790615351946993,
+   "12": 0.04423540365386553,
+   "13": 0.04084592046458401,
+   "14": 0.037716152239820916,
+   "15": 0.034826198641079775,
+   "16": 0.03215768416873125
+  },
   "lengthHistogram": {
    "2": 122,
    "3": 124,
@@ -3711,7 +4772,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 403,
+  "perTailHistogram": {
+   "2": 186,
+   "3": 179,
+   "4": 139,
+   "5": 110,
+   "6": 75,
+   "7": 60,
+   "8": 49,
+   "9": 22,
+   "10": 8,
+   "11": 14,
+   "12": 6,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 387,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -3727,9 +4805,9 @@
    9,
    8,
    10,
+   6,
    8,
-   5,
-   6
+   5
   ],
   "largest": [
    {
@@ -3812,7 +4890,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 238,
+   "longest": 1.0535,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 132001,
@@ -3854,6 +4938,30 @@
   "amphiphileCount": 740,
   "amphiphileFraction": 0.09748,
   "meanTailLength": 5.335,
+  "meanPerTail": 4.591,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9234,
+  "asfMeanFromEventAlpha": 13.052,
+  "alphaRecovered": 0.6525,
+  "alphaRecoveredR2": 0.933,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10631354477723862,
+   "2": 0.098168010183008,
+   "3": 0.09064657042038919,
+   "4": 0.08370140857149443,
+   "5": 0.07728837135658906,
+   "6": 0.07136668843334572,
+   "7": 0.06589871320283722,
+   "8": 0.0608496834744642,
+   "9": 0.05618750046826507,
+   "10": 0.051882524749634056,
+   "11": 0.04790738779911964,
+   "12": 0.044236818019374145,
+   "13": 0.04084748007310859,
+   "14": 0.03771782653065717,
+   "15": 0.03482796088401348,
+   "16": 0.03215951105646167
+  },
   "lengthHistogram": {
    "2": 122,
    "3": 124,
@@ -3875,7 +4983,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 401,
+  "perTailHistogram": {
+   "2": 186,
+   "3": 179,
+   "4": 139,
+   "5": 110,
+   "6": 75,
+   "7": 60,
+   "8": 49,
+   "9": 22,
+   "10": 8,
+   "11": 14,
+   "12": 6,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 387,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -3893,7 +5018,7 @@
    10,
    6,
    8,
-   6
+   5
   ],
   "largest": [
    {
@@ -3976,7 +5101,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 204,
+   "longest": 1.0535,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 136001,
@@ -4018,6 +5149,30 @@
   "amphiphileCount": 741,
   "amphiphileFraction": 0.0976,
   "meanTailLength": 5.335,
+  "meanPerTail": 4.591,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9234,
+  "asfMeanFromEventAlpha": 13.047,
+  "alphaRecovered": 0.6533,
+  "alphaRecoveredR2": 0.928,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10633304181502086,
+   "2": 0.09818293579091285,
+   "3": 0.09065751074150842,
+   "4": 0.08370888675960113,
+   "5": 0.07729285378804716,
+   "6": 0.07136859033685833,
+   "7": 0.06589840375977915,
+   "8": 0.06084749043787879,
+   "9": 0.05618371434434513,
+   "10": 0.05187740258161771,
+   "11": 0.04790115658998097,
+   "12": 0.0442296778264477,
+   "13": 0.04083960680482884,
+   "14": 0.03770937447289513,
+   "15": 0.03481906498102962,
+   "16": 0.03215028896924802
+  },
   "lengthHistogram": {
    "2": 122,
    "3": 124,
@@ -4039,7 +5194,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 402,
+  "perTailHistogram": {
+   "2": 186,
+   "3": 179,
+   "4": 139,
+   "5": 111,
+   "6": 75,
+   "7": 60,
+   "8": 49,
+   "9": 22,
+   "10": 8,
+   "11": 14,
+   "12": 6,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 386,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -4140,7 +5312,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 174,
+   "longest": 1.0535,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 140001,
@@ -4182,6 +5360,30 @@
   "amphiphileCount": 741,
   "amphiphileFraction": 0.09765,
   "meanTailLength": 5.337,
+  "meanPerTail": 4.593,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9234,
+  "asfMeanFromEventAlpha": 13.052,
+  "alphaRecovered": 0.6533,
+  "alphaRecoveredR2": 0.928,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10631374444875762,
+   "2": 0.09816816304197211,
+   "3": 0.09064668246804315,
+   "4": 0.08370148516427996,
+   "5": 0.0772884172697227,
+   "6": 0.07136670791843956,
+   "7": 0.06589871004010195,
+   "8": 0.060849661019986505,
+   "9": 0.05618746169680769,
+   "10": 0.05188247229336712,
+   "11": 0.04790732398265542,
+   "12": 0.044236744891444336,
+   "13": 0.040847399435192985,
+   "14": 0.037717739962844894,
+   "15": 0.03482786976835274,
+   "16": 0.032159416598031204
+  },
   "lengthHistogram": {
    "2": 120,
    "3": 126,
@@ -4203,16 +5405,33 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 404,
+  "perTailHistogram": {
+   "2": 184,
+   "3": 181,
+   "4": 139,
+   "5": 111,
+   "6": 75,
+   "7": 60,
+   "8": 49,
+   "9": 22,
+   "10": 8,
+   "11": 14,
+   "12": 6,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 385,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
   "hasLamellarAggregate": false,
   "hasVesicleAggregate": false,
-  "largestAggregateFraction": 0.019,
+  "largestAggregateFraction": 0.0228,
   "boxWideEnclosedVolume": 0,
   "sizeHistogramTop": [
-   9,
+   12,
    10,
    9,
    10,
@@ -4225,28 +5444,28 @@
   ],
   "largest": [
    {
-    "amphiphileCount": 9,
-    "particleCount": 89,
-    "radiusOfGyration": 5.021,
+    "amphiphileCount": 12,
+    "particleCount": 107,
+    "radiusOfGyration": 5.841,
     "principalMoments": [
-     1.913,
-     5.283,
-     18.019
+     2.068,
+     10.37,
+     21.677
     ],
-    "flatnessRatio": 0.1062,
-    "inPlaneSymmetry": 0.2932,
+    "flatnessRatio": 0.0954,
+    "inPlaneSymmetry": 0.4784,
     "radialHeadShells": "unavailable",
     "transverseHeadShells": 0,
-    "cavityVolume": 0,
+    "cavityVolume": 0.125,
     "encapsulatedWater": {
      "encapsulatedCount": 0,
      "totalWater": 288900,
-     "bulkWaterDensity": 0.3963387029064838,
-     "encapsulationThresholdCount": 146.98839085663485,
+     "bulkWaterDensity": 0.3963471309420344,
+     "encapsulationThresholdCount": 146.99151652509613,
      "closed": false,
-     "seedDistFromCentre": 77.55545530795852,
+     "seedDistFromCentre": 77.88501544142974,
      "theoreticalMaxDist": 77.94228634059948,
-     "totalEmptyCells": 5831376,
+     "totalEmptyCells": 5831252,
      "unreachedCells": 0
     }
    },
@@ -4278,33 +5497,39 @@
    },
    {
     "amphiphileCount": 9,
-    "particleCount": 74,
-    "radiusOfGyration": 6.22,
+    "particleCount": 75,
+    "radiusOfGyration": 6.294,
     "principalMoments": [
      1.237,
-     4.66,
-     32.788
+     4.613,
+     33.764
     ],
-    "flatnessRatio": 0.0377,
-    "inPlaneSymmetry": 0.1421,
+    "flatnessRatio": 0.0366,
+    "inPlaneSymmetry": 0.1366,
     "radialHeadShells": "unavailable",
     "transverseHeadShells": 0,
     "cavityVolume": 0,
     "encapsulatedWater": {
      "encapsulatedCount": 0,
      "totalWater": 288900,
-     "bulkWaterDensity": 0.3963319743289648,
-     "encapsulationThresholdCount": 146.98589545869612,
+     "bulkWaterDensity": 0.3963325180439159,
+     "encapsulationThresholdCount": 146.98609710386768,
      "closed": false,
-     "seedDistFromCentre": 77.68650718617135,
+     "seedDistFromCentre": 77.66378271981289,
      "theoreticalMaxDist": 77.94228634059948,
-     "totalEmptyCells": 5831475,
+     "totalEmptyCells": 5831467,
      "unreachedCells": 0
     }
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 160,
+   "longest": 1.0755,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 144001,
@@ -4346,6 +5571,30 @@
   "amphiphileCount": 742,
   "amphiphileFraction": 0.09775,
   "meanTailLength": 5.336,
+  "meanPerTail": 4.593,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9234,
+  "asfMeanFromEventAlpha": 13.054,
+  "alphaRecovered": 0.6533,
+  "alphaRecoveredR2": 0.928,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10630623685975173,
+   "2": 0.09816241553382733,
+   "3": 0.09064246941737047,
+   "4": 0.08369860518812967,
+   "5": 0.07728669083563053,
+   "6": 0.07136597517839488,
+   "7": 0.06589882886815572,
+   "8": 0.06085050523500947,
+   "9": 0.05618891945354753,
+   "10": 0.05188444462644832,
+   "11": 0.04790972348953083,
+   "12": 0.044239494541553626,
+   "13": 0.040850431493720134,
+   "14": 0.03772099501850495,
+   "15": 0.034831295855585066,
+   "16": 0.03216296840483988
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 126,
@@ -4367,7 +5616,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 398,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 181,
+   "4": 138,
+   "5": 112,
+   "6": 75,
+   "7": 60,
+   "8": 48,
+   "9": 23,
+   "10": 8,
+   "11": 14,
+   "12": 6,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 386,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -4377,15 +5643,15 @@
   "boxWideEnclosedVolume": 0.125,
   "sizeHistogramTop": [
    12,
+   10,
    9,
    10,
    9,
    8,
-   7,
+   10,
    6,
    8,
-   5,
-   6
+   5
   ],
   "largest": [
    {
@@ -4415,6 +5681,32 @@
     }
    },
    {
+    "amphiphileCount": 10,
+    "particleCount": 84,
+    "radiusOfGyration": 5.968,
+    "principalMoments": [
+     2.099,
+     3.401,
+     30.111
+    ],
+    "flatnessRatio": 0.0697,
+    "inPlaneSymmetry": 0.1129,
+    "radialHeadShells": "unavailable",
+    "transverseHeadShells": 0,
+    "cavityVolume": 0,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 288900,
+     "bulkWaterDensity": 0.3963360522274611,
+     "encapsulationThresholdCount": 146.98740781096868,
+     "closed": false,
+     "seedDistFromCentre": 77.72286203744223,
+     "theoreticalMaxDist": 77.94228634059948,
+     "totalEmptyCells": 5831415,
+     "unreachedCells": 0
+    }
+   },
+   {
     "amphiphileCount": 9,
     "particleCount": 75,
     "radiusOfGyration": 6.292,
@@ -4439,36 +5731,16 @@
      "totalEmptyCells": 5831485,
      "unreachedCells": 0
     }
-   },
-   {
-    "amphiphileCount": 10,
-    "particleCount": 73,
-    "radiusOfGyration": 5.083,
-    "principalMoments": [
-     2.445,
-     5.653,
-     17.739
-    ],
-    "flatnessRatio": 0.1378,
-    "inPlaneSymmetry": 0.3187,
-    "radialHeadShells": "unavailable",
-    "transverseHeadShells": 0,
-    "cavityVolume": 0,
-    "encapsulatedWater": {
-     "encapsulatedCount": 0,
-     "totalWater": 288900,
-     "bulkWaterDensity": 0.3963302752293578,
-     "encapsulationThresholdCount": 146.9852653211009,
-     "closed": false,
-     "seedDistFromCentre": 77.71258833659871,
-     "theoreticalMaxDist": 77.94228634059948,
-     "totalEmptyCells": 5831500,
-     "unreachedCells": 0
-    }
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 144,
+   "longest": 1.0578,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 148001,
@@ -4510,6 +5782,30 @@
   "amphiphileCount": 742,
   "amphiphileFraction": 0.09778,
   "meanTailLength": 5.337,
+  "meanPerTail": 4.594,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9234,
+  "asfMeanFromEventAlpha": 13.053,
+  "alphaRecovered": 0.6533,
+  "alphaRecoveredR2": 0.928,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10631029258267863,
+   "2": 0.09816552044672855,
+   "3": 0.0906447454001944,
+   "4": 0.08370016102675168,
+   "5": 0.0772876235128036,
+   "6": 0.07136637104375107,
+   "7": 0.06589876469821342,
+   "8": 0.06085004919317312,
+   "9": 0.056188131959201554,
+   "10": 0.05188337914143953,
+   "11": 0.047908427229596304,
+   "12": 0.044238009119578,
+   "13": 0.04084879350109188,
+   "14": 0.03771923655028088,
+   "15": 0.03482944498466071,
+   "16": 0.032161049609856794
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 126,
@@ -4531,7 +5827,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 404,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 181,
+   "4": 138,
+   "5": 112,
+   "6": 75,
+   "7": 60,
+   "8": 48,
+   "9": 22,
+   "10": 9,
+   "11": 14,
+   "12": 6,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 386,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -4548,8 +5861,8 @@
    8,
    10,
    6,
-   5,
-   6
+   8,
+   5
   ],
   "largest": [
    {
@@ -4632,7 +5945,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 122,
+   "longest": 1.0535,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 152001,
@@ -4674,6 +5993,30 @@
   "amphiphileCount": 742,
   "amphiphileFraction": 0.0978,
   "meanTailLength": 5.338,
+  "meanPerTail": 4.595,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9234,
+  "asfMeanFromEventAlpha": 13.062,
+  "alphaRecovered": 0.6534,
+  "alphaRecoveredR2": 0.927,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10627182825005968,
+   "2": 0.09813607218499731,
+   "3": 0.09062315782540044,
+   "4": 0.08368540284316515,
+   "5": 0.07727877528297651,
+   "6": 0.0713626141040263,
+   "7": 0.06589937111596555,
+   "8": 0.0608543726712323,
+   "9": 0.056195599601284056,
+   "10": 0.05189348400005269,
+   "11": 0.04792072156486416,
+   "12": 0.04425209830380449,
+   "13": 0.04086433050969288,
+   "14": 0.03773591698502239,
+   "15": 0.03484700257998191,
+   "16": 0.032179252177474166
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 126,
@@ -4695,7 +6038,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 395,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 181,
+   "4": 138,
+   "5": 112,
+   "6": 75,
+   "7": 60,
+   "8": 48,
+   "9": 22,
+   "10": 8,
+   "11": 15,
+   "12": 6,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 386,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -4711,9 +6071,9 @@
    9,
    8,
    10,
+   6,
    8,
-   5,
-   6
+   5
   ],
   "largest": [
    {
@@ -4796,7 +6156,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 108,
+   "longest": 1.0671,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 156001,
@@ -4838,6 +6204,30 @@
   "amphiphileCount": 742,
   "amphiphileFraction": 0.0978,
   "meanTailLength": 5.338,
+  "meanPerTail": 4.595,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9235,
+  "asfMeanFromEventAlpha": 13.066,
+  "alphaRecovered": 0.6536,
+  "alphaRecoveredR2": 0.928,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10625646089563635,
+   "2": 0.0981243060897776,
+   "3": 0.09061453171357955,
+   "4": 0.08367950495526326,
+   "5": 0.07727523849807157,
+   "6": 0.07136111151860071,
+   "7": 0.06589961203804308,
+   "8": 0.06085609899213278,
+   "9": 0.056198582510657236,
+   "10": 0.05189752101289696,
+   "11": 0.047925633832015736,
+   "12": 0.044257728179919444,
+   "13": 0.040870539355060874,
+   "14": 0.03774258317966423,
+   "15": 0.03485401973041204,
+   "16": 0.03218652749826857
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 126,
@@ -4859,7 +6249,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 400,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 181,
+   "4": 138,
+   "5": 112,
+   "6": 75,
+   "7": 60,
+   "8": 48,
+   "9": 22,
+   "10": 8,
+   "11": 15,
+   "12": 6,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 386,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -4877,7 +6284,7 @@
    10,
    6,
    8,
-   6
+   5
   ],
   "largest": [
    {
@@ -4960,7 +6367,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 92,
+   "longest": 1.055,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 160001,
@@ -5002,6 +6415,30 @@
   "amphiphileCount": 742,
   "amphiphileFraction": 0.09785,
   "meanTailLength": 5.341,
+  "meanPerTail": 4.597,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9235,
+  "asfMeanFromEventAlpha": 13.07,
+  "alphaRecovered": 0.6536,
+  "alphaRecoveredR2": 0.928,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10624110402753931,
+   "2": 0.09811254753224892,
+   "3": 0.0906059106913326,
+   "4": 0.08367361014153014,
+   "5": 0.07727170314493091,
+   "6": 0.0713596090430279,
+   "7": 0.06589985202245205,
+   "8": 0.060857823561820436,
+   "9": 0.05620156305388706,
+   "10": 0.051901555212395444,
+   "11": 0.0479305429794274,
+   "12": 0.044263354747298075,
+   "13": 0.04087674479978447,
+   "14": 0.03774924596127008,
+   "15": 0.03486103351977233,
+   "16": 0.0321937995612827
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 126,
@@ -5023,7 +6460,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 413,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 180,
+   "4": 139,
+   "5": 112,
+   "6": 75,
+   "7": 60,
+   "8": 48,
+   "9": 22,
+   "10": 8,
+   "11": 14,
+   "12": 7,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 386,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -5037,8 +6491,8 @@
    9,
    9,
    10,
+   8,
    10,
-   6,
    6,
    8,
    5
@@ -5124,7 +6578,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 86,
+   "longest": 1.0568,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 164001,
@@ -5166,6 +6626,30 @@
   "amphiphileCount": 742,
   "amphiphileFraction": 0.09785,
   "meanTailLength": 5.341,
+  "meanPerTail": 4.597,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9235,
+  "asfMeanFromEventAlpha": 13.073,
+  "alphaRecovered": 0.6536,
+  "alphaRecoveredR2": 0.928,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10622959325181469,
+   "2": 0.09810373355647628,
+   "3": 0.09059944826208471,
+   "4": 0.08366919104734012,
+   "5": 0.07726905256934083,
+   "6": 0.07135848225884531,
+   "7": 0.06590003139635209,
+   "8": 0.06085911584115667,
+   "9": 0.056203796910062685,
+   "10": 0.05190457901741898,
+   "11": 0.047934222794352596,
+   "12": 0.044267572503141506,
+   "13": 0.040881396653243814,
+   "14": 0.037754240809144204,
+   "15": 0.03486629165742433,
+   "16": 0.0321992514718013
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 126,
@@ -5187,27 +6671,70 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 407,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 180,
+   "4": 139,
+   "5": 112,
+   "6": 75,
+   "7": 60,
+   "8": 48,
+   "9": 22,
+   "10": 8,
+   "11": 14,
+   "12": 7,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 386,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
   "hasLamellarAggregate": false,
   "hasVesicleAggregate": false,
-  "largestAggregateFraction": 0.0179,
+  "largestAggregateFraction": 0.0227,
   "boxWideEnclosedVolume": 0.125,
   "sizeHistogramTop": [
+   12,
    10,
    9,
    9,
    10,
    8,
    10,
-   7,
    6,
    8,
    5
   ],
   "largest": [
+   {
+    "amphiphileCount": 12,
+    "particleCount": 107,
+    "radiusOfGyration": 5.835,
+    "principalMoments": [
+     2.066,
+     10.341,
+     21.642
+    ],
+    "flatnessRatio": 0.0955,
+    "inPlaneSymmetry": 0.4778,
+    "radialHeadShells": "unavailable",
+    "transverseHeadShells": 0,
+    "cavityVolume": 0,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 288900,
+     "bulkWaterDensity": 0.3963458395262371,
+     "encapsulationThresholdCount": 146.99103758340163,
+     "closed": false,
+     "seedDistFromCentre": 77.80522464913824,
+     "theoreticalMaxDist": 77.94228634059948,
+     "totalEmptyCells": 5831272,
+     "unreachedCells": 1
+    }
+   },
    {
     "amphiphileCount": 10,
     "particleCount": 84,
@@ -5259,36 +6786,16 @@
      "totalEmptyCells": 5831490,
      "unreachedCells": 0
     }
-   },
-   {
-    "amphiphileCount": 9,
-    "particleCount": 74,
-    "radiusOfGyration": 4.276,
-    "principalMoments": [
-     1.289,
-     5.373,
-     11.624
-    ],
-    "flatnessRatio": 0.1109,
-    "inPlaneSymmetry": 0.4622,
-    "radialHeadShells": "unavailable",
-    "transverseHeadShells": 0,
-    "cavityVolume": 0.125,
-    "encapsulatedWater": {
-     "encapsulatedCount": 0,
-     "totalWater": 288900,
-     "bulkWaterDensity": 0.3963312267233429,
-     "encapsulationThresholdCount": 146.9856181974886,
-     "closed": false,
-     "seedDistFromCentre": 77.87740482632695,
-     "theoreticalMaxDist": 77.94228634059948,
-     "totalEmptyCells": 5831486,
-     "unreachedCells": 0
-    }
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 82,
+   "longest": 1.0568,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 168001,
@@ -5330,6 +6837,30 @@
   "amphiphileCount": 742,
   "amphiphileFraction": 0.09785,
   "meanTailLength": 5.341,
+  "meanPerTail": 4.597,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9235,
+  "asfMeanFromEventAlpha": 13.073,
+  "alphaRecovered": 0.6536,
+  "alphaRecoveredR2": 0.928,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10622959325181469,
+   "2": 0.09810373355647628,
+   "3": 0.09059944826208471,
+   "4": 0.08366919104734012,
+   "5": 0.07726905256934083,
+   "6": 0.07135848225884531,
+   "7": 0.06590003139635209,
+   "8": 0.06085911584115667,
+   "9": 0.056203796910062685,
+   "10": 0.05190457901741898,
+   "11": 0.047934222794352596,
+   "12": 0.044267572503141506,
+   "13": 0.040881396653243814,
+   "14": 0.037754240809144204,
+   "15": 0.03486629165742433,
+   "16": 0.0321992514718013
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 126,
@@ -5351,7 +6882,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 402,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 180,
+   "4": 139,
+   "5": 112,
+   "6": 75,
+   "7": 60,
+   "8": 48,
+   "9": 22,
+   "10": 8,
+   "11": 14,
+   "12": 7,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 386,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -5361,15 +6909,15 @@
   "boxWideEnclosedVolume": 0.5,
   "sizeHistogramTop": [
    12,
+   10,
    9,
-   7,
    9,
    10,
    8,
    10,
    6,
-   5,
-   6
+   8,
+   5
   ],
   "largest": [
    {
@@ -5399,6 +6947,32 @@
     }
    },
    {
+    "amphiphileCount": 10,
+    "particleCount": 84,
+    "radiusOfGyration": 5.968,
+    "principalMoments": [
+     2.097,
+     3.406,
+     30.116
+    ],
+    "flatnessRatio": 0.0696,
+    "inPlaneSymmetry": 0.1131,
+    "radialHeadShells": "unavailable",
+    "transverseHeadShells": 0,
+    "cavityVolume": 0,
+    "encapsulatedWater": {
+     "encapsulatedCount": 0,
+     "totalWater": 288900,
+     "bulkWaterDensity": 0.39633686781723027,
+     "encapsulationThresholdCount": 146.9877102851578,
+     "closed": false,
+     "seedDistFromCentre": 77.61511330650148,
+     "theoreticalMaxDist": 77.94228634059948,
+     "totalEmptyCells": 5831403,
+     "unreachedCells": 0
+    }
+   },
+   {
     "amphiphileCount": 9,
     "particleCount": 75,
     "radiusOfGyration": 6.26,
@@ -5423,36 +6997,16 @@
      "totalEmptyCells": 5831478,
      "unreachedCells": 0
     }
-   },
-   {
-    "amphiphileCount": 7,
-    "particleCount": 74,
-    "radiusOfGyration": 5.388,
-    "principalMoments": [
-     1.933,
-     3.641,
-     23.454
-    ],
-    "flatnessRatio": 0.0824,
-    "inPlaneSymmetry": 0.1552,
-    "radialHeadShells": "unavailable",
-    "transverseHeadShells": 0,
-    "cavityVolume": 0,
-    "encapsulatedWater": {
-     "encapsulatedCount": 0,
-     "totalWater": 288900,
-     "bulkWaterDensity": 0.3963318384004601,
-     "encapsulationThresholdCount": 146.98584504748968,
-     "closed": false,
-     "seedDistFromCentre": 77.75316210040785,
-     "theoreticalMaxDist": 77.94228634059948,
-     "totalEmptyCells": 5831477,
-     "unreachedCells": 0
-    }
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 78,
+   "longest": 1.0568,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 172001,
@@ -5494,6 +7048,30 @@
   "amphiphileCount": 742,
   "amphiphileFraction": 0.09785,
   "meanTailLength": 5.341,
+  "meanPerTail": 4.597,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9235,
+  "asfMeanFromEventAlpha": 13.075,
+  "alphaRecovered": 0.6536,
+  "alphaRecoveredR2": 0.928,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10622192267285363,
+   "2": 0.09809785992449047,
+   "3": 0.09059514156416489,
+   "4": 0.08366624594408764,
+   "5": 0.07726728596608808,
+   "6": 0.07135773110407048,
+   "7": 0.06590015068674249,
+   "8": 0.06085997681458843,
+   "9": 0.056205285409421435,
+   "10": 0.051906594009698784,
+   "11": 0.047936675030851555,
+   "12": 0.04427038330783363,
+   "13": 0.04088449682755771,
+   "14": 0.03775756964242948,
+   "15": 0.03486979603334585,
+   "16": 0.03220288506177554
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 126,
@@ -5515,7 +7093,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 405,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 180,
+   "4": 139,
+   "5": 112,
+   "6": 75,
+   "7": 60,
+   "8": 48,
+   "9": 22,
+   "10": 8,
+   "11": 14,
+   "12": 7,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 386,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -5532,8 +7127,8 @@
    8,
    10,
    6,
-   5,
-   6
+   8,
+   5
   ],
   "largest": [
    {
@@ -5616,7 +7211,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 66,
+   "longest": 1.0907,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 176001,
@@ -5658,6 +7259,30 @@
   "amphiphileCount": 742,
   "amphiphileFraction": 0.09785,
   "meanTailLength": 5.341,
+  "meanPerTail": 4.597,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9235,
+  "asfMeanFromEventAlpha": 13.078,
+  "alphaRecovered": 0.6536,
+  "alphaRecoveredR2": 0.928,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.1062104217084271,
+   "2": 0.09808905300210928,
+   "3": 0.09058868389830715,
+   "4": 0.08366182972783874,
+   "5": 0.07726463673174831,
+   "6": 0.07135660442413864,
+   "7": 0.06590032918449973,
+   "8": 0.06086126745622326,
+   "9": 0.05620751705211774,
+   "10": 0.05190961518237425,
+   "11": 0.047940351926302596,
+   "12": 0.04427459796693153,
+   "13": 0.04088914549786455,
+   "14": 0.037762561295176224,
+   "15": 0.03487505102415054,
+   "16": 0.03220833392179013
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 126,
@@ -5679,7 +7304,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 398,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 180,
+   "4": 139,
+   "5": 112,
+   "6": 75,
+   "7": 60,
+   "8": 48,
+   "9": 22,
+   "10": 8,
+   "11": 14,
+   "12": 7,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 386,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -5695,8 +7337,8 @@
    10,
    8,
    10,
+   6,
    8,
-   5,
    5
   ],
   "largest": [
@@ -5780,7 +7422,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 52,
+   "longest": 1.0568,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 180001,
@@ -5822,6 +7470,30 @@
   "amphiphileCount": 742,
   "amphiphileFraction": 0.09785,
   "meanTailLength": 5.341,
+  "meanPerTail": 4.597,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9235,
+  "asfMeanFromEventAlpha": 13.078,
+  "alphaRecovered": 0.6536,
+  "alphaRecoveredR2": 0.928,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.1062104217084271,
+   "2": 0.09808905300210928,
+   "3": 0.09058868389830715,
+   "4": 0.08366182972783874,
+   "5": 0.07726463673174831,
+   "6": 0.07135660442413864,
+   "7": 0.06590032918449973,
+   "8": 0.06086126745622326,
+   "9": 0.05620751705211774,
+   "10": 0.05190961518237425,
+   "11": 0.047940351926302596,
+   "12": 0.04427459796693153,
+   "13": 0.04088914549786455,
+   "14": 0.037762561295176224,
+   "15": 0.03487505102415054,
+   "16": 0.03220833392179013
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 126,
@@ -5843,7 +7515,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 394,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 180,
+   "4": 139,
+   "5": 112,
+   "6": 75,
+   "7": 60,
+   "8": 48,
+   "9": 22,
+   "10": 8,
+   "11": 14,
+   "12": 7,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 386,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -5861,7 +7550,7 @@
    10,
    6,
    8,
-   6
+   5
   ],
   "largest": [
    {
@@ -5944,7 +7633,13 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 38,
+   "longest": 1.0459,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  },
  {
   "step": 184001,
@@ -5986,6 +7681,30 @@
   "amphiphileCount": 742,
   "amphiphileFraction": 0.09785,
   "meanTailLength": 5.341,
+  "meanPerTail": 4.597,
+  "twoTailedHeads": 120,
+  "alphaEvent": 0.9235,
+  "asfMeanFromEventAlpha": 13.079,
+  "alphaRecovered": 0.6536,
+  "alphaRecoveredR2": 0.928,
+  "asfPredictionFromEventAlpha": {
+   "1": 0.10620658936070262,
+   "2": 0.09808611830103603,
+   "3": 0.09058653197769148,
+   "4": 0.08366035803925423,
+   "5": 0.0772637538324113,
+   "6": 0.07135622887813149,
+   "7": 0.06590038856709508,
+   "8": 0.060861697451966526,
+   "9": 0.05620826063815105,
+   "10": 0.05191062188923941,
+   "11": 0.0479415771691494,
+   "12": 0.044276002440686295,
+   "13": 0.040890694630487896,
+   "14": 0.037764224753663075,
+   "15": 0.0348768022684031,
+   "16": 0.032210149801931244
+  },
   "lengthHistogram": {
    "2": 121,
    "3": 126,
@@ -6007,7 +7726,24 @@
    "21": 1,
    "22": 1
   },
-  "aggregateCount": 409,
+  "perTailHistogram": {
+   "2": 185,
+   "3": 180,
+   "4": 139,
+   "5": 112,
+   "6": 75,
+   "7": 60,
+   "8": 48,
+   "9": 22,
+   "10": 8,
+   "11": 14,
+   "12": 7,
+   "13": 5,
+   "14": 5,
+   "15": 1,
+   "17": 1
+  },
+  "aggregateCount": 386,
   "qualifyingAggregateCount": 0,
   "amphiphilesInQualifying": 0,
   "amphiphileShareInQualifying": 0,
@@ -6019,13 +7755,13 @@
    12,
    10,
    9,
+   9,
    10,
    8,
    10,
    6,
    8,
-   5,
-   6
+   5
   ],
   "largest": [
    {
@@ -6108,6 +7844,12 @@
    }
   ],
   "closureThreshold": 370.8656,
-  "minAmphiphilesPerAggregate": 13
+  "minAmphiphilesPerAggregate": 13,
+  "tether": {
+   "live": 30,
+   "longest": 1.0459,
+   "rInf": 1.5,
+   "overRInf": 0
+  }
  }
 ]

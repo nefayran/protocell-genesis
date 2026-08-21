@@ -20,7 +20,7 @@
 // this file's own signal handler cannot catch, and does not need to: the periodic on-disk checkpoint
 // is what survives THAT one) costs at most one --every interval of recomputation, not the whole run.
 
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, readFileSync } from 'node:fs'
 import { gpuPage, shutdownGpu } from '../../tests/helpers/gpu'
 import type { CheckpointConfig } from '../src/checkpoint'
 // The flag surface, the usage text, the resume-signature and the checkpoint file I/O live in
@@ -36,9 +36,22 @@ import { loadSoup } from '../src/rules'
 // n, not a physical parameter either way).
 const GRID_DEBUG_N = 100
 
+// Task 'confined-parcel' (2026-08-21): the radial shell, in sigma, the per-species wall-adsorption
+// measurement counts particles in -- the MEASURED bilayer thickness of this project's own
+// explicit-water gate (verify/out/water-bilayer-area-move.json's `thickness`, 4.687), i.e. exactly the
+// depth an adsorbed film would occupy, read from the gate artifact rather than typed here. Falls back
+// to the file's own closure radius scale only if the artifact is missing, and says so.
+const WALL_SHELL_JSON = 'verify/out/water-bilayer-area-move.json'
+
 
 async function main(): Promise<void> {
   const args = parseCliArgs()
+  let wallShell = 0
+  if (args.confineRadius !== undefined) {
+    const wb = JSON.parse(readFileSync(WALL_SHELL_JSON, 'utf8'))
+    wallShell = wb.thickness
+    console.log(`[campaign] оболочка стенки для замера налипания = ${wallShell.toFixed(4)} sigma (толщина бислоя из ${WALL_SHELL_JSON})`)
+  }
   const config: CheckpointConfig = {
     box: [args.box, args.box, args.box],
     seed: args.seed,
@@ -60,6 +73,9 @@ async function main(): Promise<void> {
           ionicStrengthMolar: args.ionicStrength ?? loadSoup().electrostatics!.ionicStrengthMolar,
         }
       : undefined,
+    // Task 'confined-parcel' (2026-08-21): resolved HERE (not left as two optional flags) so the
+    // checkpoint carries the parcel this run actually used and a reader never has to re-derive it.
+    confine: args.confineRadius !== undefined ? { radiusSigma: args.confineRadius, stiffness: args.confineStiffness } : undefined,
   }
   mkdirSync(args.dir, { recursive: true })
   const sig = configSignature(config)
@@ -106,14 +122,24 @@ async function main(): Promise<void> {
         // drives dry-wet box cycling, which applyBoxScaleOnce refuses on a system with an immobile
         // phase. Pinned clay-free so every existing campaign stays reproducible; a clay campaign is its
         // own measurement with its own checkpoint lineage, not a silent change to this one.
-        const sys = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, dryWetCycles: cfg.dryWetCycles, evaporateSolvent: cfg.evaporateSolvent, electrostatics: cfg.electrostatics, resume, clay: false })
+        const sys = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, dryWetCycles: cfg.dryWetCycles, evaporateSolvent: cfg.evaporateSolvent, electrostatics: cfg.electrostatics, confine: cfg.confine, resume, clay: false })
         ;(window as any).__sys = sys
-        return { N: (await sys.particles()).length / 4, steps: sys.steps }
+        return { N: (await sys.particles()).length / 4, steps: sys.steps, confinement: sys.confinement() }
       },
       JSON.stringify(config),
       found ? JSON.stringify(found.file) : null,
     )
     console.log(`[campaign] система готова N=${created.N} стартовый_шаг=${created.steps} цель=${targetStep}`)
+    if (created.confinement) {
+      const cf = created.confinement as Record<string, number | boolean | number[]>
+      console.log(
+        `[campaign] УДЕРЖАНИЕ: парцелла R_wet=${Number(cf.radiusWet).toFixed(4)} R_live=${Number(cf.radiusLive).toFixed(4)} ` +
+          `k=${cf.stiffness} box_live=${JSON.stringify(cf.boxLive)} V_парцеллы=${Number(cf.parcelVolumeLive).toFixed(1)} ` +
+          `V_бокса=${Number(cf.boxVolumeLive).toFixed(1)} (V_бокса/V_парцеллы=${(Number(cf.boxVolumeLive) / Number(cf.parcelVolumeLive)).toFixed(3)}) ` +
+          `наибольший_радиус_взаимодействия=${Number(cf.cutMax).toFixed(4)} зазор_L/2-R=${Number(cf.clearanceLive).toFixed(4)} ` +
+          `сильное_условие_2R<L/2=${cf.strongNoWrapLive}`,
+      )
+    }
 
     // Task 'loud-failure-and-liquid-water' (2026-08-20): the cold-start minimisation, BEFORE any
     // step and before the box-expansion block below. Fresh runs only: a resumed run's positions are
@@ -169,7 +195,7 @@ async function main(): Promise<void> {
               const api = (window as any).api
               const cfg = JSON.parse(cfgJson2)
               const resume = checkpointJson2 ? api.decodeCheckpointResume(JSON.parse(checkpointJson2)) : undefined
-              const probe = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, dryWetCycles: cfg.dryWetCycles, evaporateSolvent: cfg.evaporateSolvent, electrostatics: cfg.electrostatics, resume, clay: false })
+              const probe = await api.createSoup({ box: cfg.box, seed: cfg.seed, kT: cfg.kT, start: cfg.start, catalystCount: cfg.catalystCount, dryWetCycle: cfg.dryWetCycle, dryWetCycles: cfg.dryWetCycles, evaporateSolvent: cfg.evaporateSolvent, electrostatics: cfg.electrostatics, confine: cfg.confine, resume, clay: false })
               try {
                 if (expandToBox2 !== null) await probe.growBoxTo([expandToBox2, expandToBox2, expandToBox2], rampSteps2, rampRelaxSteps2)
                 const debug = await probe.stepPhasesDEBUG(n2)
@@ -373,11 +399,19 @@ async function main(): Promise<void> {
       // count and the cavity volume") -- the largest aggregate by amphiphile count, since that is
       // the one candidate that could plausibly BE the closing vesicle at this point in a run.
       const t2 = Date.now()
-      const progress = await page.evaluate(async () => {
+      const progress = await page.evaluate(async (WALL_SHELL: number) => {
         const api = (window as any).api
         const sys = (window as any).__sys
         const { stage, evidence } = await api.stageOf(sys)
-        const aggs = evidence.aggregateAnalysis.aggregates as Array<{ amphiphileCount: number; radialHeadShells: unknown; cavityVolume: number }>
+        const aggs = evidence.aggregateAnalysis.aggregates as Array<{
+          amphiphileCount: number
+          radialHeadShells: unknown
+          cavityVolume: number
+          flatnessRatio: number
+          inPlaneSymmetry: number
+          radiusOfGyration: number
+          encapsulatedWater: { encapsulatedCount: number; encapsulationThresholdCount: number; closed: boolean; bulkWaterDensity: number } | null | undefined
+        }>
         const largest = aggs.length > 0 ? aggs.reduce((a, b) => (b.amphiphileCount > a.amphiphileCount ? b : a)) : null
         // Task 'evaporation' (2026-08-20): N and the live box are printed because with solvent removal
         // they are no longer constants of the run -- a dry-phase progress line has to show how much
@@ -406,27 +440,72 @@ async function main(): Promise<void> {
             ` подметаний=${es.sweeps}` +
             (es.last ? ` последнее(принято=${es.last.accepted}/${es.last.attempts} dEs=${es.last.dEsMeanKT.toFixed(4)}kT)` : '')
         }
+        // Task 'confined-parcel' (2026-08-21): THE COMPETING SINK, in every progress line, because it
+        // is the way this experiment most plausibly fails -- amphiphiles plastering the container
+        // instead of closing. Reported per species against the UNIFORM null for the same shell, so
+        // "enrichment 1.0" means indifferent to the wall and is also the direct check that the wall is
+        // in fact neutral. The shell is the measured bilayer thickness (a film's own depth), read from
+        // the gate artifact rather than typed. Plus the no-wrap measurement: the largest radius any
+        // particle reached, and therefore the largest pair separation in the system, against L/2.
+        let wallLine = ''
+        const cf = sys.confinement()
+        if (cf) {
+          const posW = await sys.particles()
+          const soupW = api.loadSoup()
+          const ws = api.wallStats(
+            posW,
+            posW.length / 4,
+            sys.box,
+            cf.radiusLive,
+            WALL_SHELL,
+            soupW.monomers.map((m: any) => m.id),
+            soupW.monomers.findIndex((m: any) => m.id === soupW.solvent.waterId),
+          )
+          wallLine =
+            ` R=${Number(cf.radiusLive).toFixed(4)} maxR=${ws.maxRadius.toFixed(4)} продавливание=${ws.penetration.toFixed(4)}` +
+            ` зазор_до_грани=${ws.faceClearance.toFixed(4)} maxПара=${ws.maxPairSeparation.toFixed(3)} L/2=${ws.halfBox.toFixed(3)}` +
+            ` сильное=${ws.strongNoWrap} оболочка=${ws.shell.toFixed(3)} доля_равномерная=${ws.species[0].uniformFraction.toFixed(4)}` +
+            ` обогащение={${ws.species.map((x: any) => `${x.id}:${x.enrichment.toFixed(3)}`).join(',')}}` +
+            ` обогащение_к_воде={${ws.species.map((x: any) => `${x.id}:${x.enrichmentVsSolvent.toFixed(4)}`).join(',')}}` +
+            ` в_оболочке={${ws.species.map((x: any) => `${x.id}:${x.inShell}`).join(',')}}`
+        }
+        // Task 'confined-parcel': encapsulated water and its DERIVED threshold, in the progress line,
+        // because in a confined run the threshold depends on a density measured inside the parcel.
+        const enc = largest?.encapsulatedWater ?? null
+        const encLine = enc
+          ? ` encH2O=${enc.encapsulatedCount}/${Number(enc.encapsulationThresholdCount).toFixed(2)} закрыто=${enc.closed}` +
+            ` плотность_воды_объёма=${enc.bulkWaterDensity.toFixed(4)}`
+          : ''
         return {
           esLine,
+          wallLine,
+          encLine,
           stage,
           aggregateCount: evidence.aggregateAnalysis.aggregateCount,
           largestAggregateSize: largest?.amphiphileCount ?? 0,
           headShells: largest ? String(largest.radialHeadShells) : 'n/a',
           cavityVolume: largest?.cavityVolume ?? 0,
+          flatness: largest?.flatnessRatio ?? 0,
+          inPlane: largest?.inPlaneSymmetry ?? 0,
+          rg: largest?.radiusOfGyration ?? 0,
+          sizeHistogramTop: (evidence.aggregateAnalysis.sizeHistogram as number[]).slice(0, 6),
           census: inv.monomers,
           bonds: inv.bonds,
           box: sys.box[0],
           phase: sys.cyclePhase,
           cycleIndex: sys.cycleIndex,
         }
-      })
+      }, wallShell)
       const progressMs = Date.now() - t2
 
       console.log(
         `[campaign] шаг=${currentStep}/${targetStep} stage=${progress.stage} агрегатов=${progress.aggregateCount} ` +
           `крупнейший=${progress.largestAggregateSize} headShells=${progress.headShells} cavityVolume=${progress.cavityVolume.toFixed(3)} ` +
           `фаза=${progress.phase}/${progress.cycleIndex} box=${progress.box.toFixed(4)} связей=${progress.bonds} census=${JSON.stringify(progress.census)} ` +
-          `stepMs=${stepMs} checkpointMs=${checkpointMs} progressMs=${progressMs} сохранено=${savedPath}` + progress.esLine,
+          `flat=${progress.flatness.toFixed(4)} inPl=${progress.inPlane.toFixed(4)} rg=${progress.rg.toFixed(3)} ` +
+          `гистограмма=${JSON.stringify(progress.sizeHistogramTop)} ` +
+          `stepMs=${stepMs} checkpointMs=${checkpointMs} progressMs=${progressMs} сохранено=${savedPath}` +
+          progress.encLine + progress.esLine + progress.wallLine,
       )
     }
 

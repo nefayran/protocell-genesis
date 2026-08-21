@@ -32,6 +32,7 @@ import { decodeCheckpointResume } from '../soup/src/checkpoint'
 import { findAmphiphiles } from '../soup/src/amphiphile'
 import { memberIndicesOf, positionsFor } from '../soup/src/aggregates'
 import { loadSoup } from '../soup/src/rules'
+import { wrapsOnAxis } from './helpers/periodic-geometry'
 
 const FILES = (process.env.PERC_CHECKPOINTS ?? '').split(/\s+/).filter(Boolean)
 const ARTIFACT = process.env.PERC_ARTIFACT ?? 'verify/out/percolation-check.json'
@@ -43,28 +44,9 @@ const ARTIFACT = process.env.PERC_ARTIFACT ?? 'verify/out/percolation-check.json
  * gate keeps the old substring rule as a fallback for artifacts written before this field existed. */
 const CAMPAIGN_LABEL = process.env.PERC_CAMPAIGN_LABEL ?? 'zfB54'
 
-/** True iff the given member positions connect to their own +L image on `axis`: replicate along
- * that axis with the axis made OPEN (so the only way particle i can meet image i is a genuine chain
- * of contacts running the whole length of the box) and test component identity. The two axes that
- * are NOT being tested stay periodic, which is what makes this a test of THIS axis alone. */
-function wrapsOnAxis(member: Float32Array, box: [number, number, number], cutoff: number, axis: 0 | 1 | 2): boolean {
-  const n = member.length / 4
-  const doubled = new Float32Array(n * 2 * 4)
-  doubled.set(member, 0)
-  for (let i = 0; i < n; i++) {
-    for (let a = 0; a < 4; a++) doubled[(n + i) * 4 + a] = member[i * 4 + a]
-    doubled[(n + i) * 4 + axis] = member[i * 4 + axis] + box[axis]
-  }
-  // The replicated axis is given twice the length and NO periodic image of its own, so nothing can
-  // join through the far face of the doubled cell; the other two axes keep the box's periodicity.
-  const openBox: [number, number, number] = [box[0], box[1], box[2]]
-  openBox[axis] = box[axis] * 4 // >= 2x the doubled extent: no minimum-image shortcut on this axis
-  const label = new Int32Array(n * 2).fill(-1)
-  const comps = clusterComponents(doubled, openBox, cutoff, true)
-  comps.forEach((c, k) => c.forEach((i) => (label[i] = k)))
-  for (let i = 0; i < n; i++) if (label[i] === label[n + i]) return true
-  return false
-}
+// wrapsOnAxis moved to tests/helpers/periodic-geometry.ts (task 'confined-parcel', 2026-08-21) --
+// a pure move, verbatim, because tests/soup-confine.test.ts's setup check needs the SAME criterion
+// and a second copy of this project's discriminating measurement is how the two drift apart.
 
 test('does the largest aggregate wrap the box on any axis?', () => {
   if (FILES.length === 0) {

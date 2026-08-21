@@ -299,8 +299,17 @@ export function densestDensityOf(
   liveN: number,
   liveBox: [number, number, number],
   cycling: boolean,
+  /** Task 'confined-parcel' (2026-08-21): when this run confines its material to a parcel smaller
+   * than the box, the density that matters is over the PARCEL. Given as a function of a box (rather
+   * than as one number) because both the creation and the live box are asked about below and the
+   * parcel scales with each. Omitted (every unconfined run) leaves the box volume exactly as it was.
+   *
+   * This is not a refinement: without it, the confined geometry's box-average density is 5.8x below
+   * its real one, deriveListCapacity would size the Verlet list for that, and a list overflow is a
+   * silently dropped neighbour. `capacityFloor` would have caught part of it and no more. */
+  parcelVolumeOf?: (box: [number, number, number]) => number,
 ): number {
-  const vol = (b: [number, number, number]) => b[0] * b[1] * b[2]
+  const vol = (b: [number, number, number]) => (parcelVolumeOf ? parcelVolumeOf(b) : b[0] * b[1] * b[2])
   return Math.max(
     capacityN / vol(creationBox),
     liveN / vol(liveBox),

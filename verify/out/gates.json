@@ -1,15 +1,15 @@
 {
-  "runId": "d5a5032c-c3f0-4193-8e66-ca197348a6c3",
-  "generatedAt": "2026-08-20T23:23:30.106Z",
+  "runId": "e0568b24-a7fc-49b6-ab57-93bef6cd7402",
+  "generatedAt": "2026-08-21T03:00:03.568Z",
   "commit": {
-    "sha": "98a22bcc6adaaa8f93b7c5a333023bb4ac133ad2",
+    "sha": "35ac1bc5bc4a07ae33083b66d99cc83c8b69ccfa",
     "dirty": true
   },
   "gates": [
     {
       "id": "area-per-lipid",
       "title": "Площадь на липид",
-      "value": 1.2004636215678743,
+      "value": 1.198118878155008,
       "target": {
         "min": 1.1,
         "max": 1.5
@@ -24,7 +24,7 @@
     {
       "id": "bilayer-thickness",
       "title": "Толщина бислоя",
-      "value": 4.430766935292141,
+      "value": 4.485314813052991,
       "target": {
         "min": 4,
         "max": 6
@@ -54,7 +54,7 @@
     {
       "id": "area-per-lipid-water",
       "title": "Площадь на липид В ЯВНОЙ ВОДЕ",
-      "value": 1.1607493773305628,
+      "value": 1.1834503086016825,
       "target": {
         "min": 1.1,
         "max": 1.5
@@ -65,12 +65,12 @@
       "corridor": "inside",
       "source": "коридор — Cooke & Deserno 2005, arXiv:cond-mat/0509218 (ТОТ ЖЕ коридор, что у бесрастворительных ворот); среда — отношения глубин пар, выведенные из martini_v2.1.itp (Marrink et al., The MARTINI Force Field, J. Phys. Chem. B 2007, 111, 7812), задача 'hydrophobic-asymmetry', перезамерено задачей 'final-campaign' §3",
       "conditions": "НОВЫЙ РЕЗУЛЬТАТ ЭТОЙ КАМПАНИИ: та же величина, что у ворот area-per-lipid, но измеренная в ЖИДКОЙ явной воде 0.8 sigma^-3 (4500 бидов) вокруг заплатки из 400 липидов с 2-бидовыми хвостами, seed 31, kT из data/params.json, с ходом по площади при НУЛЕВОМ натяжении (Метрополис, 10 попыток на 500 шагов МД, окно из 150 отсчётов, критерий осёдлости по дрейфу блочных средних ln A). Площадь здесь ИЗМЕРЕНА, а не задана построением — до задачи 'hydrophobic-asymmetry' в воде она была допущением 1.3 sigma^2, и заплатка тогда давала 12.2-12.4 sigma при коридоре 4-6 (broth-composition-report.md §4, water-calibration-report.md). Ранг C, а НЕ A: коридор литературный (ранг A), но само число получено в среде, чьи отношения глубин пар взяты из чужого силового поля и на этом дереве не калиброваны (ранг C), а множитель epsilonScale=1.0 несёт ранг D.",
-      "provenance": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-20T23:19:36.755Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 300 отсчётов, дрейф ln A 3.704e-5 (t=1.40)"
+      "provenance": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-21T02:58:24.909Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 450 отсчётов, дрейф ln A -4.670e-6 (t=-0.71)"
     },
     {
       "id": "bilayer-thickness-water",
       "title": "Толщина бислоя В ЯВНОЙ ВОДЕ",
-      "value": 4.68713096487309,
+      "value": 4.906053163496518,
       "target": {
         "min": 4,
         "max": 6
@@ -81,7 +81,7 @@
       "corridor": "inside",
       "source": "коридор — Cooke & Deserno 2005, arXiv:cond-mat/0509218; среда — martini_v2.1.itp (Marrink et al., J. Phys. Chem. B 2007, 111, 7812); задача 'hydrophobic-asymmetry', перезамерено задачей 'final-campaign' §3",
       "conditions": "по максимумам плотности головных бидов, в ТОМ ЖЕ прогоне, что и area-per-lipid-water (те же 400 липидов, та же вода 0.8 sigma^-3, тот же ход по площади). Диагностика того же прогона публикуется рядом: доля закопанных голов и число водяных бидов в ядре — именно они, а не толщина, показали механизм предыдущего провала (закапывание голов 0.40-0.49 при отсутствии латеральной когезии листка). Ранг C по той же причине, что у area-per-lipid-water.",
-      "provenance": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-20T23:19:36.755Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 300 отсчётов, дрейф ln A 3.704e-5 (t=1.40)"
+      "provenance": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-21T02:58:24.909Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 450 отсчётов, дрейф ln A -4.670e-6 (t=-0.71)"
     },
     {
       "id": "vesicle-closure-water",
@@ -185,12 +185,12 @@
     }
   ],
   "metrics": {
-    "areaPerLipid": 1.2004636215678743,
-    "thickness": 4.430766935292141,
+    "areaPerLipid": 1.198118878155008,
+    "thickness": 4.485314813052991,
     "enclosedVolume": 1284.875,
     "chainToBeadMapping": 3,
-    "areaPerLipidWater": 1.1607493773305628,
-    "thicknessWater": 4.68713096487309,
+    "areaPerLipidWater": 1.1834503086016825,
+    "thicknessWater": 4.906053163496518,
     "encapsulatedWaterOverThreshold": 0,
     "meanPerTail": 3.419,
     "asfMeanRelativeDeviation": 0.15940333430827724,
@@ -198,18 +198,18 @@
     "wrappingAxes": 3
   },
   "performance": {
-    "stepsPerSecond": 3618.99247251127,
+    "stepsPerSecond": 3622.729001764846,
     "beads": 3600,
-    "neighborBuildMs": 1,
+    "neighborBuildMs": 0.2999999523162842,
     "scenario": "lipids=1200 (3600 бидов), box=[28,28,28], layout=bilayer, 20000 шагов"
   },
   "bilayer": {
-    "areaPerLipidMin": 1.1699660799745786,
-    "areaPerLipidMax": 1.2343343372645508,
-    "lnADriftPerMove": 0.00005224649937287325,
-    "lnADriftT": 3.5116771214483546,
-    "acceptedFraction": 0.29,
-    "escapedMax": 3,
+    "areaPerLipidMin": 1.1739668142907191,
+    "areaPerLipidMax": 1.2297511030662684,
+    "lnADriftPerMove": 0.00004709348115505542,
+    "lnADriftT": 2.519959034846017,
+    "acceptedFraction": 0.2875,
+    "escapedMax": 0,
     "samples": 400,
     "steps": 83000
   },
@@ -219,15 +219,15 @@
   },
   "kappa": {
     "gate": "bending-modulus-kappa",
-    "runId": "d5a5032c-c3f0-4193-8e66-ca197348a6c3",
-    "generatedAt": "2026-08-20T23:23:30.106Z",
+    "runId": "e0568b24-a7fc-49b6-ab57-93bef6cd7402",
+    "generatedAt": "2026-08-21T03:00:03.568Z",
     "valid": false,
     "kappa": null,
-    "slope": -0.8833200695374523,
+    "slope": -0.7919236088515159,
     "fitModes": 20,
     "fitShells": 4,
-    "qMax": 0.18047464440694821,
-    "ceilingQMax": 0.6456857169744614,
+    "qMax": 0.18048893747399095,
+    "ceilingQMax": 0.6457368534056847,
     "literatureRange": [
       5,
       50
@@ -246,250 +246,250 @@
     },
     "samples": 200,
     "stepsPerSample": 100,
-    "wallClockMs": 143632,
+    "wallClockMs": 137076,
     "noiseFloor": {
       "predictedOldAllBeads32x32": {
         "meanBeadsPerColumn": 29.296875,
-        "meanColumnVariance": 2.5209991844045705,
-        "predictedFloor": 0.00008403330614681902
+        "meanColumnVariance": 2.466589973528127,
+        "predictedFloor": 0.0000822196657842709
       },
       "predictedNewTailEndSameGrid": {
         "meanBeadsPerColumn": 39.0625,
-        "meanColumnVariance": 0.5082630258101228,
-        "predictedFloor": 0.000050826302581012286
+        "meanColumnVariance": 0.45183780135656737,
+        "predictedFloor": 0.000045183780135656736
       }
     },
     "spectrumTable": [
       {
-        "q": 0.080711,
+        "q": 0.080717,
         "degeneracy": 4,
-        "mean": 0.016933796571286793,
-        "degenerateSpreadSd": 0.012594396593511177,
-        "degenerateSpreadRel": 0.7437432320916403,
+        "mean": 0.017948644705175612,
+        "degenerateSpreadSd": 0.010824368426324124,
+        "degenerateSpreadRel": 0.6030744161537079,
         "inFitWindow": true
       },
       {
-        "q": 0.114142,
+        "q": 0.114151,
         "degeneracy": 4,
-        "mean": 0.02961852714509509,
-        "degenerateSpreadSd": 0.014404441865842445,
-        "degenerateSpreadRel": 0.4863321459327818,
+        "mean": 0.024980505786990903,
+        "degenerateSpreadSd": 0.01575288456430391,
+        "degenerateSpreadRel": 0.6306071101453654,
         "inFitWindow": true
       },
       {
-        "q": 0.161421,
+        "q": 0.161434,
         "degeneracy": 4,
-        "mean": 0.01541176345154217,
-        "degenerateSpreadSd": 0.006304182996104209,
-        "degenerateSpreadRel": 0.40905007502391844,
+        "mean": 0.012385669316569772,
+        "degenerateSpreadSd": 0.003988929526781827,
+        "degenerateSpreadRel": 0.3220600699750126,
         "inFitWindow": true
       },
       {
-        "q": 0.180475,
+        "q": 0.180489,
         "degeneracy": 8,
-        "mean": 0.008463753528563565,
-        "degenerateSpreadSd": 0.004499204169452563,
-        "degenerateSpreadRel": 0.5315849704588633,
+        "mean": 0.008506498269956343,
+        "degenerateSpreadSd": 0.002089085501107903,
+        "degenerateSpreadRel": 0.24558701298820398,
         "inFitWindow": false
       },
       {
-        "q": 0.228284,
+        "q": 0.228302,
         "degeneracy": 4,
-        "mean": 0.00818314958021181,
-        "degenerateSpreadSd": 0.004015619545178396,
-        "degenerateSpreadRel": 0.49071809158772056,
+        "mean": 0.00467966074135007,
+        "degenerateSpreadSd": 0.0018517987633491786,
+        "degenerateSpreadRel": 0.3957121820790238,
         "inFitWindow": false
       },
       {
-        "q": 0.242132,
+        "q": 0.242151,
         "degeneracy": 4,
-        "mean": 0.0032891590032047115,
-        "degenerateSpreadSd": 0.0009365344230152517,
-        "degenerateSpreadRel": 0.2847337030842116,
+        "mean": 0.003451013469901068,
+        "degenerateSpreadSd": 0.0012109483968019866,
+        "degenerateSpreadRel": 0.3508964561754381,
         "inFitWindow": false
       },
       {
-        "q": 0.25523,
+        "q": 0.25525,
         "degeneracy": 8,
-        "mean": 0.0018983515341631876,
-        "degenerateSpreadSd": 0.0009031794470444197,
-        "degenerateSpreadRel": 0.4757703885663886,
+        "mean": 0.0018917866512052858,
+        "degenerateSpreadSd": 0.0010348871017044317,
+        "degenerateSpreadRel": 0.5470421841940208,
         "inFitWindow": false
       },
       {
-        "q": 0.291007,
+        "q": 0.29103,
         "degeneracy": 8,
-        "mean": 0.0014902592544641996,
-        "degenerateSpreadSd": 0.0005886858963238275,
-        "degenerateSpreadRel": 0.39502247314376226,
+        "mean": 0.0013877687078367416,
+        "degenerateSpreadSd": 0.0003913289104492193,
+        "degenerateSpreadRel": 0.2819842443768775,
         "inFitWindow": false
       },
       {
-        "q": 0.322843,
+        "q": 0.322868,
         "degeneracy": 4,
-        "mean": 0.0006621872794721761,
-        "degenerateSpreadSd": 0.00006982431839717756,
-        "degenerateSpreadRel": 0.105444970874152,
+        "mean": 0.001084529330873523,
+        "degenerateSpreadSd": 0.00024896840180592004,
+        "degenerateSpreadRel": 0.2295635486459283,
         "inFitWindow": false
       },
       {
-        "q": 0.332779,
+        "q": 0.332805,
         "degeneracy": 8,
-        "mean": 0.001295173771168433,
-        "degenerateSpreadSd": 0.00034028967296158313,
-        "degenerateSpreadRel": 0.26273669258650356,
+        "mean": 0.0015295508186275771,
+        "degenerateSpreadSd": 0.0005200267984164117,
+        "degenerateSpreadRel": 0.33998661050243306,
         "inFitWindow": false
       },
       {
-        "q": 0.342427,
+        "q": 0.342454,
         "degeneracy": 4,
-        "mean": 0.0009146556206212745,
-        "degenerateSpreadSd": 0.00018781128252376975,
-        "degenerateSpreadRel": 0.20533551458001212,
+        "mean": 0.0011063098395496902,
+        "degenerateSpreadSd": 0.00016685833080114167,
+        "degenerateSpreadRel": 0.15082423100300663,
         "inFitWindow": false
       },
       {
-        "q": 0.360949,
+        "q": 0.360978,
         "degeneracy": 8,
-        "mean": 0.0006421965888528226,
-        "degenerateSpreadSd": 0.00007735209359755129,
-        "degenerateSpreadRel": 0.12044924395460889,
+        "mean": 0.0004890576108407551,
+        "degenerateSpreadSd": 0.00015364065588724138,
+        "degenerateSpreadRel": 0.3141565584126431,
         "inFitWindow": false
       },
       {
-        "q": 0.403554,
+        "q": 0.403586,
         "degeneracy": 12,
-        "mean": 0.0004911937025799531,
-        "degenerateSpreadSd": 0.0001833740925512167,
-        "degenerateSpreadRel": 0.3733233785125092,
+        "mean": 0.0004655462095854153,
+        "degenerateSpreadSd": 0.0001451443208310982,
+        "degenerateSpreadRel": 0.3117721030536456,
         "inFitWindow": false
       },
       {
-        "q": 0.411546,
+        "q": 0.411578,
         "degeneracy": 8,
-        "mean": 0.0004091819367196404,
-        "degenerateSpreadSd": 0.000161679969786978,
-        "degenerateSpreadRel": 0.39512978281286265,
+        "mean": 0.0005010922817394473,
+        "degenerateSpreadSd": 0.0002612228567743934,
+        "degenerateSpreadRel": 0.5213068855652846,
         "inFitWindow": false
       },
       {
-        "q": 0.43464,
+        "q": 0.434675,
         "degeneracy": 8,
-        "mean": 0.0003230716133914352,
-        "degenerateSpreadSd": 0.00004962022520837186,
-        "degenerateSpreadRel": 0.15358893555359115,
+        "mean": 0.00044298536810865344,
+        "degenerateSpreadSd": 0.0001455655163295761,
+        "degenerateSpreadRel": 0.32860118371646185,
         "inFitWindow": false
       },
       {
-        "q": 0.456569,
+        "q": 0.456605,
         "degeneracy": 4,
-        "mean": 0.00027710999397726003,
-        "degenerateSpreadSd": 0.00005444151280849047,
-        "degenerateSpreadRel": 0.19646174440376915,
+        "mean": 0.0003297637486534806,
+        "degenerateSpreadSd": 0.00020391370524039815,
+        "degenerateSpreadRel": 0.6183630131360284,
         "inFitWindow": false
       },
       {
-        "q": 0.47062,
+        "q": 0.470658,
         "degeneracy": 8,
-        "mean": 0.00024210027707017383,
-        "degenerateSpreadSd": 0.00004286135831370007,
-        "degenerateSpreadRel": 0.17703969128988858,
+        "mean": 0.000288616847864658,
+        "degenerateSpreadSd": 0.00009656558706214432,
+        "degenerateSpreadRel": 0.33458056165670247,
         "inFitWindow": false
       },
       {
-        "q": 0.484264,
+        "q": 0.484303,
         "degeneracy": 4,
-        "mean": 0.00020588859554442006,
-        "degenerateSpreadSd": 0.000009950585224328306,
-        "degenerateSpreadRel": 0.04832994852394088,
+        "mean": 0.00023523430104929928,
+        "degenerateSpreadSd": 0.00002866583546694767,
+        "degenerateSpreadRel": 0.1218607802479453,
         "inFitWindow": false
       },
       {
-        "q": 0.490944,
+        "q": 0.490983,
         "degeneracy": 8,
-        "mean": 0.0002068869193844724,
-        "degenerateSpreadSd": 0.0000656768019486115,
-        "degenerateSpreadRel": 0.31745265550868257,
+        "mean": 0.00021436484497412472,
+        "degenerateSpreadSd": 0.000028723599721993674,
+        "degenerateSpreadRel": 0.13399398453352182,
         "inFitWindow": false
       },
       {
-        "q": 0.510459,
+        "q": 0.5105,
         "degeneracy": 8,
-        "mean": 0.00018200556807919109,
-        "degenerateSpreadSd": 0.00005779679099618922,
-        "degenerateSpreadRel": 0.3175550704637876,
+        "mean": 0.0002598743386560849,
+        "degenerateSpreadSd": 0.00009410425870897168,
+        "degenerateSpreadRel": 0.3621144711541077,
         "inFitWindow": false
       },
       {
-        "q": 0.516801,
+        "q": 0.516842,
         "degeneracy": 8,
-        "mean": 0.0002054737395709531,
-        "degenerateSpreadSd": 0.000052851547089337076,
-        "degenerateSpreadRel": 0.2572180133563329,
+        "mean": 0.0001926599050559678,
+        "degenerateSpreadSd": 0.00003615160644640159,
+        "degenerateSpreadRel": 0.18764468110736132,
         "inFitWindow": false
       },
       {
-        "q": 0.541424,
+        "q": 0.541467,
         "degeneracy": 8,
-        "mean": 0.00015877516185356137,
-        "degenerateSpreadSd": 0.000007345660379520975,
-        "degenerateSpreadRel": 0.04626454348253722,
+        "mean": 0.00016036639863184973,
+        "degenerateSpreadSd": 0.00003267717721810126,
+        "degenerateSpreadRel": 0.2037657358204924,
         "inFitWindow": false
       },
       {
-        "q": 0.564975,
+        "q": 0.56502,
         "degeneracy": 4,
-        "mean": 0.00018559967817693317,
-        "degenerateSpreadSd": 0.000017051421864417582,
-        "degenerateSpreadRel": 0.09187204434784833,
+        "mean": 0.00012199204068433724,
+        "degenerateSpreadSd": 0.0000257141755005523,
+        "degenerateSpreadRel": 0.21078568205190937,
         "inFitWindow": false
       },
       {
-        "q": 0.570711,
+        "q": 0.570756,
         "degeneracy": 12,
-        "mean": 0.00013316908857955993,
-        "degenerateSpreadSd": 0.000027689585705571647,
-        "degenerateSpreadRel": 0.20792802594746984,
+        "mean": 0.00011723162246676414,
+        "degenerateSpreadSd": 0.000018078673788152885,
+        "degenerateSpreadRel": 0.15421328654969604,
         "inFitWindow": false
       },
       {
-        "q": 0.582013,
+        "q": 0.582059,
         "degeneracy": 8,
-        "mean": 0.00012217706534861493,
-        "degenerateSpreadSd": 0.000026462539060714318,
-        "degenerateSpreadRel": 0.21659170635018296,
+        "mean": 0.0001255333687879701,
+        "degenerateSpreadSd": 0.00003251778589075331,
+        "degenerateSpreadRel": 0.2590369891664176,
         "inFitWindow": false
       },
       {
-        "q": 0.587583,
+        "q": 0.587629,
         "degeneracy": 8,
-        "mean": 0.0001428371315379778,
-        "degenerateSpreadSd": 0.000011722238075559355,
-        "degenerateSpreadRel": 0.08206716243417858,
+        "mean": 0.00012901772879387279,
+        "degenerateSpreadSd": 0.000024462959337097775,
+        "degenerateSpreadRel": 0.18960928521832382,
         "inFitWindow": false
       },
       {
-        "q": 0.614674,
+        "q": 0.614723,
         "degeneracy": 8,
-        "mean": 0.00011231417498218893,
-        "degenerateSpreadSd": 0.000015315236418711212,
-        "degenerateSpreadRel": 0.1363606723829823,
+        "mean": 0.00009616263605795848,
+        "degenerateSpreadSd": 0.000006743839246472263,
+        "degenerateSpreadRel": 0.07012951727329587,
         "inFitWindow": false
       },
       {
-        "q": 0.630371,
+        "q": 0.630421,
         "degeneracy": 8,
-        "mean": 0.00013290439423976994,
-        "degenerateSpreadSd": 0.000028967258523422375,
-        "degenerateSpreadRel": 0.21795561154406357,
+        "mean": 0.00008750012662032544,
+        "degenerateSpreadSd": 0.00001245176096498902,
+        "degenerateSpreadRel": 0.1423056336708957,
         "inFitWindow": false
       },
       {
-        "q": 0.645686,
+        "q": 0.645737,
         "degeneracy": 4,
-        "mean": 0.00009450310242321264,
-        "degenerateSpreadSd": 0.000032339394675595824,
-        "degenerateSpreadRel": 0.3422045821392246,
+        "mean": 0.00010323252566562225,
+        "degenerateSpreadSd": 0.000028104880775935246,
+        "degenerateSpreadRel": 0.27224831122478804,
         "inFitWindow": false
       }
     ]
@@ -498,31 +498,31 @@
     "detail": {
       "waterBilayer": {
         "measuredBy": "tests/water-bilayer-area-move.test.ts",
-        "generatedAt": "2026-08-20T23:19:36.754Z",
+        "generatedAt": "2026-08-21T02:58:24.908Z",
         "lipids": 400,
         "waterDensity": 0.8,
         "totalWater": 4500,
         "N": 5700,
-        "areaPerLipid": 1.1607493773305628,
-        "areaTailMin": 1.1519105591688659,
-        "areaTailMax": 1.167356030420804,
-        "thickness": 4.68713096487309,
+        "areaPerLipid": 1.1834503086016825,
+        "areaTailMin": 1.178472208070664,
+        "areaTailMax": 1.1880177278786812,
+        "thickness": 4.906053163496518,
         "settled": true,
-        "chunksUsed": 300,
-        "driftPerChunk": 0.000037036227887689394,
-        "driftT": 1.3993432718546357,
+        "chunksUsed": 450,
+        "driftPerChunk": -0.000004669928006021617,
+        "driftT": -0.7058978128775982,
         "clusterFraction": 1,
-        "waterInCore": 33,
-        "headBuriedFraction": 0.06561679790026247,
-        "acceptedFraction": 0.15166666666666667,
-        "trialsTotal": 3000,
-        "stepsPerSec": 1125.821849950464,
-        "amphiphileCount": 381,
+        "waterInCore": 36,
+        "headBuriedFraction": 0.09510869565217392,
+        "acceptedFraction": 0.13644444444444445,
+        "trialsTotal": 4500,
+        "stepsPerSec": 1023.7477631111931,
+        "amphiphileCount": 368,
         "events": {
           "cc_bond": 0,
           "cc_break": 0,
           "co_bond": 0,
-          "co_break": 19
+          "co_break": 32
         },
         "corridors": {
           "area": [
@@ -1076,8 +1076,8 @@
       }
     },
     "provenance": {
-      "area-per-lipid-water": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-20T23:19:36.755Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 300 отсчётов, дрейф ln A 3.704e-5 (t=1.40)",
-      "bilayer-thickness-water": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-20T23:19:36.755Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 300 отсчётов, дрейф ln A 3.704e-5 (t=1.40)",
+      "area-per-lipid-water": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-21T02:58:24.909Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 450 отсчётов, дрейф ln A -4.670e-6 (t=-0.71)",
+      "bilayer-thickness-water": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-21T02:58:24.909Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 450 отсчётов, дрейф ln A -4.670e-6 (t=-0.71)",
       "vesicle-closure-water": "verify/out/gates-campaign-trace.json (tests/continuous-run-audit.test.ts, off-GPU по чекпойнтам кампании, измерено 2026-08-20T23:16:48.537Z), шаг 148200: инкапсулировано 0 водяных бидов против порога 315.409 (объёмная плотность воды 0.8505 sigma^-3 x минимальный замкнутый объём 370.8656 sigma^3), closed=false; таких снимков с надёжным центром 25 из 27 влажных, и на КАЖДОМ инкапсулировано 0",
       "chain-length-asf": "verify/out/gates-campaign-trace.json (измерено 2026-08-20T23:16:48.537Z), шаг 148200: alpha_ev=0.7477, ASF-среднее 1/(1-alpha_ev)=3.964, измеренное среднее на хвост=3.419, alpha восстановленное из гистограммы=0.7648 (r^2=0.918)",
       "mean-tail-length": "verify/out/gates-campaign-trace.json (измерено 2026-08-20T23:16:48.537Z), шаг 148200: alpha_ev=0.7477, ASF-среднее 1/(1-alpha_ev)=3.964, измеренное среднее на хвост=3.419, alpha восстановленное из гистограммы=0.7648 (r^2=0.918)",

@@ -267,7 +267,14 @@ export async function detectStage(sys: SoupSystem): Promise<{ stage: Stage; evid
   }
 
   // --- the per-aggregate breakdown the ladder is actually decided from (task-3c).
-  const aggregateAnalysis = analyzeAggregates(particles, box, soup.monomers, amphiphiles, memberIdx, cutoff, thresholds, waterIdx)
+  // Task 'confined-parcel' (2026-08-21): a confined system's own parcel, read live off the system so
+  // a dry-phase sample measures the dry parcel. `null` on every periodic system, which is the
+  // pre-task call exactly.
+  const cf = sys.confinement ? sys.confinement() : null
+  const parcel = cf
+    ? { centre: [box[0] / 2, box[1] / 2, box[2] / 2] as [number, number, number], radius: Number(cf.radiusLive) }
+    : undefined
+  const aggregateAnalysis = analyzeAggregates(particles, box, soup.monomers, amphiphiles, memberIdx, cutoff, thresholds, waterIdx, parcel)
 
   const evidence: StageEvidence = {
     amphiphileFraction,

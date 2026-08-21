@@ -4,6 +4,7 @@
 // from minimum-image displacements, never a global unwrapped frame).
 
 import { fibonacciSphere, angleDeg, mi1 } from './geometry-primitives'
+import { clusterComponents } from '../../engine/src/aggregate'
 
 /** Rayleigh's test for circular uniformity (data/periodic-measurement.json's own written basis):
  * the minimum mean-resultant-length R that n points must show, at significance level alpha, before
@@ -464,4 +465,35 @@ export function headDirectionsWithinTrust(
     dirs.push([v[0] / r, v[1] / r, v[2] / r])
   }
   return { dirs, excluded, total }
+}
+
+// --- the wrapping-cluster criterion --------------------------------------------------------------
+//
+// Moved here VERBATIM from tests/percolation-check.test.ts (task 'confined-parcel', 2026-08-21) --
+// not one line of the construction, the axis handling or the return value changed -- because a
+// SECOND caller now needs it: tests/soup-confine.test.ts's setup check, which must show that a
+// confined run reads 0 of 3 wrapped axes BY CONSTRUCTION. A duplicated percolation criterion is
+// exactly how two of them drift apart, and this one is the project's discriminating measurement.
+
+/** True iff the given member positions connect to their own +L image on `axis`: replicate along
+ * that axis with the axis made OPEN (so the only way particle i can meet image i is a genuine chain
+ * of contacts running the whole length of the box) and test component identity. The two axes that
+ * are NOT being tested stay periodic, which is what makes this a test of THIS axis alone. */
+export function wrapsOnAxis(member: Float32Array, box: [number, number, number], cutoff: number, axis: 0 | 1 | 2): boolean {
+  const n = member.length / 4
+  const doubled = new Float32Array(n * 2 * 4)
+  doubled.set(member, 0)
+  for (let i = 0; i < n; i++) {
+    for (let a = 0; a < 4; a++) doubled[(n + i) * 4 + a] = member[i * 4 + a]
+    doubled[(n + i) * 4 + axis] = member[i * 4 + axis] + box[axis]
+  }
+  // The replicated axis is given twice the length and NO periodic image of its own, so nothing can
+  // join through the far face of the doubled cell; the other two axes keep the box's periodicity.
+  const openBox: [number, number, number] = [box[0], box[1], box[2]]
+  openBox[axis] = box[axis] * 4 // >= 2x the doubled extent: no minimum-image shortcut on this axis
+  const label = new Int32Array(n * 2).fill(-1)
+  const comps = clusterComponents(doubled, openBox, cutoff, true)
+  comps.forEach((c, k) => c.forEach((i) => (label[i] = k)))
+  for (let i = 0; i < n; i++) if (label[i] === label[n + i]) return true
+  return false
 }

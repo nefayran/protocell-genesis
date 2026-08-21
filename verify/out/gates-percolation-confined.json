@@ -1,0 +1,439 @@
+[
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step105200.json",
+    "step": 105200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2165,
+    "particlesInLargest": 13035,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step115200.json",
+    "step": 115200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2158,
+    "particlesInLargest": 13061,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step125200.json",
+    "step": 125200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2140,
+    "particlesInLargest": 13061,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step135200.json",
+    "step": 135200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2133,
+    "particlesInLargest": 13077,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      17,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step145200.json",
+    "step": 145200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2131,
+    "particlesInLargest": 13149,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      17,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step15400.json",
+    "step": 15400,
+    "box": 97.31203491450154,
+    "aggregates": 3,
+    "amphiphilesInLargest": 1053,
+    "particlesInLargest": 5040,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      17,
+      17,
+      17,
+      35
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step155200.json",
+    "step": 155200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2131,
+    "particlesInLargest": 13166,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step165200.json",
+    "step": 165200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2122,
+    "particlesInLargest": 13194,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step175200.json",
+    "step": 175200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2111,
+    "particlesInLargest": 13170,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step185200.json",
+    "step": 185200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2103,
+    "particlesInLargest": 13153,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step195200.json",
+    "step": 195200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2095,
+    "particlesInLargest": 13182,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step205200.json",
+    "step": 205200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2093,
+    "particlesInLargest": 13193,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step215200.json",
+    "step": 215200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2094,
+    "particlesInLargest": 13247,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step225200.json",
+    "step": 225200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2092,
+    "particlesInLargest": 13239,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step31800.json",
+    "step": 31800,
+    "box": 97.31203491450154,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2293,
+    "particlesInLargest": 11228,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      17,
+      17,
+      17,
+      35
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step37200.json",
+    "step": 37200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2276,
+    "particlesInLargest": 11670,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step55200.json",
+    "step": 55200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2209,
+    "particlesInLargest": 12172,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step73200.json",
+    "step": 73200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2185,
+    "particlesInLargest": 12527,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step84200.json",
+    "step": 84200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2172,
+    "particlesInLargest": 12757,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/cpR36/cpR36-step95200.json",
+    "step": 95200,
+    "box": 160,
+    "aggregates": 1,
+    "amphiphilesInLargest": 2164,
+    "particlesInLargest": 12916,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      18,
+      19,
+      18,
+      58
+    ],
+    "role": "campaign"
+  },
+  {
+    "file": "data/checkpoints/bbB76/bbB76-step148200.json",
+    "step": 148200,
+    "box": 76,
+    "aggregates": 4,
+    "amphiphilesInLargest": 4512,
+    "particlesInLargest": 30361,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      27,
+      27,
+      27,
+      27
+    ],
+    "role": "control"
+  },
+  {
+    "file": "data/checkpoints/dec54/dec54-step174400.json",
+    "step": 174400,
+    "box": 54,
+    "aggregates": 25,
+    "amphiphilesInLargest": 151,
+    "particlesInLargest": 596,
+    "wrapsX": false,
+    "wrapsY": false,
+    "wrapsZ": false,
+    "wrappingAxes": 0,
+    "slabsTouchedOfTotal": [
+      7,
+      7,
+      10,
+      19
+    ],
+    "role": "control"
+  },
+  {
+    "file": "data/checkpoints/swB54/swB54-step144400.json",
+    "step": 144400,
+    "box": 54,
+    "aggregates": 1,
+    "amphiphilesInLargest": 1542,
+    "particlesInLargest": 10305,
+    "wrapsX": true,
+    "wrapsY": true,
+    "wrapsZ": true,
+    "wrappingAxes": 3,
+    "slabsTouchedOfTotal": [
+      19,
+      19,
+      19,
+      19
+    ],
+    "role": "control"
+  }
+]

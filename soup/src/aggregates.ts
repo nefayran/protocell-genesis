@@ -392,6 +392,7 @@ function shapeOfAggregate(
   monomers: Monomer[],
   t: AggregateThresholds,
   waterIdx?: readonly number[],
+  parcel?: { centre: readonly [number, number, number]; radius: number },
 ): AggregateShape {
   const raw = new Float32Array(originalIdx.length * 4)
   for (let k = 0; k < originalIdx.length; k++) {
@@ -450,7 +451,7 @@ function shapeOfAggregate(
     const alpha = periodicMeasurementParams.circularConcentration.alpha
     const centre = periodicCentreOf(particles, originalIdx, box, alpha)
     encapsulatedWater = centre
-      ? encapsulatedWaterVolume(particles, originalIdx, waterIdx, box, centre, t.closureCell, t.closureRadius, t.enclosedVolume)
+      ? encapsulatedWaterVolume(particles, originalIdx, waterIdx, box, centre, t.closureCell, t.closureRadius, t.enclosedVolume, parcel)
       : null
   }
 
@@ -508,6 +509,11 @@ export function analyzeAggregates(
    * behaviour (see AggregateShape.encapsulatedWater's own doc comment). soup/src/stages.ts's
    * detectStage() is the one caller that supplies it, from data/soup.json's own solvent.waterId. */
   waterIdx?: readonly number[],
+  /** Task 'confined-parcel' (2026-08-21): the finite parcel this snapshot lives in, or omitted for a
+   * fully periodic box. Threaded down to encapsulatedWaterVolume, whose bulk-water density -- and so
+   * the closure threshold derived from it -- must be measured over the parcel and not over the
+   * vacuum that surrounds it. See that function's own parameter comment. */
+  parcel?: { centre: readonly [number, number, number]; radius: number },
 ): AggregateAnalysis {
   if (memberIdx.size === 0) return emptyAggregateAnalysis()
 
@@ -536,7 +542,7 @@ export function analyzeAggregates(
   const detailCount = Math.min(thresholds.detailAggregateCount, prepared.length)
   const aggregates: AggregateShape[] = []
   for (let k = 0; k < detailCount; k++) {
-    aggregates.push(shapeOfAggregate(prepared[k].originalIdx, prepared[k].amphiphileCount, particles, box, monomers, thresholds, waterIdx))
+    aggregates.push(shapeOfAggregate(prepared[k].originalIdx, prepared[k].amphiphileCount, particles, box, monomers, thresholds, waterIdx, parcel))
   }
 
   return {

@@ -197,3 +197,98 @@ test('дальнодействие: список только по голова�
   expect(es.cutoff).toBeCloseTo(13.5, 6)
   expect(es.cutoff).toBeGreaterThan(es.nbCutoff * 4)
 })
+
+// Task 'confined-parcel' (2026-08-21): THE SAME CORRECTNESS GATE IN A CONFINED PARCEL. This is where
+// confinement can break the force paths, and it can do it in two ways this comparison sees and
+// nothing else does:
+//  (a) the wall is a ONE-BODY term added by its own dispatch (soup/wgsl/wall.wgsl) from inside the
+//      three encodeSoupForce* functions. Wire it into the grid/Verlet path but not into the O(N^2)
+//      reference -- three of four kernels, seven of eight call sites, the exact trap
+//      soup/src/soup-integrate.ts's encodeEsFar comment was written about -- and this test is the
+//      only thing that fails;
+//  (b) a bind group that references the wall uniform on one pipeline and not another fails WebGPU
+//      validation, which makes the WHOLE submitted command buffer a silent no-op and both readbacks
+//      return the same zeros -- a false pass, which the console listener above exists to catch.
+// Charge is ON at the campaign's own ionic strength, so the long-range head list is exercised in the
+// confined geometry too: that list's capacity is derived from a head DENSITY, and in a confined box
+// the box-average density is 5.8x below the real one -- an under-sized list silently drops
+// interactions, and a dropped interaction shows up here as a grid-vs-brute disagreement.
+test('удержание: стенка добавлена ОДИНАКОВО на пути сетки/Верле и на полном переборе (и заряд на месте)', async () => {
+  const page = await gpuPage()
+  const consoleWarnings: string[] = []
+  page.on('console', (msg) => {
+    if (msg.type() === 'warn' || msg.type() === 'error') consoleWarnings.push(`${msg.type()}: ${msg.text()}`)
+  })
+  const r = await page.evaluate(async () => {
+    const api = (window as any).api
+    const BOX = 80
+    const R = 16
+    const sys = await api.createSoup({
+      box: [BOX, BOX, BOX],
+      seed: 9,
+      kT: 1.1,
+      clay: false,
+      // The campaign's own composition (box 76's census) scaled to THIS parcel's volume, so the
+      // regime is the real one: liquid water at exactly 0.8 sigma^-3 and total density 1.1009.
+      start: { C: 2188, O: 729, H: 2188, M: 57, W: 13726 },
+      confine: { radiusSigma: R, stiffness: 100 },
+      electrostatics: { enabled: true, pH: 7, ionicStrengthMolar: 0.01 },
+    })
+    // The cold-start minimisation, as every real run at liquid density needs: the jittered lattice
+    // puts unlike-radius pairs inside each other's WCA cores, and without this the trajectory blows up
+    // in a few hundred steps (measured here: an assertVerletSafety drift of 576 sigma). Nothing about
+    // confinement changes that -- the wall descends the SAME force the steps use, so a bead that
+    // started outside the parcel would also be pulled in by it.
+    await sys.relaxColdStart()
+    await sys.step(300)
+    const a = await sys.forces()
+    const b = await sys.forcesBruteForce()
+    let max = 0
+    let sumAbs = 0
+    for (let i = 0; i < a.length; i++) {
+      max = Math.max(max, Math.abs(a[i] - b[i]))
+      sumAbs += Math.abs(b[i])
+    }
+    // The wall's own contribution to THIS configuration, computed on the CPU, so the comparison above
+    // cannot pass vacuously on a configuration where no bead is outside the parcel at all.
+    const pos = await sys.particles()
+    const conf = sys.confinement()
+    let maxWall = 0
+    let outside = 0
+    for (let i = 0; i < pos.length / 4; i++) {
+      const w = api.wallForceAt([pos[i * 4], pos[i * 4 + 1], pos[i * 4 + 2]], sys.box, conf.radiusLive, conf.stiffness)
+      const m = Math.max(Math.abs(w[0]), Math.abs(w[1]), Math.abs(w[2]))
+      if (m > 0) outside++
+      maxWall = Math.max(maxWall, m)
+    }
+    const es = sys.electrostatics()
+    const vc = sys.verletConfig()
+    const occ = await sys.listOccupancyDEBUG()
+    sys.dispose()
+    return { maxDiff: max, meanAbsRef: sumAbs / a.length, maxWall, outside, n: pos.length / 4, es, vc, occ, conf }
+  })
+  expect(consoleWarnings, `браузер сообщил об ошибке/предупреждении GPU во время теста:\n${consoleWarnings.join('\n')}`).toEqual([])
+  const es = r.es as any
+  const vc = r.vc as any
+  const occ = r.occ as any
+  console.log(
+    `SOUP-FORCES-CONFINED maxDiff(сетка+Верле+список_голов против перебора)=${r.maxDiff.toExponential(4)} ` +
+      `meanAbsRef=${r.meanAbsRef.toFixed(4)} N=${r.n} снаружи_парцеллы=${r.outside} max|F_стенки|=${r.maxWall.toFixed(4)}\n` +
+      `SOUP-FORCES-CONFINED R=${Number((r.conf as any).radiusLive).toFixed(4)} V_парцеллы=${Number((r.conf as any).parcelVolumeLive).toFixed(1)} ` +
+      `V_бокса/V_парцеллы=${(Number((r.conf as any).boxVolumeLive) / Number((r.conf as any).parcelVolumeLive)).toFixed(3)} ` +
+      `rc_es=${es.cutoff.toFixed(4)} ёмкость_списка_голов=${es.listCapacity} ёмкость_Верле=${vc.listCapacity} ` +
+      `плотнейшая_плотность=${vc.densestDensity.toFixed(4)}\n` +
+      `SOUP-FORCES-CONFINED заполнение: главный max=${occ.main ? occ.main.max : 'n/a'}/${vc.listCapacity} ` +
+      `головы max=${occ.es ? occ.es.max : 'n/a'}/${es.listCapacity}`,
+  )
+  expect(r.maxDiff).toBeLessThan(1e-2)
+  // The wall really is part of this configuration's force field, on more than one bead.
+  expect(r.outside).toBeGreaterThan(0)
+  expect(r.maxWall).toBeGreaterThan(0)
+  // The densest density really was taken over the parcel: the box-average would be ~1.1/5.8 = 0.19,
+  // and the dry-phase target 1.34 is not in play here (no cycling), so this must read the parcel's own.
+  expect(vc.densestDensity).toBeGreaterThan(1)
+  // Neither derived list overflowed -- the failure mode a box-volume density would have produced.
+  if (occ.main) expect(occ.main.max).toBeLessThan(vc.listCapacity)
+  if (occ.es) expect(occ.es.max).toBeLessThan(es.listCapacity)
+})

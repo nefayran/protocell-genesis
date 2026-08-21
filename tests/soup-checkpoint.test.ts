@@ -237,3 +237,89 @@ test('same-process continue: writes real checkpoint files for a fresh-process re
     `RESUME-SETUP ${JSON.stringify({ label, config, K1, K2, crashCheckpoint: `${label}-step${K1}.json`, sameProcessFinal: sameProcessPath })}`,
   )
 }, 180_000)
+
+// Task 'confined-parcel' (2026-08-21): THE CONFINEMENT STATE MUST ROUND-TRIP. A confined run's
+// identity is its parcel: resume it as an unconfined system and the wall silently disappears
+// mid-trajectory, which is the same class of silent failure as resuming a charged run without its
+// charges (defect §7.2 of the verdict document, which left 72 checkpoints on disk carrying zero RNG
+// seeds). So this checks all three halves of it:
+//  1. encodeCheckpoint's config carries `confine` verbatim;
+//  2. a resume rebuilds the SAME parcel -- radius, stiffness, and the derived live radius -- and the
+//     positions/velocities/bond graph come back byte-identical;
+//  3. the resumed system's wall is REALLY there: the force field it reports for the resumed
+//     configuration is identical to the pre-checkpoint one, which it could not be if the wall term
+//     had been dropped (the outermost beads carry a nonzero wall force, asserted separately so a
+//     configuration that happened to have none could not pass this vacuously).
+test('confined-parcel: удержание переживает checkpoint -> resume, и стенка после резюме РЕАЛЬНО на месте', async () => {
+  const page = await gpuPage()
+  const r = await page.evaluate(async () => {
+    const api = (window as any).api
+    const BOX = 80
+    const R = 16
+    const config = {
+      box: [BOX, BOX, BOX],
+      seed: 13,
+      kT: 1.1,
+      start: { C: 2188, O: 729, H: 2188, M: 57, W: 13726 },
+      confine: { radiusSigma: R, stiffness: 100 },
+    }
+    const a = await api.createSoup({ ...config, clay: false, confine: config.confine })
+    await a.relaxColdStart()
+    await a.step(300)
+    const confA = a.confinement()
+    const posA = await a.particles()
+    const velA = await a.velocities()
+    const bondsA = await a.bondSlots()
+    const forceA = await a.forces()
+    // How much of the force field is the wall's, at this configuration -- so "identical after resume"
+    // is not a claim about a term that was zero anyway.
+    let wallShare = 0
+    for (let i = 0; i < posA.length / 4; i++) {
+      const w = api.wallForceAt([posA[i * 4], posA[i * 4 + 1], posA[i * 4 + 2]], a.box, confA.radiusLive, confA.stiffness)
+      wallShare = Math.max(wallShare, Math.abs(w[0]), Math.abs(w[1]), Math.abs(w[2]))
+    }
+    const file = await api.encodeCheckpoint(a, config)
+    a.dispose()
+
+    const b = await api.createSoup({ ...config, clay: false, resume: api.decodeCheckpointResume(file) })
+    const confB = b.confinement()
+    const posB = await b.particles()
+    const velB = await b.velocities()
+    const bondsB = await b.bondSlots()
+    const forceB = await b.forces()
+    let maxPos = 0
+    let maxVel = 0
+    let bondDiff = 0
+    let maxForce = 0
+    for (let i = 0; i < posA.length; i++) {
+      maxPos = Math.max(maxPos, Math.abs(posA[i] - posB[i]))
+      maxVel = Math.max(maxVel, Math.abs(velA[i] - velB[i]))
+      maxForce = Math.max(maxForce, Math.abs(forceA[i] - forceB[i]))
+    }
+    for (let i = 0; i < bondsA.length; i++) if (bondsA[i] !== bondsB[i]) bondDiff++
+    b.dispose()
+    return { confA, confB, confInFile: file.config.confine, maxPos, maxVel, bondDiff, maxForce, wallShare, steps: file.globalStep }
+  })
+  console.log(
+    `CONFINE-ROUNDTRIP шаг=${r.steps} в_файле=${JSON.stringify(r.confInFile)} ` +
+      `R_live до=${Number((r.confA as any).radiusLive).toFixed(6)} после=${Number((r.confB as any).radiusLive).toFixed(6)} ` +
+      `max|dPos|=${r.maxPos} max|dVel|=${r.maxVel} различий_в_связях=${r.bondDiff} max|dF|=${r.maxForce} ` +
+      `max|F_стенки| в этой конфигурации=${r.wallShare.toFixed(4)}`,
+  )
+  expect(r.confInFile).toEqual({ radiusSigma: 16, stiffness: 100 })
+  expect((r.confB as any).radiusLive).toBe((r.confA as any).radiusLive)
+  expect((r.confB as any).stiffness).toBe((r.confA as any).stiffness)
+  expect(r.maxPos).toBe(0)
+  expect(r.maxVel).toBe(0)
+  expect(r.bondDiff).toBe(0)
+  // The wall is a real, nonzero part of this configuration's force field...
+  expect(r.wallShare).toBeGreaterThan(0)
+  // ...and the resumed system reproduces the whole field to float32 agreement, so it did not lose it.
+  // NOT bit-identical, and deliberately not asserted as such: positions/velocities/bonds ARE bit
+  // identical above, but the force is a sum over a neighbour list whose per-cell append order is set
+  // by atomics, so a rebuild reorders the summation. Measured 4.58e-5 against a wall force of 27.3 in
+  // the same configuration, i.e. ~1e-6 relative -- five orders of magnitude below the size of the term
+  // being checked for, so a DROPPED wall would be unmissable here.
+  expect(r.maxForce).toBeLessThan(1e-3)
+  expect(r.maxForce).toBeLessThan(r.wallShare / 1000)
+})

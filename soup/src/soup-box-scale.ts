@@ -15,6 +15,7 @@ import type { SoupRuntime } from './soup-runtime'
 import { scaleMoleculesRigid, proximityPairs, mi3Distance, cyclePhaseAt, nextCycleTransition, type CycleSchedule } from './soup-box-scale-math'
 import { evaporationLadder, rehydrationLadder, evaporateSolventTo, rehydrateSolventTo, desorbOverstretchedTethers, type EvaporationPlan, type RehydrationReport } from './soup-evaporate'
 import { relaxIterations } from './soup-relax'
+import { liveRadius, parcelVolume } from './soup-confine'
 
 export {
   scaleMoleculesRigid,
@@ -384,7 +385,14 @@ export async function applyEvaporatingTransition(
   targetDryDensity: number,
   seed: number,
 ): Promise<RehydrationReport[]> {
-  const ladder = phase === 'dry' ? evaporationLadder(plan, targetDryDensity) : rehydrationLadder(plan)
+  // Task 'confined-parcel' (2026-08-21): the ladder's own two densities must be taken over the
+  // PARCEL when there is one -- see evaporationLadder's own parameter comment for the divergence that
+  // established this. rehydrationLadder carries no density at all (it interpolates the box and puts
+  // the solvent back at the last rung), so it needs nothing.
+  const ladder =
+    phase === 'dry'
+      ? evaporationLadder(plan, targetDryDensity, rt.confine ? (b) => parcelVolume(liveRadius(rt.confine!, b)) : undefined)
+      : rehydrationLadder(plan)
   const reports: RehydrationReport[] = []
   const d0 = (rt.soup.coldStartRelax?.maxDisplacementSigma ?? 0.1) * rt.p.sigma
   for (let s = 0; s < ladder.length; s++) {

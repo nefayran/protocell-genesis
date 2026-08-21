@@ -82,7 +82,8 @@ test('continuous-run checkpoints: invariants hold and the stage ladder is reprod
   const artifact: unknown[] = []
 
   for (const path of files) {
-    const r = decodeCheckpointResume(JSON.parse(readFileSync(path, 'utf8')))
+    const cpFile = JSON.parse(readFileSync(path, 'utf8'))
+    const r = decodeCheckpointResume(cpFile)
     const pos = r.positions
     const N = pos.length / 4
     const box = r.liveBox as [number, number, number]
@@ -213,7 +214,20 @@ test('continuous-run checkpoints: invariants hold and the stage ladder is reprod
     const waterIdx: number[] = []
     if (waterKind >= 0) for (let i = 0; i < N; i++) if (Math.round(pos[i * 4 + 3]) === waterKind) waterIdx.push(i)
 
-    const analysis = analyzeAggregates(pos, box, soup.monomers, amph, memberIdx, cutoff, t, waterIdx)
+    // Task 'confined-parcel' (2026-08-21): if this checkpoint's own run was confined, its parcel must
+    // be handed to analyzeAggregates -- otherwise `bulkWaterDensity` averages over the vacuum outside
+    // the parcel and `encapsulationThresholdCount` comes out V_box/V_parcel = 20.96x TOO LOW, i.e. the
+    // closure threshold this instrument publishes would be WIDENED 21-fold by an accounting accident.
+    // Read from the checkpoint's own config (the wet radius) and scaled to the box this snapshot lives
+    // in, exactly as soup/src/soup-confine.ts's liveRadius does. Absent (every periodic checkpoint,
+    // i.e. every one written before this task) leaves the call byte-identical.
+    const cfConf = cpFile?.config?.confine as { radiusSigma: number } | undefined
+    const wetBoxX = (cpFile?.config?.box as [number, number, number] | undefined)?.[0]
+    const parcel =
+      cfConf && wetBoxX
+        ? { centre: [box[0] / 2, box[1] / 2, box[2] / 2] as [number, number, number], radius: cfConf.radiusSigma * (box[0] / wetBoxX) }
+        : undefined
+    const analysis = analyzeAggregates(pos, box, soup.monomers, amph, memberIdx, cutoff, t, waterIdx, parcel)
     const totalCarbon = species['C'] ?? 0
     const carbonInAmph = amph.reduce((s, a) => s + a.length, 0)
     let largestAggregateFraction = 0

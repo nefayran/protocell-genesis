@@ -33,6 +33,10 @@ import electrostaticsLongWgsl from '../wgsl/electrostatics-long.wgsl?raw'
 // they must come last. WGSL does not care about source-file boundaries, only the token stream, so
 // this changes nothing about the previously compiled entry points -- no binding index moved, no
 // existing kernel body was touched.
+// Task 'confined-parcel' (2026-08-21): the confining wall's one-body force. Reads pos2/outForce/GB
+// (engine/wgsl/forces.wgsl), so like verlet.wgsl and electrostatics-long.wgsl it must come AFTER
+// step.wgsl. Nothing else moved; no binding index and no existing kernel body changed.
+import wallWgsl from '../wgsl/wall.wgsl?raw'
 import healthWgsl from '../wgsl/health.wgsl?raw'
 import relaxWgsl from '../wgsl/relax.wgsl?raw'
 import bondCommonWgsl from '../wgsl/bond-common.wgsl?raw'
@@ -91,6 +95,11 @@ export interface SoupPipelines {
   buildEsList: GPUComputePipeline
   esForceFar: GPUComputePipeline
   esForceFarBrute: GPUComputePipeline
+  /** Task 'confined-parcel' (2026-08-21): the confining wall's force, ACCUMULATED into outForce from
+   * inside the three encodeSoupForce* functions (soup/src/soup-integrate.ts) so every force path and
+   * every call site gets it. Compiled always, dispatched only when this system is confined -- an
+   * unconfined run issues zero extra dispatches, which is what makes its numbers bit-identical. */
+  wallForce: GPUComputePipeline
 }
 
 let cached: SoupPipelines | undefined
@@ -104,7 +113,7 @@ let cached: SoupPipelines | undefined
 export function getSoupPipelines(device: GPUDevice, sortedGather: boolean): SoupPipelines {
   if (cached && cached.device === device && cached.sortedGather === sortedGather) return cached
   const forceModule = device.createShaderModule({
-    code: `${forcesWgsl}\n${electrostaticsWgsl}\n${stepWgsl}\n${verletWgsl}\n${electrostaticsLongWgsl}\n${healthWgsl}\n${relaxWgsl}`,
+    code: `${forcesWgsl}\n${electrostaticsWgsl}\n${stepWgsl}\n${verletWgsl}\n${electrostaticsLongWgsl}\n${wallWgsl}\n${healthWgsl}\n${relaxWgsl}`,
   })
   const bondModule = device.createShaderModule({ code: `${forcesWgsl}\n${bondWgsl}` })
   const neighborModule = device.createShaderModule({ code: neighborWgsl })
@@ -138,6 +147,7 @@ export function getSoupPipelines(device: GPUDevice, sortedGather: boolean): Soup
     buildEsList: cp(forceModule, 'soup_build_es_list_main'),
     esForceFar: cp(forceModule, 'soup_es_force_far_main'),
     esForceFarBrute: cp(forceModule, 'soup_es_force_far_brute_main'),
+    wallForce: cp(forceModule, 'soup_wall_force_main'),
   }
   return cached
 }

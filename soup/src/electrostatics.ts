@@ -142,6 +142,14 @@ export interface EsOverrides {
    * the range-CONVERGENCE study (tests/es-range-calibration.test.ts), which has to sweep the cutoff
    * on a frozen configuration; never used by a real run. */
   cutoffSigma?: number
+  /** Task 'confined-parcel' (2026-08-21): the volume the titratable beads are actually CONFINED to at
+   * the tightest box this run visits -- the parcel's volume, not min(box)^3. Omitted (every
+   * unconfined run) keeps the pre-task min(box)^3 denominator exactly. It matters because the
+   * confined geometry puts the whole system inside a sphere occupying ~1/5.8 of the box, so
+   * maxHeads/min(box)^3 under-states the real head density by that factor and would derive a
+   * long-range list capacity ~20x too small -- a silently dropped interaction, which is the exact
+   * defect the long-range task removed. */
+  densityVolumeSigma3?: number
 }
 
 /** Derives the basis from data/soup.json + data/params.json, with per-run overrides for the two
@@ -204,7 +212,8 @@ export function makeEsBasis(soup: Soup, p: Params, over?: EsOverrides): EsBasis 
   const listRange = esCutoff + soup.verletList.skin
   let listCapacity = es.longRangeListCapacity
   if (over?.maxHeads !== undefined && over.maxHeads > 0 && over?.minBoxSigma !== undefined) {
-    const uniform = ((4 * Math.PI) / 3) * listRange ** 3 * (over.maxHeads / over.minBoxSigma ** 3)
+    const denom = over.densityVolumeSigma3 !== undefined && over.densityVolumeSigma3 > 0 ? over.densityVolumeSigma3 : over.minBoxSigma ** 3
+    const uniform = ((4 * Math.PI) / 3) * listRange ** 3 * (over.maxHeads / denom)
     listCapacity = Math.max(64, Math.min(over.maxHeads, Math.ceil(es.longRangeListSafetyFactor * uniform)))
   }
   const shiftU = coeffA * Math.exp(-kappa * esCutoff) / esCutoff

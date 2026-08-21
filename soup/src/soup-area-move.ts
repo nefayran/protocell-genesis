@@ -156,6 +156,20 @@ export function makeSoupAreaMove(deps: SoupAreaMoveDeps): (trials: number, opts?
   let basis: PotentialBasis | null = null
 
   return async function areaMove(trials: number, opts?: { mode?: AreaMoveMode }): Promise<AreaMoveResult> {
+    // Task 'confined-parcel' (2026-08-21): REFUSED under confinement, rather than returning a number
+    // that would not mean what its name says. This move proposes a BOX change at fixed volume and
+    // reads a lateral tension off the acceptance statistics; in a confined run the box is not what
+    // sets the system's volume (the wall is), the wall does work on the system as the box moves, and
+    // soup/src/soup-potential.ts -- the energy this move's Metropolis criterion is built on -- carries
+    // no wall term at all, so the proposed and current energies would differ by an unaccounted
+    // one-body contribution. There is no zero-tension area to quote inside a parcel.
+    if (rt.confine) {
+      throw new Error(
+        'areaMove: MC-ход по площади не имеет смысла в удерживаемой парцелле -- объём задаёт стенка, а не бокс, ' +
+          'стенка совершает работу над системой при изменении бокса, и soupPotential не содержит её вклада. ' +
+          'Нулевое натяжение измеряется в периодическом боксе (CreateSoupOpts.confine отсутствует)',
+      )
+    }
     const am = soup.areaMove
     if (am === undefined) {
       throw new Error("data/soup.json: нет секции areaMove — MC-ход по площади не настроен (см. soup/src/soup-area-move.ts)")

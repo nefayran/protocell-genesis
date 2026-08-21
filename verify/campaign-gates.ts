@@ -121,7 +121,18 @@ function wetCheckpoints(trace: AuditCheckpoint[]): AuditCheckpoint[] {
   return trace.filter((c) => c.box[0] === maxSide)
 }
 
-export function collectCampaignGateInputs(): CampaignGateInputs {
+/** Task 'confined-parcel' (2026-08-21): the two campaign artifacts are now PARAMETERS with the
+ * pre-existing paths as defaults, so the SAME collection code can be pointed at a second campaign's
+ * artifacts and publish it as its OWN row instead of overwriting the first. Both results matter: the
+ * periodic-box campaign is a finding in its own right (a percolating network that wraps 3 of 3 axes
+ * and encapsulates exactly zero water), and the confined one is a different experiment, not a
+ * correction of it. `npm run verify` keeps calling this with no arguments, so the published table is
+ * byte-for-byte the periodic one it always was; verify/confined-gates.ts calls it with the confined
+ * pair and writes a separate file. */
+export function collectCampaignGateInputs(
+  campaignTraceArtifact: string = CAMPAIGN_TRACE_ARTIFACT,
+  percolationArtifact: string = PERCOLATION_ARTIFACT,
+): CampaignGateInputs {
   const metrics: Record<string, number> = {}
   const provenance: Record<string, string> = {}
   const notes: Record<string, string> = {}
@@ -157,7 +168,7 @@ export function collectCampaignGateInputs(): CampaignGateInputs {
   }
 
   // --- the campaign gates: closure, chain statistics, the verdict --------------------------------
-  const audit = readJson<AuditCheckpoint[]>(CAMPAIGN_TRACE_ARTIFACT)
+  const audit = readJson<AuditCheckpoint[]>(campaignTraceArtifact)
   if (audit && audit.value.length > 0) {
     const trace = audit.value
     const wet = wetCheckpoints(trace)
@@ -176,7 +187,7 @@ export function collectCampaignGateInputs(): CampaignGateInputs {
       const { encapsulatedCount, encapsulationThresholdCount, closed, bulkWaterDensity } = lastReportable.e
       metrics.encapsulatedWaterOverThreshold = encapsulatedCount / encapsulationThresholdCount
       provenance['vesicle-closure-water'] =
-        `${CAMPAIGN_TRACE_ARTIFACT} (tests/continuous-run-audit.test.ts, off-GPU по чекпойнтам кампании, ` +
+        `${campaignTraceArtifact} (tests/continuous-run-audit.test.ts, off-GPU по чекпойнтам кампании, ` +
         `измерено ${audit.measuredAt}), шаг ${lastReportable.c.step}: инкапсулировано ${encapsulatedCount} ` +
         `водяных бидов против порога ${encapsulationThresholdCount.toFixed(3)} (объёмная плотность воды ` +
         `${bulkWaterDensity.toFixed(4)} sigma^-3 x минимальный замкнутый объём ${lastReportable.c.closureThreshold} sigma^3), ` +
@@ -198,7 +209,7 @@ export function collectCampaignGateInputs(): CampaignGateInputs {
       }
     } else {
       notes['vesicle-closure-water'] =
-        `ни на одном влажном снимке артефакта ${CAMPAIGN_TRACE_ARTIFACT} периодический центр агрегата не ` +
+        `ни на одном влажном снимке артефакта ${campaignTraceArtifact} периодический центр агрегата не ` +
         `надёжен, поэтому soup/src/water-closure.ts отказывается отвечать — это сам по себе результат ` +
         `(см. ворота aggregate-percolation), но числа для этих ворот он не даёт. final-campaign-report.md §7.1`
     }
@@ -208,7 +219,7 @@ export function collectCampaignGateInputs(): CampaignGateInputs {
       metrics.meanPerTail = last.meanPerTail
       metrics.asfMeanRelativeDeviation = Math.abs(last.asfMeanFromEventAlpha - last.meanPerTail) / last.meanPerTail
       const prov =
-        `${CAMPAIGN_TRACE_ARTIFACT} (измерено ${audit.measuredAt}), шаг ${last.step}: ` +
+        `${campaignTraceArtifact} (измерено ${audit.measuredAt}), шаг ${last.step}: ` +
         `alpha_ev=${last.alphaEvent}, ASF-среднее 1/(1-alpha_ev)=${last.asfMeanFromEventAlpha}, ` +
         `измеренное среднее на хвост=${last.meanPerTail}, alpha восстановленное из гистограммы=` +
         `${last.alphaRecovered} (r^2=${last.alphaRecoveredR2})`
@@ -233,7 +244,7 @@ export function collectCampaignGateInputs(): CampaignGateInputs {
     // checkpoint of this trace -- the maximum, so a single closed object anywhere would show up.
     metrics.vesicleAggregates = trace.some((c) => c.hasVesicleAggregate) ? 1 : 0
     provenance['vesicle-verdict'] =
-      `${CAMPAIGN_TRACE_ARTIFACT} (измерено ${audit.measuredAt}): ${trace.length} снимков, ` +
+      `${campaignTraceArtifact} (измерено ${audit.measuredAt}): ${trace.length} снимков, ` +
       `hasVesicleAggregate=false на всех; последний влажный снимок — шаг ${last.step}, ` +
       `агрегатов ${last.aggregateCount}, крупнейший ${last.largest[0]?.amphiphileCount ?? 0} амфифилов, ` +
       `радиальных слоёв голов ${String(last.largest[0]?.radialHeadShells ?? 'н/д')}, ` +
@@ -250,18 +261,18 @@ export function collectCampaignGateInputs(): CampaignGateInputs {
     }
   } else {
     const note =
-      `нечего измерять: артефакт ${CAMPAIGN_TRACE_ARTIFACT} отсутствует или пуст, поэтому свежего числа ` +
+      `нечего измерять: артефакт ${campaignTraceArtifact} отсутствует или пуст, поэтому свежего числа ` +
       `нет, а старое не подставляется. Опубликованные значения — ` +
       `.superpowers/sdd/2026-08-16-soup-to-vesicle/final-campaign-report.md §5, §7, §8. Пересобрать без ` +
       `повторного прогона кампании (off-GPU, по её собственным чекпойнтам): CONTINUOUS_RUN_CHECKPOINTS=... ` +
-      `CONTINUOUS_RUN_ARTIFACT=${CAMPAIGN_TRACE_ARTIFACT} npx vitest run tests/continuous-run-audit.test.ts`
+      `CONTINUOUS_RUN_ARTIFACT=${campaignTraceArtifact} npx vitest run tests/continuous-run-audit.test.ts`
     for (const id of ['vesicle-closure-water', 'chain-length-asf', 'mean-tail-length', 'vesicle-verdict']) {
       notes[id] = note
     }
   }
 
   // --- the percolation gate ---------------------------------------------------------------------
-  const perc = readJson<PercolationRow[]>(PERCOLATION_ARTIFACT)
+  const perc = readJson<PercolationRow[]>(percolationArtifact)
   // Task 'electrostatics' (2026-08-20): the row's OWN `role` decides, with the pre-existing 'zfB54'
   // substring kept as the fallback for artifacts written before that field existed. The hardcoded
   // label was a real defect: the first campaign with a different label turned this gate `unproven`
@@ -276,7 +287,7 @@ export function collectCampaignGateInputs(): CampaignGateInputs {
     metrics.wrappingAxes = worst.wrappingAxes
     const controls = (perc.value ?? []).filter((r) => !isCampaign(r))
     provenance['aggregate-percolation'] =
-      `${PERCOLATION_ARTIFACT} (tests/percolation-check.test.ts, off-GPU по чекпойнтам кампании, ` +
+      `${percolationArtifact} (tests/percolation-check.test.ts, off-GPU по чекпойнтам кампании, ` +
       `измерено ${perc.measuredAt}): ${campaignRows.length} снимков кампании, обёртывающих осей ` +
       `${campaignRows.map((r) => r.wrappingAxes).join('/')}, слоёв затронуто ` +
       `${worst.slabsTouchedOfTotal.join('/')} на шаге ${worst.step}` +
@@ -287,10 +298,10 @@ export function collectCampaignGateInputs(): CampaignGateInputs {
     detail.percolation = { campaign: campaignRows, controls }
   } else {
     notes['aggregate-percolation'] =
-      `нечего измерять: артефакт ${PERCOLATION_ARTIFACT} отсутствует или не содержит снимков кампании, ` +
+      `нечего измерять: артефакт ${percolationArtifact} отсутствует или не содержит снимков кампании, ` +
       `поэтому свежего числа нет, а старое не подставляется. Опубликованное значение (3 оси из 3 на 5 из 5 ` +
       `влажных снимков, 19/19 слоёв) — .superpowers/sdd/2026-08-16-soup-to-vesicle/final-campaign-report.md §6. ` +
-      `Пересобрать: PERC_CHECKPOINTS=... PERC_ARTIFACT=${PERCOLATION_ARTIFACT} npx vitest run tests/percolation-check.test.ts`
+      `Пересобрать: PERC_CHECKPOINTS=... PERC_ARTIFACT=${percolationArtifact} npx vitest run tests/percolation-check.test.ts`
   }
 
   return { metrics, provenance, notes, detail }

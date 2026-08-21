@@ -1,0 +1,638 @@
+{
+  "generatedAt": "2026-08-21T03:02:59.186Z",
+  "arm": "confined parcel (soft neutral spherical wall, R_wet = 36 sigma in a box of 160 sigma)",
+  "note": "ОТДЕЛЬНАЯ строка, не замена периодической. Коридоры в data/literature.json установлены в ПЕРИОДИЧЕСКОМ боксе; удержание -- другой опыт, а не поправка к нему. Ворота бислоя в воде здесь читаются из того же артефакта, что и в опубликованной таблице (они измеряются в периодическом патче и от удержания не зависят) -- приведены только для полноты строки.",
+  "trace": "verify/out/gates-campaign-trace-confined.json",
+  "percolation": "verify/out/gates-percolation-confined.json",
+  "gates": [
+    {
+      "id": "area-per-lipid-water",
+      "title": "Площадь на липид В ЯВНОЙ ВОДЕ",
+      "value": 1.1834503086016825,
+      "target": {
+        "min": 1.1,
+        "max": 1.5
+      },
+      "unit": "sigma^2",
+      "rank": "C",
+      "verdict": "passed",
+      "corridor": "inside",
+      "source": "коридор — Cooke & Deserno 2005, arXiv:cond-mat/0509218 (ТОТ ЖЕ коридор, что у бесрастворительных ворот); среда — отношения глубин пар, выведенные из martini_v2.1.itp (Marrink et al., The MARTINI Force Field, J. Phys. Chem. B 2007, 111, 7812), задача 'hydrophobic-asymmetry', перезамерено задачей 'final-campaign' §3",
+      "conditions": "НОВЫЙ РЕЗУЛЬТАТ ЭТОЙ КАМПАНИИ: та же величина, что у ворот area-per-lipid, но измеренная в ЖИДКОЙ явной воде 0.8 sigma^-3 (4500 бидов) вокруг заплатки из 400 липидов с 2-бидовыми хвостами, seed 31, kT из data/params.json, с ходом по площади при НУЛЕВОМ натяжении (Метрополис, 10 попыток на 500 шагов МД, окно из 150 отсчётов, критерий осёдлости по дрейфу блочных средних ln A). Площадь здесь ИЗМЕРЕНА, а не задана построением — до задачи 'hydrophobic-asymmetry' в воде она была допущением 1.3 sigma^2, и заплатка тогда давала 12.2-12.4 sigma при коридоре 4-6 (broth-composition-report.md §4, water-calibration-report.md). Ранг C, а НЕ A: коридор литературный (ранг A), но само число получено в среде, чьи отношения глубин пар взяты из чужого силового поля и на этом дереве не калиброваны (ранг C), а множитель epsilonScale=1.0 несёт ранг D.",
+      "provenance": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-21T02:58:24.909Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 450 отсчётов, дрейф ln A -4.670e-6 (t=-0.71)"
+    },
+    {
+      "id": "bilayer-thickness-water",
+      "title": "Толщина бислоя В ЯВНОЙ ВОДЕ",
+      "value": 4.906053163496518,
+      "target": {
+        "min": 4,
+        "max": 6
+      },
+      "unit": "sigma",
+      "rank": "C",
+      "verdict": "passed",
+      "corridor": "inside",
+      "source": "коридор — Cooke & Deserno 2005, arXiv:cond-mat/0509218; среда — martini_v2.1.itp (Marrink et al., J. Phys. Chem. B 2007, 111, 7812); задача 'hydrophobic-asymmetry', перезамерено задачей 'final-campaign' §3",
+      "conditions": "по максимумам плотности головных бидов, в ТОМ ЖЕ прогоне, что и area-per-lipid-water (те же 400 липидов, та же вода 0.8 sigma^-3, тот же ход по площади). Диагностика того же прогона публикуется рядом: доля закопанных голов и число водяных бидов в ядре — именно они, а не толщина, показали механизм предыдущего провала (закапывание голов 0.40-0.49 при отсутствии латеральной когезии листка). Ранг C по той же причине, что у area-per-lipid-water.",
+      "provenance": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-21T02:58:24.909Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 450 отсчётов, дрейф ln A -4.670e-6 (t=-0.71)"
+    },
+    {
+      "id": "vesicle-closure-water",
+      "title": "Замкнутость: ИНКАПСУЛИРОВАННАЯ ВОДА против порога",
+      "value": 0,
+      "target": {
+        "min": 1
+      },
+      "unit": "доля порога",
+      "rank": "B",
+      "verdict": "failed",
+      "corridor": "outside",
+      "source": "критерий: замкнутая везикула обязана удерживать растворитель, недостижимый для объёма извне — периодическая заливка снаружи, soup/src/water-closure.ts (методика проверена задачей 'periodic-measurement'). Порог ВЫЧИСЛЯЕТСЯ на том же снимке: минимальный замкнутый объём 370.8656 sigma^3 (эти же ворота closure, выведен из ИЗМЕРЕННОЙ толщины бислоя — ворота bilayer-thickness, ранг A) умноженный на ИЗМЕРЕННУЮ на том же снимке объёмную числовую плотность воды. final-campaign-report.md §7.1",
+      "conditions": "Публикуется как ОТНОШЕНИЕ измеренного числа инкапсулированных водяных бидов к порогу, потому что сам порог пересчитывается на каждом снимке из живой объёмной плотности (замерено 317.1-320.9 бида по ходу кампании) — фиксированного числа в этом файле для него быть не может. Ранг B (посчитано): порог выведен из ворот ранга A через геометрию, а не импортирован. ЭТИ ВОРОТА ПРОВАЛЕНЫ, и это главный отрицательный результат проекта: инкапсулированной воды РОВНО НОЛЬ на всех снимках кампании, где периодический центр агрегата надёжен, closed=false везде. Отдельно и честно: на 9 из 15 влажных снимков water-closure.ts ОТКАЗЫВАЕТСЯ отвечать (центр не надёжен, когда протяжённость объекта сравнима с боксом) — сам отказ является независимым индикатором того же факта, что измеряют ворота aggregate-percolation.",
+      "provenance": "verify/out/gates-campaign-trace-confined.json (tests/continuous-run-audit.test.ts, off-GPU по чекпойнтам кампании, измерено 2026-08-21T02:46:09.152Z), шаг 225200: инкапсулировано 0 водяных бидов против порога 314.825 (объёмная плотность воды 0.8489 sigma^-3 x минимальный замкнутый объём 370.8656 sigma^3), closed=false; таких снимков с надёжным центром 18 из 19 влажных, и на КАЖДОМ инкапсулировано 0"
+    },
+    {
+      "id": "aggregate-percolation",
+      "title": "Крупнейший агрегат — КОНЕЧНЫЙ объект, а не сетка через весь бокс",
+      "value": 0,
+      "target": {
+        "max": 0
+      },
+      "unit": "осей из 3",
+      "rank": "B",
+      "verdict": "passed",
+      "corridor": "inside",
+      "source": "стандартный критерий обёртывающего кластера: агрегат реплицируется один раз вдоль оси на +L с этой осью, сделанной открытой, пары соединяются по ТОМУ ЖЕ радиусу связности, что и везде в проекте, и спрашивается, попала ли частица в одну компоненту со своим собственным образом. Порог не вводится: у конечного объекта таких осей 0 ПО ОПРЕДЕЛЕНИЮ. tests/percolation-check.test.ts, final-campaign-report.md §6",
+      "conditions": "Ранг B (посчитано из собственных величин проекта, без импортированной константы). ЭТИ ВОРОТА ПРОВАЛЕНЫ, и это НАЙДЕННОЕ СВЯЗЫВАЮЩЕЕ ОГРАНИЧЕНИЕ проекта: объект обёртывает бокс по 3 осям из 3 и касается всех 19 из 19 слоёв шириной радиуса связности по каждой оси, на всех 5 влажных снимках, охватывающих 135000 осевших шагов. У объекта, протянутого через периодический бокс, нет ни «внутри», ни «снаружи» — замкнуть он не может ничего, каким бы большим ни был. Инструмент различает: на трёх независимых системах, которые проект называет конечными стержнями (решающий прогон на шагах 41400 и 174400, плечо A), он даёт 0 осей из 3, а его собственный внутренний контроль (заведомо компактное подмножество в один слой) не обёртывает ни на одном снимке.",
+      "provenance": "verify/out/gates-percolation-confined.json (tests/percolation-check.test.ts, off-GPU по чекпойнтам кампании, измерено 2026-08-21T02:46:09.163Z): 20 снимков кампании, обёртывающих осей 0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0, слоёв затронуто 18/19/18/58 на шаге 105200; контроли (объекты, которые проект называет конечными): bbB76-step148200.json=3, dec54-step174400.json=0, swB54-step144400.json=3"
+    },
+    {
+      "id": "vesicle-verdict",
+      "title": "ИТОГ ПРОЕКТА: самособранная ЗАМКНУТАЯ везикула",
+      "value": 0,
+      "target": {
+        "min": 1
+      },
+      "unit": "агрегатов",
+      "rank": "A",
+      "verdict": "failed",
+      "corridor": "outside",
+      "source": "измерено собственным распознавателем стадии (soup/src/aggregates.ts hasVesicleAggregate: замкнутость по инкапсулированной воде И два радиальных слоя голов И полость не меньше 370.8656 sigma^3) на каждом снимке всех кампаний; последняя и самая крупная — бокс 54 sigma, N=191778, 176400 шагов, жидкая вода 0.79999 sigma^-3, одно событие высушивания. final-campaign-report.md §0, §7, §8",
+      "conditions": "ПРОВАЛЕНО: ни одного везикулярного агрегата ни на одном снимке ни одной кампании. Связывающее ограничение названо по имени и это НЕ то, что останавливало предыдущие прогоны: подача (2.10x над порогом) и РАЗМЕР агрегата (2087.2 против порога 1004, то есть 2.08x НАД ним, впервые в проекте) сняты замером, краевая энергия при этом размере тоже снята (0.583 kT на молекулу против порога конкурентоспособности ~1 kT). Останавливает СВЯЗНОСТЬ — ворота aggregate-percolation: объект обёртывает бокс по всем трём осям. Всё остальное ниже по течению: радиальных слоёв голов 1 вместо 2 (то есть стенки бислоя нет вовсе), полость 50.5 +- 1.6 sigma^3 против 370.8656 (в 7.3 раза меньше), плоскостность 0.65-0.81 против <= 0.35 для ламеллярного объекта.",
+      "provenance": "verify/out/gates-campaign-trace-confined.json (измерено 2026-08-21T02:46:09.152Z): 21 снимков, hasVesicleAggregate=false на всех; последний влажный снимок — шаг 225200, агрегатов 1, крупнейший 2092 амфифилов, радиальных слоёв голов 1, полость 69.5 sigma^3 против порога 370.8656 sigma^3"
+    },
+    {
+      "id": "chain-length-asf",
+      "title": "Распределение длин цепей: согласие с ASF (ворота 2 спецификации)",
+      "value": 0.18753762793497886,
+      "target": {},
+      "unit": "-",
+      "rank": "D",
+      "verdict": "unproven",
+      "corridor": "none",
+      "source": "рамка Андерсона-Шульца-Флори для роста цепей на катализаторе: van der Laan & Beenackers, Kinetics and selectivity of the Fischer-Tropsch synthesis: a literature review, Catal. Rev. Sci. Eng. 41 (1999) 255-318; спецификация раздел 8, ворота 2. Реализация — soup/src/equilibrium.ts (asfPrediction, recoverAlphaFromChainLengths)",
+      "conditions": "Публикуемое число — относительное расхождение ASF-среднего 1/(1-alpha_ev), посчитанного из СОБЫТИЙНОГО отношения alpha_ev = cc_bond/(cc_bond+co_bond) без единого подогнанного параметра, с ИЗМЕРЕННЫМ средним числом бидов на хвост. Рядом публикуются оба alpha: событийное и восстановленное из самой гистограммы длин (recoverAlphaFromChainLengths) вместе с r^2 её лог-линейной подгонки — две независимые оценки одной величины. НЕДОКАЗАНО, и причина названа прямо: спецификация формулирует критерий этих ворот как «расхождение гистограмм», не давая числового коридора, и независимого литературного коридора для alpha ИМЕННО ЭТОЙ системы не существует — поэтому ворота несут ранг D и по правилу 1 verify/gates.ts выходят недоказанными при любом значении. Форма распределения при этом геометрическая, что и есть подпись ASF.",
+      "provenance": "verify/out/gates-campaign-trace-confined.json (измерено 2026-08-21T02:46:09.152Z), шаг 225200: alpha_ev=0.7465, ASF-среднее 1/(1-alpha_ev)=3.945, измеренное среднее на хвост=3.322, alpha восстановленное из гистограммы=0.792 (r^2=0.896)"
+    },
+    {
+      "id": "mean-tail-length",
+      "title": "Среднее число бидов на хвост",
+      "value": 3.322,
+      "target": {
+        "min": 2,
+        "max": 3
+      },
+      "unit": "бидов",
+      "rank": "D",
+      "verdict": "unproven",
+      "corridor": "outside",
+      "source": "наше отображение «число атомов углерода -> число бидов» (спецификация раздел 4: C8 -> 2, C12 -> 3, C16 -> 4), то есть окно 2-3 бида отвечает диапазону C8-C12; сами ворота отображения — chain-to-bead-mapping, ранг D",
+      "conditions": "Ранг D и, следовательно, НЕДОКАЗАНО по правилу 1 verify/gates.ts, ровно как и ворота chain-to-bead-mapping, через которые это отображение только и принимается (через ворота площади и толщины, а не напрямую). Число публикуется потому, что оно измерено, и потому что честнее показать его вместе с окном, чем прятать: если бы это отображение несло независимый коридор, значение ВЫШЕ 3 читалось бы как провал. В кампании длина хвоста растёт ПО ХОДУ прогона при неизменном составе (замерено 2.845 -> 3.490 на 135000 шагах), то есть это не одна цифра, а тренд, и разделить «второй хвост» и «длину хвоста» составом в этой модели нельзя — голова здесь и есть терминатор цепи.",
+      "provenance": "verify/out/gates-campaign-trace-confined.json (измерено 2026-08-21T02:46:09.152Z), шаг 225200: alpha_ev=0.7465, ASF-среднее 1/(1-alpha_ev)=3.945, измеренное среднее на хвост=3.322, alpha восстановленное из гистограммы=0.792 (r^2=0.896)"
+    }
+  ],
+  "detail": {
+    "waterBilayer": {
+      "measuredBy": "tests/water-bilayer-area-move.test.ts",
+      "generatedAt": "2026-08-21T02:58:24.908Z",
+      "lipids": 400,
+      "waterDensity": 0.8,
+      "totalWater": 4500,
+      "N": 5700,
+      "areaPerLipid": 1.1834503086016825,
+      "areaTailMin": 1.178472208070664,
+      "areaTailMax": 1.1880177278786812,
+      "thickness": 4.906053163496518,
+      "settled": true,
+      "chunksUsed": 450,
+      "driftPerChunk": -0.000004669928006021617,
+      "driftT": -0.7058978128775982,
+      "clusterFraction": 1,
+      "waterInCore": 36,
+      "headBuriedFraction": 0.09510869565217392,
+      "acceptedFraction": 0.13644444444444445,
+      "trialsTotal": 4500,
+      "stepsPerSec": 1023.7477631111931,
+      "amphiphileCount": 368,
+      "events": {
+        "cc_bond": 0,
+        "cc_break": 0,
+        "co_bond": 0,
+        "co_break": 32
+      },
+      "corridors": {
+        "area": [
+          1.1,
+          1.5
+        ],
+        "thickness": [
+          4,
+          6
+        ]
+      },
+      "verdict": "passed"
+    },
+    "closure": {
+      "step": 225200,
+      "encapsulatedCount": 0,
+      "encapsulationThresholdCount": 314.8250821452399,
+      "closed": false,
+      "bulkWaterDensity": 0.8488926504513762,
+      "closureVolumeThreshold": 370.8656,
+      "reportableWetCheckpoints": 18,
+      "wetCheckpoints": 19,
+      "thresholdRange": [
+        312.672065650627,
+        314.86855449721656
+      ]
+    },
+    "chainStatistics": {
+      "step": 225200,
+      "alphaEvent": 0.7465,
+      "asfMeanFromEventAlpha": 3.945,
+      "meanPerTail": 3.322,
+      "alphaRecovered": 0.792,
+      "alphaRecoveredR2": 0.896,
+      "alphaAgreementRelative": 0.06095110515740118,
+      "meanPerTailFirstWet": 2.112
+    },
+    "verdict": {
+      "checkpoints": 21,
+      "wetCheckpoints": 19,
+      "lastStep": 225200,
+      "box": [
+        160,
+        160,
+        160
+      ],
+      "largestAmphiphiles": 2092,
+      "radialHeadShells": 1,
+      "cavityVolume": 69.5,
+      "cavityVolumeThreshold": 370.8656
+    },
+    "percolation": {
+      "campaign": [
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step105200.json",
+          "step": 105200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2165,
+          "particlesInLargest": 13035,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step115200.json",
+          "step": 115200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2158,
+          "particlesInLargest": 13061,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step125200.json",
+          "step": 125200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2140,
+          "particlesInLargest": 13061,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step135200.json",
+          "step": 135200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2133,
+          "particlesInLargest": 13077,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            17,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step145200.json",
+          "step": 145200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2131,
+          "particlesInLargest": 13149,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            17,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step15400.json",
+          "step": 15400,
+          "box": 97.31203491450154,
+          "aggregates": 3,
+          "amphiphilesInLargest": 1053,
+          "particlesInLargest": 5040,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            17,
+            17,
+            17,
+            35
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step155200.json",
+          "step": 155200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2131,
+          "particlesInLargest": 13166,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step165200.json",
+          "step": 165200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2122,
+          "particlesInLargest": 13194,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step175200.json",
+          "step": 175200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2111,
+          "particlesInLargest": 13170,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step185200.json",
+          "step": 185200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2103,
+          "particlesInLargest": 13153,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step195200.json",
+          "step": 195200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2095,
+          "particlesInLargest": 13182,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step205200.json",
+          "step": 205200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2093,
+          "particlesInLargest": 13193,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step215200.json",
+          "step": 215200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2094,
+          "particlesInLargest": 13247,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step225200.json",
+          "step": 225200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2092,
+          "particlesInLargest": 13239,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step31800.json",
+          "step": 31800,
+          "box": 97.31203491450154,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2293,
+          "particlesInLargest": 11228,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            17,
+            17,
+            17,
+            35
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step37200.json",
+          "step": 37200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2276,
+          "particlesInLargest": 11670,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step55200.json",
+          "step": 55200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2209,
+          "particlesInLargest": 12172,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step73200.json",
+          "step": 73200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2185,
+          "particlesInLargest": 12527,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step84200.json",
+          "step": 84200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2172,
+          "particlesInLargest": 12757,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        },
+        {
+          "file": "data/checkpoints/cpR36/cpR36-step95200.json",
+          "step": 95200,
+          "box": 160,
+          "aggregates": 1,
+          "amphiphilesInLargest": 2164,
+          "particlesInLargest": 12916,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            18,
+            19,
+            18,
+            58
+          ],
+          "role": "campaign"
+        }
+      ],
+      "controls": [
+        {
+          "file": "data/checkpoints/bbB76/bbB76-step148200.json",
+          "step": 148200,
+          "box": 76,
+          "aggregates": 4,
+          "amphiphilesInLargest": 4512,
+          "particlesInLargest": 30361,
+          "wrapsX": true,
+          "wrapsY": true,
+          "wrapsZ": true,
+          "wrappingAxes": 3,
+          "slabsTouchedOfTotal": [
+            27,
+            27,
+            27,
+            27
+          ],
+          "role": "control"
+        },
+        {
+          "file": "data/checkpoints/dec54/dec54-step174400.json",
+          "step": 174400,
+          "box": 54,
+          "aggregates": 25,
+          "amphiphilesInLargest": 151,
+          "particlesInLargest": 596,
+          "wrapsX": false,
+          "wrapsY": false,
+          "wrapsZ": false,
+          "wrappingAxes": 0,
+          "slabsTouchedOfTotal": [
+            7,
+            7,
+            10,
+            19
+          ],
+          "role": "control"
+        },
+        {
+          "file": "data/checkpoints/swB54/swB54-step144400.json",
+          "step": 144400,
+          "box": 54,
+          "aggregates": 1,
+          "amphiphilesInLargest": 1542,
+          "particlesInLargest": 10305,
+          "wrapsX": true,
+          "wrapsY": true,
+          "wrapsZ": true,
+          "wrappingAxes": 3,
+          "slabsTouchedOfTotal": [
+            19,
+            19,
+            19,
+            19
+          ],
+          "role": "control"
+        }
+      ]
+    }
+  }
+}

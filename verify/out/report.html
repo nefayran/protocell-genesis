@@ -19,7 +19,7 @@
 </head>
 <body>
 <h1>protocell-genesis — отчёт проверки (Ступень C, ворота 6)</h1>
-<p>Сгенерировано 2026-08-20T23:23:30.106Z, коммит <code>98a22bcc6adaaa8f93b7c5a333023bb4ac133ad2</code> <strong>(рабочее дерево на момент генерации было НЕ чистым — эти артефакты сгенерированы ДО коммита, который их содержит; указанный коммит — последний реальный, а не тот, что упаковывает этот файл)</strong>, run <code>d5a5032c-c3f0-4193-8e66-ca197348a6c3</code>
+<p>Сгенерировано 2026-08-21T03:00:03.568Z, коммит <code>35ac1bc5bc4a07ae33083b66d99cc83c8b69ccfa</code> <strong>(рабочее дерево на момент генерации было НЕ чистым — эти артефакты сгенерированы ДО коммита, который их содержит; указанный коммит — последний реальный, а не тот, что упаковывает этот файл)</strong>, run <code>e0568b24-a7fc-49b6-ab57-93bef6cd7402</code>
 (тот же идентификатор проставлен на gates.json и kappa-measurement.json — расхождение означало бы, что артефакты из разных прогонов).</p>
 <table>
   <thead>
@@ -29,7 +29,7 @@
     
       <tr class="passed">
         <td>Площадь на липид<br><span class="id">area-per-lipid</span></td>
-        <td>1.2005 sigma^2</td>
+        <td>1.1981 sigma^2</td>
         <td>1.1 – 1.5 sigma^2</td>
         <td>A</td>
         <td class="verdict">пройдено</td>
@@ -40,7 +40,7 @@
 
       <tr class="passed">
         <td>Толщина бислоя<br><span class="id">bilayer-thickness</span></td>
-        <td>4.4308 sigma</td>
+        <td>4.4853 sigma</td>
         <td>4 – 6 sigma</td>
         <td>A</td>
         <td class="verdict">пройдено</td>
@@ -62,22 +62,22 @@
 
       <tr class="passed">
         <td>Площадь на липид В ЯВНОЙ ВОДЕ<br><span class="id">area-per-lipid-water</span></td>
-        <td>1.1607 sigma^2</td>
+        <td>1.1835 sigma^2</td>
         <td>1.1 – 1.5 sigma^2</td>
         <td>C</td>
         <td class="verdict">пройдено</td>
-        <td>verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-20T23:19:36.755Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 300 отсчётов, дрейф ln A 3.704e-5 (t=1.40)</td>
+        <td>verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-21T02:58:24.909Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 450 отсчётов, дрейф ln A -4.670e-6 (t=-0.71)</td>
         <td>коридор — Cooke &amp; Deserno 2005, arXiv:cond-mat/0509218 (ТОТ ЖЕ коридор, что у бесрастворительных ворот); среда — отношения глубин пар, выведенные из martini_v2.1.itp (Marrink et al., The MARTINI Force Field, J. Phys. Chem. B 2007, 111, 7812), задача 'hydrophobic-asymmetry', перезамерено задачей 'final-campaign' §3</td>
         <td>НОВЫЙ РЕЗУЛЬТАТ ЭТОЙ КАМПАНИИ: та же величина, что у ворот area-per-lipid, но измеренная в ЖИДКОЙ явной воде 0.8 sigma^-3 (4500 бидов) вокруг заплатки из 400 липидов с 2-бидовыми хвостами, seed 31, kT из data/params.json, с ходом по площади при НУЛЕВОМ натяжении (Метрополис, 10 попыток на 500 шагов МД, окно из 150 отсчётов, критерий осёдлости по дрейфу блочных средних ln A). Площадь здесь ИЗМЕРЕНА, а не задана построением — до задачи 'hydrophobic-asymmetry' в воде она была допущением 1.3 sigma^2, и заплатка тогда давала 12.2-12.4 sigma при коридоре 4-6 (broth-composition-report.md §4, water-calibration-report.md). Ранг C, а НЕ A: коридор литературный (ранг A), но само число получено в среде, чьи отношения глубин пар взяты из чужого силового поля и на этом дереве не калиброваны (ранг C), а множитель epsilonScale=1.0 несёт ранг D.</td>
       </tr>
 
       <tr class="passed">
         <td>Толщина бислоя В ЯВНОЙ ВОДЕ<br><span class="id">bilayer-thickness-water</span></td>
-        <td>4.6871 sigma</td>
+        <td>4.9061 sigma</td>
         <td>4 – 6 sigma</td>
         <td>C</td>
         <td class="verdict">пройдено</td>
-        <td>verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-20T23:19:36.755Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 300 отсчётов, дрейф ln A 3.704e-5 (t=1.40)</td>
+        <td>verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-21T02:58:24.909Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 450 отсчётов, дрейф ln A -4.670e-6 (t=-0.71)</td>
         <td>коридор — Cooke &amp; Deserno 2005, arXiv:cond-mat/0509218; среда — martini_v2.1.itp (Marrink et al., J. Phys. Chem. B 2007, 111, 7812); задача 'hydrophobic-asymmetry', перезамерено задачей 'final-campaign' §3</td>
         <td>по максимумам плотности головных бидов, в ТОМ ЖЕ прогоне, что и area-per-lipid-water (те же 400 липидов, та же вода 0.8 sigma^-3, тот же ход по площади). Диагностика того же прогона публикуется рядом: доля закопанных голов и число водяных бидов в ядре — именно они, а не толщина, показали механизм предыдущего провала (закапывание голов 0.40-0.49 при отсутствии латеральной когезии листка). Ранг C по той же причине, что у area-per-lipid-water.</td>
       </tr>
@@ -165,10 +165,10 @@
       <h2>Модуль изгиба κ — почему «недоказано»</h2>
       <p>Изгибная мода релаксирует со скоростью порядка q⁻³…q⁻⁴, поэтому подгонка нуждается именно
       в самых медленных, наименее сошедшихся оболочках q. У оболочек, которые требует окно подгонки,
-      наблюдается разброс 40.9–74.4% между модами, которые по симметрии решётки обязаны совпадать —
+      наблюдается разброс 32.2–63.1% между модами, которые по симметрии решётки обязаны совпадать —
       прямое, не требующее эталона доказательство того, что эти оболочки ещё не сошлись.</p>
       <table class="meta-table">
-        <tr><td>наклон log-log подгонки</td><td>-0.8833</td></tr>
+        <tr><td>наклон log-log подгонки</td><td>-0.7919</td></tr>
         <tr><td>число мод в окне подгонки</td><td>20</td></tr>
         <tr><td>число оболочек в окне подгонки</td><td>4</td></tr>
         <tr><td>q_max окна</td><td>0.1805</td></tr>
@@ -179,35 +179,35 @@
           <tr><th>q, σ⁻¹</th><th>вырождение</th><th>⟨|h_q|²⟩</th><th>разброс между вырожденными модами</th><th>в окне подгонки</th></tr>
         </thead>
         <tbody>
-          <tr><td>0.0807</td><td>4</td><td>1.693e-2</td><td>74.4%</td><td>да</td></tr>
-<tr><td>0.1141</td><td>4</td><td>2.962e-2</td><td>48.6%</td><td>да</td></tr>
-<tr><td>0.1614</td><td>4</td><td>1.541e-2</td><td>40.9%</td><td>да</td></tr>
-<tr><td>0.1805</td><td>8</td><td>8.464e-3</td><td>53.2%</td><td>нет</td></tr>
-<tr><td>0.2283</td><td>4</td><td>8.183e-3</td><td>49.1%</td><td>нет</td></tr>
-<tr><td>0.2421</td><td>4</td><td>3.289e-3</td><td>28.5%</td><td>нет</td></tr>
-<tr><td>0.2552</td><td>8</td><td>1.898e-3</td><td>47.6%</td><td>нет</td></tr>
-<tr><td>0.2910</td><td>8</td><td>1.490e-3</td><td>39.5%</td><td>нет</td></tr>
-<tr><td>0.3228</td><td>4</td><td>6.622e-4</td><td>10.5%</td><td>нет</td></tr>
-<tr><td>0.3328</td><td>8</td><td>1.295e-3</td><td>26.3%</td><td>нет</td></tr>
-<tr><td>0.3424</td><td>4</td><td>9.147e-4</td><td>20.5%</td><td>нет</td></tr>
-<tr><td>0.3609</td><td>8</td><td>6.422e-4</td><td>12.0%</td><td>нет</td></tr>
-<tr><td>0.4036</td><td>12</td><td>4.912e-4</td><td>37.3%</td><td>нет</td></tr>
-<tr><td>0.4115</td><td>8</td><td>4.092e-4</td><td>39.5%</td><td>нет</td></tr>
-<tr><td>0.4346</td><td>8</td><td>3.231e-4</td><td>15.4%</td><td>нет</td></tr>
-<tr><td>0.4566</td><td>4</td><td>2.771e-4</td><td>19.6%</td><td>нет</td></tr>
-<tr><td>0.4706</td><td>8</td><td>2.421e-4</td><td>17.7%</td><td>нет</td></tr>
-<tr><td>0.4843</td><td>4</td><td>2.059e-4</td><td>4.8%</td><td>нет</td></tr>
-<tr><td>0.4909</td><td>8</td><td>2.069e-4</td><td>31.7%</td><td>нет</td></tr>
-<tr><td>0.5105</td><td>8</td><td>1.820e-4</td><td>31.8%</td><td>нет</td></tr>
-<tr><td>0.5168</td><td>8</td><td>2.055e-4</td><td>25.7%</td><td>нет</td></tr>
-<tr><td>0.5414</td><td>8</td><td>1.588e-4</td><td>4.6%</td><td>нет</td></tr>
-<tr><td>0.5650</td><td>4</td><td>1.856e-4</td><td>9.2%</td><td>нет</td></tr>
-<tr><td>0.5707</td><td>12</td><td>1.332e-4</td><td>20.8%</td><td>нет</td></tr>
-<tr><td>0.5820</td><td>8</td><td>1.222e-4</td><td>21.7%</td><td>нет</td></tr>
-<tr><td>0.5876</td><td>8</td><td>1.428e-4</td><td>8.2%</td><td>нет</td></tr>
-<tr><td>0.6147</td><td>8</td><td>1.123e-4</td><td>13.6%</td><td>нет</td></tr>
-<tr><td>0.6304</td><td>8</td><td>1.329e-4</td><td>21.8%</td><td>нет</td></tr>
-<tr><td>0.6457</td><td>4</td><td>9.450e-5</td><td>34.2%</td><td>нет</td></tr>
+          <tr><td>0.0807</td><td>4</td><td>1.795e-2</td><td>60.3%</td><td>да</td></tr>
+<tr><td>0.1142</td><td>4</td><td>2.498e-2</td><td>63.1%</td><td>да</td></tr>
+<tr><td>0.1614</td><td>4</td><td>1.239e-2</td><td>32.2%</td><td>да</td></tr>
+<tr><td>0.1805</td><td>8</td><td>8.506e-3</td><td>24.6%</td><td>нет</td></tr>
+<tr><td>0.2283</td><td>4</td><td>4.680e-3</td><td>39.6%</td><td>нет</td></tr>
+<tr><td>0.2422</td><td>4</td><td>3.451e-3</td><td>35.1%</td><td>нет</td></tr>
+<tr><td>0.2552</td><td>8</td><td>1.892e-3</td><td>54.7%</td><td>нет</td></tr>
+<tr><td>0.2910</td><td>8</td><td>1.388e-3</td><td>28.2%</td><td>нет</td></tr>
+<tr><td>0.3229</td><td>4</td><td>1.085e-3</td><td>23.0%</td><td>нет</td></tr>
+<tr><td>0.3328</td><td>8</td><td>1.530e-3</td><td>34.0%</td><td>нет</td></tr>
+<tr><td>0.3425</td><td>4</td><td>1.106e-3</td><td>15.1%</td><td>нет</td></tr>
+<tr><td>0.3610</td><td>8</td><td>4.891e-4</td><td>31.4%</td><td>нет</td></tr>
+<tr><td>0.4036</td><td>12</td><td>4.655e-4</td><td>31.2%</td><td>нет</td></tr>
+<tr><td>0.4116</td><td>8</td><td>5.011e-4</td><td>52.1%</td><td>нет</td></tr>
+<tr><td>0.4347</td><td>8</td><td>4.430e-4</td><td>32.9%</td><td>нет</td></tr>
+<tr><td>0.4566</td><td>4</td><td>3.298e-4</td><td>61.8%</td><td>нет</td></tr>
+<tr><td>0.4707</td><td>8</td><td>2.886e-4</td><td>33.5%</td><td>нет</td></tr>
+<tr><td>0.4843</td><td>4</td><td>2.352e-4</td><td>12.2%</td><td>нет</td></tr>
+<tr><td>0.4910</td><td>8</td><td>2.144e-4</td><td>13.4%</td><td>нет</td></tr>
+<tr><td>0.5105</td><td>8</td><td>2.599e-4</td><td>36.2%</td><td>нет</td></tr>
+<tr><td>0.5168</td><td>8</td><td>1.927e-4</td><td>18.8%</td><td>нет</td></tr>
+<tr><td>0.5415</td><td>8</td><td>1.604e-4</td><td>20.4%</td><td>нет</td></tr>
+<tr><td>0.5650</td><td>4</td><td>1.220e-4</td><td>21.1%</td><td>нет</td></tr>
+<tr><td>0.5708</td><td>12</td><td>1.172e-4</td><td>15.4%</td><td>нет</td></tr>
+<tr><td>0.5821</td><td>8</td><td>1.255e-4</td><td>25.9%</td><td>нет</td></tr>
+<tr><td>0.5876</td><td>8</td><td>1.290e-4</td><td>19.0%</td><td>нет</td></tr>
+<tr><td>0.6147</td><td>8</td><td>9.616e-5</td><td>7.0%</td><td>нет</td></tr>
+<tr><td>0.6304</td><td>8</td><td>8.750e-5</td><td>14.2%</td><td>нет</td></tr>
+<tr><td>0.6457</td><td>4</td><td>1.032e-4</td><td>27.2%</td><td>нет</td></tr>
         </tbody>
       </table>
     </section>
@@ -221,9 +221,9 @@
     <section class="performance">
       <h2>Производительность</h2>
       <table class="meta-table">
-        <tr><td>шагов в секунду</td><td>3619.0</td></tr>
+        <tr><td>шагов в секунду</td><td>3622.7</td></tr>
         <tr><td>бидов в системе</td><td>3600</td></tr>
-        <tr><td>время перестройки сетки соседей, мс (отдельный замер)</td><td>1.000</td></tr>
+        <tr><td>время перестройки сетки соседей, мс (отдельный замер)</td><td>0.300</td></tr>
         <tr><td>сценарий</td><td>lipids=1200 (3600 бидов), box=[28,28,28], layout=bilayer, 20000 шагов</td></tr>
       </table>
     </section>

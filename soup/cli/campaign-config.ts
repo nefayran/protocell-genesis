@@ -102,6 +102,25 @@ export interface Args {
   /** The run's ionic strength in mol/l, which sets the Debye screening length. Defaults to
    * data/soup.json's electrostatics.ionicStrengthMolar. Part of the signature. */
   ionicStrength?: number
+  /** Task 'confined-parcel' (2026-08-21): the WET radius of the finite water parcel, in sigma.
+   * Undefined (every previous campaign) runs the fully periodic box unchanged. Part of the resume
+   * signature. There is no written default: a confined run must state its own parcel size, because
+   * the parcel IS the experiment. */
+  confineRadius?: number
+  /** The wall's spring constant, epsilon/sigma^2. Default 100, and the default is arithmetic rather
+   * than a fit -- an experiment-design number for THIS task, with the same status as
+   * --expandRampSteps (see Args.expandRampSteps above), so it lives here with its basis and not in
+   * data/soup.json:
+   *   - integrator stability: the wall's own frequency is omega = sqrt(k/m) = sqrt(k) in these units
+   *     (m = 1, data/params.json), so omega*dt = sqrt(100)*0.01 = 0.10 -- an order of magnitude
+   *     inside the usual omega*dt < 1 bound, and far softer than the WCA core this integrator already
+   *     handles at the same dt;
+   *   - containment: the thermal penetration of a harmonic wall is ~sqrt(2*kT/k) = sqrt(2*1.1/100) =
+   *     0.148 sigma, i.e. a seventh of a bead radius, so the parcel's surface is sharp on the scale of
+   *     the structures being looked for while the force itself stays bounded and non-singular at every
+   *     distance (which a 1/s^12 wall is not).
+   * It is a CONTAINER, not an interface: purely repulsive, identical for every species. */
+  confineStiffness: number
 }
 
 export function printUsage(): void {
@@ -141,6 +160,15 @@ export function printUsage(): void {
       '  --pH <n>          pH прогона (по умолчанию data/soup.json electrostatics.pH); входит в подпись',
       '  --ionicStrength <n>  ионная сила, моль/л -- задаёт дебаевскую длину (по умолчанию из файла);',
       '                    входит в подпись резюме',
+      '  --confineRadius <n>  РАДИУС КОНЕЧНОЙ ПАРЦЕЛЛЫ ВОДЫ в sigma: система удерживается мягкой',
+      '                    нейтральной отталкивающей стенкой вместо полностью периодического бокса.',
+      '                    Бокс при этом обязан быть НАМНОГО больше парцеллы (createSoup бросит, если',
+      '                    зазор L/2-R не превосходит наибольшего радиуса взаимодействия) -- именно так',
+      '                    периодичность и снимается: mi3/обёртка становятся тождеством по построению.',
+      '                    Отсутствие флага = периодический бокс, как во всех прежних кампаниях.',
+      '                    Входит в подпись резюме. Несовместимо с clay и с areaMove.',
+      '  --confineStiffness <n>  жёсткость стенки, epsilon/sigma^2 (по умолчанию 100 -- omega*dt=0.10,',
+      '                    тепловое продавливание ~0.148 sigma; обоснование в campaign-config.ts)',
     ].join('\n'),
   )
 }
@@ -174,6 +202,8 @@ export function parseCliArgs(): Args {
       charge: { type: 'boolean', default: false },
       pH: { type: 'string' },
       ionicStrength: { type: 'string' },
+      confineRadius: { type: 'string' },
+      confineStiffness: { type: 'string' },
       help: { type: 'boolean', default: false },
     },
     allowPositionals: false,
@@ -216,6 +246,8 @@ export function parseCliArgs(): Args {
     charge: Boolean(values.charge),
     pH: values.pH !== undefined ? Number(values.pH) : undefined,
     ionicStrength: values.ionicStrength !== undefined ? Number(values.ionicStrength) : undefined,
+    confineRadius: values.confineRadius !== undefined ? Number(values.confineRadius) : undefined,
+    confineStiffness: values.confineStiffness !== undefined ? Number(values.confineStiffness) : 100,
   }
 }
 
@@ -245,6 +277,10 @@ export function configSignature(c: CheckpointConfig): string {
     // lineage already on disk, while a charged run at pH 5 refuses to resume from a charged run at
     // pH 6 or from a neutral one.
     ...(c.electrostatics !== undefined ? { electrostatics: c.electrostatics } : {}),
+    // Task 'confined-parcel' (2026-08-21): same conditional-spread discipline for the same reason --
+    // a periodic run's signature stays byte-identical to every checkpoint lineage already on disk,
+    // while a confined run refuses to resume from a periodic one or from a different parcel radius.
+    ...(c.confine !== undefined ? { confine: c.confine } : {}),
   })
 }
 

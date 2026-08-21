@@ -93,6 +93,13 @@ export interface CreateSoupOpts {
    * densest box. Both exist so the structure/capacity A/B can be measured without rewriting a data
    * file between arms -- the file's own values are what every real run uses. Absent = the file. */
   verletOverride?: { enabled?: boolean; listCapacity?: number }
+  /** Task 'confined-parcel' (2026-08-21): confine the system to a finite sphere of water with a soft,
+   * neutral, repulsive wall instead of running it in a fully periodic box -- see
+   * soup/src/soup-confine.ts for the whole design, including how periodicity is removed (by making
+   * every mi3/wrap provably the identity, not by branching eleven force paths) and what the wall's
+   * neutrality does and does not bias. Absent = the fully periodic box every published gate and every
+   * previous campaign was measured in, with ZERO extra dispatches, so those numbers cannot move. */
+  confine?: { radiusSigma: number; stiffness: number }
   /** Checkpoint/resume (task 'checkpoint-resume'): when present, createSoup skips the jittered-
    * lattice initial layout and every zero-filled buffer below, loading this system's ENTIRE mutable
    * state from a prior checkpoint instead -- everything step()/stepCycled() can change: positions,
@@ -232,6 +239,10 @@ export interface SoupSystem {
   /** The resolved electrostatics basis plus how many constant-pH sweeps have run and what the last
    * one did. Synchronous: it reads no GPU buffer. */
   electrostatics(): Record<string, unknown>
+  /** Task 'confined-parcel' (2026-08-21): the resolved confinement plus everything derived from it --
+   * the live radius, the parcel volume, the clearances the no-wrap argument rests on. `null` on a
+   * fully periodic system, which is what every measurement path branches on. */
+  confinement(): Record<string, unknown> | null
   /** Forces ONE constant-pH sweep now, regardless of the schedule -- for tests and for the sweep
    * probe. Returns null on a system without electrostatics. */
   protonationSweepDEBUG(): Promise<unknown>

@@ -74,11 +74,16 @@ import { relaxIterations } from './soup-relax'
 // Task 'evaporation' (2026-08-20): real solvent removal/return. planEvaporation is pure (no GPU) and
 // carries its own throwing preconditions; nothing here changes for a system that does not ask for it.
 import { planEvaporation, evaporateSolventTo, rehydrateSolventTo } from './soup-evaporate'
+import { computeDryBox as computeDryBoxMath } from './soup-box-scale-math'
 import { scanNonFinite } from './soup-health'
 import { clayEnabled, planClay, type ClayLayout } from './soup-clay'
 // Task 'electrostatics' (2026-08-20): the screened-Coulomb basis (derived once from data/soup.json +
 // data/params.json + this run's own pH/ionic-strength overrides) and the constant-pH Monte Carlo.
 import { makeEsBasis } from './electrostatics'
+// Task 'confined-parcel' (2026-08-21): the finite parcel and its soft neutral wall. Pure/GPU-free
+// (a validated geometry, a potential and its gradient, a lattice, a sampler and a measurement) --
+// see soup/src/soup-confine.ts's header for the whole design.
+import { liveRadius, parcelVolume, resolveConfine, type Confinement } from './soup-confine'
 import { initialCharges, maybeProtonationSweep, type ProtonationState } from './soup-protonation'
 import * as readback from './soup-readback'
 import type { SoupRuntime } from './soup-runtime'
@@ -163,17 +168,63 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // Task 'evaporation' (2026-08-20): resolved BEFORE the cycle config, because the dry box a cycle
   // with solvent removal targets is sized for what is LEFT, not for the wet N.
   const evapRequested = (opts.dryWetCycle ?? soup.dryWetCycle.enabled) && (opts.evaporateSolvent ?? soup.dryWetCycle.evaporateSolvent ?? false)
-  const evap = evapRequested ? planEvaporation(soup, p, box, startCounts) : undefined
+
+  // Task 'confined-parcel' (2026-08-21). Resolved HERE, before anything that depends on a density or
+  // on a dry box, because in a confined system the volume every one of those numbers must be taken
+  // over is the PARCEL's, not the box's -- and a density taken over the box is 5.8x too low at this
+  // task's own geometry, which would silently under-size both neighbour lists and would leave the dry
+  // phase 5.8x less dense than the number the run claims. `occupiedVolumeOf` is the one function that
+  // says so, threaded into planEvaporation, computeDryBox, densestDensityOf and makeEsBasis rather
+  // than each of them re-deriving it.
+  //
+  // Refusals, both structural rather than advisory:
+  //  - a mineral platelet plus a wall is two containers, and the platelet also forbids the box changes
+  //    a drying event needs (applyBoxScaleOnce's own refusal);
+  //  - the zero-tension area move is meaningless here -- it proposes a BOX change at fixed volume to
+  //    read off a tension, but in a confined run the box is not what sets the volume (the wall is),
+  //    and the wall does work on the system, so no box-derived tension is a tension. Refused in
+  //    soup/src/soup-area-move.ts rather than silently returning a number.
+  let confine: Confinement | null = null
+  const occupiedVolumeOf = (b: [number, number, number]) => (confine ? parcelVolume(liveRadius(confine, b)) : b[0] * b[1] * b[2])
+  if (opts.confine) {
+    if (clay) throw new Error('confine: удержание в парцелле несовместимо с минеральной пластиной (clay) -- это две стенки сразу; используйте clay:false')
+    // The longest reach anything in this system has: the Verlet list's build radius and, when charge
+    // is on, the long-range electrostatic list's. The electrostatic cutoff is not known yet (it needs
+    // the dry box, which needs the parcel), so the bound used here is the file's OWN requested target
+    // -- longRangeDebyeLengths * lambda_D + skin -- which is an UPPER bound on whatever makeEsBasis
+    // will settle on below (that function only ever caps the target, never raises it).
+    const esTarget = soup.electrostatics
+      ? soup.electrostatics.longRangeDebyeLengths * (soup.electrostatics.debyeLengthNmAtUnitMolar /
+          Math.sqrt(opts.electrostatics?.ionicStrengthMolar ?? soup.electrostatics.ionicStrengthMolar) /
+          soup.electrostatics.sigmaToNm) + soup.verletList.skin
+      : 0
+    const cutMax = Math.max(listRange, esTarget)
+    // Provisional resolve at the wet box only, so occupiedVolumeOf becomes usable; the dry box is not
+    // known until planEvaporation has run against it, and the geometry is then re-checked at BOTH.
+    confine = resolveConfine(opts.confine, box, [box], cutMax)
+    // The DRY box is part of the check only when this run actually cycles -- computeDryBox on a
+    // system that never dries is a box that never exists, and for a small system it is absurdly
+    // small (measured: 12 particles at targetDryDensity 1.34 gives a "dry box" of 3.86 sigma, which
+    // refused a perfectly valid 60-sigma test geometry until this gate was added).
+    const cycleEnabledHere = opts.dryWetCycle ?? soup.dryWetCycle.enabled
+    const boxesToCheck: [number, number, number][] = [box, initialLiveBox]
+    if (cycleEnabledHere) {
+      const evapProbe = evapRequested ? planEvaporation(soup, p, box, startCounts, occupiedVolumeOf) : undefined
+      boxesToCheck.push(evapProbe ? evapProbe.dryBox : computeDryBoxMath(box, capacityN, soup.dryWetCycle.targetDryDensity, occupiedVolumeOf))
+    }
+    confine = resolveConfine(opts.confine, box, boxesToCheck, cutMax)
+  }
+  const evap = evapRequested ? planEvaporation(soup, p, box, startCounts, occupiedVolumeOf) : undefined
 
   // Dry-wet cycling setup (task 'wet-dry-cycle'), with its own throwing validation -- see
   // soup/src/soup-box-scale.ts's deriveCycleConfig.
-  const { cycleCfg, dryBox } = deriveCycleConfig(soup, opts, box, capacityN, startCounts, evap?.dryBox)
+  const { cycleCfg, dryBox } = deriveCycleConfig(soup, opts, box, capacityN, startCounts, evap?.dryBox, confine ? occupiedVolumeOf : undefined)
 
   const { device } = await getGpu()
   const sortedGather = soup.neighborGrid.sortedGather
   const pipe = getSoupPipelines(device, sortedGather)
 
-  const initial = buildInitialState(soup, opts, capacityN, countsByKind, box, rules, eventRuleIds, clay, N)
+  const initial = buildInitialState(soup, opts, capacityN, countsByKind, box, rules, eventRuleIds, clay, N, confine)
 
   // Task 'electrostatics' (2026-08-20). The basis is derived from data/soup.json's `electrostatics`
   // section with only the two EXPERIMENT-design numbers overridable per run (pH, ionic strength) --
@@ -199,7 +250,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // project's particle ceiling. `verletOverride` is the per-run experiment-design switch the
   // structure A/B (per-particle list vs cell-list traversal) needs; absent, both fields come from
   // data/soup.json exactly as before.
-  const densestDensity = densestDensityOf(soup, capacityN, box, N, initialLiveBox, cycleCfg !== undefined)
+  const densestDensity = densestDensityOf(soup, capacityN, box, N, initialLiveBox, cycleCfg !== undefined, confine ? occupiedVolumeOf : undefined)
   const capFromDensity = deriveListCapacity(soup, listRange, capacityN, densestDensity)
   const verletCfg: Soup['verletList'] = {
     ...soup.verletList,
@@ -210,7 +261,14 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // The head count is needed for the long-range list's DERIVED capacity, and it is a creation-census
   // invariant (evaporation removes solvent only), so it is available before any buffer exists.
   const esMaxHeads = soup.electrostatics ? (startCounts[soup.electrostatics.chargedKind] ?? 0) : 0
-  const es = makeEsBasis(soup, p, { ...opts.electrostatics, minBoxSigma, maxHeads: esMaxHeads })
+  const es = makeEsBasis(soup, p, {
+    ...opts.electrostatics,
+    minBoxSigma,
+    maxHeads: esMaxHeads,
+    // Task 'confined-parcel': the head DENSITY the long-range list is sized from must be taken over
+    // the parcel at the tightest box, not over that box's own volume -- see EsOverrides.
+    densityVolumeSigma3: confine ? occupiedVolumeOf(minBoxSigma === initialLiveBox[0] ? initialLiveBox : dryBox) : undefined,
+  })
   const fresh = initialCharges(initial.positions0, es, opts.seed)
   // Sized for CAPACITY, not for the live count: a checkpoint taken mid dry-phase carries only the
   // LIVE beads' charges, and the trailing slots rehydration writes back into are solvent, which is
@@ -276,6 +334,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     es,
     charges0,
     maxHeads: esHeads,
+    confine,
   })
   const bind = buildBindGroups(device, pipe, buf, N)
 
@@ -311,6 +370,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     bind,
     grid,
     protonation,
+    confine,
     live: {
       liveBox: [initialLiveBox[0], initialLiveBox[1], initialLiveBox[2]],
       globalStep: initialStep,
@@ -461,6 +521,23 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     // off-GPU measurement of the deprotonated fraction, the apparent pKa and acid-soap pairing.
     charges: () => readback.charges(rt),
     electrostatics: () => ({ ...rt.protonation.es, sweeps: rt.protonation.sweeps, last: rt.protonation.last }),
+    // Task 'confined-parcel' (2026-08-21): everything a measurement or a report needs about the
+    // parcel, derived from the LIVE box so a dry-phase reading is the dry parcel's.
+    confinement: () =>
+      confine
+        ? {
+            radiusWet: confine.radiusWet,
+            radiusLive: liveRadius(confine, rt.live.liveBox),
+            stiffness: confine.stiffness,
+            boxWet: confine.boxWet,
+            boxLive: [rt.live.liveBox[0], rt.live.liveBox[1], rt.live.liveBox[2]],
+            parcelVolumeLive: parcelVolume(liveRadius(confine, rt.live.liveBox)),
+            boxVolumeLive: rt.live.liveBox[0] * rt.live.liveBox[1] * rt.live.liveBox[2],
+            cutMax: confine.cutMax,
+            clearanceLive: rt.live.liveBox[0] / 2 - liveRadius(confine, rt.live.liveBox),
+            strongNoWrapLive: 2 * liveRadius(confine, rt.live.liveBox) < rt.live.liveBox[0] / 2,
+          }
+        : null,
     protonationSweepDEBUG: async () => {
       rt.protonation.nextSweepAt = rt.live.globalStep
       return maybeProtonationSweep(rt)

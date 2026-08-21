@@ -18,6 +18,7 @@ import type { Params } from '../../engine/src/params'
 import type { CycleSchedule } from './soup-box-scale-math'
 import type { ClayLayout } from './soup-clay'
 import type { EvaporationPlan } from './soup-evaporate'
+import type { Confinement } from './soup-confine'
 
 /** Mutated by soup/src/soup-box-scale.ts (liveBox, cyclePhase, cycleIndex) and
  * soup/src/soup-integrate.ts (globalStep) -- the exact fields the original sim.ts exposed through
@@ -88,4 +89,10 @@ export interface SoupRuntime {
    * for charge, which makes soup/src/soup-protonation.ts's sweep a no-op and the GPU term identically
    * zero. */
   protonation: ProtonationState
+  /** Task 'confined-parcel' (2026-08-21): the resolved confinement, or null for a fully periodic run.
+   * The WALL's own live radius is not stored here -- it is derived from `live.liveBox` wherever it is
+   * needed (soup/src/soup-confine.ts's liveRadius), and the GPU copy is rewritten by the same
+   * resizeSoupGrid call that rewrites the box, so there is exactly one place the two can be kept in
+   * step and no cached copy to go stale. */
+  confine: Confinement | null
 }

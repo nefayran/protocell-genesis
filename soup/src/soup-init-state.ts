@@ -10,6 +10,7 @@ import { NONE_U32 } from './soup-types'
 import type { ResolvedRule } from './soup-plan'
 import type { loadSoup } from './rules'
 import { clayLatticePosition, claySiteIndices, type ClayLayout } from './soup-clay'
+import { parcelCentre, sphereLatticeSites, type Confinement } from './soup-confine'
 
 // --- seeded RNG for reproducible initial layouts -------------------------------------------------
 
@@ -65,6 +66,12 @@ export function buildInitialState(
   eventRuleIds: [string, string][],
   clay: ClayLayout | null,
   activeN: number = N,
+  /** Task 'confined-parcel' (2026-08-21): when present, the fresh-creation lattice is built inside
+   * the PARCEL instead of the box -- same jittered-cubic-lattice construction, same shuffle, same
+   * jitter fraction, restricted to the sphere (soup/src/soup-confine.ts's sphereLatticeSites), so the
+   * mean density is n/parcelVolume exactly as the box lattice's is n/box^3. Null (every unconfined
+   * run) takes the identical code path with the identical RNG draw order. */
+  confine: Confinement | null = null,
 ): InitialState {
   const rng = mulberry32(opts.seed)
 
@@ -103,11 +110,17 @@ export function buildInitialState(
     positions0.set(opts.resume.positions)
     velocities0.set(opts.resume.velocities)
   } else {
+    // Task 'confined-parcel': the site table. Unconfined, it stays IMPLICIT (site index -> ix,iy,iz
+    // arithmetic over a full nx^3 cube, exactly as before); confined, it is an explicit list of the
+    // cube sites that fall inside the sphere. Both feed the same Fisher-Yates shuffle below, so the
+    // "species are interleaved by shuffling which SITE each particle gets" property is unchanged.
+    const parcel = confine ? sphereLatticeSites(N, confine.radiusWet, parcelCentre(box)) : null
+    const parcelSites = parcel ? parcel.sites : null
     let nx = Math.max(1, Math.ceil(Math.cbrt(N)))
     while (nx * nx * nx < N) nx++
-    const spacing: [number, number, number] = [box[0] / nx, box[1] / nx, box[2] / nx]
+    const spacing: [number, number, number] = parcel ? [parcel.spacing, parcel.spacing, parcel.spacing] : [box[0] / nx, box[1] / nx, box[2] / nx]
     const jitterFrac = 0.15
-    const nSites = nx * nx * nx
+    const nSites = parcelSites ? parcelSites.length / 3 : nx * nx * nx
     const siteOrder = Array.from({ length: nSites }, (_, i) => i)
     for (let i = siteOrder.length - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1))
@@ -176,9 +189,12 @@ export function buildInitialState(
         const ix = site % nx
         const iy = Math.floor(site / nx) % nx
         const iz = Math.floor(site / (nx * nx))
-        positions0[idx * 4 + 0] = (ix + 0.5) * spacing[0] + (rng() * 2 - 1) * jitterFrac * spacing[0]
-        positions0[idx * 4 + 1] = (iy + 0.5) * spacing[1] + (rng() * 2 - 1) * jitterFrac * spacing[1]
-        const zRaw = (iz + 0.5) * spacing[2] + (rng() * 2 - 1) * jitterFrac * spacing[2]
+        const baseX = parcelSites ? parcelSites[site * 3 + 0] : (ix + 0.5) * spacing[0]
+        const baseY = parcelSites ? parcelSites[site * 3 + 1] : (iy + 0.5) * spacing[1]
+        const baseZ = parcelSites ? parcelSites[site * 3 + 2] : (iz + 0.5) * spacing[2]
+        positions0[idx * 4 + 0] = baseX + (rng() * 2 - 1) * jitterFrac * spacing[0]
+        positions0[idx * 4 + 1] = baseY + (rng() * 2 - 1) * jitterFrac * spacing[1]
+        const zRaw = baseZ + (rng() * 2 - 1) * jitterFrac * spacing[2]
         if (clay) {
           const u = (((zRaw / box[2]) % 1) + 1) % 1
           positions0[idx * 4 + 2] = (((zStart + u * zSpan) % box[2]) + box[2]) % box[2]

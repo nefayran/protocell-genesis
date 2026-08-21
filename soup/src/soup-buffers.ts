@@ -17,6 +17,7 @@ import { ATTR_SCALE_UNIFORM_BYTES, attractionScaleUniform } from './soup-attract
 import { attemptProbability, acceptanceProbability } from './rules'
 import type { InitialState } from './soup-init-state'
 import { esUniform, esUniform2, type EsBasis } from './electrostatics'
+import { wallUniformBytes, type Confinement } from './soup-confine'
 
 export interface SoupBuffers {
   posBuf: GPUBuffer
@@ -118,6 +119,17 @@ export interface SoupBuffers {
    * every iteration's submit. Untouched (and the kernel never dispatched) on any system that does not
    * ask for relaxation. */
   relaxUniform: GPUBuffer
+  /** Task 'confined-parcel' (2026-08-21): WALL (soup/wgsl/wall.wgsl) -- x = the LIVE parcel radius,
+   * y = the wall stiffness. All zeros (and the kernel never dispatched) on an unconfined system,
+   * which is what makes every periodic run bit-identical to before this task. */
+  wallUniform: GPUBuffer
+  /** The resolved confinement, or null. Kept HERE, on the buffer bag, for one reason: resizeSoupGrid
+   * below is the single function every box change goes through (applyBoxScaleOnce, growBoxTo,
+   * setActiveCount), and it already rewrites the grid uniform's box -- so writing the wall uniform in
+   * the same place makes it structurally impossible for the parcel radius and the box its centre is
+   * derived from to disagree. A separate update at each of the three call sites is the kind of
+   * "one of the three forgot" bug this project has paid for repeatedly. */
+  confine: Confinement | null
 }
 
 export interface SoupGridState {
@@ -158,10 +170,13 @@ export interface AllocateBuffersInput {
    * system can ever hold (its CREATION census -- the species is never created or destroyed, only
    * solvent is), which is what the head-only long-range list is sized for. */
   maxHeads: number
+  /** Task 'confined-parcel' (2026-08-21): this system's resolved confinement, or null for an
+   * unconfined (fully periodic) run -- see soup/src/soup-confine.ts. */
+  confine: Confinement | null
 }
 
 export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuffers; grid: SoupGridState } {
-  const { device, soup, p, N, dims, ncells, effectiveWalkRadius, initialLiveBox, verlet, listRange, rules, catalystKind, bondAttemptInterval, kT, initial, solventAttractionScaleOverride, claySurfaceChemistry, es, charges0, maxHeads } = input
+  const { device, soup, p, N, dims, ncells, effectiveWalkRadius, initialLiveBox, verlet, listRange, rules, catalystKind, bondAttemptInterval, kT, initial, solventAttractionScaleOverride, claySurfaceChemistry, es, charges0, maxHeads, confine } = input
   const { positions0, velocities0, bondSlots0, centerLink0, centerHeldSteps0, desorbEventsInit, bondRng0, thermoRng0, eventsInit, frozen0 } = initial
 
   const posBuf = storageBuffer(device, positions0)
@@ -398,6 +413,11 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
   device.queue.writeBuffer(healthBuf, 0, new Uint32Array([0, 0]))
   const relaxUniform = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
   device.queue.writeBuffer(relaxUniform, 0, new Float32Array([0, 0, 0, 0]))
+  // Task 'confined-parcel' (2026-08-21). Seeded from initialLiveBox, not the wet creation box, for
+  // exactly the reason the grid uniform right above is: a checkpoint resumed mid dry-phase lives in
+  // the DRY box and its parcel is correspondingly smaller.
+  const wallUniform = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
+  device.queue.writeBuffer(wallUniform, 0, wallUniformBytes(confine, initialLiveBox))
 
   // Task 'electrostatics' (2026-08-20). See the two field comments on SoupBuffers above for why the
   // charge buffer is bound whole rather than over the active range, and why an evaporating run needs
@@ -457,6 +477,8 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
     attrScaleUniform,
     healthBuf,
     relaxUniform,
+    wallUniform,
+    confine,
     chargeBuf,
     esUniformBuf,
     es2UniformBuf,
@@ -517,6 +539,9 @@ export function resizeSoupGrid(
   new Uint32Array(bytes, 0, 4).set([grid.dims[0], grid.dims[1], grid.dims[2], effectiveWalkRadius])
   new Float32Array(bytes, 16, 4).set([newBox[0], newBox[1], newBox[2], 0])
   device.queue.writeBuffer(buf.gridUniform, 0, bytes)
+  // Task 'confined-parcel' (2026-08-21): the parcel follows the box, in the same write. A no-op
+  // (all zeros, already zero) for an unconfined system.
+  device.queue.writeBuffer(buf.wallUniform, 0, wallUniformBytes(buf.confine, newBox))
 }
 
 // Every GPUBuffer allocateSoupBuffers allocates above, for dispose() to destroy -- listed
@@ -553,6 +578,7 @@ export function disposeSoupBuffers(buf: SoupBuffers): void {
   buf.attrScaleUniform.destroy()
   buf.healthBuf.destroy()
   buf.relaxUniform.destroy()
+  buf.wallUniform.destroy()
   buf.chargeBuf.destroy()
   buf.esUniformBuf.destroy()
   buf.es2UniformBuf.destroy()

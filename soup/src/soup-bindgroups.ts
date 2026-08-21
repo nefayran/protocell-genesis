@@ -89,6 +89,12 @@ export interface SoupBindGroups {
   resetNonFiniteBind: GPUBindGroup
   scanNonFiniteBind: GPUBindGroup
   relaxStepBind: GPUBindGroup
+  /** Task 'confined-parcel' (2026-08-21): the confining wall's force pass. References the grid
+   * UNIFORM (binding 3) for the box its centre is derived from and the wall uniform (binding 31) --
+   * neither buffer object is ever reallocated by resizeSoupGrid (only rewritten), but it DOES
+   * reference posBuf/forceBuf over the ACTIVE range, so it is rebuilt on every activeN change exactly
+   * like every other force bind group here. */
+  wallForceBind: GPUBindGroup
 }
 
 /** Rebuilds every bind group that references countsBuf/cellStartBuf/cursorBuf -- called once at
@@ -396,6 +402,12 @@ export function buildBindGroups(device: GPUDevice, pipe: SoupPipelines, sb: Soup
     { binding: 11, resource: buf(sb.forceBuf) },
     { binding: 21, resource: buf(sb.frozenBuf) },
     { binding: 23, resource: buf(sb.relaxUniform) },
+  ], device)
+  bind_.wallForceBind = bind(pipe.wallForce, 1, [
+    { binding: 0, resource: pbuf(sb.posBuf, activeN) },
+    { binding: 1, resource: buf(sb.forceBuf) },
+    { binding: 3, resource: buf(sb.gridUniform) },
+    { binding: 31, resource: buf(sb.wallUniform) },
   ], device)
 
   return bind_

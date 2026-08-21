@@ -277,6 +277,15 @@ export function encapsulatedWaterVolume(
   cell: number,
   radius: number,
   enclosedVolumeMin: number,
+  /** Task 'confined-parcel' (2026-08-21): when the system is a finite parcel inside a much larger
+   * box, the REACHED-EMPTY cells that `bulkWaterDensity` is averaged over must be restricted to the
+   * parcel. Without this the vacuum outside the parcel -- which is empty, reached, and holds no water
+   * -- is counted as bulk, diluting the measured bulk water density by V_box/V_parcel (5.76x at this
+   * task's geometry) and therefore LOWERING `encapsulationThresholdCount` by the same factor. That
+   * would be widening a closure threshold by a factor of six through an accounting accident, which is
+   * the one thing this project does not do. Omitted (every periodic run) counts every reached empty
+   * cell exactly as before. */
+  parcel?: { centre: readonly [number, number, number]; radius: number },
 ): EncapsulatedWaterResult {
   const { occ, dims } = occupancyPeriodic(positions, memberIdx, box, cell, radius)
   const seed = farthestEmptyCellSeed(occ, dims, cell, box, centre)
@@ -312,7 +321,21 @@ export function encapsulatedWaterVolume(
   }
 
   let reachedEmptyCells = 0
-  for (let i = 0; i < occ.length; i++) if (occ[i] === 0 && visited[i] !== 0) reachedEmptyCells++
+  const r2Parcel = parcel ? parcel.radius * parcel.radius : 0
+  for (let i = 0; i < occ.length; i++) {
+    if (!(occ[i] === 0 && visited[i] !== 0)) continue
+    if (parcel) {
+      const cz = Math.floor(i / (nx * ny))
+      const crem = i - cz * nx * ny
+      const cy = Math.floor(crem / nx)
+      const cx = crem - cy * nx
+      const ex = (cx + 0.5) * cell - parcel.centre[0]
+      const ey = (cy + 0.5) * cell - parcel.centre[1]
+      const ez = (cz + 0.5) * cell - parcel.centre[2]
+      if (ex * ex + ey * ey + ez * ez > r2Parcel) continue
+    }
+    reachedEmptyCells++
+  }
   const bulkWaterDensity = reachedEmptyCells > 0 ? reachedEmptyWater / (reachedEmptyCells * cell * cell * cell) : 0
   const encapsulationThresholdCount = bulkWaterDensity > 0 ? enclosedVolumeMin * bulkWaterDensity : NaN
 

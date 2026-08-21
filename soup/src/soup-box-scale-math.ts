@@ -220,8 +220,21 @@ export function proximityPairs(positions: Float32Array, box: [number, number, nu
  * isotropic (volume scales as N/targetDryDensity, every axis scales by the same cube-root factor),
  * pulled out as its own pure function so a caller (soup/src/sim.ts's createSoup,
  * tests/soup-boxcycle.test.ts) can check the density it actually produces without a GPU. */
-export function computeDryBox(box: [number, number, number], N: number, targetDryDensity: number): [number, number, number] {
-  const wetVolume = box[0] * box[1] * box[2]
+export function computeDryBox(
+  box: [number, number, number],
+  N: number,
+  targetDryDensity: number,
+  /** Task 'confined-parcel' (2026-08-21): the volume the material actually occupies at box `b`, when
+   * that is not the box itself. The parcel scales affinely with the box, so V(b) is proportional to
+   * V(box) with the SAME cube-law -- which is why the scale below is unchanged in form and only its
+   * two volumes move. Omitted (every unconfined run) is the box volume, bit-identical to before.
+   *
+   * Getting this wrong is not cosmetic: `targetDryDensity` is the density the dry phase is DEFINED
+   * by, and computing it over the box instead of the parcel would leave the confined dry phase 5.8x
+   * less dense than the number the run claims to have reached. */
+  occupiedVolumeOf?: (b: [number, number, number]) => number,
+): [number, number, number] {
+  const wetVolume = occupiedVolumeOf ? occupiedVolumeOf(box) : box[0] * box[1] * box[2]
   const dryVolume = N / targetDryDensity
   const scale = Math.cbrt(dryVolume / wetVolume)
   return [box[0] * scale, box[1] * scale, box[2] * scale]
@@ -303,13 +316,17 @@ export function deriveCycleConfig(
    * recomputed here so this function keeps exactly one derivation, and `undefined` (every pre-task
    * caller) keeps the original one byte for byte. */
   dryBoxOverride?: [number, number, number],
+  /** Task 'confined-parcel' (2026-08-21): the volume the material occupies at a box, when the run
+   * confines it to a parcel. Both the wet-density guard below and computeDryBox are densities, and in
+   * a confined run the box is not the volume. Omitted (every unconfined run) is the box volume. */
+  occupiedVolumeOf?: (b: [number, number, number]) => number,
 ): { cycleCfg: CycleSchedule | undefined; dryBox: [number, number, number] } {
   const cycleEnabled = opts.dryWetCycle ?? soup.dryWetCycle.enabled
   let cycleCfg: CycleSchedule | undefined
   let dryBox: [number, number, number] = box
   if (cycleEnabled) {
     const dwc = soup.dryWetCycle
-    const wetVolume = box[0] * box[1] * box[2]
+    const wetVolume = occupiedVolumeOf ? occupiedVolumeOf(box) : box[0] * box[1] * box[2]
     const wetDensity = N / wetVolume
     if (dwc.targetDryDensity <= wetDensity) {
       throw new Error(
@@ -317,7 +334,7 @@ export function deriveCycleConfig(
           `плотность бульона ${wetDensity.toFixed(4)} (N=${N}, box=[${box}]) -- сухая фаза обязана концентрировать, не разбавлять`,
       )
     }
-    dryBox = dryBoxOverride ?? computeDryBox(box, N, dwc.targetDryDensity)
+    dryBox = dryBoxOverride ?? computeDryBox(box, N, dwc.targetDryDensity, occupiedVolumeOf)
     // Guard: the neighbour grid must stay VALID (task requirement 2 -- "fewer than three cells on a
     // periodic axis, or a box too small for the minimum-image convention" -- exactly planSoupGrid's
     // own `valid`, generalised from a fixed "3" to this soup's own minCells=2*effectiveWalkRadius+1)

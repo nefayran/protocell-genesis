@@ -75,6 +75,24 @@ export {
 } from '../../soup/src/electrostatics'
 export type { EsBasis, EsOverrides, SweepResult, PairingStats, PcgState } from '../../soup/src/electrostatics'
 export { initialCharges } from '../../soup/src/soup-protonation'
+// Task 'confined-parcel' (2026-08-21): the parcel's geometry, its wall's potential/force (the CPU twin
+// tests/soup-confine.test.ts differentiates numerically) and the per-checkpoint wall-adsorption /
+// no-wrap measurement. Pure and GPU-free, so `window.api` can call them inside the page and
+// soup/cli/campaign.ts can reduce them to scalars before anything crosses the CDP boundary.
+export {
+  liveRadius,
+  parcelCentre,
+  parcelVolume,
+  resolveConfine,
+  sampleInParcel,
+  sphereLatticeSites,
+  wallForceAt,
+  wallForceMagnitude,
+  wallPotential,
+  wallStats,
+  wallUniformBytes,
+} from '../../soup/src/soup-confine'
+export type { Confinement, ConfineOpts, WallStats, WallSpeciesStat } from '../../soup/src/soup-confine'
 export { proposeBox, scaleBeadsAffine, moleculeCount } from '../../soup/src/soup-area-move'
 export { scaleMoleculesRigid as scaleMoleculesRigidSoup } from '../../soup/src/soup-box-scale-math'
 export { findAmphiphiles, amphiphileHistogram } from '../../soup/src/amphiphile'

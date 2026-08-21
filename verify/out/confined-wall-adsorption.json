@@ -1,0 +1,1535 @@
+[
+ {
+  "step": 2000,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.385159840428386,
+   "penetration": 0.38515984042838625,
+   "minCoordinate": 43.88654708862305,
+   "maxCoordinate": 116.05522918701172,
+   "faceClearance": 43.88654708862305,
+   "maxPairSeparation": 72.77031968085677,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 7962,
+     "fraction": 0.3194254994784562,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.934138317939745,
+     "enrichmentVsSolvent": 0.9848139287621761
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 2729,
+     "fraction": 0.3285181172505116,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9607290650313989,
+     "enrichmentVsSolvent": 1.012847184233174
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 7928,
+     "fraction": 0.31806146192730483,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.930149282168588,
+     "enrichmentVsSolvent": 0.9806084937486226
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 201,
+     "fraction": 0.3111455108359133,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.909924049899986,
+     "enrichmentVsSolvent": 0.9592860727879888
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 50711,
+     "fraction": 0.3243511186726875,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9485429588855167,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 15400,
+  "box": 97.312,
+  "R": 21.8952,
+  "ws": {
+   "radius": 21.89520785576285,
+   "shell": 4.68713096487309,
+   "maxRadius": 22.311598557848534,
+   "penetration": 0.4163907020856854,
+   "minCoordinate": 26.563215255737305,
+   "maxCoordinate": 70.7353744506836,
+   "faceClearance": 26.563215255737305,
+   "maxPairSeparation": 44.62319711569707,
+   "halfBox": 48.65601745725077,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 12973,
+     "fraction": 0.5204605632672711,
+     "uniformFraction": 0.5145440854936905,
+     "enrichment": 1.0114984856310298,
+     "enrichmentVsSolvent": 1.0226593523848133
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 4545,
+     "fraction": 0.5471289274106176,
+     "uniformFraction": 0.5145440854936905,
+     "enrichment": 1.0633275997831417,
+     "enrichmentVsSolvent": 1.0750603485963013
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 12284,
+     "fraction": 0.49281874348070287,
+     "uniformFraction": 0.5145440854936905,
+     "enrichment": 0.9577774915202013,
+     "enrichmentVsSolvent": 0.9683456012252408
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 343,
+     "fraction": 0.5309597523219814,
+     "uniformFraction": 0.5145440854936905,
+     "enrichment": 1.0319033243041569,
+     "enrichmentVsSolvent": 1.0432893378958232
+    },
+    {
+     "id": "W",
+     "count": 112,
+     "inShell": 57,
+     "fraction": 0.5089285714285714,
+     "uniformFraction": 0.5145440854936905,
+     "enrichment": 0.9890864277261469,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.5145440854936905,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 31800,
+  "box": 97.312,
+  "R": 21.8952,
+  "ws": {
+   "radius": 21.89520785576285,
+   "shell": 4.68713096487309,
+   "maxRadius": 22.2758862966535,
+   "penetration": 0.3806784408906516,
+   "minCoordinate": 26.54302406311035,
+   "maxCoordinate": 70.78571319580078,
+   "faceClearance": 26.526321718700757,
+   "maxPairSeparation": 44.551772593307,
+   "halfBox": 48.65601745725077,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 13490,
+     "fraction": 0.5412019577950734,
+     "uniformFraction": 0.5145440854936905,
+     "enrichment": 1.0518087235922757,
+     "enrichmentVsSolvent": 0.8537270320147637
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 5357,
+     "fraction": 0.6448778138918984,
+     "uniformFraction": 0.5145440854936905,
+     "enrichment": 1.253299439392363,
+     "enrichmentVsSolvent": 1.0172720444491918
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 7885,
+     "fraction": 0.31633635561261336,
+     "uniformFraction": 0.5145440854936905,
+     "enrichment": 0.6147896060433725,
+     "enrichmentVsSolvent": 0.49900946237482674
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 367,
+     "fraction": 0.5681114551083591,
+     "uniformFraction": 0.5145440854936905,
+     "enrichment": 1.1041064723604244,
+     "enrichmentVsSolvent": 0.8961758165089609
+    },
+    {
+     "id": "W",
+     "count": 112,
+     "inShell": 71,
+     "fraction": 0.6339285714285714,
+     "uniformFraction": 0.5145440854936905,
+     "enrichment": 1.2320199362904636,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.5145440854936905,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 37200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.12515162230412,
+   "penetration": 0.12515162230411647,
+   "minCoordinate": 44.06768798828125,
+   "maxCoordinate": 115.68873596191406,
+   "faceClearance": 44.06768798828125,
+   "maxPairSeparation": 72.25030324460823,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00010797924430985619
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 2110,
+     "fraction": 0.25400264836884556,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.742813604696318,
+     "enrichmentVsSolvent": 0.6836457515515076
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 5,
+     "fraction": 0.007739938080495356,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.022634926614427512,
+     "enrichmentVsSolvent": 0.02083197092621885
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 58089,
+     "fraction": 0.37154132500991394,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 1.086547532856792,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 55200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.15555854135196,
+   "penetration": 0.155558541351958,
+   "minCoordinate": 44.52726364135742,
+   "maxCoordinate": 115.80970764160156,
+   "faceClearance": 44.19029235839844,
+   "maxPairSeparation": 72.31111708270392,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00011840537476337896
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1985,
+     "fraction": 0.23895509811002769,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6988080593944034,
+     "enrichmentVsSolvent": 0.7052454745556384
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.02741212728809892
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 52974,
+     "fraction": 0.33882542565847545,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9908720929187229,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 73200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.1112643341727,
+   "penetration": 0.1112643341727022,
+   "minCoordinate": 44.57027816772461,
+   "maxCoordinate": 115.913330078125,
+   "faceClearance": 44.086669921875,
+   "maxPairSeparation": 72.2225286683454,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00011973668650787893
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1973,
+     "fraction": 0.23751053328518118,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6945835270454196,
+     "enrichmentVsSolvent": 0.7088636410614668
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.02772034038292932
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 52385,
+     "fraction": 0.3350581402786128,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9798549210470664,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 84200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.0547948751935,
+   "penetration": 0.054794875193501014,
+   "minCoordinate": 44.38381576538086,
+   "maxCoordinate": 115.65839385986328,
+   "faceClearance": 44.34160614013672,
+   "maxPairSeparation": 72.109589750387,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00012020709702405591
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1964,
+     "fraction": 0.2364271096665463,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6914151277836817,
+     "enrichmentVsSolvent": 0.7084023167482915
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.027829245514751865
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 52180,
+     "fraction": 0.3337469458764535,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9760204214992063,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 95200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.16912957276546,
+   "penetration": 0.16912957276546337,
+   "minCoordinate": 44.572383880615234,
+   "maxCoordinate": 115.87850189208984,
+   "faceClearance": 44.121498107910156,
+   "maxPairSeparation": 72.33825914553093,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00012075091582857325
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1957,
+     "fraction": 0.2355844468520525,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6889508172467745,
+     "enrichmentVsSolvent": 0.7090708620181153
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.027955145460771054
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 51945,
+     "fraction": 0.3322438693666611,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9716247756760498,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 105200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.148465996911504,
+   "penetration": 0.1484659969115043,
+   "minCoordinate": 44.25727462768555,
+   "maxCoordinate": 115.38261413574219,
+   "faceClearance": 44.25727462768555,
+   "maxPairSeparation": 72.29693199382301,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00012109827636719509
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1970,
+     "fraction": 0.23714939207896954,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6935273939581736,
+     "enrichmentVsSolvent": 0.7158344052432345
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.028035563189430696
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 51796,
+     "fraction": 0.3312908548987502,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.96883774917541,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 115200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.13208715201001,
+   "penetration": 0.13208715201000842,
+   "minCoordinate": 44.52476119995117,
+   "maxCoordinate": 115.52839660644531,
+   "faceClearance": 44.47160339355469,
+   "maxPairSeparation": 72.26417430402002,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00012116611591777071
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1967,
+     "fraction": 0.23678825087275793,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6924712608709277,
+     "enrichmentVsSolvent": 0.7151447035940312
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.028051268780492442
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 51767,
+     "fraction": 0.3311053688613716,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9682953077759567,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 125200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.11441822880892,
+   "penetration": 0.1144182288089226,
+   "minCoordinate": 44.56663513183594,
+   "maxCoordinate": 115.47522735595703,
+   "faceClearance": 44.52477264404297,
+   "maxPairSeparation": 72.22883645761785,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.0001213278332375573
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1968,
+     "fraction": 0.23690863127482845,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6928233052333429,
+     "enrichmentVsSolvent": 0.7164632454890775
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.028088708092377894
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 51698,
+     "fraction": 0.3306640400138155,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9670046713427745,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 135200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.19566057037998,
+   "penetration": 0.19566057037997808,
+   "minCoordinate": 44.352500915527344,
+   "maxCoordinate": 115.56514739990234,
+   "faceClearance": 44.352500915527344,
+   "maxPairSeparation": 72.39132114075996,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.0001213560020646836
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1971,
+     "fraction": 0.2372697724810401,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.693879438320589,
+     "enrichmentVsSolvent": 0.7177220107634696
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.028095229481092603
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 51686,
+     "fraction": 0.3305872871707623,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9667802128326559,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 145200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.10097134339862,
+   "penetration": 0.10097134339861924,
+   "minCoordinate": 43.916236877441406,
+   "maxCoordinate": 115.60460662841797,
+   "faceClearance": 43.916236877441406,
+   "maxPairSeparation": 72.20194268679724,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00012154648430801737
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1979,
+     "fraction": 0.23823281569760443,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6966957932199115,
+     "enrichmentVsSolvent": 0.7217662591426734
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.02813932818447345
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 51605,
+     "fraction": 0.330069205480153,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9652651178893551,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 155200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.13648397353812,
+   "penetration": 0.13648397353811959,
+   "minCoordinate": 44.372623443603516,
+   "maxCoordinate": 115.47500610351562,
+   "faceClearance": 44.372623443603516,
+   "maxPairSeparation": 72.27296794707624,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00012168796823581797
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1971,
+     "fraction": 0.2372697724810401,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.693879438320589,
+     "enrichmentVsSolvent": 0.7196853205610766
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.02817208324686686
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 51545,
+     "fraction": 0.32968544126488686,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9641428253387618,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 165200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.106483280936196,
+   "penetration": 0.10648328093619597,
+   "minCoordinate": 44.31475067138672,
+   "maxCoordinate": 115.33951568603516,
+   "faceClearance": 44.31475067138672,
+   "maxPairSeparation": 72.21296656187239,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00012202887731202189
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1972,
+     "fraction": 0.23739015288311063,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6942314826830043,
+     "enrichmentVsSolvent": 0.7220676804471278
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.028251007392069264
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 51401,
+     "fraction": 0.3287644071482481,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9614493232173382,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 175200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.11136460462176,
+   "penetration": 0.11136460462176245,
+   "minCoordinate": 44.16727828979492,
+   "maxCoordinate": 115.49296569824219,
+   "faceClearance": 44.16727828979492,
+   "maxPairSeparation": 72.22272920924352,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00012205024756217382
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1975,
+     "fraction": 0.23775129408932225,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6952876157702501,
+     "enrichmentVsSolvent": 0.723292804827389
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.028255954836545614
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 51392,
+     "fraction": 0.3287068425159582,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9612809793347493,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 185200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.15451414007412,
+   "penetration": 0.15451414007412012,
+   "minCoordinate": 44.155155181884766,
+   "maxCoordinate": 115.46670532226562,
+   "faceClearance": 44.155155181884766,
+   "maxPairSeparation": 72.30902828014824,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00012193398889436902
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1969,
+     "fraction": 0.237029011676899,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6931753495957582,
+     "enrichmentVsSolvent": 0.720408581863425
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.02822903969517996
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 51441,
+     "fraction": 0.32902024995842555,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.962197518251067,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 195200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.16081556397184,
+   "penetration": 0.1608155639718376,
+   "minCoordinate": 44.06983184814453,
+   "maxCoordinate": 115.68183898925781,
+   "faceClearance": 44.06983184814453,
+   "maxPairSeparation": 72.32163112794368,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00012202412938379545
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1973,
+     "fraction": 0.23751053328518118,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6945835270454196,
+     "enrichmentVsSolvent": 0.7224057319029032
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.028249908195236702
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 51403,
+     "fraction": 0.328777199288757,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9614867329690246,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 205200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.142788433334616,
+   "penetration": 0.14278843333461566,
+   "minCoordinate": 44.31418991088867,
+   "maxCoordinate": 115.54525756835938,
+   "faceClearance": 44.31418991088867,
+   "maxPairSeparation": 72.28557686666923,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00012220719172963484
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1976,
+     "fraction": 0.2378716744913928,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6956396601326654,
+     "enrichmentVsSolvent": 0.7245895807199334
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.028292289111946232
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 51326,
+     "fraction": 0.3282847018791654,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9600464575290967,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 215200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.16688231994646,
+   "penetration": 0.16688231994645975,
+   "minCoordinate": 44.22174072265625,
+   "maxCoordinate": 115.36932373046875,
+   "faceClearance": 44.22174072265625,
+   "maxPairSeparation": 72.33376463989292,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00012218576648904717
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1979,
+     "fraction": 0.23823281569760443,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6966957932199115,
+     "enrichmentVsSolvent": 0.7255624389414174
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.02828732893658814
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 51335,
+     "fraction": 0.32834226651145537,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9602148014116857,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ },
+ {
+  "step": 225200,
+  "box": 160,
+  "R": 36,
+  "ws": {
+   "radius": 36,
+   "shell": 4.68713096487309,
+   "maxRadius": 36.19767988731067,
+   "penetration": 0.1976798873106702,
+   "minCoordinate": 44.12269592285156,
+   "maxCoordinate": 115.36607360839844,
+   "faceClearance": 44.12269592285156,
+   "maxPairSeparation": 72.39535977462134,
+   "halfBox": 80,
+   "strongNoWrap": true,
+   "species": [
+    {
+     "id": "C",
+     "count": 24926,
+     "inShell": 1,
+     "fraction": 0.00004011875150445318,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.00011732458150461504,
+     "enrichmentVsSolvent": 0.00012208588128375026
+    },
+    {
+     "id": "O",
+     "count": 8307,
+     "inShell": 1985,
+     "fraction": 0.23895509811002769,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.6988080593944034,
+     "enrichmentVsSolvent": 0.7271672882634328
+    },
+    {
+     "id": "H",
+     "count": 24926,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    },
+    {
+     "id": "M",
+     "count": 646,
+     "inShell": 6,
+     "fraction": 0.009287925696594427,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.027161911937313012,
+     "enrichmentVsSolvent": 0.028264204429214478
+    },
+    {
+     "id": "W",
+     "count": 156346,
+     "inShell": 51377,
+     "fraction": 0.32861090146214167,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0.9610004061971009,
+     "enrichmentVsSolvent": 1
+    },
+    {
+     "id": "K",
+     "count": 0,
+     "inShell": 0,
+     "fraction": 0,
+     "uniformFraction": 0.34194668320956323,
+     "enrichment": 0,
+     "enrichmentVsSolvent": 0
+    }
+   ]
+  }
+ }
+]
