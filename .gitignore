@@ -8,3 +8,6 @@ verify/out/kappa-test-run.json
 # Checkpoint/resume (task 'checkpoint-resume', data/soup.json's checkpoint.basis): working files a
 # long soup run writes while it runs, never code or configuration.
 data/checkpoints/
+atomic/.venv/
+atomic/**/__pycache__/
+atomic/.pytest_cache/
