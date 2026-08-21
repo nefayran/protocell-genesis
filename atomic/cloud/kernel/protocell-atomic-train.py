@@ -1,15 +1,20 @@
 """
-Ядро Kaggle: разметка обучающего набора учителем MACE-OFF23 и обучение своего потенциала.
+Ядро Kaggle, версия 2: ускоренный конвейер обучения своего потенциала.
 
-Порядок и защиты взяты из скилла kaggle-offload -- каждая там стоила прогона:
-  * какая карта досталась -- в лог первой строкой, иначе вердикт по скорости не читается;
-  * груз ищется ОБХОДОМ /kaggle/input: путь монтирования не постулируется;
-  * груз лежит контейнером с неизвестным распаковщику расширением (.payloadpack), потому что
-    Kaggle распаковывает архивы при приёме датасета и теряет каталоги мелких файлов;
-  * наложение кода проверяется assert-ом по файлу-маркеру И по ключевому файлу: без этого
-    ядро молча считает старым кодом;
-  * результат копируется в /kaggle/working ПО ХОДУ, чтобы упавший на таймауте прогон отдал
-    то, что успел.
+Что изменилось против версии 1 и ПОЧЕМУ -- каждое по замеру, а не по идее:
+
+1. КОНФИГУРАЦИИ отвязаны от динамики. В версии 1 кадры получались молекулярной динамикой, а она
+   последовательна: каждый шаг требует силы в предыдущей точке, и пакетом её не собрать. Отсюда
+   547 кадров за 301 секунду и простой карты. Случайная выборка даёт 4000 кадров в секунду.
+2. РАЗМЕТКА пакетная, через внутренний интерфейс MACE. Замер версии 1 на этой же карте: 22-92
+   атом-расчёта в секунду против 460 на нашем процессоре -- карта простаивала, потому что на
+   системе из 3-96 атомов накладные расходы больше счёта. Размер пакета здесь ЗАМЕРЯЕТСЯ.
+3. ДЕСКРИПТОРЫ и ОБУЧЕНИЕ векторизованы. Дескрипторы: 58.5x при совпадении с прямой версией до
+   1e-14. Обучение: пакетами по группам одного размера, с накоплением градиента по всем группам
+   (без накопления шаг смещён в сторону одного размера -- замер 548 против 246 мэВ/атом).
+
+Защиты из скилла kaggle-offload все на месте: карта проверяется вычислением ДО расходов, груз
+ищется обходом, наложение кода проверяется assert-ом, результат пишется по ходу.
 """
 import json
 import os
@@ -30,44 +35,28 @@ def log(msg):
 
 def save_json(name, obj):
     with open(os.path.join(RESULT, name), "w") as fh:
-        json.dump(obj, fh, ensure_ascii=False, indent=1)
+        json.dump(obj, fh, ensure_ascii=False, indent=1, default=str)
 
 
-# --- 1. какая карта досталась -------------------------------------------------------------
 log("=== вычислитель ===")
 try:
     print(subprocess.run(["nvidia-smi"], capture_output=True, text=True).stdout, flush=True)
 except Exception as exc:
     log(f"nvidia-smi недоступен: {exc}")
 
-# --- 2. зависимости, НЕ ломая совместимость с выданной картой ------------------------------
-# ИЗМЕРЕННАЯ ловушка (прогон 1, 2026-08-21): выданная карта -- Tesla P100 (Pascal, sm_60), а
-# `pip install mace-torch` подтянул СВЕЖИЙ torch, в чьих сборках ядер под Pascal уже нет.
-# Установка прошла без ошибок, а первый же вызов на карте дал
-# "CUDA error: no kernel image is available for execution on the device". Поэтому:
-#   1. предустановленный torch фиксируется и НЕ обновляется (--no-deps плюс пин версии);
-#   2. работа на карте проверяется крошечным вычислением ДО любых расходов;
-#   3. при отказе карты ядро честно переходит на CPU и говорит об этом в лог, а не падает
-#      посреди разметки.
 log("=== установка зависимостей ===")
-import torch as _torch_pre  # предустановленный Kaggle -- он и умеет эту карту
+import torch as _torch_pre
 
 TORCH_PIN = _torch_pre.__version__.split("+")[0]
 log(f"предустановленный torch {_torch_pre.__version__}, фиксируем {TORCH_PIN}")
-# ФАЙЛ ОГРАНИЧЕНИЙ, а не --no-deps: прогон 2 показал, что --no-deps отрезает и настоящие
-# зависимости тоже (упало на отсутствии matscipy). Ограничение фиксирует ТОЛЬКО torch и
-# позволяет pip доставить всё остальное -- ровно то, что нужно.
 with open("/tmp/constraints.txt", "w") as fh:
     fh.write(f"torch=={TORCH_PIN}\n")
 subprocess.run(
-    [sys.executable, "-m", "pip", "install", "-q", "-c", "/tmp/constraints.txt",
-     "mace-torch", "ase"],
+    [sys.executable, "-m", "pip", "install", "-q", "-c", "/tmp/constraints.txt", "mace-torch", "ase"],
     check=True,
 )
 import numpy as np
 import torch
-
-log(f"torch после установки: {torch.__version__}, CUDA доступна: {torch.cuda.is_available()}")
 
 DEVICE = "cpu"
 if torch.cuda.is_available():
@@ -76,16 +65,13 @@ if torch.cuda.is_available():
         torch.cuda.synchronize()
         _ = float(probe)
         DEVICE = "cuda"
-        log(f"карта работает: {torch.cuda.get_device_name(0)}, "
-            f"вычислительная способность {torch.cuda.get_device_capability(0)}")
+        log(f"карта работает: {torch.cuda.get_device_name(0)}, способность {torch.cuda.get_device_capability(0)}")
     except Exception as exc:
         log(f"КАРТА НЕ СЧИТАЕТ ({type(exc).__name__}: {str(exc)[:120]}) -- переходим на CPU")
 log(f"вычислитель: {DEVICE}")
 
-# --- 3. груз: искать обходом, поддержать оба вида ------------------------------------------
 log("=== груз ===")
-payload_pack = None
-marker_src = None
+payload_pack = marker_src = None
 for base, dirs, files in os.walk("/kaggle/input"):
     if base.count(os.sep) - "/kaggle/input".count(os.sep) > 3:
         dirs[:] = []
@@ -96,199 +82,158 @@ for base, dirs, files in os.walk("/kaggle/input"):
         if f == "CODE_MARKER":
             marker_src = os.path.join(base, f)
 if payload_pack is None:
-    raise SystemExit("груз atomic_code.payloadpack не найден в /kaggle/input -- проверить датасет")
-log(f"груз найден: {payload_pack} ({os.path.getsize(payload_pack) / 1e6:.1f} МБ)")
+    raise SystemExit("груз atomic_code.payloadpack не найден -- проверить датасет")
+log(f"груз: {payload_pack} ({os.path.getsize(payload_pack) / 1e6:.1f} МБ)")
 if marker_src:
     log("маркер: " + open(marker_src).read().strip())
-
 os.makedirs(ROOT, exist_ok=True)
 with tarfile.open(payload_pack) as tf:
     tf.extractall(ROOT)
-
-# наложение проверяется ФАКТОМ, а не надеждой
-for must in ("engine/md.py", "train/descriptors.py", "train/nn.py", "models/MACE-OFF23_medium.model"):
-    path = os.path.join(ROOT, must)
-    assert os.path.exists(path), f"груз развернулся неполно: нет {must}"
-log("состав груза проверен")
+for must in ("train/sampling.py", "train/batched_teacher.py", "train/descriptors_fast.py",
+             "train/fast_train.py", "models/MACE-OFF23_medium.model"):
+    assert os.path.exists(os.path.join(ROOT, must)), f"груз развернулся неполно: нет {must}"
+log("состав груза проверен -- код свежий")
 sys.path.insert(0, ROOT)
 
-from engine.backends.mlip import ASECalculatorPotential           # noqa: E402
-from engine.md import run                                          # noqa: E402
-from engine.state import from_symbols                              # noqa: E402
-from train.dataset import water_cluster, water_molecule, WATER_GEOM  # noqa: E402
-from train.descriptors import DescriptorSpec, compute_descriptors, descriptor_length  # noqa: E402
-from train.nn import TrainingConfig, evaluate, train               # noqa: E402
-from mace.calculators import MACECalculator                        # noqa: E402
+from engine.state import from_symbols                                       # noqa: E402
+from train.batched_teacher import BatchedMACE                               # noqa: E402
+from train.descriptors import DescriptorSpec, descriptor_length             # noqa: E402
+from train.descriptors_fast import compute_descriptors_fast                 # noqa: E402
+from train.fast_train import FastTrainingConfig, evaluate_fast, train_fast   # noqa: E402
+from train.sampling import build_sampled_states, clusters                   # noqa: E402
 
-# --- 4. учитель на карте ------------------------------------------------------------------
-SCALE = 1.0 if DEVICE == "cuda" else 0.25   # на CPU набор меньше: иначе не уложиться в 12 часов
 CONFIG = {
-    # диапазон кадров и состав прописаны ЗДЕСЬ: переменные окружения в ядро через API не
-    # передать (ловушка 14 скилла), поэтому правка состава = перезаливка кода
-    "n_monomers": int(400 * SCALE),
-    "n_dimers": int(600 * SCALE),
-    "cluster_sizes": (4, 8, 16),
-    "md_frames_per_cluster": int(400 * SCALE),
-    "md_steps_between": 12,
-    "md_temperatures": (300.0, 500.0, 700.0),
-    "teacher_dtype": "float32",
+    "n_monomers": 900,
+    "n_dimers": 1500,
+    "n_clusters": 4600,
+    "holdout_md_frames": 120,
     "descriptor_radial": 8,
+    "teacher_dtype": "float32",
+    # Перебор сокращён до двух вариантов: замер прошлого прогона показал, что ёмкость сети
+    # почти не влияет (силы 85.4 против 83.8 мэВ/Å при росте сети втрое), а ограничивают ДАННЫЕ.
+    # Поэтому кадров теперь в 13 раз больше, а вариантов меньше -- время идёт туда, где эффект.
     "sweep": [
-        {"hidden": (48, 48), "force_weight": 10.0, "lr": 2e-3, "epochs": 1500},
-        {"hidden": (96, 96), "force_weight": 10.0, "lr": 2e-3, "epochs": 1500},
-        {"hidden": (96, 96), "force_weight": 30.0, "lr": 1e-3, "epochs": 2500},
-        {"hidden": (128, 128, 64), "force_weight": 30.0, "lr": 1e-3, "epochs": 2500},
+        {"hidden": (96, 96), "force_weight": 30.0, "lr": 2e-3, "epochs": 4000},
+        {"hidden": (128, 128, 64), "force_weight": 50.0, "lr": 2e-3, "epochs": 4000},
     ],
 }
-save_json("config.json", {k: str(v) for k, v in CONFIG.items()})
+save_json("config.json", CONFIG)
 
-log("=== учитель ===")
+log("=== учитель: замер размера пакета ===")
+teacher = BatchedMACE(os.path.join(ROOT, "models/MACE-OFF23_medium.model"), device=DEVICE,
+                      dtype=CONFIG["teacher_dtype"])
+rng = np.random.default_rng(20260821)
+probe_states = clusters(rng, 160, sizes=(8,))
+bench = teacher.benchmark(probe_states, batch_sizes=(1, 8, 32, 128))
+for bs, r in bench.items():
+    log(f"пакет {bs:4d}: {r['frames_per_second']:8.2f} кадр/с, {r['atom_calcs_per_second']:9.0f} атом-расчёт/с")
+save_json("teacher_batch_bench.json", bench)
+best_batch = max(bench, key=lambda bs: bench[bs]["atom_calcs_per_second"])
+log(f"лучший пакет по замеру: {best_batch} "
+    f"({bench[best_batch]['atom_calcs_per_second']:.0f} атом-расчёт/с против 460 на нашем CPU)")
+
+log("=== конфигурации ===")
 t0 = time.perf_counter()
-calc = MACECalculator(
-    model_paths=os.path.join(ROOT, "models/MACE-OFF23_medium.model"),
-    device=DEVICE,
-    default_dtype=CONFIG["teacher_dtype"],
-)
-teacher = ASECalculatorPotential(calc, f"mace-off23-medium/{DEVICE}")
-log(f"учитель загружен за {time.perf_counter() - t0:.1f} с")
+states = build_sampled_states(rng, CONFIG["n_monomers"], CONFIG["n_dimers"], CONFIG["n_clusters"])
+dt = max(time.perf_counter() - t0, 1e-9)
+log(f"{len(states)} конфигураций за {dt:.2f} с ({len(states) / dt:.0f} кадров/с)")
 
-# замер скорости учителя на карте -- ради него и везли
-bench = {}
-for nmol in (1, 8, 32):
-    sym, pos, cell = water_cluster(nmol, np.random.default_rng(0))
-    st = from_symbols(sym, pos, cell=cell, pbc=(True, True, True))
-    teacher.compute(st)
-    t = time.perf_counter()
-    for _ in range(5):
-        st.positions += np.random.default_rng(1).normal(scale=1e-4, size=st.positions.shape)
-        teacher.compute(st)
-    ms = (time.perf_counter() - t) / 5 * 1000
-    bench[st.n_atoms] = ms
-    log(f"учитель: {st.n_atoms:4d} атомов -> {ms:8.1f} мс/расчёт ({st.n_atoms / ms * 1000:8.0f} атом-расчёт/с)")
-save_json("teacher_bench.json", bench)
-
-# --- 5. набор ------------------------------------------------------------------------------
-log("=== разметка набора ===")
-rng = np.random.default_rng(12345)
+log("=== разметка пакетом ===")
 frames = []
-
-
-def label(state):
-    res = teacher.compute(state)
-    frames.append(
-        {
-            "positions": state.positions.copy(),
-            "numbers": state.numbers.copy(),
-            "energy": res.energy_ev,
-            "forces": res.forces_ev_per_a.copy(),
-            "cell": None if state.cell is None else state.cell.copy(),
-        }
-    )
-
-
 t0 = time.perf_counter()
-for _ in range(CONFIG["n_monomers"]):
-    sym, pos = water_molecule(rng, distortion=float(rng.uniform(0.0, 0.22)))
-    label(from_symbols(sym, pos))
-from scipy.spatial.transform import Rotation  # noqa: E402
+for start in range(0, len(states), 500):
+    frames += teacher.label(states[start : start + 500], batch_size=best_batch)
+    done = time.perf_counter() - t0
+    log(f"  размечено {len(frames)}/{len(states)} за {done:.0f} с ({len(frames) / done:.1f} кадр/с)")
+    save_json("dataset_progress.json", {"labelled": len(frames), "of": len(states), "seconds": done})
 
-for _ in range(CONFIG["n_dimers"]):
-    sep = float(rng.uniform(2.3, 5.6))
-    rot = Rotation.random(random_state=int(rng.integers(1 << 30))).as_matrix()
-    a = WATER_GEOM - WATER_GEOM[0]
-    b = (WATER_GEOM - WATER_GEOM[0]) @ rot.T + np.array([sep, 0.0, 0.0])
-    label(from_symbols(["O", "H", "H", "O", "H", "H"], np.vstack([a, b])))
-log(f"мономеры и димеры: {len(frames)} кадров за {time.perf_counter() - t0:.0f} с")
+log("=== отложенная выборка ИЗ ДИНАМИКИ ===")
+from engine.backends.mlip import ASECalculatorPotential    # noqa: E402
+from engine.md import run                                   # noqa: E402
+from mace.calculators import MACECalculator                 # noqa: E402
 
-for n_mol in CONFIG["cluster_sizes"]:
-    for temp in CONFIG["md_temperatures"]:
-        sym, pos, cell = water_cluster(n_mol, rng)
-        st = from_symbols(sym, pos, cell=cell, pbc=(True, True, True))
-        st.set_maxwell_boltzmann(temp, rng)
-        per_arm = CONFIG["md_frames_per_cluster"] // len(CONFIG["md_temperatures"])
-        t0 = time.perf_counter()
-        for _ in range(per_arm):
-            try:
-                run(
-                    st, teacher, steps=CONFIG["md_steps_between"], dt_fs=0.5, temperature_k=temp,
-                    seed=int(rng.integers(1 << 30)), sample_every=CONFIG["md_steps_between"],
-                    watch_chemistry=False,
-                )
-                label(st.copy())
-            except FloatingPointError as exc:
-                log(f"  кластер {n_mol} при {temp} K оборвался: {exc}")
-                break
-        log(f"кластер {n_mol} молекул при {temp:.0f} K: всего кадров {len(frames)} "
-            f"(+{per_arm} за {time.perf_counter() - t0:.0f} с)")
-        save_json("dataset_progress.json", {"frames": len(frames)})
-
-np.savez_compressed(
-    os.path.join(RESULT, "dataset.npz"),
-    **{f"f{i}_{k}": (np.array([]) if v is None else np.asarray(v))
-       for i, fr in enumerate(frames) for k, v in fr.items()},
+md_teacher = ASECalculatorPotential(
+    MACECalculator(model_paths=os.path.join(ROOT, "models/MACE-OFF23_medium.model"),
+                   device=DEVICE, default_dtype=CONFIG["teacher_dtype"]),
+    "mace-single",
 )
-log(f"набор готов: {len(frames)} кадров, сохранён в вывод")
+md_states = []
+st = clusters(rng, 1, sizes=(8,))[0]
+st.set_maxwell_boltzmann(330.0, rng)
+for _ in range(CONFIG["holdout_md_frames"]):
+    try:
+        run(st, md_teacher, steps=10, dt_fs=0.5, temperature_k=330.0,
+            seed=int(rng.integers(1 << 30)), sample_every=10, watch_chemistry=False)
+        md_states.append(st.copy())
+    except FloatingPointError as exc:
+        log(f"  динамика оборвалась: {exc}")
+        break
+md_frames = teacher.label(md_states, batch_size=best_batch) if md_states else []
+log(f"отложенных кадров из динамики: {len(md_frames)}")
 
-# --- 6. дескрипторы ------------------------------------------------------------------------
-log("=== дескрипторы ===")
+log("=== дескрипторы (векторные) ===")
 SPECIES = (1, 8)
 spec = DescriptorSpec(n_radial=CONFIG["descriptor_radial"])
-log(f"длина дескриптора D = {descriptor_length(spec, SPECIES)}")
+log(f"D = {descriptor_length(spec, SPECIES)}")
 
-t0 = time.perf_counter()
-pre = []
-for k, fr in enumerate(frames):
-    pre.append(
-        compute_descriptors(
-            np.asarray(fr["positions"]), np.asarray(fr["numbers"], dtype=int), spec, SPECIES,
-            cell=fr.get("cell"),
-        )
-    )
-    if (k + 1) % 200 == 0:
-        log(f"  {k + 1}/{len(frames)} за {time.perf_counter() - t0:.0f} с")
-log(f"дескрипторы посчитаны за {time.perf_counter() - t0:.0f} с")
 
-# --- 7. обучение с перебором ----------------------------------------------------------------
-log("=== обучение ===")
+def descriptors_for(batch, label):
+    t = time.perf_counter()
+    out = []
+    for k, fr in enumerate(batch):
+        out.append(compute_descriptors_fast(np.asarray(fr["positions"]),
+                                            np.asarray(fr["numbers"], dtype=int),
+                                            spec, SPECIES, cell=fr.get("cell")))
+        if (k + 1) % 1000 == 0:
+            log(f"  {label}: {k + 1}/{len(batch)} за {time.perf_counter() - t:.0f} с")
+    log(f"  {label}: готово за {time.perf_counter() - t:.0f} с")
+    return out
+
+
+pre = descriptors_for(frames, "набор")
+pre_md = descriptors_for(md_frames, "динамика") if md_frames else []
+
 order = np.random.default_rng(1).permutation(len(frames))
-n_test = int(0.15 * len(frames))
-test_idx, train_idx = order[:n_test], order[n_test:]
-test = [frames[i] for i in test_idx]
-train_frames = [frames[i] for i in train_idx]
-train_pre = [pre[i] for i in train_idx]
+n_test = int(0.1 * len(frames))
+test = [frames[i] for i in order[:n_test]]
+pre_test = [pre[i] for i in order[:n_test]]
+train_frames = [frames[i] for i in order[n_test:]]
+pre_train = [pre[i] for i in order[n_test:]]
+log(f"обучающих {len(train_frames)}, случайных отложенных {len(test)}, из динамики {len(md_frames)}")
 
-results = []
-best = None
+log("=== обучение ===")
+results, best = [], None
 for variant in CONFIG["sweep"]:
-    cfg = TrainingConfig(
+    cfg = FastTrainingConfig(
         hidden=tuple(variant["hidden"]), force_weight=variant["force_weight"],
-        epochs=variant["epochs"], learning_rate=variant["lr"], batch_frames=32, seed=0,
+        epochs=variant["epochs"], learning_rate=variant["lr"], seed=0,
+        memory_budget_mb=1024.0, dtype="float32", lr_final_fraction=0.05,
     )
     log(f"вариант {variant}")
     t0 = time.perf_counter()
-    model = train(train_frames, spec, SPECIES, cfg, precomputed=train_pre, verbose=True)
+    model = train_fast(train_frames, spec, SPECIES, cfg, pre_train, device=DEVICE, verbose=True)
     took = time.perf_counter() - t0
     metrics = {
-        "variant": {k: str(v) for k, v in variant.items()},
-        "train": evaluate(model, train_frames[: min(200, len(train_frames))]),
-        "test": evaluate(model, test),
+        "variant": variant,
+        "test_random": evaluate_fast(model, test, pre_test),
+        "test_md": evaluate_fast(model, md_frames, pre_md) if md_frames else None,
         "seconds": took,
         "n_train": len(train_frames),
-        "n_test": len(test),
     }
     results.append(metrics)
-    log(f"  отложенная: E {metrics['test']['energy_mae_mev_per_atom']:.2f} мэВ/атом, "
-        f"F {metrics['test']['force_mae_mev_per_a']:.1f} мэВ/Å, {took:.0f} с")
+    log(f"  случайные:  E {metrics['test_random']['energy_mae_mev_per_atom']:.2f} мэВ/атом, "
+        f"F {metrics['test_random']['force_mae_mev_per_a']:.1f} мэВ/Å")
+    if metrics["test_md"]:
+        log(f"  динамика:   E {metrics['test_md']['energy_mae_mev_per_atom']:.2f} мэВ/атом, "
+            f"F {metrics['test_md']['force_mae_mev_per_a']:.1f} мэВ/Å   ({took:.0f} с)")
     save_json("training_results.json", results)
-    if best is None or metrics["test"]["force_mae_mev_per_a"] < best[0]:
-        best = (metrics["test"]["force_mae_mev_per_a"], variant)
-        np.savez(
-            os.path.join(RESULT, "best_model.npz"),
-            mean=model["mean"], std=model["std"], baseline=model["baseline"],
-            species=np.array(SPECIES), n_radial=CONFIG["descriptor_radial"],
-            **{f"{z}_{k}": v for z, sd in model["net"].state_dict().items() for k, v in sd.items()},
-        )
-        save_json("best_variant.json", {"force_mae_mev_per_a": best[0], "variant": {k: str(v) for k, v in variant.items()}})
+    score = (metrics["test_md"] or metrics["test_random"])["force_mae_mev_per_a"]
+    if best is None or score < best[0]:
+        best = (score, variant)
+        np.savez(os.path.join(RESULT, "best_model.npz"),
+                 mean=model["mean"], std=model["std"], baseline=model["baseline"],
+                 species=np.array(SPECIES), n_radial=CONFIG["descriptor_radial"],
+                 **{f"{z}_{k}": v for z, sd in model["net"].state_dict().items() for k, v in sd.items()})
+        save_json("best_variant.json", {"force_mae_mev_per_a": best[0], "variant": variant})
 
-log("=== готово ===")
-log(f"лучший вариант: {best}")
+log(f"=== готово. лучший: {best}")
