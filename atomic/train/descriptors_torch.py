@@ -81,6 +81,37 @@ class TorchDescriptors:
         df = torch.where(inside, -0.5 * np.pi / rc * torch.sin(np.pi * r / rc), torch.zeros_like(r))
         return f, df
 
+    def _triplets(self, i_idx, n_atoms):
+        """
+        Пары соседей одного центра БЕЗ цикла по атомам.
+
+        Соседи в плоском списке пар идут группами по центрам, поэтому все внутригрупповые
+        пары строятся одной арифметикой: для группы длины c это c(c-1)/2 пар, а смещения
+        считаются накопленной суммой. Замер, из-за которого это переписано: цикл по атомам на
+        питоне заметно виден уже при сотне атомов, а его работа -- это только раскладка индексов.
+        """
+        import torch
+
+        counts = torch.bincount(i_idx, minlength=n_atoms)
+        starts = torch.cumsum(counts, 0) - counts
+        pairs_per = counts * (counts - 1) // 2
+        total = int(pairs_per.sum())
+        if total == 0:
+            return None
+        # для каждой будущей тройки -- к какому центру она относится
+        centre_of = torch.repeat_interleave(torch.arange(n_atoms, device=self.device), pairs_per)
+        # порядковый номер тройки внутри своего центра
+        offsets = torch.cumsum(pairs_per, 0) - pairs_per
+        rank = torch.arange(total, device=self.device) - offsets[centre_of]
+        c = counts[centre_of].to(torch.float64)
+        # обратная нумерация верхнего треугольника: по номеру пары -> (a, b)
+        rf = rank.to(torch.float64)
+        a = torch.floor(c - 0.5 - torch.sqrt((c - 0.5) ** 2 - 2.0 * rf)).to(torch.long)
+        used = a.to(torch.float64) * (2.0 * c - a.to(torch.float64) - 1.0) / 2.0
+        b = (rank - used.to(torch.long)) + a + 1
+        base = starts[centre_of]
+        return torch.stack([base + a, base + b])
+
     def compute(self, positions, numbers, cell=None):
         """
         Возвращает (G, dG) как тензоры: G размера (N, D), dG размера (N, D, N, 3).
@@ -286,17 +317,7 @@ class TorchDescriptors:
         cols_rad = (sp_of[j_idx] * self.n_rad)[:, None] + torch.arange(self.n_rad, device=self.device)[None, :]
         g.index_put_((i_idx[:, None].expand_as(cols_rad), cols_rad), value, accumulate=True)
 
-        counts = torch.bincount(i_idx, minlength=n)
-        starts = torch.cumsum(counts, 0) - counts
-        triples = []
-        for centre in range(n):
-            c = int(counts[centre])
-            if c < 2:
-                continue
-            offset = int(starts[centre])
-            a, b = torch.triu_indices(c, c, offset=1, device=self.device)
-            triples.append(torch.stack([a + offset, b + offset]))
-        triples = torch.cat(triples, dim=1) if triples else None
+        triples = self._triplets(i_idx, n)
 
         angular_cache = []
         if triples is not None:
