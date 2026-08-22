@@ -92,25 +92,29 @@ class TorchDescriptors:
         """
         import torch
 
-        counts = torch.bincount(i_idx, minlength=n_atoms)
-        starts = torch.cumsum(counts, 0) - counts
-        pairs_per = counts * (counts - 1) // 2
+        # Раскладка индексов считается НА ПРОЦЕССОРЕ в двойной точности и только потом
+        # переносится на устройство. Две причины, обе измеренные: Metal не поддерживает
+        # float64 вовсе (бэкенд на нём падал с "Cannot convert a MPS Tensor to float64"), а
+        # обратная нумерация верхнего треугольника идёт через квадратный корень, где одинарной
+        # точности не хватает -- при 200 тысячах троек ошибка на единицу в floor даёт неверную
+        # пару соседей. Стоимость этой раскладки ничтожна против самого счёта, поэтому держать
+        # её на процессоре ничего не стоит.
+        counts_cpu = torch.bincount(i_idx.cpu(), minlength=n_atoms)
+        starts = torch.cumsum(counts_cpu, 0) - counts_cpu
+        pairs_per = counts_cpu * (counts_cpu - 1) // 2
         total = int(pairs_per.sum())
         if total == 0:
             return None
-        # для каждой будущей тройки -- к какому центру она относится
-        centre_of = torch.repeat_interleave(torch.arange(n_atoms, device=self.device), pairs_per)
-        # порядковый номер тройки внутри своего центра
+        centre_of = torch.repeat_interleave(torch.arange(n_atoms), pairs_per)
         offsets = torch.cumsum(pairs_per, 0) - pairs_per
-        rank = torch.arange(total, device=self.device) - offsets[centre_of]
-        c = counts[centre_of].to(torch.float64)
-        # обратная нумерация верхнего треугольника: по номеру пары -> (a, b)
+        rank = torch.arange(total) - offsets[centre_of]
+        c = counts_cpu[centre_of].to(torch.float64)
         rf = rank.to(torch.float64)
         a = torch.floor(c - 0.5 - torch.sqrt((c - 0.5) ** 2 - 2.0 * rf)).to(torch.long)
-        used = a.to(torch.float64) * (2.0 * c - a.to(torch.float64) - 1.0) / 2.0
-        b = (rank - used.to(torch.long)) + a + 1
+        used = (a.to(torch.float64) * (2.0 * c - a.to(torch.float64) - 1.0) / 2.0).to(torch.long)
+        b = (rank - used) + a + 1
         base = starts[centre_of]
-        return torch.stack([base + a, base + b])
+        return torch.stack([base + a, base + b]).to(i_idx.device)
 
     def compute(self, positions, numbers, cell=None):
         """
