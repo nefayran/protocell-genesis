@@ -1,0 +1,50 @@
+[
+ {
+  "name": "база: 3 кратности, 2 ширины",
+  "D": 132,
+  "metrics": {
+   "energy_mae_mev_per_atom": 27.65357216359108,
+   "force_mae_mev_per_a": 85.22132873535156,
+   "force_rmse_mev_per_a": 114.0954360961914,
+   "n_frames": 120
+  },
+  "t_desc": 31.555155791982543,
+  "t_train": 793.8266042909818
+ },
+ {
+  "name": "5 кратностей, 2 ширины",
+  "D": 156,
+  "metrics": {
+   "energy_mae_mev_per_atom": 36.73224282921284,
+   "force_mae_mev_per_a": 90.48397827148438,
+   "force_rmse_mev_per_a": 119.91624450683594,
+   "n_frames": 120
+  },
+  "t_desc": 42.29574583400972,
+  "t_train": 867.8409442920238
+ },
+ {
+  "name": "3 кратности, 4 ширины",
+  "D": 168,
+  "metrics": {
+   "energy_mae_mev_per_atom": 28.09955121074381,
+   "force_mae_mev_per_a": 90.1334457397461,
+   "force_rmse_mev_per_a": 119.9073257446289,
+   "n_frames": 120
+  },
+  "t_desc": 53.2606732500135,
+  "t_train": 950.2895915830159
+ },
+ {
+  "name": "5 кратностей, 4 ширины",
+  "D": 216,
+  "metrics": {
+   "energy_mae_mev_per_atom": 33.42198600531547,
+   "force_mae_mev_per_a": 91.2108383178711,
+   "force_rmse_mev_per_a": 121.3216552734375,
+   "n_frames": 120
+  },
+  "t_desc": 79.88851924997289,
+  "t_train": 1117.8807367500267
+ }
+]
