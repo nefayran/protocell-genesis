@@ -395,3 +395,155 @@ class TorchDescriptors:
                         forces.index_add_(0, centre, w[:, None] * (dva + dvb))
                         slot += 1
         return float(energy), forces.cpu().numpy()
+
+
+    def energy_forces_fused(self, positions, numbers, de_dg_fn, cell=None):
+        """
+        То же, что `energy_forces_direct`, но все угловые сочетания считаются ОДНИМ проходом.
+
+        Замер, из-за которого это понадобилось. На 192 атомах: 8906 пар, 202831 тройка, 46.4
+        соседа в среднем, угловая часть -- 48.7 млн операций. Прямой путь тратил на неё около
+        180 запусков ядер (12 сочетаний × 3 оси × 3 накопления плюс промежуточные), и при
+        замеренных 105 мс это выходило меньше полугигафлопса: машина была занята накладными
+        расходами, а не счётом.
+
+        Здесь кратности, четности и ширины раскрываются в ОДНУ ось длиной n_angular, поэтому
+        вместо 180 запусков остаётся около десяти. Формулы не меняются; совпадение с прямым
+        путём проверяется отдельно и обязано быть на уровне одинарной точности.
+        """
+        import torch
+
+        pos = torch.as_tensor(np.asarray(positions), device=self.device, dtype=self.torch_dtype)
+        nums = np.asarray(numbers, dtype=int)
+        sp_of = torch.tensor([self.species_index[int(z)] for z in nums], device=self.device)
+        n = len(nums)
+        cell_t = None if cell is None else torch.as_tensor(
+            np.asarray(cell), device=self.device, dtype=self.torch_dtype
+        )
+
+        delta = pos[None, :, :] - pos[:, None, :]
+        if cell_t is not None:
+            inv = torch.linalg.inv(cell_t.T)
+            frac = torch.einsum("ab,ijb->ija", inv, delta)
+            frac = frac - torch.round(frac)
+            delta = torch.einsum("ab,ijb->ija", cell_t.T, frac)
+        dist = delta.norm(dim=2)
+        eye = torch.eye(n, device=self.device, dtype=torch.bool)
+        within = (dist < self.spec.cutoff) & (~eye)
+        i_idx, j_idx = torch.nonzero(within, as_tuple=True)
+
+        g = torch.zeros((n, self.d_len), device=self.device, dtype=self.torch_dtype)
+        forces = torch.zeros((n, 3), device=self.device, dtype=self.torch_dtype)
+        if i_idx.numel() == 0:
+            energy, _ = de_dg_fn(g)
+            return float(energy), forces.cpu().numpy()
+
+        vij = delta[i_idx, j_idx]
+        rij = dist[i_idx, j_idx]
+        unit = vij / rij[:, None]
+        fc, dfc = self._cutoff(rij)
+
+        # --- радиальная часть (как в прямом пути) -----------------------------------------
+        diff = rij[:, None] - self.mu[None, :]
+        gauss = torch.exp(-self.etas[:, None, None] * diff[None] ** 2)
+        value = (gauss * fc[None, :, None]).permute(1, 0, 2).reshape(len(rij), -1)
+        dvalue = (
+            gauss * (-2.0 * self.etas[:, None, None] * diff[None] * fc[None, :, None] + dfc[None, :, None])
+        ).permute(1, 0, 2).reshape(len(rij), -1)
+        cols_rad = (sp_of[j_idx] * self.n_rad)[:, None] + torch.arange(self.n_rad, device=self.device)[None, :]
+        g.index_put_((i_idx[:, None].expand_as(cols_rad), cols_rad), value, accumulate=True)
+
+        triples = self._triplets(i_idx, n)
+        cache = []
+        if triples is not None:
+            for start in range(0, triples.shape[1], self.triplet_block):
+                pa, pb = triples[:, start : start + self.triplet_block]
+                centre, ja, jb = i_idx[pa], j_idx[pa], j_idx[pb]
+                va, vb = vij[pa], vij[pb]
+                ra, rb = rij[pa], rij[pb]
+                vjk = vb - va
+                rjk = vjk.norm(dim=1)
+                keep = (rjk < self.spec.cutoff) & (rjk > 1e-8)
+                if not bool(keep.any()):
+                    continue
+                pa, pb, centre, ja, jb = pa[keep], pb[keep], centre[keep], ja[keep], jb[keep]
+                va, vb, ra, rb, vjk, rjk = va[keep], vb[keep], ra[keep], rb[keep], vjk[keep], rjk[keep]
+                fc_jk, dfc_jk = self._cutoff(rjk)
+                cos_t = (va * vb).sum(dim=1) / (ra * rb)
+                fcc = fc[pa] * fc[pb] * fc_jk
+                r2sum = ra**2 + rb**2 + rjk**2
+                channel = self.pair_table[sp_of[ja], sp_of[jb]]
+
+                # --- ВСЕ сочетания одной осью ------------------------------------------
+                # expo: (T, n_eta); base/angular: (T, n_zeta, n_lam) -> общая ось n_angular
+                expo = torch.exp(-self.eta_ang[None, :] * r2sum[:, None])            # (T, E)
+                base = 1.0 + self.lambdas[None, :] * cos_t[:, None]                  # (T, L)
+                zeta = self.zetas
+                angular = base[:, None, :] ** zeta[None, :, None]                    # (T, Z, L)
+                dang = torch.where(
+                    base[:, None, :].abs() > 1e-12,
+                    zeta[None, :, None] * self.lambdas[None, None, :] * base[:, None, :] ** (zeta[None, :, None] - 1.0),
+                    torch.zeros_like(angular),
+                )
+                # порядок оси совпадает с порядком заполнения в эталоне: eta -> zeta -> lambda
+                ang_flat = (angular[:, None, :, :] * expo[:, :, None, None]).reshape(len(cos_t), -1)
+                dang_flat = (dang[:, None, :, :] * expo[:, :, None, None]).reshape(len(cos_t), -1)
+                ang_only = angular[:, None, :, :].expand(-1, len(self.eta_ang), -1, -1).reshape(len(cos_t), -1)
+                expo_only = expo[:, :, None, None].expand(-1, -1, len(zeta), len(self.lambdas)).reshape(len(cos_t), -1)
+                eta_col = self.eta_ang[None, :, None, None].expand(
+                    len(cos_t), -1, len(zeta), len(self.lambdas)
+                ).reshape(len(cos_t), -1)
+
+                cols = (self.n_rad_block + channel * self.n_ang)[:, None] + torch.arange(
+                    self.n_ang, device=self.device
+                )[None, :]
+                g.index_put_((centre[:, None].expand_as(cols), cols),
+                             ang_flat * fcc[:, None], accumulate=True)
+                cache.append((centre, ja, jb, va, vb, ra, rb, vjk, rjk, fc[pa], fc[pb], fc_jk,
+                              dfc[pa], dfc[pb], dfc_jk, cos_t, fcc, cols,
+                              ang_flat, dang_flat, ang_only, expo_only, eta_col))
+
+        energy, de_dg = de_dg_fn(g)
+
+        # --- силы: радиальная часть -------------------------------------------------------
+        w_rad = torch.gather(de_dg[i_idx], 1, cols_rad)
+        contrib = (w_rad * dvalue).sum(dim=1)[:, None] * unit
+        forces.index_add_(0, j_idx, -contrib)
+        forces.index_add_(0, i_idx, contrib)
+
+        # --- силы: угловая часть, все сочетания сразу -------------------------------------
+        for (centre, ja, jb, va, vb, ra, rb, vjk, rjk, fc_a, fc_b, fc_jk,
+             dfc_a, dfc_b, dfc_jk, cos_t, fcc, cols,
+             ang_flat, dang_flat, ang_only, expo_only, eta_col) in cache:
+            w = torch.gather(de_dg[centre], 1, cols)                       # (T, A)
+            dcos_dva = vb / (ra * rb)[:, None] - cos_t[:, None] * va / (ra**2)[:, None]
+            dcos_dvb = va / (ra * rb)[:, None] - cos_t[:, None] * vb / (rb**2)[:, None]
+            dfcc_dva = (dfc_a * fc_b * fc_jk)[:, None] * (va / ra[:, None])
+            dfcc_dvb = (dfc_b * fc_a * fc_jk)[:, None] * (vb / rb[:, None])
+            dfcc_dvjk = (dfc_jk * fc_a * fc_b)[:, None] * (vjk / rjk[:, None])
+
+            # Свёртка по оси сочетаний ДО умножения на векторы: (T, A) -> (T,).
+            # `ang_flat` не содержит функции обрезания, поэтому член с её производной -- это
+            # ПРОСТО произведение, без деления. Первая версия делила на fcc и умножала обратно,
+            # и на границе радиуса, где fcc = 0, это давало 0/0 = NaN: силы совпадали с прямым
+            # путём на 192 атомах и были NaN на 24, то есть ошибка проявлялась не всегда --
+            # самый скверный вид ошибки, и её поймала только сверка двух путей.
+            s_dang = (w * dang_flat).sum(dim=1) * fcc
+            s_ang = (w * ang_flat).sum(dim=1)
+            s_expo_ang = (w * ang_only * expo_only * eta_col).sum(dim=1) * fcc
+
+            dva = (s_dang[:, None] * dcos_dva
+                   - 2.0 * s_expo_ang[:, None] * va
+                   + s_ang[:, None] * dfcc_dva
+                   + 2.0 * s_expo_ang[:, None] * vjk
+                   - s_ang[:, None] * dfcc_dvjk)
+            dvb = (s_dang[:, None] * dcos_dvb
+                   - 2.0 * s_expo_ang[:, None] * vb
+                   + s_ang[:, None] * dfcc_dvb
+                   - 2.0 * s_expo_ang[:, None] * vjk
+                   + s_ang[:, None] * dfcc_dvjk)
+            forces.index_add_(0, ja, -dva)
+            forces.index_add_(0, jb, -dvb)
+            forces.index_add_(0, centre, dva + dvb)
+
+        return float(energy), forces.cpu().numpy()
