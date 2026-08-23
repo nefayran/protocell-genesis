@@ -26,7 +26,7 @@
 
 import type { Params } from '../../engine/src/params'
 import type { Soup } from './rules'
-import { attractionScaleTable, speciesClasses } from './soup-attraction'
+import { CLASS_POLAR, acidSoapScaleOf, attractionScaleTable, speciesClasses } from './soup-attraction'
 import { esTotalEnergy, makeEsBasis, type EsBasis, type EsOverrides } from './electrostatics'
 import { NONE_U32 } from './soup-types'
 import type { Soup as SoupType } from './rules'
@@ -74,6 +74,11 @@ export interface PotentialBasis {
   classes: Uint32Array
   /** Per-class-pair attraction depth multiplier. */
   attr: number[][]
+  /** Task 'acid-soap-pairing' (2026-08-23): the charge-assisted head-head depth multiplier, ADDED to
+   * the polar-polar cell for exactly those head pairs where one bead is protonated and the other is
+   * not -- the CPU twin of soup/wgsl/pair.wgsl's acidSoapScale(). 0 without the section (and on any
+   * caller that passes no charges at all), which keeps every pre-task energy bit-identical. */
+  acidSoap: number
   /** Largest distance at which any pair can contribute -- the CPU cell list's own cutoff. */
   cutoff: number
   /** Task 'electrostatics' (2026-08-20): the screened-Coulomb basis, whose cutoff is BY CONSTRUCTION
@@ -89,6 +94,7 @@ export function makePotentialBasis(
   attractionOverride?: number,
   claySurfaceChemistry?: string,
   esOverrides?: EsOverrides,
+  acidSoapOverride?: number,
 ): PotentialBasis {
   const bRadius = new Float64Array(soup.monomers.map((m) => p.sigma * m.radiusSigma))
   const rcAttr = wcaCut(p.sigma * p.beadSizes.tail_tail)
@@ -107,8 +113,11 @@ export function makePotentialBasis(
     bRadius,
     classes: speciesClasses(soup),
     attr: attractionScaleTable(soup, attractionOverride, claySurfaceChemistry),
+    acidSoap: acidSoapScaleOf(soup, acidSoapOverride, attractionOverride),
     cutoff: Math.max(maxWca, rcAttr + p.attraction.wc),
-    es: makeEsBasis(soup as unknown as SoupType, p, esOverrides),
+    // Task 'acid-soap-pairing' (2026-08-23): the pair depth travels into the electrostatic basis as
+    // well, because the constant-pH sampler that basis also serves needs it (soup/src/acid-soap.ts).
+    es: makeEsBasis(soup as unknown as SoupType, p, { ...esOverrides, acidSoapScale: acidSoapOverride }),
   }
 }
 
@@ -221,7 +230,20 @@ export function soupPotential(
           const r = Math.sqrt(r2)
           const kj = positions[j * 4 + 3] | 0
           nonbonded += wcaV(r, (bi + basis.bRadius[kj]) / 2, basis.epsilon)
-          const sc = attrRow[basis.classes[kj]]
+          let sc = attrRow[basis.classes[kj]]
+          // Task 'acid-soap-pairing' (2026-08-23): the charge-assisted head-head depth, on the SAME
+          // attr_dv/attrV ramp, for exactly one protonated head with one deprotonated head -- the
+          // transcription of soup/wgsl/pair.wgsl's acidSoapScale(), including its XOR. Without
+          // charges (every pre-task caller) or without the section this branch is never taken.
+          if (
+            basis.acidSoap > 0 &&
+            charges !== undefined &&
+            basis.classes[ki] === CLASS_POLAR &&
+            basis.classes[kj] === CLASS_POLAR &&
+            (charges[i] === 0) !== (charges[j] === 0)
+          ) {
+            sc += basis.acidSoap
+          }
           if (sc > 0) nonbonded += sc * attrV(r, basis.rcAttr, basis.wc, basis.epsilon)
           // Task 'long-range-electrostatics' (2026-08-20): the screened-Coulomb term is NO LONGER
           // summed here. This loop's cell list is built at the Lennard-Jones cutoff

@@ -75,6 +75,12 @@ export {
 } from '../../soup/src/electrostatics'
 export type { EsBasis, EsOverrides, SweepResult, PairingStats, PcgState } from '../../soup/src/electrostatics'
 export { initialCharges } from '../../soup/src/soup-protonation'
+// Task 'acid-soap-pairing' (2026-08-23): the pair's IDENTITY and its survival statistic -- re-exported
+// so the page context (tests/runner.html) measures the pair population and the pair LIFETIME with the
+// same implementation tests/electrostatics-audit.test.ts publishes, and can reduce both to scalars
+// before anything crosses the CDP boundary.
+export { nearestUnlike, pairSurvival } from '../../soup/src/acid-soap'
+export type { PairSurvival } from '../../soup/src/acid-soap'
 // Task 'confined-parcel' (2026-08-21): the parcel's geometry, its wall's potential/force (the CPU twin
 // tests/soup-confine.test.ts differentiates numerically) and the per-checkpoint wall-adsorption /
 // no-wrap measurement. Pure and GPU-free, so `window.api` can call them inside the page and

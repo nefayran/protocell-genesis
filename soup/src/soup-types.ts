@@ -53,6 +53,14 @@ export interface CreateSoupOpts {
    * data/soup.json between candidate values; the file's own field is what a real run (and the
    * committed gates) actually uses. */
   solventAttractionScaleOverride?: number
+  /** Task 'acid-soap-pairing' (2026-08-23): overrides data/soup.json's
+   * solvent.attractionScale.acidSoapPair depth for THIS system, ALREADY NORMALISED (i.e. in the same
+   * units every cell of the class table is in: 1.0 = the apolar-apolar reference depth). Exists
+   * because the strength has to be SWEPT -- the atomic measurement it comes from is an upper bound,
+   * not a calibration -- and a sweep must not mean rewriting a data file between arms. The file's own
+   * value is what every real run uses. 0 disables the term outright, which is the arm that proves
+   * every other number in this engine is unchanged by the task. */
+  acidSoapScaleOverride?: number
   /** Task 'clay-surface' (2026-08-19): overrides data/soup.json's `clay.enabled` for THIS system --
    * the same convenience-boolean pattern `dryWetCycle` uses. `false` is how every clay-free control
    * arm is created, and every measurement of the platelet is a with/without pair at otherwise
@@ -84,7 +92,21 @@ export interface CreateSoupOpts {
    * sigma->nm mapping and its range, the sweep cadence -- always comes from the file with its own
    * rank and basis. Absent defers to the file, which ships `enabled: false`, so every pre-task caller
    * is unchanged. */
-  electrostatics?: { enabled?: boolean; pH?: number; ionicStrengthMolar?: number }
+  electrostatics?: {
+    enabled?: boolean
+    pH?: number
+    ionicStrengthMolar?: number
+    /** Task 'acid-soap-pairing' (2026-08-23): the volume the TITRATABLE beads actually occupy at the
+     * tightest box, for sizing the long-range head list -- passed straight through to
+     * EsOverrides.densityVolumeSigma3 (task 'confined-parcel' added the field for the parcel case and
+     * derives it automatically there; a confined run therefore ignores this). Needed because a
+     * PREBUILT BILAYER PATCH concentrates every head into a slab a few sigma thick inside a box tens
+     * of sigma deep, so maxHeads/min(box)^3 under-states the head density several-fold and the list
+     * comes out too small -- which this engine catches LOUDLY (assertVerletSafety throws by name)
+     * rather than silently dropping interaction, and this is the field that answers it honestly
+     * instead of inflating a safety factor. Absent = min(box)^3, i.e. every pre-task caller. */
+    densityVolumeSigma3?: number
+  }
   /** Task 'big-box' (2026-08-20): per-run override of data/soup.json's `verletList` -- ONLY the two
    * fields that are experiment design rather than model constants. `enabled: false` selects
    * cell-list traversal (the grid walk every step, no per-particle neighbour array at all, O(N)

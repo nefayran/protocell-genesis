@@ -42,6 +42,10 @@ import { findAmphiphiles } from '../soup/src/amphiphile'
 import { loadStageThresholds } from '../soup/src/stages'
 import { memberIndicesOf } from '../soup/src/aggregates'
 import { buildAggregates, mergeStats, type Agg } from './helpers/coalescence-geometry'
+// Task 'acid-soap-pairing' (2026-08-23): nearestUnlike MOVED to soup/src/acid-soap.ts (pure move,
+// same body) so this audit and the pair-strength sweep cannot disagree about what an acid-soap pair is
+// -- the same reason this file's header gives for sharing pairingStats/mergeStats.
+import { nearestUnlike } from '../soup/src/acid-soap'
 import { apparentPKa, makeEsBasis, pairingStats } from '../soup/src/electrostatics'
 
 const EMPTY = 0xffffffff
@@ -88,68 +92,6 @@ function covalentComponents(bondSlots: Uint32Array, idx: readonly number[]): num
   return Array.from(sizes.values()).sort((a, b) => b - a)
 }
 
-/** Each head's nearest UNLIKE-charge head neighbour inside `contact`, or -1. The pair's identity, so
- * a lifetime can be measured by asking how many pairs survive to the next checkpoint. */
-function nearestUnlike(
-  pos: Float32Array,
-  charges: Float32Array,
-  heads: readonly number[],
-  box: [number, number, number],
-  contact: number,
-): Map<number, number> {
-  const mi = (d: number, L: number): number => d - L * Math.round(d / L)
-  const out = new Map<number, number>()
-  // Cell list over heads at side `contact`.
-  const nx = Math.max(1, Math.floor(box[0] / contact))
-  const ny = Math.max(1, Math.floor(box[1] / contact))
-  const nz = Math.max(1, Math.floor(box[2] / contact))
-  const wx = box[0] / nx, wy = box[1] / ny, wz = box[2] / nz
-  const wrap = (v: number, L: number): number => ((v % L) + L) % L
-  const key = (i: number): number =>
-    Math.min(nx - 1, Math.floor(wrap(pos[i * 4], box[0]) / wx)) +
-    nx * (Math.min(ny - 1, Math.floor(wrap(pos[i * 4 + 1], box[1]) / wy)) +
-      ny * Math.min(nz - 1, Math.floor(wrap(pos[i * 4 + 2], box[2]) / wz)))
-  const buckets = new Map<number, number[]>()
-  for (const i of heads) {
-    const k = key(i)
-    const b = buckets.get(k)
-    if (b) b.push(i)
-    else buckets.set(k, [i])
-  }
-  for (const i of heads) {
-    const cx = Math.min(nx - 1, Math.floor(wrap(pos[i * 4], box[0]) / wx))
-    const cy = Math.min(ny - 1, Math.floor(wrap(pos[i * 4 + 1], box[1]) / wy))
-    const cz = Math.min(nz - 1, Math.floor(wrap(pos[i * 4 + 2], box[2]) / wz))
-    let best = Infinity
-    let bestJ = -1
-    for (let dz = -1; dz <= 1; dz++) {
-      const az = ((cz + dz) % nz + nz) % nz
-      for (let dy = -1; dy <= 1; dy++) {
-        const ay = ((cy + dy) % ny + ny) % ny
-        for (let dx = -1; dx <= 1; dx++) {
-          const ax = ((cx + dx) % nx + nx) % nx
-          const b = buckets.get(ax + nx * (ay + ny * az))
-          if (!b) continue
-          for (const j of b) {
-            if (j === i) continue
-            if ((charges[i] === 0) === (charges[j] === 0)) continue
-            const d = Math.hypot(
-              mi(pos[i * 4] - pos[j * 4], box[0]),
-              mi(pos[i * 4 + 1] - pos[j * 4 + 1], box[1]),
-              mi(pos[i * 4 + 2] - pos[j * 4 + 2], box[2]),
-            )
-            if (d <= contact && d < best) {
-              best = d
-              bestJ = j
-            }
-          }
-        }
-      }
-    }
-    if (bestJ >= 0) out.set(i, bestJ)
-  }
-  return out
-}
 
 test('электростатика: протонирование, кислотно-мыльная пара, ковалентная связность, обмен и деления', () => {
   const raw = process.env.ES_AUDIT_CHECKPOINTS

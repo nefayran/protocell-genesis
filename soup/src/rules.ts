@@ -283,6 +283,25 @@ export interface SolventAttractionScale {
    * written before this task keeps the old boolean water-only behaviour -- soup/src/
    * soup-attraction.ts's own fallback branch. */
   pairEpsilon?: PairEpsilon
+  /** Task 'acid-soap-pairing' (2026-08-23): the CHARGE-ASSISTED head-head pair depth -- the only
+   * attraction here that is not a function of the two species alone: it fires only between a
+   * PROTONATED and a DEPROTONATED head, never between two of the same state, so it cannot be a cell
+   * of `pairEpsilon` (a polarPolar cell would attract acid-acid and soap-soap too, which the atomic
+   * measurement says does NOT happen in water). Same units and `reference` normalisation as the
+   * levels; absent/0 keeps every pre-task run bit-identical. Full basis: data/soup.json's own. */
+  acidSoapPair?: AcidSoapPair
+  basis: string
+}
+
+/** Task 'acid-soap-pairing' (2026-08-23): the measured acid-carboxylate association, mapped onto this
+ * model's attraction depth. `epsilonKJ` is what the engine USES; the two `measured*` fields record the
+ * atomic number, which is an ENERGY and not a free energy (entropy of pairing UNCOMPUTED) and is
+ * therefore an UPPER BOUND -- data/soup.json's own basis has the sweep and the ranks. */
+export interface AcidSoapPair {
+  epsilonKJ: number
+  measuredUpperBoundKJ: number
+  measuredKcalPerMol: number
+  rank: 'A' | 'B' | 'C' | 'D'
   basis: string
 }
 

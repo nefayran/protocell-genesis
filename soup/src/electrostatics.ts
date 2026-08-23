@@ -69,6 +69,9 @@
 
 import { wcaCutoff, type Params } from '../../engine/src/params'
 import type { Soup } from './rules'
+// Task 'acid-soap-pairing': pair well + per-site work in their OWN module, soup/src/acid-soap.ts.
+import { acidSoapSiteWork, type AcidSoapWell } from './acid-soap'
+import { acidSoapScaleOf } from './soup-attraction'
 
 /** Everything the force term, the potential term and the protonation MC need, derived once. */
 export interface EsBasis {
@@ -123,10 +126,14 @@ export interface EsBasis {
   debyeSigma: number
   sweepEverySteps: number
   kT: number
+  /** Task 'acid-soap-pairing': the pair well; the constant-pH criterion needs it. 0 = pre-task. */
+  acidSoap: AcidSoapWell
 }
 
 export interface EsOverrides {
   enabled?: boolean
+  /** Task 'acid-soap-pairing': normalised pair depth for this system (absent = the file's own). */
+  acidSoapScale?: number
   pH?: number
   ionicStrengthMolar?: number
   /** Task 'long-range-electrostatics' (2026-08-20): the SMALLEST box side this run will ever visit
@@ -169,6 +176,7 @@ export function makeEsBasis(soup: Soup, p: Params, over?: EsOverrides): EsBasis 
       targetCutoff: 0, imageCap: 0,
       shiftU: 0, shiftF: 0, pKaIntrinsic: 0, pH: 0, ionicStrengthMolar: 0, sigmaNm: 0,
       debyeSigma: 0, sweepEverySteps: 0, kT,
+      acidSoap: { scale: 0, rcAttr: 0, wc: 0, epsilon: 0 },
     }
   }
   const enabled = over?.enabled ?? es.enabled
@@ -228,6 +236,13 @@ export function makeEsBasis(soup: Soup, p: Params, over?: EsOverrides): EsBasis 
     targetCutoff, imageCap,
     shiftU, shiftF, pKaIntrinsic: es.pKaIntrinsic, pH, ionicStrengthMolar, sigmaNm, debyeSigma,
     sweepEverySteps: es.sweepEverySteps, kT,
+    // Task 'acid-soap-pairing': the pair well -- same rank-A shape constants, same normalised depth.
+    acidSoap: {
+      scale: acidSoapScaleOf(soup, over?.acidSoapScale),
+      rcAttr: wcaCutoff(p.sigma * p.beadSizes.tail_tail),
+      wc: p.attraction.wc,
+      epsilon: p.epsilon,
+    },
   }
 }
 
@@ -451,6 +466,10 @@ export function protonationSweep(
       if (r2 >= cut2) continue
       uEs += esPairEnergy(Math.sqrt(r2), q * charges[j], b)
     }
+    // Task 'acid-soap-pairing' (2026-08-23): the SAME "work of having the charge on i" for the pair
+    // term, over this walk's own buffer (the well's reach is far shorter than b.cutoff, so the
+    // head-only list covers it); 0 at depth 0. Not optional: see acidSoapSiteWork's own header.
+    uEs += acidSoapSiteWork(positions, charges, i, nbuf, m, box, b.acidSoap)
     const isCharged = charges[i] !== 0
     // Forward (protonated -> deprotonated) costs +dGintr +uEs; the reverse is the same number negated
     // at fixed environment, which is exactly what makes P(f)/P(r) = exp(-dG/kT).

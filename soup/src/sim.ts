@@ -267,7 +267,14 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     maxHeads: esMaxHeads,
     // Task 'confined-parcel': the head DENSITY the long-range list is sized from must be taken over
     // the parcel at the tightest box, not over that box's own volume -- see EsOverrides.
-    densityVolumeSigma3: confine ? occupiedVolumeOf(minBoxSigma === initialLiveBox[0] ? initialLiveBox : dryBox) : undefined,
+    // Task 'acid-soap-pairing' (2026-08-23). Two additions. (1) The constant-pH sampler must judge the
+    // SAME force field the kernel integrates, so the pair depth travels into the basis. (2) An
+    // UNCONFINED caller may know the heads occupy less than the box (a prebuilt patch concentrates them
+    // into a slab) and says so via electrostatics.densityVolumeSigma3; confinement still wins.
+    acidSoapScale: opts.acidSoapScaleOverride,
+    densityVolumeSigma3: confine
+      ? occupiedVolumeOf(minBoxSigma === initialLiveBox[0] ? initialLiveBox : dryBox)
+      : opts.electrostatics?.densityVolumeSigma3,
   })
   const fresh = initialCharges(initial.positions0, es, opts.seed)
   // Sized for CAPACITY, not for the live count: a checkpoint taken mid dry-phase carries only the
@@ -331,6 +338,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     initial,
     solventAttractionScaleOverride: opts.solventAttractionScaleOverride,
     claySurfaceChemistry: opts.claySurfaceChemistry,
+    acidSoapScaleOverride: opts.acidSoapScaleOverride,
     es,
     charges0,
     maxHeads: esHeads,
@@ -417,6 +425,14 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     seed: opts.seed,
     attractionOverride: opts.solventAttractionScaleOverride,
     claySurfaceChemistry: opts.claySurfaceChemistry,
+    // Task 'acid-soap-pairing' (2026-08-23): the same pair depth the GPU uniform got, the resolved
+    // electrostatic basis, and the live charges -- the Metropolis energy must be the force field the
+    // dynamics runs. Before this task the move built its basis with NO esOverrides and passed NO
+    // charges: right for an uncharged run (every committed area-move gate is uncharged and stays
+    // bit-identical), but it silently dropped both charge-reading terms on a charged one.
+    acidSoapScaleOverride: opts.acidSoapScaleOverride,
+    es,
+    charges: () => readback.charges(rt),
   })
   const stepCycled = makeStepCycled(
     rt,

@@ -14,6 +14,7 @@ import {
   esRangeSummary,
   esTotalEnergy,
 } from '../soup/src/electrostatics'
+import { acidSoapWell } from '../soup/src/acid-soap'
 
 afterAll(shutdownGpu)
 
@@ -190,7 +191,21 @@ test('протонирование: детальный баланс против
   const q = b.chargeDeprotonated
   const uBoth = esPairEnergy(r, q * q, b)
   const dGintr = b.kT * Math.LN10 * (b.pKaIntrinsic - b.pH)
-  const w = [1, Math.exp(-dGintr / b.kT), Math.exp(-dGintr / b.kT), Math.exp(-(2 * dGintr + uBoth) / b.kT)]
+  // Task 'acid-soap-pairing' (2026-08-23): the charge-assisted pair term is part of the SAME dG the
+  // sampler accepts on (soup/src/acid-soap.ts's acidSoapSiteWork -- see its header for why omitting it
+  // would make the sampler disagree with the potential the dynamics integrates), so the exact weights
+  // enumerated here must carry it. It is nonzero for the two SINGLE-charged states only (exactly one
+  // protonated head with one deprotonated head) and identically 0 when data/soup.json declares no
+  // acidSoapPair depth -- in which case every number below is bit-identical to the pre-task one.
+  // Note the SIGN of what this pins: the pair term REWARDS the mixed states, i.e. it pushes alpha
+  // toward 1/2, which is the mechanism the pH-window prediction rests on.
+  const uPairOne = acidSoapWell(r, b.acidSoap)
+  const w = [
+    1,
+    Math.exp(-(dGintr + uPairOne) / b.kT),
+    Math.exp(-(dGintr + uPairOne) / b.kT),
+    Math.exp(-(2 * dGintr + uBoth) / b.kT),
+  ]
   const z = w.reduce((a, x) => a + x, 0)
   const exact = w.map((x) => x / z)
 
@@ -210,7 +225,9 @@ test('протонирование: детальный баланс против
     Math.abs(measured[3] - exact[3]),
   )
   console.log(
-    `ES-DETAILED-BALANCE r=${r} U_es(оба)=${uBoth.toFixed(6)}eps=${(uBoth / b.kT).toFixed(4)}kT dG_intr=${dGintr.toFixed(6)}eps\n` +
+    `ES-DETAILED-BALANCE r=${r} U_es(оба)=${uBoth.toFixed(6)}eps=${(uBoth / b.kT).toFixed(4)}kT ` +
+      `U_пары(одна)=${uPairOne.toFixed(6)}eps=${(uPairOne / b.kT).toFixed(4)}kT (глубина=${b.acidSoap.scale}) ` +
+      `dG_intr=${dGintr.toFixed(6)}eps\n` +
       `  состояние      ни одна      первая      вторая      обе\n` +
       `  точно      ${exact.map((x) => x.toFixed(5)).join('   ')}\n` +
       `  измерено   ${measured.map((x) => x.toFixed(5)).join('   ')}\n` +

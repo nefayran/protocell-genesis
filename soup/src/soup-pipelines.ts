@@ -20,6 +20,15 @@ import stepWgsl from '../wgsl/step.wgsl?raw'
 // nonbondedSoup/bondedForce, so it must come AFTER. Neither changes the token stream the previously
 // compiled entry points were built from, so no binding index and no kernel body moved.
 import electrostaticsWgsl from '../wgsl/electrostatics.wgsl?raw'
+// Task 'acid-soap-pairing' (2026-08-23): the pair-interaction responsibility, split OUT of
+// step.wgsl before the charge-assisted head-head term was added to it -- CLAUDE.md's rule is "split
+// first, then add", and step.wgsl has been split by that rule twice before (verlet.wgsl below,
+// health.wgsl/relax.wgsl further down). It declares Species/SP, AttrScaleTable/AttrScale, mi3() and
+// nonbondedSoup(), which step.wgsl/verlet.wgsl/electrostatics-long.wgsl/wall.wgsl all call, so it
+// must come BEFORE step.wgsl; it calls esForceNear, so it must come AFTER electrostatics.wgsl. WGSL
+// does not care about source-file boundaries, only the token stream, so this moves no binding index
+// and rewrites no kernel body.
+import pairWgsl from '../wgsl/pair.wgsl?raw'
 import verletWgsl from '../wgsl/verlet.wgsl?raw'
 // Task 'long-range-electrostatics' (2026-08-20): the dedicated long-range pass's four kernels. They
 // call mi3() and read pos2/outForce/GB (step.wgsl / forces.wgsl), so like verlet.wgsl they must come
@@ -113,7 +122,7 @@ let cached: SoupPipelines | undefined
 export function getSoupPipelines(device: GPUDevice, sortedGather: boolean): SoupPipelines {
   if (cached && cached.device === device && cached.sortedGather === sortedGather) return cached
   const forceModule = device.createShaderModule({
-    code: `${forcesWgsl}\n${electrostaticsWgsl}\n${stepWgsl}\n${verletWgsl}\n${electrostaticsLongWgsl}\n${wallWgsl}\n${healthWgsl}\n${relaxWgsl}`,
+    code: `${forcesWgsl}\n${electrostaticsWgsl}\n${pairWgsl}\n${stepWgsl}\n${verletWgsl}\n${electrostaticsLongWgsl}\n${wallWgsl}\n${healthWgsl}\n${relaxWgsl}`,
   })
   const bondModule = device.createShaderModule({ code: `${forcesWgsl}\n${bondWgsl}` })
   const neighborModule = device.createShaderModule({ code: neighborWgsl })

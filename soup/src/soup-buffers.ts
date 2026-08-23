@@ -160,6 +160,9 @@ export interface AllocateBuffersInput {
   /** Task 'clay-surface-chemistry' (2026-08-19): which mineral depth row the AttrScale uniform below
    * carries -- see soup/src/soup-types.ts's CreateSoupOpts.claySurfaceChemistry. */
   claySurfaceChemistry?: string
+  /** Task 'acid-soap-pairing' (2026-08-23): the charge-assisted head-head depth for this system --
+   * see soup/src/soup-types.ts's CreateSoupOpts.acidSoapScaleOverride. */
+  acidSoapScaleOverride?: number
   /** Task 'electrostatics' (2026-08-20): this system's resolved electrostatics basis. */
   es: EsBasis
   /** Task 'electrostatics' (2026-08-20): the initial per-particle charge array -- from a resumed
@@ -176,7 +179,7 @@ export interface AllocateBuffersInput {
 }
 
 export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuffers; grid: SoupGridState } {
-  const { device, soup, p, N, dims, ncells, effectiveWalkRadius, initialLiveBox, verlet, listRange, rules, catalystKind, bondAttemptInterval, kT, initial, solventAttractionScaleOverride, claySurfaceChemistry, es, charges0, maxHeads, confine } = input
+  const { device, soup, p, N, dims, ncells, effectiveWalkRadius, initialLiveBox, verlet, listRange, rules, catalystKind, bondAttemptInterval, kT, initial, solventAttractionScaleOverride, claySurfaceChemistry, acidSoapScaleOverride, es, charges0, maxHeads, confine } = input
   const { positions0, velocities0, bondSlots0, centerLink0, centerHeldSteps0, desorbEventsInit, bondRng0, thermoRng0, eventsInit, frozen0 } = initial
 
   const posBuf = storageBuffer(device, positions0)
@@ -332,7 +335,11 @@ export function allocateSoupBuffers(input: AllocateBuffersInput): { buf: SoupBuf
     size: ATTR_SCALE_UNIFORM_BYTES,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   })
-  device.queue.writeBuffer(attrScaleUniform, 0, attractionScaleUniform(soup, solventAttractionScaleOverride, claySurfaceChemistry))
+  device.queue.writeBuffer(
+    attrScaleUniform,
+    0,
+    attractionScaleUniform(soup, solventAttractionScaleOverride, claySurfaceChemistry, acidSoapScaleOverride),
+  )
 
   // BondParams: acceptProbForm/acceptProbBreak come DIRECTLY from soup/src/rules.ts's
   // acceptanceProbability(rule, kT) -- the same function tests/soup-rules.test.ts checks against

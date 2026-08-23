@@ -26,28 +26,18 @@
 // (wraps all three axes) rather than reusing those two. Everything else (kick_main, drift_main,
 // thermostat_main from integrate.wgsl) is direction-agnostic and IS reused unchanged.
 
+// Task 'acid-soap-pairing' (2026-08-23): the PAIR-INTERACTION responsibility left this file for
+// soup/wgsl/pair.wgsl -- the Species and AttrScale uniform declarations, mi3(), the
+// speciesRadius/speciesPolar/speciesSolvent/speciesMineral/speciesClass/pairAttrScale/shouldAttract/
+// pairB helpers and nonbondedSoup() itself. CLAUDE.md's rule is "split first, then add", and the
+// charge-assisted head-head term this task adds belongs to exactly that responsibility. Pure move:
+// this file still CALLS all of them (pair.wgsl is concatenated immediately before it, see
+// soup/src/soup-pipelines.ts), no binding index moved and no formula was rewritten.
+
 const SOUP_NONE: u32 = 0xFFFFFFFFu;
 
 @group(1) @binding(6) var<storage, read_write> posRW: array<vec4<f32>>;
 @group(1) @binding(7) var<storage, read> bondSlotsRO: array<u32>;
-
-// Water-calibration task (2026-08-19): x = solvent.attractionScale.epsilonScale (data/soup.json,
-// rank D -- see that field's own basis) TIMES the per-class ratio table
-// solvent.attractionScale.pairEpsilon builds (task 'hydrophobic-asymmetry', 2026-08-19). One row per
-// species CLASS (0 = apolar, 1 = polar, 2 = solvent, 3 = mineral, exactly speciesClass() below), column = the
-// other particle's class, 4th component unused; symmetric by construction on the JS side
-// (soup/src/soup-attraction.ts, which is also what soup/src/soup-potential.ts reads so the CPU
-// Metropolis energy and this kernel cannot drift apart). A cell of 0 means that pair simply does
-// not attract -- the boolean shouldAttract() this replaced is now derived FROM the table, not
-// alongside it. The depths themselves are ratios to the tail-tail pair, whose own cell is exactly
-// epsilonScale, so attr_dv keeps its rank-A Cooke & Deserno absolute depth for tail-tail; nothing
-// here redefines attr_dv's shape (P.epsilon/P.b_tt/P.wc, rank A, untouched).
-// Task 'clay-surface' (2026-08-19): widened 3 -> 4 rows for the MINERAL class (the clay platelet's
-// own row/column in data/soup.json's pairEpsilon). soup/src/soup-attraction.ts sizes the uniform
-// from its own CLASS_COUNT, so the two sides cannot disagree about the row count without failing
-// bind-group validation outright.
-struct AttrScaleTable { rows: array<vec4<f32>, 4> };
-@group(1) @binding(9) var<uniform> AttrScale: AttrScaleTable;
 
 // Surface growth / adsorption (task 'adsorption', 2026-08-17, adsorption-report.md): read-only view
 // of soup/wgsl/bond.wgsl's centerLink -- soup/src/sim.ts binds the SAME physical buffer into this
@@ -65,24 +55,6 @@ struct AttrScaleTable { rows: array<vec4<f32>, 4> };
 // same declaration is both the gather's write target and the force kernel's read source within
 // one shader module.
 @group(1) @binding(13) var<storage, read_write> posSortedRW: array<vec4<f32>>;
-
-// Task 'explicit-water' (2026-08-18): widened from a single vec4 per field (4 species max) to two
-// vec4 slots per field (8 species max) so a 5th species (water, data/soup.json's "W") fits without
-// a new binding or a new buffer -- soup/src/sim.ts's packSpeciesSlots() writes 8 floats per field
-// regardless of how many monomers data/soup.json actually declares (unused slots are 0), and
-// speciesRadius/speciesPolar/speciesSolvent below index by kind/4u (which vec4) and kind%4u (which
-// component), a direct generalisation of the old kind==0u/1u/2u/else branches rather than a new
-// mechanism. `solvent` is new: the flag data/soup.json's Monomer.solvent uploads, read by
-// shouldAttract() below.
-// Task 'clay-surface' (2026-08-19): `mineral` appended (data/soup.json's Monomer.mineral, true only
-// for the clay bead). soup/src/soup-plan.ts's packSpeciesSlots writes 8 floats per field regardless
-// of how many monomers exist, so this is one more 32-byte field, not a new mechanism. NOTE
-// soup/wgsl/bond-common.wgsl declares its OWN, still-3-field Species against the SAME buffer and
-// deliberately stays that way: a uniform binding only requires the buffer to be at least as large as
-// the struct, and the bond kernels have no use for the mineral flag (no rule mentions the mineral
-// species, so a clay bead can never be a bonding partner).
-struct Species { radius: array<vec4<f32>, 2>, polar: array<vec4<f32>, 2>, solvent: array<vec4<f32>, 2>, mineral: array<vec4<f32>, 2> };
-@group(1) @binding(8) var<uniform> SP: Species;
 
 // Fused integrator steps -- pure arithmetic glue around kick_main/drift_main/thermostat_main's
 // OWN formulas (engine/wgsl/integrate.wgsl, reused verbatim there for the membrane engine), not a
@@ -169,70 +141,6 @@ fn kick_thermostat_main(@builtin(global_invocation_id) gid: vec3<u32>) {
   velRW[i] = vec4<f32>(v, 0.0);
 }
 
-fn mi3(d_in: vec3<f32>, box: vec3<f32>) -> vec3<f32> {
-  return d_in - round(d_in / box) * box;
-}
-
-fn speciesRadius(kind: f32) -> f32 {
-  let k = u32(kind);
-  return SP.radius[k / 4u][k % 4u];
-}
-
-fn speciesPolar(kind: f32) -> bool {
-  let k = u32(kind);
-  return SP.polar[k / 4u][k % 4u] > 0.5;
-}
-
-// Task 'explicit-water': the solvent flag (data/soup.json's Monomer.solvent, true only for water).
-fn speciesSolvent(kind: f32) -> bool {
-  let k = u32(kind);
-  return SP.solvent[k / 4u][k % 4u] > 0.5;
-}
-
-// Task 'clay-surface': the mineral flag (data/soup.json's Monomer.mineral, true only for the clay
-// platelet bead). Used ONLY for the interaction class below -- immobility is a per-PARTICLE flag
-// (frozenRO), not this, because the platelet also carries beads of the catalyst species as surface
-// sites and those must be frozen while their free-floating siblings are not.
-fn speciesMineral(kind: f32) -> bool {
-  let k = u32(kind);
-  return SP.mineral[k / 4u][k % 4u] > 0.5;
-}
-
-// Species CLASS, derived from the two per-species flags data/soup.json already uploads -- the GPU
-// twin of soup/src/soup-attraction.ts's speciesClassOf(), kept textually parallel on purpose.
-fn speciesClass(kind: f32) -> u32 {
-  if (speciesMineral(kind)) { return 3u; }
-  if (speciesSolvent(kind)) { return 2u; }
-  if (speciesPolar(kind)) { return 1u; }
-  return 0u;
-}
-
-// Task 'hydrophobic-asymmetry' (2026-08-19): the attraction DEPTH multiplier for this pair, read
-// from the per-class table above. Replaces the boolean rule task 'explicit-water' wrote here
-// (water-water OR water-head only, with the apolar-apolar term structurally excluded). Restored
-// apolar-apolar (tail-tail, and equally any two non-polar beads -- London dispersion does not know
-// which bead was labelled catalyst), and water-tail is now a WEAK attraction rather than zero.
-// Hydrophobic segregation is still emergent: it comes from the SIGN of the exchange energy
-// eps_ww + eps_tt - 2*eps_wt built into the ratios, not from a hand-written "tails attract" rule --
-// see data/soup.json's solvent.attractionScale.basis, which states the reversal of that earlier
-// removal and the literature the ratios were read from.
-fn pairAttrScale(ti: f32, tj: f32) -> f32 {
-  return AttrScale.rows[speciesClass(ti)][speciesClass(tj)];
-}
-
-// Kept as a named predicate because soup_force_stats_main's own candidate-range diagnostic asks the
-// same question this way; it is now DERIVED from the table (a zero cell is exactly "does not
-// attract"), so there is no second place a pair rule could be stated.
-fn shouldAttract(ti: f32, tj: f32) -> bool {
-  return pairAttrScale(ti, tj) > 0.0;
-}
-
-// Lorentz-Berthelot-style arithmetic mean, same mixing convention data/params.json's own
-// beadSizes already uses implicitly (its three fixed head/tail pairs are exactly this formula
-// evaluated on two fixed radii) -- generalised here to whichever two of the soup's species are in
-// contact, from their OWN radiusSigma in data/soup.json rather than a fixed lipid pair.
-fn pairB(ti: f32, tj: f32) -> f32 { return P.sigma * (speciesRadius(ti) + speciesRadius(tj)) * 0.5; }
-
 // FENE for every occupied bond slot (chain-chain and chain-head bonds use the same spring; only
 // the Metropolis energy that governs whether the bond EXISTS differs between them, carried in
 // bond.wgsl's BondParams, not here) plus bend for every pair of neighbours that share this
@@ -281,43 +189,6 @@ fn bondedForce(i: u32, xi: vec3<f32>, box: vec3<f32>) -> vec3<f32> {
     let r = max(length(d), 1e-6);
     f = f - fene_dv(r) * d / r;
   }
-  return f;
-}
-
-// Task 'electrostatics' (2026-08-20): `qi`/`qj` are the two beads' own charges (chargeRO, declared
-// in soup/wgsl/electrostatics.wgsl, written by the protonation Monte Carlo -- NOT a species
-// property). Passed in rather than looked up here so the cell-sorted gather path can read the
-// position from posSortedRW[k] while reading the charge at the ORIGINAL index j = cellIdx[k]. On any
-// system without electrostatics every charge is 0 and esForce returns the zero vector, so this
-// signature change is bit-neutral for every pre-task run.
-fn nonbondedSoup(xi: vec3<f32>, xj: vec3<f32>, ti: f32, tj: f32, box: vec3<f32>, qi: f32, qj: f32) -> vec3<f32> {
-  var f = vec3<f32>(0.0);
-  let d = mi3(xi - xj, box);
-  let r = length(d);
-  if (r < 1e-6) { return f; }
-  let b = pairB(ti, tj);
-  if (r < wca_cut(b)) {
-    f = f - wca_dv(r, b) * d / r;
-  }
-  // Task 'hydrophobic-asymmetry' (2026-08-19): the per-class depth multiplier scales this term's
-  // MAGNITUDE only -- same rc/wc/epsilon-shaped ramp attr_dv already computes from
-  // P.epsilon/P.b_tt/P.wc (rank A, untouched), same well onset and width for every pair. A zero
-  // multiplier is the "this pair does not attract" case, so no separate branch states a pair rule.
-  let attrScale = pairAttrScale(ti, tj);
-  if (attrScale > 0.0) {
-    f = f - attrScale * attr_dv(r) * d / r;
-  }
-  // Task 'electrostatics' (2026-08-20): the screened-Coulomb term, shifted-force truncated at the
-  // SAME cutoff the attraction ends at (soup/wgsl/electrostatics.wgsl's ES.z) so no neighbour-walk
-  // or Verlet-list coverage guarantee changes. `+`, not `-`: esForce already returns the force ON i
-  // (repulsive for like charges points along +d), matching the sign convention the two `-` terms
-  // above reach by negating their own dV/dr.
-  // Task 'long-range-electrostatics' (2026-08-20): the NEAR half only. The screened-Coulomb cutoff
-  // is now a multiple of the Debye length (up to 15.2 sigma), which no cell walk or Verlet list in
-  // this engine covers; esForceNear stops at ES2.x = the grid's own interactionRange, and
-  // soup_es_force_far_main (soup/wgsl/electrostatics.wgsl) adds exactly the remainder from a
-  // dedicated head-only list. Same shift constants in both halves, so their sum is the whole term.
-  f = f + esForceNear(d, r, qi, qj);
   return f;
 }
 

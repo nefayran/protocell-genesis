@@ -146,17 +146,60 @@ export function attractionScaleTable(soup: Soup, override?: number, chemistry?: 
   return table
 }
 
-/** The same table flattened for the GPU uniform soup/wgsl/step.wgsl declares as
- * `array<vec4<f32>, CLASS_COUNT>` (16-byte row stride, one row per class). With four classes the
- * rows are exactly full -- there is no spare component left, so a FIFTH class would need the
- * uniform's own shape changed on both sides, not just one more entry here. */
-export function attractionScaleUniform(soup: Soup, override?: number, chemistry?: string): Float32Array<ArrayBuffer> {
+/** Task 'acid-soap-pairing' (2026-08-23): the CHARGE-ASSISTED head-head depth multiplier, in the
+ * SAME units every cell of the class table is in -- levels.acidSoapPair.epsilonKJ divided by the
+ * reference level, times the global epsilonScale. Zero (and therefore structurally absent) when
+ * data/soup.json declares no acidSoapPair section or declares it at 0, which is what keeps every
+ * pre-task run bit-identical.
+ *
+ * WHY IT IS NOT A CELL OF THE CLASS TABLE. Every cell of `pairEpsilon` is a function of the two
+ * SPECIES alone; this one is a function of the two beads' PROTONATION STATES, which are dynamical
+ * variables the constant-pH Monte Carlo owns (soup/src/electrostatics.ts). A polarPolar cell would
+ * attract acid-acid and soap-soap as well, and the atomic measurement this number comes from says
+ * those do NOT associate in water (the neutral acid dimer measures UNFAVOURABLE once 32 waters
+ * compete for the hydrogen bonds). So the rule has to read charge, and the depth travels as its own
+ * scalar -- one extra vec4 on the uniform, not a fifth row. */
+export function acidSoapScaleOf(soup: Soup, override?: number, epsilonScaleOverride?: number): number {
+  const sc = soup.solvent.attractionScale
+  const pe = sc?.pairEpsilon
+  if (override !== undefined) {
+    if (!Number.isFinite(override) || override < 0) {
+      throw new Error(`soup attraction: acidSoapScaleOverride=${override} должен быть конечным неотрицательным числом`)
+    }
+    return override
+  }
+  const as = sc?.acidSoapPair
+  if (as === undefined || pe === undefined) return 0
+  if (!Number.isFinite(as.epsilonKJ) || as.epsilonKJ < 0) {
+    throw new Error(`data/soup.json: solvent.attractionScale.acidSoapPair.epsilonKJ=${as.epsilonKJ} должен быть конечным неотрицательным`)
+  }
+  const ref = pe.levels[pe.reference]
+  if (ref === undefined || !(ref.epsilonKJ > 0)) {
+    throw new Error(`data/soup.json: acidSoapPair нельзя нормировать -- reference="${pe.reference}" не даёт положительного epsilonKJ`)
+  }
+  const global = epsilonScaleOverride ?? sc?.epsilonScale ?? 1
+  return (global * as.epsilonKJ) / ref.epsilonKJ
+}
+
+/** The same table flattened for the GPU uniform soup/wgsl/pair.wgsl declares as
+ * `rows: array<vec4<f32>, CLASS_COUNT>` (16-byte row stride, one row per class) followed by ONE
+ * more vec4 `pair`, whose .x is the charge-assisted head-head depth (task 'acid-soap-pairing',
+ * 2026-08-23) and whose other three components are spare. With four classes the ROWS are exactly
+ * full -- there is no spare component left in them, so a FIFTH class would need the uniform's own
+ * shape changed on both sides, not just one more entry here. */
+export function attractionScaleUniform(
+  soup: Soup,
+  override?: number,
+  chemistry?: string,
+  acidSoapOverride?: number,
+): Float32Array<ArrayBuffer> {
   const table = attractionScaleTable(soup, override, chemistry)
-  const out = new Float32Array(CLASS_COUNT * 4)
+  const out = new Float32Array((CLASS_COUNT + 1) * 4)
   for (let ci = 0; ci < CLASS_COUNT; ci++) {
     for (let cj = 0; cj < CLASS_COUNT; cj++) out[ci * 4 + cj] = table[ci][cj]
   }
+  out[CLASS_COUNT * 4] = acidSoapScaleOf(soup, acidSoapOverride, override)
   return out
 }
 
-export const ATTR_SCALE_UNIFORM_BYTES = CLASS_COUNT * 4 * 4
+export const ATTR_SCALE_UNIFORM_BYTES = (CLASS_COUNT + 1) * 4 * 4

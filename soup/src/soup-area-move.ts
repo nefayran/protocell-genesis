@@ -42,6 +42,7 @@ import { planSoupGrid } from './soup-plan'
 import { scaleMoleculesRigid } from './soup-box-scale-math'
 import { applyBoxScaleOnce } from './soup-box-scale'
 import { makePotentialBasis, soupPotential, type PotentialBasis } from './soup-potential'
+import type { EsBasis } from './electrostatics'
 import type { SoupRuntime } from './soup-runtime'
 
 export type AreaMoveMode = AreaMove['mode']
@@ -137,6 +138,19 @@ export interface SoupAreaMoveDeps {
   /** Task 'clay-surface-chemistry': the CPU Metropolis energy must use the SAME mineral depth row the
    * GPU force kernel got, so the selected surface chemistry travels with the override. */
   claySurfaceChemistry?: string
+  /** Task 'acid-soap-pairing' (2026-08-23): the charge-assisted head-head depth this system's GPU
+   * uniform was written with -- same reason as claySurfaceChemistry above. */
+  acidSoapScaleOverride?: number
+  /** Task 'acid-soap-pairing' (2026-08-23): the RESOLVED electrostatic basis of this system (sim.ts's
+   * own `es`), so the Metropolis energy screens charge exactly as the force kernel does. Absent keeps
+   * the pre-task behaviour, in which makePotentialBasis derived the basis from the FILE (shipped
+   * `enabled: false`) and the electrostatic energy was therefore identically zero. */
+  es?: EsBasis
+  /** Task 'acid-soap-pairing' (2026-08-23): the live per-particle charges, i.e. the protonation state
+   * the constant-pH Monte Carlo last wrote. Read once per areaMove() call, at the same point the
+   * positions/bonds/links are read -- the chain proposes only BOX changes, so no charge can change
+   * inside it. Absent (or an unenabled basis) leaves both charge-reading terms identically zero. */
+  charges?: () => Promise<Float32Array>
 }
 
 function mulberry32(seed: number): () => number {
@@ -175,19 +189,38 @@ export function makeSoupAreaMove(deps: SoupAreaMoveDeps): (trials: number, opts?
       throw new Error("data/soup.json: нет секции areaMove — MC-ход по площади не настроен (см. soup/src/soup-area-move.ts)")
     }
     const mode: AreaMoveMode = opts?.mode ?? am.mode
-    if (basis === null) basis = makePotentialBasis(soup, p, deps.attractionOverride, deps.claySurfaceChemistry)
+    if (basis === null) {
+      basis = makePotentialBasis(
+        soup,
+        p,
+        deps.attractionOverride,
+        deps.claySurfaceChemistry,
+        undefined,
+        deps.acidSoapScaleOverride,
+      )
+      // Task 'acid-soap-pairing' (2026-08-23): the system's OWN resolved electrostatic basis rather
+      // than one re-derived from the file, so the screened-Coulomb cutoff, coefficient and shift in
+      // the Metropolis criterion are bit-identical to the ones the force kernel runs. On an
+      // uncharged system this assigns a disabled basis over a disabled basis.
+      if (deps.es !== undefined) basis.es = deps.es
+    }
 
     const startBox: Box = [rt.live.liveBox[0], rt.live.liveBox[1], rt.live.liveBox[2]]
     const bondPairs = await bonds()
     const links = await centerLinks()
     let curPos = await particles()
+    // Task 'acid-soap-pairing' (2026-08-23): the protonation state, read ONCE for the whole chain --
+    // the chain proposes box changes only, and no charge can change inside it (the constant-pH sweep
+    // runs from the stepper, not from here). `undefined` on a system with no charge readback at all,
+    // which makes both charge-reading terms identically zero exactly as before this task.
+    const chargesNow = basis.es.enabled && deps.charges !== undefined ? await deps.charges() : undefined
     let curBox: Box = startBox
     // kT from rt.p, which soup/src/sim.ts already built as loadParams() with THIS system's own
     // opts.kT substituted -- the same kT the thermostat uniform was written from, so the Metropolis
     // criterion and the dynamics cannot judge the configuration at different temperatures.
     const kT = rt.p.thermostat.kT
     const nMol = moleculeCount(bondPairs, rt.N)
-    let energy = soupPotential(curPos, bondPairs, curBox, basis, links).total
+    let energy = soupPotential(curPos, bondPairs, curBox, basis, links, chargesNow).total
     const energyStart = energy
     const lateralTrajectory: number[] = []
     let accepted = 0
@@ -204,7 +237,7 @@ export function makeSoupAreaMove(deps: SoupAreaMoveDeps): (trials: number, opts?
         continue
       }
       const proposedPos = scaleMoleculesRigid(curPos, bondPairs, curBox, proposedBox)
-      const proposedEnergy = soupPotential(proposedPos, bondPairs, proposedBox, basis, links).total
+      const proposedEnergy = soupPotential(proposedPos, bondPairs, proposedBox, basis, links, chargesNow).total
       const dU = proposedEnergy - energy
       const volRatio =
         (proposedBox[0] * proposedBox[1] * proposedBox[2]) / (curBox[0] * curBox[1] * curBox[2])
