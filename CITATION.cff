@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software or its results, please cite it as below."
+title: "protocell-genesis: a WebGPU primordial-soup simulation with pre-registered gates"
+abstract: >-
+  A coarse-grained soup of monomers on the GPU, with emergent hydrophobicity, catalyst-grown chain
+  chemistry, explicit water, evaporation and constant-pH electrostatics, tested against pass criteria
+  fixed before the runs. No closed vesicle formed: the aggregate percolates through a periodic box and,
+  in a finite water parcel, stays compact and traps no water.
+authors:
+  - family-names: Kazennov
+    given-names: Rodion
+repository-code: "https://github.com/nefayran/protocell-genesis"
+url: "https://nefayran.github.io/protocell-genesis/"
+license: MIT
+date-released: 2026-09-27
+keywords:
+  - webgpu
+  - molecular-dynamics
+  - coarse-grained
+  - self-assembly
+  - origin-of-life
+  - negative-results

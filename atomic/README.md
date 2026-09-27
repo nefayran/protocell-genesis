@@ -1,88 +1,90 @@
-# Атомистический движок: химия и физика на уровне атомов
+# Atomic engine: chemistry and physics at the level of atoms
 
-Задача, поставленная заказчиком: **движок, который работает на атомном уровне, на любых
-элементах, и воспроизводит процессы** — вместо предыдущего слоя, где «химия» сводилась к
-четырём придуманным правилам с придуманными ставками.
+English translation of [`README.ru.md`](README.ru.md).
 
-Ключевое отличие от предыдущего движка: здесь **нет ни одной реакции**. Связь существует, если
-её порядок по электронной структуре превышает порог; молекула — связная компонента графа
-связей; реакция — событие, при котором связность изменилась. Что произойдёт, решает
-гамильтониан, а `engine/chem.py` лишь читает результат. Поэтому «воспроизводит любые процессы»
-здесь не обещание, а следствие того, что процессы не перечислялись.
+The task as set: an engine that works at the atomic level, for any elements, and reproduces
+processes, instead of the previous layer, where the chemistry came down to four invented rules with
+invented rates.
 
-## Из чего состоит
+The key difference from the previous engine is that there is not a single reaction here. A bond
+exists if its bond order from the electronic structure exceeds a threshold; a molecule is a connected
+component of the bond graph; a reaction is an event in which the connectivity changed. What happens
+is decided by the Hamiltonian, and `engine/chem.py` only reads the result. So "reproduces any
+processes" is not a promise here but a consequence of the processes never having been listed.
 
-| файл | ответственность |
+## What it consists of
+
+| file | responsibility |
 |---|---|
-| `engine/units.py` | единицы Å/фс/а.е.м./эВ, переводные множители выведены из определений СИ и CODATA |
-| `engine/state.py` | состояние: Z, координаты, скорости, ячейка, заряд, спин, заморозка |
-| `engine/potential.py` | интерфейс потенциала + аналитические потенциалы для проверки интегратора |
-| `engine/integrate.py` | NVE (velocity-Verlet), NVT (BAOAB), L-BFGS-оптимизация геометрии |
-| `engine/chem.py` | связность из порядков связей, определение молекул, регистрация реакций |
-| `engine/md.py` | ведущий цикл с громким падением на нечисловом состоянии |
-| `engine/backends/gfn2.py` | GFN2-xTB через tblite: элементы до Z=86, динамика |
-| `engine/backends/scf.py` | Хартри-Фок и DFT через pyscf: опорная точность |
+| `engine/units.py` | units Å/fs/amu/eV; conversion factors derived from the SI and CODATA definitions |
+| `engine/state.py` | state: Z, coordinates, velocities, cell, charge, spin, frozen atoms |
+| `engine/potential.py` | potential interface plus analytic potentials for checking the integrator |
+| `engine/integrate.py` | NVE (velocity Verlet), NVT (BAOAB), L-BFGS geometry optimisation |
+| `engine/chem.py` | connectivity from bond orders, molecule detection, reaction logging |
+| `engine/md.py` | the driver loop, which fails loudly on a non-numeric state |
+| `engine/backends/gfn2.py` | GFN2-xTB through tblite: elements up to Z = 86, dynamics |
+| `engine/backends/scf.py` | Hartree–Fock and DFT through pyscf: reference accuracy |
 
-Разделение ролей бэкендов **не вкусовое, а измеренное** (см. таблицу ниже): GFN2 везёт
-траекторию, опорный метод считает энергетику разрывов и радикалов.
+The split between backends is not a matter of taste but measured (see the table below): GFN2 drives
+the trajectory, the reference method computes the energetics of bond breaking and radicals.
 
-## Что проверено, и против чего
+## What was checked, and against what
 
-Все числа ниже получены прогонами в `validate/` на этой машине, а не взяты из литературы о
-методе. Опытные значения — из справочников (Huber & Herzberg; Benedict, Gailar & Plyler 1956;
-Herzberg; Harmony 1990; Klopper et al. 2000; Ruscic, Active Thermochemical Tables).
+Every number below comes from runs in `validate/` on this machine, not from the literature on the
+method. Experimental values are from reference works (Huber & Herzberg; Benedict, Gailar & Plyler
+1956; Herzberg; Harmony 1990; Klopper et al. 2000; Ruscic, Active Thermochemical Tables).
 
-### Физика движка (аналитический потенциал с известной производной)
+### Engine physics (an analytic potential with a known derivative)
 
-| проверка | результат |
+| check | result |
 |---|---|
-| переводной множитель а.е.м.·Å²/фс² → эВ | 103.6426957, выведен, не введён |
-| сила против численного градиента, гармоника | расхождение < 1e-6 |
-| сила против численного градиента, Леннард-Джонс | относительное < 1e-4 |
-| сохранение импульса в NVE | дрейф < 1e-10 |
-| порядок точности по шагу | ошибка энергии падает как dt² (отношение дрейфов 2–8 при делении шага вдвое) |
-| период гармонического осциллятора | совпадает с аналитическим в пределах 1 % |
-| термостат BAOAB | держит заданную T в пределах 10 % |
+| conversion factor amu·Å²/fs² to eV | 103.6426957, derived, not typed in |
+| force against numerical gradient, harmonic | difference < 1e-6 |
+| force against numerical gradient, Lennard-Jones | relative < 1e-4 |
+| momentum conservation in NVE | drift < 1e-10 |
+| order of accuracy in the time step | energy error falls as dt² (drift ratio 2–8 when the step is halved) |
+| period of a harmonic oscillator | matches the analytic value within 1 % |
+| BAOAB thermostat | holds the set T within 10 % |
 
-### Химия (GFN2-xTB, равновесная геометрия)
+### Chemistry (GFN2-xTB, equilibrium geometry)
 
-| величина | движок | опыт |
+| quantity | engine | experiment |
 |---|---|---|
-| r(H–H) в H₂ | 0.7767 Å | 0.7414 Å |
-| r(H–H) в H₂, опорный HF/def2-SVP | 0.741 Å | 0.7414 Å |
-| r(O–H), угол H–O–H в H₂O | в пределах 0.03 Å и 3° | 0.9572 Å, 104.52° |
-| r(C–H), углы в CH₄ | в пределах 0.03 Å и 2° | 1.0870 Å, 109.47° |
-| r(C–C) этан / r(C=C) этен / r(C≡C) этин | в пределах 0.03 Å | 1.5351 / 1.3390 / 1.2033 Å |
-| кратность связи (1, 2, 3) | прочитана из порядка связи, нигде не задана | — |
-| энергия связывания димера воды | 3–8 ккал/моль | 5.02 ккал/моль |
-| водородная связь | видна как связь двух молекул, не как ковалентная | — |
+| r(H–H) in H₂ | 0.7767 Å | 0.7414 Å |
+| r(H–H) in H₂, reference HF/def2-SVP | 0.741 Å | 0.7414 Å |
+| r(O–H), H–O–H angle in H₂O | within 0.03 Å and 3° | 0.9572 Å, 104.52° |
+| r(C–H), angles in CH₄ | within 0.03 Å and 2° | 1.0870 Å, 109.47° |
+| r(C–C) ethane / r(C=C) ethene / r(C≡C) ethyne | within 0.03 Å | 1.5351 / 1.3390 / 1.2033 Å |
+| bond multiplicity (1, 2, 3) | read from the bond order, set nowhere | — |
+| binding energy of the water dimer | 3–8 kcal/mol | 5.02 kcal/mol |
+| hydrogen bond | seen as a link between two molecules, not as a covalent bond | — |
 
-### Измеренная граница применимости дешёвого метода
+### The measured limit of the cheap method
 
-| величина | GFN2 | опорный B3LYP/def2-SVP | опыт |
+| quantity | GFN2 | reference B3LYP/def2-SVP | experiment |
 |---|---|---|---|
-| D(O–O) в H₂O₂ → 2 OH | 5.386 эВ | 2.481 эВ | 2.15 эВ |
-| r(O–O) в H₂O₂ | 1.4209 Å | 1.4420 Å | 1.4556 Å |
+| D(O–O) in H₂O₂ → 2 OH | 5.386 eV | 2.481 eV | 2.15 eV |
+| r(O–O) in H₂O₂ | 1.4209 Å | 1.4420 Å | 1.4556 Å |
 
-GFN2 завышает энергию гомолитического разрыва **в 2.4 раза**: сильносвязанный полуэмпирический
-метод без спиновой поляризации плохо описывает радикалы. Отсюда рабочее правило движка, и оно
-закреплено тестом: **динамика — GFN2, энергетика разрывов и радикалов — опорный метод**.
-Открытая оболочка считается неограниченным по спину методом (U), а не ограниченным (RO):
-разница не косметическая, она и даёт правильную энергию разрыва.
+GFN2 overestimates the homolytic bond-breaking energy by a factor of 2.4: a tight-binding
+semi-empirical method without spin polarisation describes radicals poorly. Hence the engine's working
+rule, which a test pins down: dynamics with GFN2, the energetics of bond breaking and radicals with the
+reference method. An open shell is computed with a spin-unrestricted method (U), not a restricted one
+(RO); the difference is not cosmetic, it is what gives the right bond-breaking energy.
 
-### Реакции, обнаруженные движком
+### Reactions detected by the engine
 
-| проверка | результат |
+| check | result |
 |---|---|
-| вода при 300 K, 1000 шагов | ни одной ложной реакции, состав неизменен |
-| ион Цунделя H₅O₂⁺, 350 K | мостиковый протон переходит между кислородами; заряд системы сохранён точно |
-| растяжение O–O | связь исчезает из связности, система читается как две частицы OH |
+| water at 300 K, 1000 steps | not one false reaction, composition unchanged |
+| Zundel ion H₅O₂⁺, 350 K | the bridging proton moves between the oxygens; the system charge is conserved exactly |
+| stretching O–O | the bond disappears from the connectivity, and the system reads as two OH particles |
 
-## Производительность, замерено
+## Performance, measured
 
-Кластер воды, GFN2, NVT, шаг 0.5 фс, `nice -n 15` на этой машине:
+Water cluster, GFN2, NVT, 0.5 fs step, `nice -n 15` on this machine:
 
-| молекул | атомов | шаг/с | мс/шаг |
+| molecules | atoms | steps/s | ms/step |
 |---|---|---|---|
 | 1 | 3 | 67.7 | 14.8 |
 | 4 | 12 | 36.0 | 27.8 |
@@ -90,135 +92,134 @@ GFN2 завышает энергию гомолитического разрыв
 | 32 | 96 | 5.6 | 177.3 |
 | 64 | 192 | 1.6 | 607.3 |
 
-## Потолок честности
+## The honesty ceiling
 
-Это надо прочитать до того, как ждать от движка результата.
+Read this before expecting results from the engine.
 
-- **Масштаб.** При 192 атомах — 1.6 шага в секунду, то есть около 0.8 фс модельного времени в
-  секунду счёта. Час счёта даёт порядка 3 пикосекунд. Самосборка мембраны требует 10⁵–10⁶
-  атомов и микросекунд; это недостижимо на квантовых силах **на любом железе**, а не только на
-  этом. Атомный уровень нужен, чтобы **считать химию** (энергии, барьеры, константы), а не
-  чтобы прогонять сборку.
-- **Редкие события.** Барьер в несколько электронвольт не преодолевается прямой динамикой ни за
-  какое доступное время — это измерено (2000 шагов при 6000 K на H₂O₂ не дают ни одного
-  разрыва). Нужны методы ускоренной выборки: NEB для барьеров, метадинамика для свободной
-  энергии. **В движке их пока нет.**
-- **Точность.** GFN2 — полуэмпирика: длины связей органики порядка сотых долей ангстрема,
-  радикалы плохо (замерено выше). Опорный DFT в малом базисе даёт энергию разрыва с ошибкой
-  около 10 % и без поправки на нулевые колебания.
-- **Чего нет вовсе.** Периодического DFT (периодику везёт только GFN2), возбуждённых состояний,
-  сольватационных моделей, ускоренной выборки, машинных потенциалов для масштаба.
+- Scale. At 192 atoms it runs 1.6 steps per second, about 0.8 fs of model time per second of compute.
+  An hour of compute gives about 3 picoseconds. Membrane self-assembly needs 10⁵–10⁶ atoms and
+  microseconds; that is out of reach with quantum forces on any hardware, not only on this machine.
+  The atomic level is there to compute chemistry (energies, barriers, rate constants), not to run the
+  assembly.
+- Rare events. A barrier of a few electronvolts is not crossed by direct dynamics in any available
+  time; this was measured (2000 steps at 6000 K on H₂O₂ give not one bond break). That needs enhanced
+  sampling: NEB for barriers, metadynamics for free energy. The engine does not have them yet.
+- Accuracy. GFN2 is semi-empirical: organic bond lengths are off by hundredths of an ångström, and
+  radicals are poor (measured above). The reference DFT in a small basis gives bond-breaking energies
+  with an error of about 10 % and without a zero-point correction.
+- What is missing entirely: periodic DFT (only GFN2 handles periodic systems), excited states,
+  solvation models, enhanced sampling, machine-learned potentials for scale.
 
-## Как запустить проверки
+## How to run the checks
 
 ```sh
 cd atomic
 .venv/bin/python -m pytest validate/ -q -m "not slow"
 ```
 
-Окружение: отдельный venv в `atomic/.venv` (python 3.13), пакеты numpy, scipy, ase, tblite,
-pyscf, pytest. Пакет `pyscf-dispersion` НЕ ставить: он несовместим с numpy 2.5 и ломает импорт
-pyscf целиком (проверено).
+Environment: a separate venv in `atomic/.venv` (python 3.13) with numpy, scipy, ase, tblite, pyscf and
+pytest. Do NOT install the `pyscf-dispersion` package: it is incompatible with numpy 2.5 and breaks the
+pyscf import entirely (checked).
 
-## Свой потенциал: что получилось и чего это стоило
+## Our own potential: what came out of it and what it cost
 
-Задача была поставлена так: движок, который **гоняет наши объёмы и остаётся точным**. Ниже --
-что из этого измерено, включая то, что не получилось.
+The task was set as an engine that runs our volumes and stays accurate. Below is what of that was
+measured, including what did not work.
 
-### Точность против учителя (MACE-OFF23) и против опыта
+### Accuracy against the teacher (MACE-OFF23) and against experiment
 
-| величина | наш потенциал | учитель | опыт |
+| quantity | our potential | teacher | experiment |
 |---|---|---|---|
-| r(O–H) в воде | **0.9585 Å** | 0.9589 Å | 0.9572 Å |
-| угол H–O–H | 105.05° | 104.96° | 104.52° |
-| энергия водородной связи | 4.29 ккал/моль | 4.96 | 5.02 |
-| ошибка энергии (кадры из динамики) | 11.5 мэВ/атом | — | — |
-| ошибка сил (кадры из динамики) | 65.0 мэВ/Å | — | — |
-| ошибка сил (случайные кадры) | 108.6 мэВ/Å | — | — |
-| дрейф энергии, NVE 400 шагов | 6.6 % от кинетической | — | — |
+| r(O–H) in water | **0.9585 Å** | 0.9589 Å | 0.9572 Å |
+| H–O–H angle | 105.05° | 104.96° | 104.52° |
+| hydrogen-bond energy | 4.29 kcal/mol | 4.96 | 5.02 |
+| energy error (frames from dynamics) | 11.5 meV/atom | — | — |
+| force error (frames from dynamics) | 65.0 meV/Å | — | — |
+| force error (random frames) | 108.6 meV/Å | — | — |
+| energy drift, NVE 400 steps | 6.6 % of the kinetic energy | — | — |
 
-Геометрию воды модель воспроизводит **точнее своего учителя**. Слабое место названо числом:
-энергия водородной связи занижена на 14 %.
+The model reproduces the water O–H bond length closer to experiment than its teacher does; the angle
+comes out slightly further off. The weak point is named with a number: the hydrogen-bond energy is 14 %
+too low.
 
-### Скорость: 11–31 раз против учителя, и почему не 1000
+### Speed: 11–31 times the teacher, and why not 1000
 
-| атомов | учитель, мс | наш, мс | ускорение |
+| atoms | teacher, ms | ours, ms | speed-up |
 |---|---|---|---|
 | 24 | 102.2 | 3.3 | **31.1×** |
 | 81 | 197.6 | 17.9 | 11.1× |
 | 192 | 886.8 | 55.7 | 15.9× |
 | 375 | 1152.7 | 82.0 | 14.1× |
 
-Замер честный: координаты сдвигаются ПЕРЕД КАЖДЫМ вызовом. Без этого ASE отдаёт кеш и учитель
-показывает 0.1 мс — в эту ловушку я попал дважды, второй раз уже имея её описание в этом же
-файле, поэтому она вынесена сюда отдельной строкой.
+The measurement is honest: the coordinates are moved BEFORE EVERY call. Without that ASE returns its
+cache and the teacher shows 0.1 ms. I fell into this trap twice, the second time with its description
+already in this file, so it gets its own line here.
 
-Путь к этим числам был не прямым, и главный шаг -- отказ от промежуточного тензора: в расчёте
-нужны **силы**, а не производные дескрипторов. Взяв сначала dE/dG (один дешёвый проход сети),
-силы собираются прямо в обходе пар и троек, и тензор N×D×N×3 (десятки миллионов чисел на 192
-атомах) не появляется вовсе. До этой правки наш потенциал был МЕДЛЕННЕЕ учителя на 192 атомах
-(0.90×) -- вся выгода уходила в память.
+The path to these numbers was not direct, and the main step was dropping the intermediate tensor: the
+calculation needs forces, not descriptor derivatives. Taking dE/dG first (one cheap pass through the
+network), the forces are assembled directly in the loop over pairs and triples, and the N×D×N×3 tensor
+(tens of millions of numbers at 192 atoms) never appears. Before this change our potential was SLOWER
+than the teacher at 192 atoms (0.90×): the whole gain went into memory.
 
-Остаток запаса измерен и назван: арифметике на 192 атомах нужно около семи миллионов операций,
-то есть меньше миллисекунды, против нынешних 105. Разница -- сотня запусков ядер на расчёт
-(двенадцать угловых сочетаний × три оси × три накопления). Это снимается портом в WGSL, а не
-дальнейшей возней с тензорами: попытка убрать цикл по атомам НЕ дала ничего (20.3× против 21.9×
-до неё), то есть узкое место было не там.
+The remaining headroom is measured and named: the arithmetic at 192 atoms needs about seven million
+operations, less than a millisecond, against the current 105. The difference is about a hundred kernel
+launches per calculation (twelve angular combinations × three axes × three accumulations). That is
+removed by a port to WGSL, not by more work on the tensors: removing the loop over atoms gave nothing
+(20.3× against 21.9× before it), so the bottleneck was not there.
 
-### Динамика: сколько модельного времени в час
+### Dynamics: how much model time per hour
 
-Слитый путь встроен в бэкенд `engine/backends/student.py`, то есть работает через тот же
-интегратор, что и квантовые вычислители.
+The fused path is built into the backend `engine/backends/student.py`, so it runs through the same
+integrator as the quantum calculators.
 
-| система | наш потенциал | GFN2 (кванты) |
+| system | our potential | GFN2 (quantum) |
 |---|---|---|
-| 192 атома | **37.9 шаг/с — 68.3 пс/час** | 1.6 шаг/с — 3 пс/час |
-| 648 атомов | 10.8 шаг/с — 19.5 пс/час | — |
+| 192 atoms | **37.9 steps/s, 68.3 ps/hour** | 1.6 steps/s, 3 ps/hour |
+| 648 atoms | 10.8 steps/s, 19.5 ps/hour | — |
 
-То есть при почти квантовой точности мы получаем примерно **в 23 раза больше модельного
-времени**, чем даёт полуэмпирическая квантовая механика на той же системе.
+So at close to quantum accuracy we get about **23 times more model time** than semi-empirical quantum
+mechanics gives on the same system.
 
-**Metal (MPS) оказался МЕДЛЕННЕЕ процессора:** 18.0 шаг/с против 37.9 на 192 атомах и 8.6
-против 10.8 на 648. Причина та же, что у облачной карты: расчёт состоит из множества мелких
-операций, и накладные расходы на запуск ядер съедают выигрыш. Результаты устройств при этом
-согласны (ΔE 1.5e-5 эВ на 192 атома, Δсилы 6.0e-6 эВ/Å), то есть это вопрос скорости, а не
-верности. Вывод для порта: выигрыш даст не «перенести на GPU», а **одно большое ядро** вместо
-десятков мелких.
+**Metal (MPS) turned out SLOWER than the CPU:** 18.0 steps/s against 37.9 at 192 atoms, and 8.6 against
+10.8 at 648. The reason is the same as with the cloud GPU: the calculation is many small operations,
+and the kernel-launch overhead eats the gain. The devices agree with each other (ΔE 1.5e-5 eV at 192
+atoms, Δforces 6.0e-6 eV/Å), so this is a question of speed, not of correctness. The conclusion for
+the port: the gain comes not from "moving it to the GPU" but from **one large kernel** instead of
+dozens of small ones.
 
-### Три рычага, которые работают против интуиции
+### Three levers that work against intuition
 
-Каждый проверен на одних и тех же данных, меняя одну величину:
+Each was tested on the same data, changing one quantity:
 
-1. **Радиус обрезания увеличивать вредно.** 6 Å вместо 5 ухудшили силы с 71.5 до 90.6 мэВ/Å:
-   больше окружения при той же ёмкости и тех же данных модель размазывает.
-2. **Ёмкость сети почти не важна.** Рост втрое (48×48 → 128×128×64) дал 85.4 → 83.8 мэВ/Å.
-3. **Угловое разрешение не помогает.** 3 кратности и 2 ширины дают 85.2; пять кратностей --
-   90.5, четыре ширины -- 90.1, и то и другое -- 91.2.
+1. **A larger cutoff radius hurts.** 6 Å instead of 5 made the forces worse, from 71.5 to 90.6 meV/Å:
+   with more surroundings at the same capacity and the same data, the model smears.
+2. **Network capacity hardly matters.** Tripling it (48×48 to 128×128×64) gave 85.4 to 83.8 meV/Å.
+3. **Angular resolution does not help.** 3 multiplicities and 2 widths give 85.2; five multiplicities
+   give 90.5, four widths 90.1, and both together 91.2.
 
-Работает же одно: **радиальное разрешение** (8 → 16 функций: 109.1 → 71.5, а дальше насыщение)
-и **количество данных** для энергии (276 → 8.45 мэВ/атом при росте набора в 13 раз, при этом
-силы не сдвинулись). Симметрийные функции упираются примерно в 65 мэВ/Å; чтобы пройти ниже,
-нужна другая форма дескрипторов (ACE-подобная, с настоящими угловыми моментами), а не больше
-того же.
+What works is one thing: **radial resolution** (8 to 16 functions: 109.1 to 71.5, then saturation) and
+the **amount of data** for the energy (276 to 8.45 meV/atom as the set grew 13 times, while the forces
+did not move). Symmetry functions level off at about 65 meV/Å; getting lower needs a different form of
+descriptor (ACE-like, with real angular momenta), not more of the same.
 
-### Ловушка, которую я создал сам
+### The trap I built myself
 
-Отвязав набор конфигураций от динамики, конвейер ускорился примерно в 2200 раз -- и потерял то,
-что динамика давала бесплатно: **физичность геометрии**. Случайная выборка ставила атомы на
-0.394 Å, силы доходили до 1.1e7 эВ/Å, и обучение уходило в мусор (невязка 2.9e15) -- испорчена
-была четверть кадров. Защита теперь двойная: пределы расстояний по ВСЕМ парам при выборке (0.75 Å
-для связанных, 1.35 Å для несвязанных) и отбраковка по силе выше 50 эВ/Å после разметки, с
-обязательной печатью числа выброшенных.
+Decoupling the set of configurations from the dynamics sped the pipeline up about 2200 times, and lost
+what the dynamics gave for free: **physical geometry**. Random sampling put atoms 0.394 Å apart, forces
+reached 1.1e7 eV/Å, and training went to garbage (residual 2.9e15): a quarter of the frames were
+ruined. The protection is now twofold: distance limits over ALL pairs during sampling (0.75 Å for bonded
+pairs, 1.35 Å for non-bonded ones) and rejection of forces above 50 eV/Å after labelling, with the
+number of rejected frames always printed.
 
-### Где считать: замер, а не привычка
+### Where to compute: a measurement, not a habit
 
-| где | скорость учителя |
+| where | teacher speed |
 |---|---|
-| этот процессор | **460** атом-расчётов/с |
-| Kaggle, процессор | 103 |
+| this CPU | **460** atom-calculations/s |
+| Kaggle, CPU | 103 |
 | Kaggle, Tesla P100 | 22–92 |
 
-Облако для этой задачи проигрывает вчистую: на системах из десятков атомов накладные расходы
-больше самого счёта, и большая карта простаивает. Пакетная разметка на процессоре тоже почти не
-помогает и при больших пакетах вредит (413 → 523 → 288 атом-расчётов/с при пакетах 1, 8, 64).
-Облако имеет смысл там, где работа крупная и однородная, а не на мелких кластерах.
+The cloud loses outright for this task: on systems of tens of atoms the overhead is larger than the
+computation itself, and the big card sits idle. Batched labelling on the CPU hardly helps either, and
+with large batches it hurts (413, 523, 288 atom-calculations/s at batches of 1, 8, 64). The cloud makes
+sense where the work is large and uniform, not on small clusters.
