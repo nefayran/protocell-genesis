@@ -1,11 +1,24 @@
 {
   "name": "protocell-genesis",
   "private": true,
+  "description": "A WebGPU primordial-soup simulation with pass criteria fixed before the runs: the soup assembles, the vesicle never closes, and the cause is measured.",
+  "license": "MIT",
+  "author": "Rodion Kazennov",
+  "homepage": "https://nefayran.github.io/protocell-genesis/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nefayran/protocell-genesis.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit -p .",
     "test": "vitest run",
-    "verify": "vite build && tsx verify/run.ts"
+    "test:cpu": "vitest run --config vitest.cpu.config.ts",
+    "verify": "vite build && tsx verify/run.ts",
+    "gallery:export": "vite-node soup/cli/export-gallery.ts",
+    "media": "node docs/media/render.mjs"
   },
   "devDependencies": {
     "@types/three": "^0.169.0",
