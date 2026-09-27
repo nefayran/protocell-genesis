@@ -1,15 +1,23 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>protocell-genesis — управление прогоном</title>
+<title>protocell-genesis · live run</title>
 <style>
   html, body { margin: 0; height: 100%; background: #0b0d10; color: #e7e9ec; font-family: system-ui, sans-serif; overflow: hidden; }
   #scene { position: absolute; inset: 0; display: block; }
+  /* The three left panels (#controls, #cavity, #aggregates) share one scrolling column. They used to
+     sit at hand-maintained absolute offsets, and three times a taller #controls ended up under the
+     next panel, which silently ate the clicks meant for START/PAUSE/STOP (tests/run-ui.test.ts probes
+     document.elementFromPoint() over each button). A flex column cannot overlap itself, so no offset
+     has to be re-derived when a panel grows. */
+  #left {
+    position: absolute; top: 12px; left: 12px; bottom: 12px; z-index: 2; width: 270px;
+    display: flex; flex-direction: column; gap: 10px; overflow-y: auto;
+  }
   #controls {
-    position: absolute; top: 12px; left: 12px; z-index: 2;
     background: rgba(15, 17, 20, 0.9); border: 1px solid #333; border-radius: 8px;
-    padding: 12px 14px; width: 260px; font-size: 13px;
+    padding: 12px 14px; font-size: 13px;
   }
   #controls .title { font-weight: 600; margin-bottom: 6px; }
   #controls label { display: block; margin-top: 8px; }
@@ -40,27 +48,7 @@
     white-space: pre;
   }
 
-  /* Below #controls, same left column -- #controls' own content never exceeds this offset at this
-     font size, and this panel's own bottom notes (honesty/visibility/atom-badge) are anchored from
-     the viewport's bottom edge instead, so the two never compete for the same vertical band.
-     Item 3 (2026-08 UI-fixes task) added two more label/input rows plus a preview/error line to
-     #controls -- this offset was 300px, sized for the OLD two-field #controls; left as-is it let
-     this panel silently overlap #controls' own START/PAUSE/STOP buttons (same z-index, painted on
-     top since it comes later in the DOM), which doesn't just look wrong -- it eats every click
-     meant for those buttons. Bumped with real headroom for the taller panel, including #size-error
-     when a refused selection makes it visible. Item "composition control" (2026-08-17) added one
-     more label/input row (#head-count-input) -- bumped again by the same one-row increment. The
-     solvent-visibility checkbox (#water-visible-input, 2026-08-18) is one more such row: bumped by
-     the same increment again, for the same click-eating reason. Task 'consolidation' (2026-08-20)
-     hit this trap a THIRD time and paid a probe run for it: no new row, just #size-preview growing
-     from one line to three (it now states the solvent density the run will actually use), and the
-     very first headless run of the page after that change never started at all -- state stayed
-     'idle', the trace stayed empty, because the click landed on #cavity instead of #start-btn.
-     Bumped again for this task's own extra row (#clay-enabled-input) plus real headroom, and the
-     probe now checks the ground truth instead of the arithmetic: document.elementFromPoint() over
-     each button's own centre must come back as that button. */
   #cavity {
-    position: absolute; top: 620px; left: 12px; z-index: 2; width: 260px;
     background: rgba(15, 17, 20, 0.92); border: 1px solid #2b6f5e; border-radius: 8px;
     padding: 10px 14px; font-size: 12px; line-height: 1.5;
   }
@@ -74,9 +62,8 @@
 
   /* Per-aggregate panel (task-3c/per-aggregate-report): WHY a stage did or did not fire -- see this
      file's honesty notes for the same "show numbers, not narrative" convention every other panel
-     here already follows. Positioned below #cavity, same left column. */
+     here already follows. Below #cavity in the same left column. */
   #aggregates {
-    position: absolute; top: 830px; left: 12px; z-index: 2; width: 260px; max-height: 260px; overflow-y: auto;
     background: rgba(15, 17, 20, 0.92); border: 1px solid #5a4a8a; border-radius: 8px;
     padding: 10px 14px; font-size: 12px; line-height: 1.5;
   }
@@ -90,8 +77,8 @@
   /* Honesty note and visibility note: same treatment as every other viewer's honesty badge --
      always visible, never a tooltip.
 
-     Task 'consolidation' (2026-08-20): `left` moved from 12px to 288px, i.e. clear of the 260px-wide
-     left control column entirely, and this is a BUG FIX, not styling. These notes are anchored to
+     Task 'consolidation' (2026-08-20): `left` moved from 12px to 288px, i.e. clear of the 270px-wide
+     left column entirely, and this is a BUG FIX, not styling. These notes are anchored to
      the viewport's BOTTOM and spanned the full width, so on a short viewport they painted over
      whatever the bottom of #controls happened to be -- and since they come later in the DOM at the
      same z-index, they won every click landing there. Measured, not reasoned: at the 800x600 headless
@@ -138,23 +125,24 @@
 <body>
 <canvas id="scene"></canvas>
 
+<div id="left">
 <div id="controls">
-  <div class="title">Управление прогоном</div>
-  <label>Заготовка (заполняет поля ниже)
+  <div class="title">Run control</div>
+  <label>Preset (fills the fields below)
     <select id="size-select"></select>
   </label>
-  <label>Сторона бокса, σ
+  <label>Box side, σ
     <input id="box-side-input" type="number" min="1" step="1" />
   </label>
-  <label>Масштаб числа частиц (C/H/M), ×
+  <label>Particle count scale (C/H/M), ×
     <input id="particle-scale-input" type="number" min="0.1" step="0.1" />
   </label>
-  <label>Число голов (O) — состав, не масштаб
+  <label>Head count (O): composition, not scale
     <input id="head-count-input" type="number" min="0" step="1" />
   </label>
   <label style="display: flex; align-items: center; gap: 6px;">
     <input id="water-visible-input" type="checkbox" style="width: auto; margin-top: 0;" />
-    Рисовать воду (W) — дорого для машины
+    Draw water (W): expensive to render
   </label>
   <!-- Task 'consolidation' (2026-08-20): the clay platelet was in every run this page could start
        and in NO measurement this project published -- every arm of all eight campaigns ran
@@ -162,62 +150,63 @@
        label that says which of the two the run matches, instead of being a silent default. -->
   <label style="display: flex; align-items: center; gap: 6px;">
     <input id="clay-enabled-input" type="checkbox" style="width: auto; margin-top: 0;" />
-    Пластина глины (K) — в опубликованных замерах её НЕТ
+    Clay plate (K): NOT in the published measurements
   </label>
   <div id="size-preview" class="size-note"></div>
   <div id="size-error" class="size-note error" hidden></div>
-  <label>Целевая стадия
+  <label>Target stage
     <select id="stage-select"></select>
   </label>
-  <label>Предел шагов
+  <label>Step cap
     <input id="step-cap" type="number" min="100" step="100" />
   </label>
   <div class="buttons">
-    <button id="start-btn">СТАРТ</button>
-    <button id="pause-btn" disabled>ПАУЗА</button>
-    <button id="stop-btn" disabled>СТОП</button>
+    <button id="start-btn">START</button>
+    <button id="pause-btn" disabled>PAUSE</button>
+    <button id="stop-btn" disabled>STOP</button>
   </div>
 </div>
 
+
+<div id="cavity">
+  <div class="title">Cavity (flood-fill detector)</div>
+  <div class="row"><span>cavities found</span><span id="cavity-count">0</span></div>
+  <div class="row"><span>largest, cells</span><span id="cavity-voxels">–</span></div>
+  <div class="row"><span>volume, σ³</span><span id="cavity-volume">–</span></div>
+  <div class="row"><span>equivalent radius, σ</span><span id="cavity-radius">–</span></div>
+  <div class="row"><span>centre, σ</span><span id="cavity-centre">–</span></div>
+  <button id="cavity-aim-btn" disabled>AIM THE CAMERA AT THE CAVITY</button>
+  <div id="cavity-honesty"></div>
+</div>
+
+<div id="aggregates">
+  <div class="title">Aggregates (why the stage fired or not)</div>
+  <div class="row"><span>aggregates found</span><span id="agg-count">0</span></div>
+  <div class="row"><span>qualifying (≥ threshold)</span><span id="agg-qualifying">0</span></div>
+  <div class="row"><span>amphiphile share in them</span><span id="agg-share">–</span></div>
+  <div class="row"><span>lamellar present</span><span id="agg-lamellar">–</span></div>
+  <div class="row"><span>vesicle present</span><span id="agg-vesicle">–</span></div>
+  <div id="aggregate-histogram"></div>
+  <div id="aggregate-detail"></div>
+</div>
+</div>
 <div id="progress">
-  <div class="row"><span>статус</span><span id="state-value">простой</span></div>
-  <div class="row"><span>шагов</span><span id="steps-value">0</span></div>
-  <div class="row"><span>шагов/с (изм.)</span><span id="sps-value">–</span></div>
-  <div class="row"><span>прошло (реал.)</span><span id="elapsed-value">0:00</span></div>
-  <div class="row"><span>осталось (оцен.)</span><span id="eta-value">–</span></div>
-  <div class="row"><span>стадия</span><span id="stage-value">monomers</span></div>
+  <div class="row"><span>status</span><span id="state-value">idle</span></div>
+  <div class="row"><span>steps</span><span id="steps-value">0</span></div>
+  <div class="row"><span>steps/s (measured)</span><span id="sps-value">–</span></div>
+  <div class="row"><span>elapsed (wall clock)</span><span id="elapsed-value">0:00</span></div>
+  <div class="row"><span>remaining (estimate)</span><span id="eta-value">–</span></div>
+  <div class="row"><span>stage</span><span id="stage-value">monomers</span></div>
   <div id="ladder"></div>
   <div id="evidence"></div>
   <div id="trace-log"></div>
 </div>
 
-<div id="cavity">
-  <div class="title">Полость (детектор заливкой)</div>
-  <div class="row"><span>найдено полостей</span><span id="cavity-count">0</span></div>
-  <div class="row"><span>крупнейшая, ячеек</span><span id="cavity-voxels">–</span></div>
-  <div class="row"><span>объём, σ³</span><span id="cavity-volume">–</span></div>
-  <div class="row"><span>экв. радиус, σ</span><span id="cavity-radius">–</span></div>
-  <div class="row"><span>центр, σ</span><span id="cavity-centre">–</span></div>
-  <button id="cavity-aim-btn" disabled>НАВЕСТИ КАМЕРУ НА ПОЛОСТЬ</button>
-  <div id="cavity-honesty"></div>
-</div>
-
-<div id="aggregates">
-  <div class="title">Агрегаты (почему стадия сработала/нет)</div>
-  <div class="row"><span>агрегатов найдено</span><span id="agg-count">0</span></div>
-  <div class="row"><span>квалифиц. (≥ порога)</span><span id="agg-qualifying">0</span></div>
-  <div class="row"><span>доля амф. в них</span><span id="agg-share">–</span></div>
-  <div class="row"><span>есть ламелл.</span><span id="agg-lamellar">–</span></div>
-  <div class="row"><span>есть везикулярн.</span><span id="agg-vesicle">–</span></div>
-  <div id="aggregate-histogram"></div>
-  <div id="aggregate-detail"></div>
-</div>
-
 <div id="notes">
   <div id="atom-badge"></div>
-  <div id="visibility-note">Пока эта заметка синяя — вкладка видима, счёт идёт. Как только вкладка уходит из
-    видимости (переключение окна/таба), прогон автоматически ставится на паузу и не грузит GPU в фоне;
-    при возврате на вкладку он сам продолжается — но только если это была автопауза, а не ручная.</div>
+  <div id="visibility-note">While this note is blue the tab is visible and the run is computing. As soon as the
+    tab goes out of view (another window or tab), the run pauses by itself and stops loading the GPU; back on
+    the tab it resumes by itself, but only if the pause was automatic, not manual.</div>
   <div id="honesty-note"></div>
 </div>
 

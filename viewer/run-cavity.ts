@@ -126,13 +126,13 @@ export function createCavityPanel(
   initCollapsibleNote(
     cavityHonestyEl,
     'cavity-honesty',
-    'ЧЕСТНО: полость из клеток сетки — карман между бидами, не внутренность везикулы.',
+    'HONESTLY: a cavity made of grid cells is a pocket between beads, not the inside of a vesicle.',
   )(
-    `ЧЕСТНО: полость из нескольких клеток сетки — это карман между бидами, а не внутренность ` +
-      `везикулы. Порог считается физически: минимальный объём — это шар радиусом, ПРЕВЫШАЮЩИМ ` +
-      `измеренную толщину бислоя (data/literature.json's closure gate, ≈${thresholds.enclosedVolume.toFixed(2)} σ³ ` +
-      `≈ ${equivalentSphereRadius(thresholds.enclosedVolume).toFixed(2)}σ экв. радиуса) — меньшая полость ` +
-      `физически не может быть внутренностью мембраны, которая должна её огибать.`,
+    `HONESTLY: a cavity of a few grid cells is a pocket between beads, not the inside of a vesicle. ` +
+      `The threshold is physical: the minimum volume is a sphere whose radius EXCEEDS the measured ` +
+      `bilayer thickness (data/literature.json's closure gate, ≈${thresholds.enclosedVolume.toFixed(2)} σ³ ` +
+      `≈ ${equivalentSphereRadius(thresholds.enclosedVolume).toFixed(2)}σ equivalent radius); a smaller cavity ` +
+      `cannot physically be the inside of a membrane that has to wrap around it.`,
   )
 
   function paint(): void {

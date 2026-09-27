@@ -115,7 +115,7 @@ export function createRunLifecycle(
     rt.activeElapsedMs = currentElapsedMs(rt) // freeze the clock BEFORE the state flip changes what it reads
     setState('stopped')
     paint()
-    readout.appendTraceLine(`[остановлено] ${reason}`)
+    readout.appendTraceLine(`[stopped] ${reason}`)
     // Release this run's GPUBuffers now, not just before the NEXT run starts -- a run that is
     // stopped and never restarted should not hold ~20 buffers on the shared device indefinitely.
     rt.activeSys?.dispose()
@@ -125,12 +125,12 @@ export function createRunLifecycle(
   function failRun(reason: string, kind: 'timeout' | 'exception'): void {
     rt.runGeneration++
     rt.activeElapsedMs = currentElapsedMs(rt)
-    const message = `${reason} (пройдено шагов: ${rt.runUI.steps})`
+    const message = `${reason} (steps done: ${rt.runUI.steps})`
     rt.runUI.error = message
     rt.runUI.errorKind = kind
     setState('error')
     paint()
-    readout.appendTraceLine(`[ошибка] ${message}`)
+    readout.appendTraceLine(`[error] ${message}`)
     console.error('[viewer/run] simDriver failed:', message)
     rt.activeSys?.dispose()
     rt.activeSys = null
@@ -147,13 +147,13 @@ export function createRunLifecycle(
         }
         const batch = Math.min(STEP_BATCH, rt.stepCap - rt.runUI.steps)
         if (batch <= 0) {
-          finishRun('предел шагов достигнут')
+          finishRun('step cap reached')
           return
         }
         const stepResult = await stepWithWatchdog(mySys, batch)
         if (rt.runGeneration !== myGeneration) return
         if (stepResult === 'timeout') {
-          failRun(`GPU не отвечает: step() не вернулся за ${(STEP_WATCHDOG_MS / 1000).toFixed(0)}с`, 'timeout')
+          failRun(`the GPU is not responding: step() did not return within ${(STEP_WATCHDOG_MS / 1000).toFixed(0)} s`, 'timeout')
           return
         }
         rt.runUI.steps += batch
@@ -177,10 +177,10 @@ export function createRunLifecycle(
           cavityCount: rt.lastCavityCount,
         }
         readout.setAtomBadgeFull(
-          `Скелет реконструированных атомов взят из ПРОВЕРЕННОЙ огрублённой динамики бульона; атомная ` +
-            `геометрия — литературные длины связей/углы (chem/src/backmap.ts), не независимая ` +
-            `атомистическая симуляция. Атом за атомом показано ${atomistic.length} из ${amphiphiles.length} ` +
-            `найденных амфифилов (остальные — те же коарс-грейн мономеры).`,
+          `The skeleton of the reconstructed atoms comes from the VERIFIED coarse-grained dynamics of the ` +
+            `soup; the atomic geometry uses literature bond lengths and angles (chem/src/backmap.ts), not an ` +
+            `independent atomistic simulation. Shown atom by atom: ${atomistic.length} of ${amphiphiles.length} ` +
+            `amphiphiles found (the rest are the same coarse-grained monomers).`,
         )
 
         if (rt.sampleDue || now - rt.lastSampleAt >= SAMPLE_INTERVAL_MS) {
@@ -215,11 +215,11 @@ export function createRunLifecycle(
           rt.latestSnapshot.cavityCount = cavityCount
 
           readout.appendTraceLine(
-            `шаг=${entry.steps} стадия=${stage} амф=${evidence.amphiphileFraction.toFixed(4)} ` +
-              `агр=${evidence.largestAggregateFraction.toFixed(4)} пики=${
-                evidence.headPeaks === HEAD_PEAKS_UNAVAILABLE ? 'н/д' : evidence.headPeaks
-              } объём=${evidence.enclosedVolume.toFixed(4)} полостей=${cavityCount} ` +
-              `крупн.полость.вокс=${cavity?.voxelCount ?? 0}`,
+            `step=${entry.steps} stage=${stage} amph=${evidence.amphiphileFraction.toFixed(4)} ` +
+              `agg=${evidence.largestAggregateFraction.toFixed(4)} peaks=${
+                evidence.headPeaks === HEAD_PEAKS_UNAVAILABLE ? 'n/a' : evidence.headPeaks
+              } volume=${evidence.enclosedVolume.toFixed(4)} cavities=${cavityCount} ` +
+              `largest_cavity_voxels=${cavity?.voxelCount ?? 0}`,
           )
 
           paint()
@@ -229,8 +229,8 @@ export function createRunLifecycle(
           if (STAGES.indexOf(stage) >= STAGES.indexOf(rt.targetStage)) {
             finishRun(
               stage === rt.targetStage
-                ? `целевая стадия «${STAGE_LABEL[rt.targetStage]}» достигнута`
-                : `стадия «${STAGE_LABEL[stage]}» достигнута, это не ниже цели «${STAGE_LABEL[rt.targetStage]}»`,
+                ? `target stage "${STAGE_LABEL[rt.targetStage]}" reached`
+                : `stage "${STAGE_LABEL[stage]}" reached, which is not below the target "${STAGE_LABEL[rt.targetStage]}"`,
             )
             return
           }
@@ -238,7 +238,7 @@ export function createRunLifecycle(
       }
     } catch (err) {
       if (rt.runGeneration !== myGeneration) return // a superseded generation's own error, not this run's
-      failRun(`ошибка в цикле прогона: ${(err as Error).message}`, 'exception')
+      failRun(`error in the run loop: ${(err as Error).message}`, 'exception')
     }
   }
 

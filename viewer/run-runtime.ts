@@ -45,8 +45,8 @@ export interface RunRuntime {
   lastCavityCount: number
 
   // Wall-clock bookkeeping: elapsed only accumulates while ACTUALLY running (not paused, not
-  // hidden-auto-paused) -- pausing must freeze the clock, not just stop the step counter, or "прошло"
-  // would silently include idle time and make "шагов/с" look wrong.
+  // hidden-auto-paused) -- pausing must freeze the clock, not just stop the step counter, or "elapsed"
+  // would silently include idle time and make "steps/s" look wrong.
   activeElapsedMs: number
   lastResumeAt: number
   lastSampleAt: number

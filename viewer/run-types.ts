@@ -43,7 +43,7 @@ export const MAX_TRACE_LINES = 300
 // in this page ever destroyed a finished run's GPUBuffers before starting the next one, so a
 // second SoupSystem's own step() could, in principle, hit the SAME "await never settles" failure
 // mode this project has already seen once, or any OTHER unexpected exception, and previously that
-// left the page silently stuck at "идёт" forever with no visible sign anything was wrong. This
+// left the page silently stuck at "running" forever with no visible sign anything was wrong. This
 // bounds that: if step() has not returned by this deadline, the run is declared wedged instead of
 // waiting forever. 15s is generous margin -- STEP_BATCH=250 measured at ~500-2300 steps/s for
 // every preset this page offers (well under 1s/batch) -- while still surfacing a real hang to the
@@ -165,12 +165,12 @@ export function liquidSolventCount(box: [number, number, number]): number {
 // preset here does.
 export const SIZE_PRESETS: Record<string, SizePreset> = {
   tiny: {
-    label: 'малый (проверочный, ~3940 частиц: 470 органики + 3277 воды при 0.8 σ⁻³ + пластина глины 191)',
+    label: 'small (check run, ~3,940 particles: 470 organic + 3,277 water at 0.8 σ⁻³ + clay plate of 191)',
     box: [16, 16, 16],
     start: { C: 200, O: 50, H: 200, M: 20 },
   },
   default: {
-    label: 'стандартный бульон + глина, вода при 0.8 σ⁻³ (~25900 частиц — ДОРОГО)',
+    label: 'standard soup + clay, water at 0.8 σ⁻³ (~25,900 particles, EXPENSIVE)',
     box: [30, 30, 30],
     start: { C: 1500, O: 500, H: 1500, M: 100 },
   },
@@ -212,10 +212,10 @@ export interface RunUI {
   error: string | null
   /** Non-null exactly when state === 'error' -- WHICH of the two distinct failure modes this was,
    * so the status line can name what actually happened instead of a fixed guess (item 1b, 2026-08
-   * crash report: the watchdog and an exception used to share one hardcoded "GPU не отвечает"
+   * crash report: the watchdog and an exception used to share one hardcoded "GPU not responding"
    * label, which was a lie whenever the real cause was an exception in metric code -- see
    * run-control-panel.ts's setState()'s own use of this field). 'timeout': stepWithWatchdog's
-   * deadline fired, the GPU-bound step() call itself never returned -- "GPU не отвечает" is an
+   * deadline fired, the GPU-bound step() call itself never returned -- "the GPU is not responding" is an
    * honest description ONLY of this case. 'exception': something in the sample/step loop THREW
    * (its own message is what `error` carries) -- the GPU answered fine; the failure is in this
    * page's own code. */
@@ -320,11 +320,11 @@ export function formatElapsed(ms: number): string {
 
 export function elementColor(element: string): THREE.Color {
   const info = atomsData.elements[element]
-  if (!info) throw new Error(`viewer/run: неизвестный элемент "${element}" в data/atoms.json`)
+  if (!info) throw new Error(`viewer/run: unknown element "${element}" in data/atoms.json`)
   return new THREE.Color(info.color)
 }
 export function elementRadius(element: string): number {
   const info = atomsData.elements[element]
-  if (!info) throw new Error(`viewer/run: неизвестный элемент "${element}" в data/atoms.json`)
+  if (!info) throw new Error(`viewer/run: unknown element "${element}" in data/atoms.json`)
   return info.vdw * ATOM_RADIUS_SCALE
 }

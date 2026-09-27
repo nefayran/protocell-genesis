@@ -25,7 +25,7 @@
 //                         evidence, per-aggregate panel, trace log) and the collapsible honesty-note/
 //                         atom-badge notes.
 //  - run-sim-driver.ts -- the run-control panel's sim-stepping half: simDriver's bounded-batch async
-//                         loop, its watchdog (must not attribute every failure to "GPU не отвечает" --
+//                         loop, its watchdog (must not attribute every failure to "GPU not responding" --
 //                         see RunUI.errorKind's own doc comment), the atomistic-slice reconstruction,
 //                         and how a run ends (finishRun/failRun), including the restart path that lets
 //                         a new run start after one finished (SoupSystem.dispose()).

@@ -200,23 +200,23 @@ export function createControlPanel(
     // SAME guarantee this task's other two guards already have: a clear message, never a crash.
     if (startCounts.O < 0) {
       reasons.push(
-        `число голов (O)=${startCounts.O} — состав не может быть отрицательным; введите 0 или больше`,
+        `head count (O)=${startCounts.O}: a composition cannot be negative; enter 0 or more`,
       )
     }
     const totalN = Object.values(startCounts).reduce((a, b) => a + b, 0)
     if (totalN <= 0) {
-      reasons.push(`стартовый состав пуст: суммарное число частиц по всем видам равно ${totalN}`)
+      reasons.push(`the starting composition is empty: the particle count summed over all species is ${totalN}`)
     }
     const plan = planSoupGrid(boxNow, startCounts)
     if (!plan.valid) reasons.push(plan.reason!)
     const minSide = closureMinBoxSide()
     if (Math.min(...boxNow) < minSide) {
       reasons.push(
-        `бокс слишком мал для полости-кандидата в везикулу: наименьшая сторона (${Math.min(...boxNow).toFixed(2)}σ) ` +
-          `должна быть не меньше ${minSide.toFixed(2)}σ (2×(экв. радиус минимальной полости ` +
-          `${equivalentSphereRadius(thresholds.enclosedVolume).toFixed(2)}σ + минимальная толщина стенки ` +
-          `${thresholds.headPeakSeparationMin}σ)) — иначе замкнутый объём порога закрытия физически не поместится, ` +
-          `независимо от того, сколько шагов прогон сделает`,
+        `box too small for a vesicle-candidate cavity: the shortest side (${Math.min(...boxNow).toFixed(2)}σ) ` +
+          `must be at least ${minSide.toFixed(2)}σ (2×(equivalent radius of the minimum cavity ` +
+          `${equivalentSphereRadius(thresholds.enclosedVolume).toFixed(2)}σ + minimum wall thickness ` +
+          `${thresholds.headPeakSeparationMin}σ)); otherwise the closure threshold's enclosed volume physically cannot ` +
+          `fit, however many steps the run takes`,
       )
     }
     return reasons.length > 0 ? reasons.join('\n') : null
@@ -243,9 +243,9 @@ export function createControlPanel(
     // labels that still say which density is which (LIQUID_SOLVENT_DENSITY's doc comment carries
     // the measurement, and the honesty note carries the limitation).
     sizePreviewEl.textContent =
-      `частиц: ${plan.N} (${perSpecies}) · сетка ${plan.dims[0]}×${plan.dims[1]}×${plan.dims[2]}=${plan.ncells} · ` +
-      `ρ_раств ${(solventN / boxVolume).toFixed(3)} (жидкость ${LIQUID_SOLVENT_DENSITY}, из бокса) · ` +
-      `ρ_полная ${(plan.N / boxVolume).toFixed(3)} σ⁻³`
+      `particles: ${plan.N} (${perSpecies}) · grid ${plan.dims[0]}×${plan.dims[1]}×${plan.dims[2]}=${plan.ncells} · ` +
+      `ρ_solvent ${(solventN / boxVolume).toFixed(3)} (liquid ${LIQUID_SOLVENT_DENSITY}, from the box) · ` +
+      `ρ_total ${(plan.N / boxVolume).toFixed(3)} σ⁻³`
     const reason = validateSizeSelection(boxNow, startCounts)
     sizeErrorEl.hidden = reason === null
     sizeErrorEl.textContent = reason ?? ''
@@ -294,31 +294,31 @@ export function createControlPanel(
   stepCapInput.value = String(DEFAULT_STEP_CAP)
 
   // Item 1b (2026-08 crash report): the status line must not name a cause it does not know. Before
-  // this fix every 'error' state rendered the SAME hardcoded "GPU не отвечает", true only for a
+  // this fix every 'error' state rendered the SAME hardcoded "GPU not responding", true only for a
   // genuine watchdog timeout -- an exception thrown inside the sample loop (e.g. a metric function
   // rejecting bad data) got the identical label, misattributing the failure to a GPU that had, in
   // fact, answered every command. rt.runUI.errorKind (set by failRun, one call site per cause) is
   // what this now reads instead of guessing.
   function errorLabel(): string {
-    if (rt.runUI.errorKind === 'timeout') return 'ОШИБКА — GPU не отвечает'
-    return `ОШИБКА — сбой в коде: ${rt.runUI.error ?? 'неизвестная ошибка'}`
+    if (rt.runUI.errorKind === 'timeout') return 'ERROR: the GPU is not responding'
+    return `ERROR in the code: ${rt.runUI.error ?? 'unknown error'}`
   }
 
   function setState(s: RunState): void {
     rt.runUI.state = s
     stateValue.textContent =
       s === 'idle'
-        ? 'простой'
+        ? 'idle'
         : s === 'running'
-          ? 'идёт'
+          ? 'running'
           : s === 'paused'
-            ? 'пауза'
+            ? 'paused'
             : s === 'error'
               ? errorLabel()
-              : 'остановлен'
+              : 'stopped'
     startBtn.disabled = s === 'running' || s === 'paused'
     pauseBtn.disabled = s !== 'running' && s !== 'paused'
-    pauseBtn.textContent = s === 'paused' ? 'ПРОДОЛЖИТЬ' : 'ПАУЗА'
+    pauseBtn.textContent = s === 'paused' ? 'RESUME' : 'PAUSE'
     stopBtn.disabled = s !== 'running' && s !== 'paused'
     const controlsLocked = s === 'running' || s === 'paused'
     sizeSelect.disabled = controlsLocked
@@ -386,8 +386,8 @@ export function createControlPanel(
 
     setState('running')
     readout.appendTraceLine(
-      `[старт] бокс=${rt.box[0]}×${rt.box[1]}×${rt.box[2]} цель=${rt.targetStage} предел_шагов=${rt.stepCap} ` +
-        `глина=${clayEnabledInput.checked ? 'да (в опубликованных замерах НЕТ)' : 'нет (как в опубликованных замерах)'}`,
+      `[start] box=${rt.box[0]}×${rt.box[1]}×${rt.box[2]} target=${rt.targetStage} step_cap=${rt.stepCap} ` +
+        `clay=${clayEnabledInput.checked ? 'yes (NOT in the published measurements)' : 'no (as in the published measurements)'}`,
     )
 
     const sys = await createSoup({
@@ -408,9 +408,9 @@ export function createControlPanel(
     // before the trajectory the measurements are read off.
     const relax = await sys.relaxColdStart()
     readout.appendTraceLine(
-      `[минимизация] итераций=${relax.iterations} max|F| ${relax.maxForceBefore.toExponential(3)} -> ` +
-        `${relax.maxForceAfter.toExponential(3)} граница_смещения=${relax.displacementBound.toFixed(3)}σ ` +
-        `нефинитных ${relax.nonFiniteBefore}/${relax.nonFiniteAfter}`,
+      `[minimisation] iterations=${relax.iterations} max|F| ${relax.maxForceBefore.toExponential(3)} -> ` +
+        `${relax.maxForceAfter.toExponential(3)} displacement_bound=${relax.displacementBound.toFixed(3)}σ ` +
+        `non-finite ${relax.nonFiniteBefore}/${relax.nonFiniteAfter}`,
     )
     rt.activeSys = sys
     const n = Object.values(startCounts).reduce((a, b) => a + b, 0)
@@ -436,13 +436,13 @@ export function createControlPanel(
   }
 
   function stopRun(): void {
-    getLifecycle().finishRun('остановлено пользователем')
+    getLifecycle().finishRun('stopped by the user')
   }
 
   startBtn.addEventListener('click', () => {
     startRun().catch((err) => {
       console.error(err)
-      readout.appendTraceLine(`[ошибка] ${(err as Error).message}`)
+      readout.appendTraceLine(`[error] ${(err as Error).message}`)
       setState('stopped')
     })
   })
@@ -461,13 +461,13 @@ export function createControlPanel(
         paint()
       }
       visibilityNoteEl.classList.add('active')
-      visibilityNoteEl.textContent = 'Вкладка скрыта — прогон на автопаузе, GPU не грузится в фоне.'
+      visibilityNoteEl.textContent = 'Tab hidden: the run is auto-paused and the GPU is idle in the background.'
     } else {
       visibilityNoteEl.classList.remove('active')
       visibilityNoteEl.textContent =
-        'Пока эта заметка синяя — вкладка видима, счёт идёт. Как только вкладка уходит из видимости ' +
-        '(переключение окна/таба), прогон автоматически ставится на паузу и не грузит GPU в фоне; при ' +
-        'возврате на вкладку он сам продолжается — но только если это была автопауза, а не ручная.'
+        'While this note is blue the tab is visible and the run is computing. As soon as the tab goes out ' +
+        'of view (another window or tab), the run pauses by itself and stops loading the GPU; back on the ' +
+        'tab it resumes by itself, but only if the pause was automatic, not manual.'
       if (rt.autoPausedByVisibility && rt.runUI.state === 'paused') {
         rt.autoPausedByVisibility = false
         rt.lastResumeAt = performance.now()

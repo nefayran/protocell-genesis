@@ -142,8 +142,8 @@ export function planSoupGrid(box: [number, number, number], startCounts?: Record
   const valid = gridOk && miOk
   const reason = valid
     ? null
-    : `сетка соседей: box=[${box[0]},${box[1]},${box[2]}] даёт cellSize=${cellSize.toFixed(4)}, dims=[${dims[0]},${dims[1]},${dims[2]}] ` +
-      `и min(box)/2=${(Math.min(box[0], box[1], box[2]) / 2).toFixed(4)} — нужно dims>=${minCells} (2*effectiveWalkRadius+1) на всех трёх осях и min(box)/2 > bend.r0=${p.bend.r0}`
+    : `neighbour grid: box=[${box[0]},${box[1]},${box[2]}] gives cellSize=${cellSize.toFixed(4)}, dims=[${dims[0]},${dims[1]},${dims[2]}] ` +
+      `and min(box)/2=${(Math.min(box[0], box[1], box[2]) / 2).toFixed(4)}; it needs dims>=${minCells} (2*effectiveWalkRadius+1) on all three axes and min(box)/2 > bend.r0=${p.bend.r0}`
 
   return { N, box, cellSize, effectiveWalkRadius, dims, ncells, minCells, valid, reason }
 }

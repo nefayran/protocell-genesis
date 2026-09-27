@@ -380,7 +380,7 @@ test('состав: отрицательное число голов откло�
     errorText: document.getElementById('size-error')?.textContent ?? '',
   }))
   expect(preview.errorHidden).toBe(false) // refused already visible in the live preview, before any click
-  expect(preview.errorText).toContain('отрицательным')
+  expect(preview.errorText).toContain('cannot be negative')
 
   await page.click('#start-btn')
   // Give any (incorrect) async start path a moment to misbehave before asserting nothing happened.
@@ -434,8 +434,10 @@ test('океанский фон: прогон стартует и рисует �
   // `visibility-note`, the run never started, state stayed 'idle', trace empty, no error anywhere).
   // Asserting the hit target is the only thing that catches that class of failure, since every
   // other assertion in this file happens AFTER a click it assumes landed.
+  // The form fields above the buttons are probed the same way: when the left panels moved into one
+  // column, the progress panel landed in it too and covered them, with every button still clickable.
   const hitTargets = await page.evaluate(() =>
-    ['start-btn', 'pause-btn', 'stop-btn'].map((id) => {
+    ['start-btn', 'pause-btn', 'stop-btn', 'size-select', 'box-side-input', 'step-cap'].map((id) => {
       const r = document.getElementById(id)!.getBoundingClientRect()
       return { id, hitId: document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.id ?? 'null' }
     }),

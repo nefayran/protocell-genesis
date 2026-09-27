@@ -27,7 +27,7 @@ import { formatElapsed, MAX_TRACE_LINES, RunUI, STAGES, STAGE_LABEL } from './ru
 export function initCollapsibleNote(container: HTMLElement, storageKey: string, summary: string): (full: string) => void {
   container.innerHTML =
     `<div class="note-summary"><span>${summary}</span>` +
-    `<button class="note-toggle" type="button" aria-expanded="false">ⓘ подробнее</button></div>` +
+    `<button class="note-toggle" type="button" aria-expanded="false">ⓘ details</button></div>` +
     `<div class="note-full" hidden></div>`
   const toggleBtn = container.querySelector('.note-toggle') as HTMLButtonElement
   const fullEl = container.querySelector('.note-full') as HTMLElement
@@ -35,7 +35,7 @@ export function initCollapsibleNote(container: HTMLElement, storageKey: string, 
   const setExpanded = (expanded: boolean): void => {
     fullEl.hidden = !expanded
     toggleBtn.setAttribute('aria-expanded', String(expanded))
-    toggleBtn.textContent = expanded ? 'ⓘ свернуть' : 'ⓘ подробнее'
+    toggleBtn.textContent = expanded ? 'ⓘ collapse' : 'ⓘ details'
     sessionStorage.setItem(storeKey, expanded ? '1' : '0')
   }
   toggleBtn.addEventListener('click', () => setExpanded(fullEl.hidden))
@@ -68,14 +68,14 @@ export interface ProgressReadout {
  * REFUSED because the aggregate's own periodic centre is untrustworthy, otherwise the measured count
  * against the threshold measured on the same snapshot. */
 function encapsulatedText(e: AggregateShape['encapsulatedWater']): string {
-  if (e === undefined) return 'не измерялось'
-  if (e === null) return 'центр не надёжен'
+  if (e === undefined) return 'not measured'
+  if (e === null) return 'centre untrusted'
   return `${e.encapsulatedCount} / ${e.encapsulationThresholdCount.toFixed(1)}`
 }
 function closedText(e: AggregateShape['encapsulatedWater']): string {
-  if (e === undefined) return 'н/д'
-  if (e === null) return 'н/д (центр не надёжен)'
-  return e.closed ? 'ДА' : 'нет'
+  if (e === undefined) return 'n/a'
+  if (e === null) return 'n/a (centre untrusted)'
+  return e.closed ? 'YES' : 'no'
 }
 
 export function createProgressReadout(paintCavity: () => void, soup: Soup): ProgressReadout {
@@ -111,41 +111,40 @@ export function createProgressReadout(paintCavity: () => void, soup: Soup): Prog
   initCollapsibleNote(
     honestyNoteEl,
     'honesty',
-    'ЧТО ЭТА МОДЕЛЬ НЕ УМЕЕТ: замкнутой везикулы не получено; нет электростатики; соли и pH не ' +
-      'представимы; шаги — приведённые τ, не секунды. ⓘ подробнее — весь список с числами.',
+    'WHAT THIS MODEL CANNOT DO: no closed vesicle formed in any run of the project; this page runs ' +
+      'without charge; steps are reduced τ units, not seconds. ⓘ details: the full list with numbers.',
   )(
-    `1. ИТОГ ПРОЕКТА, а не обещание: самособранной ЗАМКНУТОЙ везикулы не получено ни в одном ` +
-      `прогоне. Крупнейший объект последней кампании (бокс 54 σ, 191778 частиц, 176400 шагов) — ` +
-      `2077–2211 амфифилов, инкапсулированной воды 0 при пороге 317.1–320.9 бида, closed=false, ` +
-      `слоёв голов 1 вместо 2. Связывающее ограничение — СВЯЗНОСТЬ: объект обёртывает бокс по 3 ` +
-      `осям из 3 (19/19 слоёв на каждой), то есть у него нет «внутри». Подача (2.10×) и размер ` +
-      `агрегата (2.08× над порогом 1004) БОЛЬШЕ не ограничивают. ` +
-      `2. ЭЛЕКТРОСТАТИКИ НЕТ ВОВСЕ: ни частичных зарядов, ни экранирования Дебая. Голова — ` +
-      `незаряжённый полярный бид (отображение на MARTINI Na, не на карбоксилат Qa). ` +
-      `3. СОЛЬ И pH НЕ ПРЕДСТАВИМЫ и не подделываются (data/soup.json's saltPhLimitation, ` +
-      `represented: false): окно устойчивости везикул жирных кислот (pH ≈ 7–9, сдвиг кажущейся pKa ` +
-      `с NaCl) — реальная литература, но выразить её здесь нечем. ` +
-      `4. ИСПАРЕНИЕ — ЭТО УДАЛЕНИЕ РАСТВОРИТЕЛЯ, а не термодинамика фазового перехода: ` +
-      `коэффициент концентрирования, который эта модель реально проходит, 3.20× против 1400× у ` +
-      `литературного цикла (16.07 % от него по логарифму); углеродный пул к тому же обогащён ` +
-      `~691× против самого щедрого литературного пруда (~15 мМ декановой кислоты, ACS Earth Space ` +
-      `Chem. 2023, PMC9869395). ` +
-      `5. РАНГ D (оценка, ворота на ней выходят НЕДОКАЗАННЫМИ) несут: соответствие «число атомов ` +
-      `углерода → число бидов», скорости реакций (элементарных константы для ранней Земли не ` +
-      `существует), плотность жидкого растворителя 0.8 σ⁻³ (замерена на ЭТОМ наборе взаимодействий, ` +
-      `не литературная), обе поверхности глины (гидрофильный и аполярный пределы — вилка, а не ` +
-      `минерал), epsilonScale=1.0. Отношения глубин пар — ранг C (MARTINI 2.1, martini_v2.1.itp), ` +
-      `абсолютная глубина ε и w_c — ранг A (Cooke & Deserno 2005, arXiv:cond-mat/0509218). ` +
-      `6. ОЦЕНКА vs ИЗМЕРЕНО: «шагов/с» и «прошло (реал.)» измерены по системным часам браузера; ` +
-      `«осталось (оцен.)» — прогноз из текущей измеренной скорости, не гарантия. Единицы шагов — ` +
-      `ПРИВЕДЁННЫЕ (τ, σ=1), это не секунды реального мира: κ_t = ${soup.kappaT} — единственная явная ` +
-      `калибровка временной шкалы модели (data/soup.json), настоящей секундной привязки для бульона нет.`,
+    `1. THE PROJECT'S RESULT, not a promise: no self-assembled CLOSED vesicle formed in any run. The ` +
+      `largest campaign (76 σ box, 483,268 particles, 148,200 steps, charge on at pH 7.0) grew one ` +
+      `aggregate holding 99.93 % of the amphiphiles; it wrapped the periodic box along 3 of 3 axes in 23 of ` +
+      `23 wet snapshots and trapped 0 water beads against a closure threshold of about 315. In a finite ` +
+      `parcel of water it stopped wrapping (0 of 3 axes) and still trapped no water. What is left is the ` +
+      `molecule: in a finite region a capped micelle costs about 19 amphiphiles and a closed vesicle ` +
+      `about 990 (docs/verdict.md). ` +
+      `2. THIS PAGE RUNS WITHOUT CHARGE (data/soup.json electrostatics.enabled = false). The published ` +
+      `campaigns switched on screened Coulomb between heads, with charge sampled by Monte Carlo at ` +
+      `constant pH; that is where the project's one independent validation comes from, the salt shift of ` +
+      `the apparent pKa (+0.709 against about 0.7). ` +
+      `3. EVAPORATION IS SOLVENT REMOVAL, not the thermodynamics of a phase transition: the ` +
+      `concentration factor this model actually reaches is 3.20× against 1400× for a literature dry-wet ` +
+      `cycle (16.07 % of it on a log scale), and the carbon pool is also enriched ~691× against the richest ` +
+      `literature pond (~15 mM decanoic acid, ACS Earth Space Chem. 2023, PMC9869395). ` +
+      `4. RANK D (an estimate; a gate that rests on it comes out UNPROVEN) covers: the carbon-atoms-to-beads ` +
+      `mapping, the reaction rates (no elementary rate constants for the early Earth exist), the liquid ` +
+      `solvent density 0.8 σ⁻³ (measured on THIS interaction set, not taken from the literature), both clay ` +
+      `surfaces (the hydrophilic and apolar limits are a bracket, not a mineral), epsilonScale=1.0. Pair-depth ` +
+      `ratios are rank C (MARTINI 2.1, martini_v2.1.itp); the absolute depth ε and w_c are rank A (Cooke & ` +
+      `Deserno 2005, arXiv:cond-mat/0509218). ` +
+      `5. ESTIMATED vs MEASURED: "steps/s" and "elapsed" are measured with the browser's clock; "remaining" ` +
+      `is a forecast from the current measured rate, not a guarantee. Steps are in REDUCED units (τ, σ=1), ` +
+      `not real-world seconds: κ_t = ${soup.kappaT} is the model's only explicit time-scale calibration ` +
+      `(data/soup.json); the soup has no real calibration to seconds.`,
   )
 
   const setAtomBadgeFull = initCollapsibleNote(
     atomBadgeEl,
     'atom-badge',
-    'Бусины — не атомы; показанная атомная детализация реконструирована, не симулирована отдельно.',
+    'Beads are not atoms; the atomic detail shown is reconstructed, not simulated separately.',
   )
 
   function updateLadder(reachedIdx: number): void {
@@ -175,11 +174,11 @@ export function createProgressReadout(paintCavity: () => void, soup: Soup): Prog
     updateLadder(STAGES.indexOf(runUI.stage))
     const ev = runUI.evidence
     evidenceEl.innerHTML =
-      `<div class="row"><span>доля амфифилов</span><span>${ev.amphiphileFraction.toFixed(4)}</span></div>` +
-      `<div class="row"><span>доля крупн. агрегата</span><span>${ev.largestAggregateFraction.toFixed(4)}</span></div>` +
-      `<div class="row"><span>пики голов</span><span>${ev.headPeaks === HEAD_PEAKS_UNAVAILABLE ? 'н/д' : ev.headPeaks}</span></div>` +
-      `<div class="row"><span>замкн. объём</span><span>${ev.enclosedVolume.toFixed(4)}</span></div>` +
-      `<div class="row"><span>связей</span><span>${bondCount}</span></div>`
+      `<div class="row"><span>amphiphile fraction</span><span>${ev.amphiphileFraction.toFixed(4)}</span></div>` +
+      `<div class="row"><span>largest aggregate fraction</span><span>${ev.largestAggregateFraction.toFixed(4)}</span></div>` +
+      `<div class="row"><span>head peaks</span><span>${ev.headPeaks === HEAD_PEAKS_UNAVAILABLE ? 'n/a' : ev.headPeaks}</span></div>` +
+      `<div class="row"><span>enclosed volume</span><span>${ev.enclosedVolume.toFixed(4)}</span></div>` +
+      `<div class="row"><span>bonds</span><span>${bondCount}</span></div>`
 
     paintCavity()
 
@@ -190,21 +189,21 @@ export function createProgressReadout(paintCavity: () => void, soup: Soup): Prog
     // guess at it.
     const agg = ev.aggregateAnalysis
     aggCountEl.textContent = String(agg.aggregateCount)
-    aggQualifyingEl.textContent = `${agg.qualifyingAggregateCount} (≥${thresholds.minAmphiphilesPerAggregate} амф.)`
+    aggQualifyingEl.textContent = `${agg.qualifyingAggregateCount} (≥${thresholds.minAmphiphilesPerAggregate} amph.)`
     aggShareEl.textContent = agg.amphiphileShareInQualifying.toFixed(3)
-    aggLamellarEl.textContent = agg.hasLamellarAggregate ? 'да' : 'нет'
-    aggVesicleEl.textContent = agg.hasVesicleAggregate ? 'да' : 'нет'
-    aggHistogramEl.textContent = agg.sizeHistogram.length > 0 ? `размеры: [${agg.sizeHistogram.join(', ')}]` : 'нет агрегатов'
+    aggLamellarEl.textContent = agg.hasLamellarAggregate ? 'yes' : 'no'
+    aggVesicleEl.textContent = agg.hasVesicleAggregate ? 'yes' : 'no'
+    aggHistogramEl.textContent = agg.sizeHistogram.length > 0 ? `sizes: [${agg.sizeHistogram.join(', ')}]` : 'no aggregates'
     aggDetailEl.innerHTML = agg.aggregates
       .map(
         (a, i) =>
           `<div class="aggregate-card">` +
-          `<div class="row"><span>#${i + 1}, амф.</span><span>${a.amphiphileCount}</span></div>` +
-          `<div class="row"><span>плоскостность λ0/λ2</span><span>${a.flatnessRatio.toFixed(3)}</span></div>` +
-          `<div class="row"><span>в-плоск. λ1/λ2</span><span>${a.inPlaneSymmetry.toFixed(3)}</span></div>` +
-          `<div class="row"><span>слоёв голов (радиал.)</span><span>${a.radialHeadShells === HEAD_PEAKS_UNAVAILABLE ? 'н/д' : a.radialHeadShells}</span></div>` +
-          `<div class="row"><span>слоёв голов (поперечн.)</span><span>${a.transverseHeadShells === HEAD_PEAKS_UNAVAILABLE ? 'н/д' : a.transverseHeadShells}</span></div>` +
-          `<div class="row"><span>полость, σ³</span><span>${a.cavityVolume.toFixed(3)}</span></div>` +
+          `<div class="row"><span>#${i + 1}, amphiphiles</span><span>${a.amphiphileCount}</span></div>` +
+          `<div class="row"><span>flatness λ0/λ2</span><span>${a.flatnessRatio.toFixed(3)}</span></div>` +
+          `<div class="row"><span>in-plane λ1/λ2</span><span>${a.inPlaneSymmetry.toFixed(3)}</span></div>` +
+          `<div class="row"><span>head layers (radial)</span><span>${a.radialHeadShells === HEAD_PEAKS_UNAVAILABLE ? 'n/a' : a.radialHeadShells}</span></div>` +
+          `<div class="row"><span>head layers (transverse)</span><span>${a.transverseHeadShells === HEAD_PEAKS_UNAVAILABLE ? 'n/a' : a.transverseHeadShells}</span></div>` +
+          `<div class="row"><span>cavity, σ³</span><span>${a.cavityVolume.toFixed(3)}</span></div>` +
           // Task 'consolidation' (2026-08-20): the CLOSURE observable this project now decides a
           // vesicle by -- water particles that cannot reach the bulk (soup/src/water-closure.ts),
           // against the threshold it derives from the live bulk density on the same snapshot. The
@@ -214,8 +213,8 @@ export function createProgressReadout(paintCavity: () => void, soup: Soup): Prog
           // here is itself a measurement, not a gap: water-closure.ts refuses to report when the
           // aggregate's own periodic centre cannot be trusted, i.e. when its extent is comparable
           // to the box, which is precisely the percolating case (final-campaign-report.md §5).
-          `<div class="row"><span>инкапс. вода / порог</span><span>${encapsulatedText(a.encapsulatedWater)}</span></div>` +
-          `<div class="row"><span>замкнут</span><span>${closedText(a.encapsulatedWater)}</span></div>` +
+          `<div class="row"><span>water inside / threshold</span><span>${encapsulatedText(a.encapsulatedWater)}</span></div>` +
+          `<div class="row"><span>closed</span><span>${closedText(a.encapsulatedWater)}</span></div>` +
           `</div>`,
       )
       .join('')
