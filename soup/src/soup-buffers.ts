@@ -168,7 +168,7 @@ export interface AllocateBuffersInput {
   /** Task 'electrostatics' (2026-08-20): the initial per-particle charge array -- from a resumed
    * checkpoint when there is one, otherwise from an equilibrium Henderson-Hasselbalch draw at this
    * run's own pH (soup/src/soup-init-state.ts). */
-  charges0: Float32Array
+  charges0: Float32Array<ArrayBuffer>
   /** Task 'long-range-electrostatics' (2026-08-20): how many beads of the titratable species this
    * system can ever hold (its CREATION census -- the species is never created or destroyed, only
    * solvent is), which is what the head-only long-range list is sized for. */

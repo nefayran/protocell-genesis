@@ -250,7 +250,7 @@ export function makeEsBasis(soup: Soup, p: Params, over?: EsOverrides): EsBasis 
  * listCapacity, 0]. The force term is split BY RADIUS between nonbondedSoup (r < splitRadius) and
  * the dedicated long-range pass (splitRadius <= r < cutoff), with the same shift constants, so no
  * force path can lose electrostatics wholesale and the two halves sum to the untruncated term. */
-export function esUniform2(b: EsBasis): Float32Array {
+export function esUniform2(b: EsBasis): Float32Array<ArrayBuffer> {
   return new Float32Array([b.splitRadius, b.listRange, b.listCapacity, b.chargedKind])
 }
 
@@ -269,7 +269,7 @@ export function esRangeSummary(b: EsBasis): string {
 }
 
 /** The vec4 soup/wgsl/electrostatics.wgsl's ES uniform expects: [A, kappa, rc, F(rc)]. */
-export function esUniform(b: EsBasis): Float32Array {
+export function esUniform(b: EsBasis): Float32Array<ArrayBuffer> {
   return new Float32Array([b.coeffA, b.kappa, b.cutoff, b.shiftF])
 }
 

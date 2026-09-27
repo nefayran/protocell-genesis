@@ -31,24 +31,23 @@ function gaussian(rng: () => number): number {
 }
 
 export interface InitialState {
-  positions0: Float32Array
-  velocities0: Float32Array
-  bondSlots0: Uint32Array
-  centerLink0: Uint32Array
-  centerHeldSteps0: Uint32Array
-  desorbEventsInit: Uint32Array
-  bondRng0: Uint32Array
-  thermoRng0: Uint32Array
-  eventsInit: Uint32Array
+  positions0: Float32Array<ArrayBuffer>
+  velocities0: Float32Array<ArrayBuffer>
+  bondSlots0: Uint32Array<ArrayBuffer>
+  centerLink0: Uint32Array<ArrayBuffer>
+  centerHeldSteps0: Uint32Array<ArrayBuffer>
+  desorbEventsInit: Uint32Array<ArrayBuffer>
+  bondRng0: Uint32Array<ArrayBuffer>
+  thermoRng0: Uint32Array<ArrayBuffer>
+  eventsInit: Uint32Array<ArrayBuffer>
   /** Task 'clay-surface' (2026-08-19): 1 for every particle that belongs to the rigid mineral
    * platelet (its clay beads plus the catalyst beads immobilised on it as surface sites), 0 for
    * everything else. All zeros when this system has no platelet, in which case NOTHING else in this
    * function behaves differently either -- the clay-free path is byte-identical to the pre-task one.
    *
-   * Typed `Uint32Array<ArrayBuffer>` (not the bare `Uint32Array` the older fields above use) so
-   * soup/src/soup-buffers.ts's writeBuffer call type-checks: the bare form widens to
-   * ArrayBufferLike, which is exactly the pre-existing lib-type noise `npx tsc --noEmit` already
-   * reports for every OTHER buffer upload in that file. No new noise was left behind by this task. */
+   * Typed `Uint32Array<ArrayBuffer>`, like every array field above, so soup/src/soup-buffers.ts's
+   * writeBuffer calls type-check: the bare form widens to ArrayBufferLike, which writeBuffer's lib
+   * type rejects. */
   frozen0: Uint32Array<ArrayBuffer>
 }
 

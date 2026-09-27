@@ -37,7 +37,7 @@ export function scaleLateralRigid(
   oldBox: [number, number, number],
   newBox: [number, number, number],
   lipids: number,
-): Float32Array {
+): Float32Array<ArrayBuffer> {
   const sx = newBox[0] / oldBox[0]
   const sy = newBox[1] / oldBox[1]
   const out = new Float32Array(positions.length)

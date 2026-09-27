@@ -361,6 +361,11 @@ export interface SoupSystem {
    * tests/soup-stale-force.test.ts uses to pin applyBoxScaleOnce's force refresh. Encodes no
    * dispatch, changes no state. */
   forcesNoRebuildDEBUG(): Promise<Float32Array>
+  /** Profiling hooks from soup/src/soup-readback.ts: milliseconds per step for each group of step
+   * phases, each group run `n` times, and the force kernel's two candidate-pair counters.
+   * Diagnostics only, never part of the step loop. */
+  stepPhasesDEBUG(n: number): Promise<Record<string, number>>
+  forceCandidateStatsDEBUG(): Promise<{ candidatesExamined: number; pairsWithinRange: number; ratio: number }>
   /** Task 'decisive-run' (2026-08-20): the SAME minimiser the cold start, the solvent insertion and
    * the evaporating ramp's guard use (soup/src/soup-relax.ts's relaxIterations), applied MID-RUN at
    * the current box with no box change and no solvent movement. Exists for ONE measurement: the

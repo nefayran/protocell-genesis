@@ -104,7 +104,7 @@ export async function centerHeldSteps(rt: SoupRuntime): Promise<Uint32Array> {
 /** Task 'electrostatics' (2026-08-20): the per-particle charge in units of e (soup/wgsl/
  * electrostatics.wgsl's chargeRO). Read by the protonation Monte Carlo before every sweep, by the
  * checkpoint, and by every off-GPU measurement of the deprotonated fraction / acid-soap pairing. */
-export async function charges(rt: SoupRuntime): Promise<Float32Array> {
+export async function charges(rt: SoupRuntime): Promise<Float32Array<ArrayBuffer>> {
   return readBack(rt.device, rt.buf.chargeBuf, rt.N * 4)
 }
 

@@ -48,7 +48,7 @@ export async function getGpu(): Promise<Gpu> {
   return gpuPromise
 }
 
-export async function readBack(device: GPUDevice, src: GPUBuffer, bytes: number): Promise<Float32Array> {
+export async function readBack(device: GPUDevice, src: GPUBuffer, bytes: number): Promise<Float32Array<ArrayBuffer>> {
   // Task 'loud-failure-and-liquid-water' (2026-08-20). WHY THIS CHECK EXISTS, measured: a buffer
   // allocated without COPY_SRC makes the copyBufferToBuffer below a validation error, which
   // INVALIDATES the command buffer, which makes the submit a no-op -- and then the freshly created
@@ -83,6 +83,8 @@ export function storageBuffer(device: GPUDevice, data: Float32Array): GPUBuffer 
     size: data.byteLength,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
   })
-  device.queue.writeBuffer(buf, 0, data)
+  // Nothing in this project allocates a SharedArrayBuffer, so every Float32Array here is backed by a
+  // plain ArrayBuffer; the cast only narrows the lib type (ArrayBufferLike) that writeBuffer rejects.
+  device.queue.writeBuffer(buf, 0, data as Float32Array<ArrayBuffer>)
   return buf
 }

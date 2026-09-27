@@ -65,7 +65,7 @@ export function scaleMoleculesRigid(
   bonds: Uint32Array,
   oldBox: [number, number, number],
   newBox: [number, number, number],
-): Float32Array {
+): Float32Array<ArrayBuffer> {
   const n = positions.length / 4
   const sx = newBox[0] / oldBox[0]
   const sy = newBox[1] / oldBox[1]
