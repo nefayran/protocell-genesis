@@ -13,3 +13,5 @@ atomic/**/__pycache__/
 atomic/.pytest_cache/
 atomic/models/*.model
 atomic/models/*.pkl
+# trained weights stay local: they were fitted to MACE-OFF23 labels
+atomic/models/**/*.npz
