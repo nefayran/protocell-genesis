@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>protocell-genesis · snapshot gallery</title>
+<link rel="icon" href="data:," />
+<style>
+  :root {
+    --bg: #05080d;
+    --panel: rgba(10, 15, 22, 0.86);
+    --line: #1f2c3a;
+    --text: #dfe7ef;
+    --muted: #8a9bab;
+    --accent: #7cc4ff;
+    --head: #f2dfb8;
+    --tail: #2f7f86;
+    --free: #8795a3;
+    --water: #3d7fd6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+               font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; overflow: hidden; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .panel { position: fixed; z-index: 2; background: var(--panel); border: 1px solid var(--line);
+           border-radius: 12px; padding: 14px 16px; backdrop-filter: blur(6px); }
+  #story { top: 16px; left: 16px; width: 340px; }
+  #numbers { top: 16px; right: 16px; width: 300px; }
+  #legend { bottom: 16px; left: 16px; right: 16px; display: flex; flex-wrap: wrap; gap: 6px 18px;
+            align-items: center; font-size: 12px; color: var(--muted); padding: 10px 16px; }
+  h1 { font-size: 15px; margin: 0 0 2px; font-weight: 650; letter-spacing: 0.01em; }
+  h1 a { color: inherit; text-decoration: none; }
+  .sub { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .tabs button, .steps button {
+    font: inherit; font-size: 12px; color: var(--text); background: transparent; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; }
+  .tabs button { flex: 1; }
+  .tabs button[aria-pressed="true"], .steps button[aria-pressed="true"] {
+    border-color: var(--accent); background: rgba(124, 196, 255, 0.12); color: #fff; }
+  .steps { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .steps button { font-variant-numeric: tabular-nums; }
+  #caption { min-height: 42px; margin: 0 0 10px; }
+  .toggles label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin-top: 4px; cursor: pointer; }
+  .links { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+  .links a { color: var(--accent); text-decoration: none; }
+  .links a:hover { text-decoration: underline; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-bottom: 1px solid rgba(31, 44, 58, 0.6); }
+  .row:last-child { border-bottom: 0; }
+  .row span:first-child { color: var(--muted); }
+  .row span:last-child { font-variant-numeric: tabular-nums; text-align: right; }
+  .verdict { margin-top: 10px; font-size: 12px; color: var(--muted); }
+  .key { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; color: var(--muted); z-index: 1; pointer-events: none; }
+  body.shot .panel, body.shot #legend, body.shot #loading { display: none; }
+  #shot-label { display: none; position: fixed; left: 18px; top: 14px; z-index: 3; font-size: 15px; color: #dfe7ef; }
+  #shot-label span { color: #93a4b5; }
+  body.shot.labelled #shot-label { display: block; }
+  @media (max-width: 760px) {
+    #story { top: auto; bottom: 12px; left: 12px; right: 12px; width: auto; padding: 12px 14px;
+             max-height: 46vh; overflow-y: auto; }
+    .sub, .toggles { display: none; }
+    #caption { min-height: 0; font-size: 13px; }
+    #numbers { display: none; }
+    #legend { display: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="loading">loading snapshot…</div>
+<div id="shot-label"></div>
+
+<section class="panel" id="story">
+  <h1><a href="../index.html">protocell-genesis</a></h1>
+  <div class="sub">Snapshot gallery: real checkpoints of the two largest campaigns</div>
+  <div class="tabs" role="group" aria-label="campaign">
+    <button id="tab-periodic" aria-pressed="true">Periodic box</button>
+    <button id="tab-confined" aria-pressed="false">Finite water parcel</button>
+  </div>
+  <div class="steps" id="steps" role="group" aria-label="snapshot"></div>
+  <p id="caption"></p>
+  <div class="toggles">
+    <label><input type="checkbox" id="show-free" checked /> unreacted monomers</label>
+    <label><input type="checkbox" id="show-water" /> water (1 bead in 16)</label>
+    <label><input type="checkbox" id="rotate" checked /> rotate</label>
+  </div>
+  <div class="links">
+    <a href="./run.html">Run the simulation in your browser (WebGPU) →</a>
+    <a href="https://github.com/nefayran/protocell-genesis">Source, data and the full verdict →</a>
+  </div>
+</section>
+
+<section class="panel" id="numbers">
+  <div class="row"><span>step</span><span id="n-step">–</span></div>
+  <div class="row"><span>phase</span><span id="n-phase">–</span></div>
+  <div class="row"><span>box side</span><span id="n-box">–</span></div>
+  <div class="row"><span>particles simulated</span><span id="n-particles">–</span></div>
+  <div class="row"><span>amphiphiles</span><span id="n-amph">–</span></div>
+  <div class="row"><span>aggregates</span><span id="n-aggs">–</span></div>
+  <div class="row"><span>share in the largest</span><span id="n-share">–</span></div>
+  <div class="row"><span>box axes it wraps</span><span id="n-wrap">–</span></div>
+  <div class="row"><span>water trapped inside</span><span id="n-water">–</span></div>
+  <div class="row"><span>needed for a closed vesicle</span><span id="n-need">–</span></div>
+  <div class="verdict" id="n-verdict"></div>
+</section>
+
+<footer class="panel" id="legend">
+  <span class="key"><span class="dot" style="background: var(--head)"></span>amphiphile head</span>
+  <span class="key"><span class="dot" style="background: var(--tail)"></span>amphiphile tail</span>
+  <span class="key"><span class="dot" style="background: var(--free)"></span>unreacted monomer</span>
+  <span class="key"><span class="dot" style="background: var(--water)"></span>water</span>
+  <span>Coarse-grained beads, not atoms. Counts come from each checkpoint; wrapping and trapped water are the values the published gates used.</span>
+</footer>
+
+<script type="module" src="./gallery.ts"></script>
+</body>
+</html>

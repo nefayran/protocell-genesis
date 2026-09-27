@@ -1,0 +1,281 @@
+{
+  "classes": {
+    "headLargest": 0,
+    "tailLargest": 1,
+    "headOther": 2,
+    "tailOther": 3,
+    "freeOrganic": 4,
+    "water": 5
+  },
+  "snapshots": [
+    {
+      "id": "periodic-3000",
+      "campaign": "periodic",
+      "caption": "Early soup: the first amphiphiles, in hundreds of small clusters",
+      "step": 3000,
+      "phase": "wet",
+      "box": [
+        76,
+        76,
+        76
+      ],
+      "particles": 483268,
+      "beads": 154036,
+      "classCounts": {
+        "0": 4,
+        "1": 9,
+        "2": 312,
+        "3": 727,
+        "4": 131035,
+        "5": 21949
+      },
+      "waterStride": 16,
+      "amphiphiles": 316,
+      "aggregates": 270,
+      "amphiphilesInLargest": 4,
+      "stage": "monomers",
+      "wrappingAxes": null,
+      "encapsulatedWater": null,
+      "closureThreshold": null,
+      "parcelRadius": null
+    },
+    {
+      "id": "periodic-11000",
+      "campaign": "periodic",
+      "caption": "Chains keep growing; clusters are still small",
+      "step": 11000,
+      "phase": "wet",
+      "box": [
+        76,
+        76,
+        76
+      ],
+      "particles": 483268,
+      "beads": 154036,
+      "classCounts": {
+        "0": 11,
+        "1": 55,
+        "2": 740,
+        "3": 2623,
+        "4": 128658,
+        "5": 21949
+      },
+      "waterStride": 16,
+      "amphiphiles": 751,
+      "aggregates": 466,
+      "amphiphilesInLargest": 11,
+      "stage": "amphiphiles",
+      "wrappingAxes": null,
+      "encapsulatedWater": 0,
+      "closureThreshold": 297,
+      "parcelRadius": null
+    },
+    {
+      "id": "periodic-23400",
+      "campaign": "periodic",
+      "caption": "Dry phase: water evaporated, the box shrank, everything touches",
+      "step": 23400,
+      "phase": "dry",
+      "box": [
+        46.223190928819186,
+        46.223190928819186,
+        46.223190928819186
+      ],
+      "particles": 132338,
+      "beads": 132103,
+      "classCounts": {
+        "0": 4324,
+        "1": 16898,
+        "4": 110865,
+        "5": 16
+      },
+      "waterStride": 16,
+      "amphiphiles": 4324,
+      "aggregates": 1,
+      "amphiphilesInLargest": 4324,
+      "stage": "amphiphiles",
+      "wrappingAxes": null,
+      "encapsulatedWater": null,
+      "closureThreshold": null,
+      "parcelRadius": null
+    },
+    {
+      "id": "periodic-41100",
+      "campaign": "periodic",
+      "caption": "Rewetted: one aggregate that wraps through all three axes",
+      "step": 41100,
+      "phase": "wet",
+      "box": [
+        76,
+        76,
+        76
+      ],
+      "particles": 483268,
+      "beads": 154036,
+      "classCounts": {
+        "0": 4774,
+        "1": 21123,
+        "4": 106190,
+        "5": 21949
+      },
+      "waterStride": 16,
+      "amphiphiles": 4774,
+      "aggregates": 1,
+      "amphiphilesInLargest": 4774,
+      "stage": "amphiphiles",
+      "wrappingAxes": 3,
+      "encapsulatedWater": 0,
+      "closureThreshold": 313,
+      "parcelRadius": null
+    },
+    {
+      "id": "periodic-148200",
+      "campaign": "periodic",
+      "caption": "Final snapshot: still one sheet through the box, no water inside",
+      "step": 148200,
+      "phase": "wet",
+      "box": [
+        76,
+        76,
+        76
+      ],
+      "particles": 483268,
+      "beads": 154036,
+      "classCounts": {
+        "0": 4512,
+        "1": 25849,
+        "2": 3,
+        "3": 6,
+        "4": 101717,
+        "5": 21949
+      },
+      "waterStride": 16,
+      "amphiphiles": 4515,
+      "aggregates": 4,
+      "amphiphilesInLargest": 4512,
+      "stage": "amphiphiles",
+      "wrappingAxes": 3,
+      "encapsulatedWater": 0,
+      "closureThreshold": 315,
+      "parcelRadius": null
+    },
+    {
+      "id": "confined-2000",
+      "campaign": "confined",
+      "caption": "A finite parcel of water inside a neutral wall",
+      "step": 2000,
+      "phase": "wet",
+      "box": [
+        160,
+        160,
+        160
+      ],
+      "particles": 215151,
+      "beads": 68577,
+      "classCounts": {
+        "0": 2,
+        "1": 5,
+        "2": 93,
+        "3": 202,
+        "4": 58503,
+        "5": 9772
+      },
+      "waterStride": 16,
+      "amphiphiles": 95,
+      "aggregates": 85,
+      "amphiphilesInLargest": 2,
+      "stage": "monomers",
+      "wrappingAxes": null,
+      "encapsulatedWater": null,
+      "closureThreshold": null,
+      "parcelRadius": 36
+    },
+    {
+      "id": "confined-31800",
+      "campaign": "confined",
+      "caption": "Dry phase: the parcel shrinks with the box",
+      "step": 31800,
+      "phase": "dry",
+      "box": [
+        97.31203491450154,
+        97.31203491450154,
+        97.31203491450154
+      ],
+      "particles": 58917,
+      "beads": 58812,
+      "classCounts": {
+        "0": 2293,
+        "1": 8935,
+        "4": 47577,
+        "5": 7
+      },
+      "waterStride": 16,
+      "amphiphiles": 2293,
+      "aggregates": 1,
+      "amphiphilesInLargest": 2293,
+      "stage": "amphiphiles",
+      "wrappingAxes": 0,
+      "encapsulatedWater": 0,
+      "closureThreshold": 1,
+      "parcelRadius": 21.89520785576285
+    },
+    {
+      "id": "confined-105200",
+      "campaign": "confined",
+      "caption": "Rewetted: one aggregate that no longer wraps",
+      "step": 105200,
+      "phase": "wet",
+      "box": [
+        160,
+        160,
+        160
+      ],
+      "particles": 215151,
+      "beads": 68577,
+      "classCounts": {
+        "0": 2165,
+        "1": 10870,
+        "4": 45770,
+        "5": 9772
+      },
+      "waterStride": 16,
+      "amphiphiles": 2165,
+      "aggregates": 1,
+      "amphiphilesInLargest": 2165,
+      "stage": "amphiphiles",
+      "wrappingAxes": 0,
+      "encapsulatedWater": 0,
+      "closureThreshold": 315,
+      "parcelRadius": 36
+    },
+    {
+      "id": "confined-225200",
+      "campaign": "confined",
+      "caption": "Final snapshot: finite, edged, and still no water inside",
+      "step": 225200,
+      "phase": "wet",
+      "box": [
+        160,
+        160,
+        160
+      ],
+      "particles": 215151,
+      "beads": 68577,
+      "classCounts": {
+        "0": 2092,
+        "1": 11147,
+        "4": 45566,
+        "5": 9772
+      },
+      "waterStride": 16,
+      "amphiphiles": 2092,
+      "aggregates": 1,
+      "amphiphilesInLargest": 2092,
+      "stage": "amphiphiles",
+      "wrappingAxes": 0,
+      "encapsulatedWater": 0,
+      "closureThreshold": 315,
+      "parcelRadius": 36
+    }
+  ]
+}
