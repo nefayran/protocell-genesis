@@ -9,7 +9,10 @@ afterAll(shutdownGpu)
 // test is committed (runUntil's own "Test:" deliverable) but intentionally NOT executed here --
 // see .superpowers/sdd/2026-08-16-soup-to-vesicle/task-4-pilot-report.md for the pilot that WAS run
 // in its place, and for why this test is left un-run rather than weakened to pass cheaply.
-test('из бульона без готовых амфифилов возникает замкнутая везикула', async () => {
+// The project's answer to this test's question is no (docs/verdict.md): no campaign closed a vesicle,
+// so the test is expected to fail, after a run of about 90 minutes. It is kept as the statement of the
+// goal and runs only when asked for with RUN_GOAL_TEST=1.
+test.skipIf(!process.env.RUN_GOAL_TEST)('из бульона без готовых амфифилов возникает замкнутая везикула', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api

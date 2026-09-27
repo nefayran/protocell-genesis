@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { decodeCheckpointResume } from '../soup/src/checkpoint'
 import type { CheckpointFile } from '../soup/src/checkpoint'
@@ -53,6 +53,9 @@ import {
 
 const NONE_U32 = 0xffffffff
 const STEPS = [160000, 170000, 180000, 190000, 200000, 210000, 220000, 230000, 240000, 250000]
+// The campaign checkpoints are gigabytes and are not in the repository. Without them the
+// checkpoint re-analysis below is skipped, not failed.
+const HAVE_CHECKPOINTS = STEPS.every((step) => existsSync(`data/checkpoints/vesicle-93k-step${step}.json`))
 const OUT_DIR = 'verify/out'
 const OUT_FILE = `${OUT_DIR}/shell-pore-check.json`
 
@@ -74,7 +77,7 @@ function loadCheckpoint(step: number): { positions: Float32Array; box: [number, 
   return { positions: resume.positions, box, bonds: new Uint32Array(edges) }
 }
 
-test('shell-pore-check: radial profile, hole persistence across 10 checkpoints, plugged-vs-measured volume, rim head enrichment (no GPU, pure decode+analysis)', () => {
+test.skipIf(!HAVE_CHECKPOINTS)('shell-pore-check: radial profile, hole persistence across 10 checkpoints, plugged-vs-measured volume, rim head enrichment (no GPU, pure decode+analysis)', () => {
   const soup = loadSoup()
   const monomers: Monomer[] = soup.monomers
   const thresholds = loadStageThresholds()

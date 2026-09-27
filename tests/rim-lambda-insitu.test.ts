@@ -1,4 +1,4 @@
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import { afterAll, expect, test } from 'vitest'
 import { gpuPage, shutdownGpu } from './helpers/gpu'
 import { decodeCheckpointResume } from '../soup/src/checkpoint'
@@ -48,11 +48,14 @@ afterAll(shutdownGpu)
 //     before the checkpoint-scale number is trusted.
 
 const CHECKPOINT_PATH = 'data/checkpoints/vesicle-93k-step250000.json'
+// The checkpoint is not in the repository (checkpoints are gigabytes); without it the two tests that
+// read it are skipped, not failed. The formula validation below needs no checkpoint.
+const HAVE_CHECKPOINT = existsSync(CHECKPOINT_PATH)
 const NONE_U32 = 0xffffffff
 const OUT_DIR = 'verify/out'
 const OUT_FILE = `${OUT_DIR}/rim-lambda-insitu.json`
 
-test('lambda in situ: rim of the largest aggregate in the 250000-step vesicle-93k checkpoint (no GPU, pure decode+analysis)', () => {
+test.skipIf(!HAVE_CHECKPOINT)('lambda in situ: rim of the largest aggregate in the 250000-step vesicle-93k checkpoint (no GPU, pure decode+analysis)', () => {
   const file = JSON.parse(readFileSync(CHECKPOINT_PATH, 'utf8')) as CheckpointFile
   const resume = decodeCheckpointResume(file)
   const box = file.config.box
@@ -263,7 +266,7 @@ test('lambda in situ: rim of the largest aggregate in the 250000-step vesicle-93
   }
 })
 
-test('checkpoint decode cross-check: this file\'s own bondSlots-derived topology matches a live resumed SoupSystem\'s own bonds() (zero steps taken)', async () => {
+test.skipIf(!HAVE_CHECKPOINT)('checkpoint decode cross-check: this file\'s own bondSlots-derived topology matches a live resumed SoupSystem\'s own bonds() (zero steps taken)', async () => {
   const raw = readFileSync(CHECKPOINT_PATH, 'utf8')
   const file = JSON.parse(raw) as CheckpointFile
   const resume = decodeCheckpointResume(file)
@@ -393,7 +396,9 @@ test('formula validation: wcaV/feneV/bendV/attrV against the real engine\'s sys.
         kT: 1.1,
         // clay: false (task 'clay-surface') -- hand-built fixture at a clay-free particle count.
         clay: false,
-        start: { C: nArg, O: 0, H: 0, M: 0 },
+        // W: 0 -- `start` merges over data/soup.json's own, which gained explicit water (W: 10700) in
+        // task 'broth-composition'; without it the 7-particle resume met N = 10707 and was refused.
+        start: { C: nArg, O: 0, H: 0, M: 0, W: 0 },
         resume: {
           globalStep: 0,
           liveBox: boxArg,

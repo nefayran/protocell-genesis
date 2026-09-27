@@ -18,11 +18,14 @@ test('стартовый состав содержит явную воду и н
   for (const k of Object.keys(s.start)) expect(ids.has(k)).toBe(true)
 })
 
-test('соль/pH: файл честно объявляет их непредставимыми, а не имитирует', () => {
+// Task 'electrostatics' (2026-08-20) made salt and pH representable (screened Coulomb between heads
+// and a constant-pH protonation equilibrium) and moved data/soup.json's saltPhLimitation.represented
+// from false to true on purpose, rewriting its basis to say why. This test still expected false.
+test('соль/pH: после задачи electrostatics файл объявляет их представимыми и называет основание', () => {
   const s = loadSoup()
   expect(s.saltPhLimitation).toBeDefined()
-  expect(s.saltPhLimitation!.represented).toBe(false)
-  expect(s.saltPhLimitation!.basis.length).toBeGreaterThan(10)
+  expect(s.saltPhLimitation!.represented).toBe(true)
+  expect(s.saltPhLimitation!.basis).toContain('electrostatics')
 })
 
 // The following is the MEASURED, negative finding this task's own report documents: with explicit
