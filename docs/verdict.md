@@ -1,7 +1,7 @@
 # Soup to vesicle: what was tested, what was measured, how it ended
 
-This is the English summary of [`soup-to-vesicle-verdict.md`](soup-to-vesicle-verdict.md), the
-project's closing document (state as of 2026-08-21, Russian), plus the one task that came after it,
+This is a summary of [`soup-to-vesicle-verdict.md`](soup-to-vesicle-verdict.md), the project's
+closing document (state as of 2026-08-21), plus the one task that came after it,
 the acid–soap pair of 2026-08-23 (§13), which changed no verdict. Every number here is copied from
 those two documents, and they name the artifact or report behind each one. The full protocols are the
 reports in `.superpowers/sdd/2026-08-16-soup-to-vesicle/`; the last five to read, in order, are
@@ -52,16 +52,18 @@ coarse-grained coordinates, not all-atom dynamics, and the page says so.
 
 ## 3. Published gates
 
-The table is the last regeneration by `npm run verify`, on 2026-08-23, as committed in
-`verify/out/gates.json`. The campaign block is the box-76 run (`bbB76`, 148,200 steps). The engine is
-not bitwise reproducible from run to run, so the four bilayer values differ slightly from the ones the
-Russian document quotes from its own regeneration on 2026-08-20 (for example 1.1607 σ² and 4.6871 σ in
-water); every verdict is the same in both.
+The table is the last regeneration by `npm run verify`, on 2026-09-28, as committed in
+`verify/out/gates.json`. The campaign block is the box-76 run (`bbB76`, 148,200 steps). The two
+solvent-free bilayer rows are re-measured on every regeneration, and the engine is not bitwise
+reproducible from run to run, so they move slightly (1.2056 σ² and 4.4750 σ on 2026-08-23). The two
+water rows are read from the measurement artifact of 2026-08-23, and the closing document quotes an
+earlier measurement of the same patch (1.1607 σ² and 4.6871 σ). Every verdict is the same in all of
+them.
 
 | gate | value | corridor | rank | verdict |
 |---|---|---|---|---|
-| area per lipid, no solvent | 1.2056 σ² | 1.1–1.5 | A | passed |
-| bilayer thickness, no solvent | 4.4750 σ | 4–6 | A | passed |
+| area per lipid, no solvent | 1.2004 σ² | 1.1–1.5 | A | passed |
+| bilayer thickness, no solvent | 4.4545 σ | 4–6 | A | passed |
 | bending modulus κ | – | 5–50 kT | A | unproven (invalid fit window) |
 | area per lipid in explicit water | 1.1734 σ² [1.1696, 1.1765] | 1.1–1.5 | C | passed |
 | bilayer thickness in explicit water | 4.4689 σ | 4–6 | C | passed |
@@ -453,4 +455,4 @@ whole project, so the fatty-acid pH-window mechanism was structurally impossible
   155.1–159.3 σ against the engine's ceiling of 115.7 σ. A new vesicle campaign was therefore not run.
 
 The gates were regenerated and no verdict changed. The full protocol is
-`.superpowers/sdd/2026-08-16-soup-to-vesicle/acid-soap-pairing-report.md` (Russian).
+`.superpowers/sdd/2026-08-16-soup-to-vesicle/acid-soap-pairing-report.md`.

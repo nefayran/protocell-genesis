@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-08-21T03:02:59.186Z",
+  "generatedAt": "2026-09-28T01:41:57.090Z",
   "arm": "confined parcel (soft neutral spherical wall, R_wet = 36 sigma in a box of 160 sigma)",
-  "note": "ОТДЕЛЬНАЯ строка, не замена периодической. Коридоры в data/literature.json установлены в ПЕРИОДИЧЕСКОМ боксе; удержание -- другой опыт, а не поправка к нему. Ворота бислоя в воде здесь читаются из того же артефакта, что и в опубликованной таблице (они измеряются в периодическом патче и от удержания не зависят) -- приведены только для полноты строки.",
+  "note": "A separate row, not a replacement for the periodic one. The corridors in data/literature.json were set in a periodic box; confinement is a different experiment, not a correction to it. The water-bilayer gates are read here from the same artifact as in the published table (they are measured in a periodic patch and do not depend on confinement) and are shown only to complete the row.",
   "trace": "verify/out/gates-campaign-trace-confined.json",
   "percolation": "verify/out/gates-percolation-confined.json",
   "gates": [
     {
       "id": "area-per-lipid-water",
-      "title": "Площадь на липид В ЯВНОЙ ВОДЕ",
-      "value": 1.1834503086016825,
+      "title": "Area per lipid in explicit water",
+      "value": 1.1734461123400626,
       "target": {
         "min": 1.1,
         "max": 1.5
@@ -17,14 +17,14 @@
       "rank": "C",
       "verdict": "passed",
       "corridor": "inside",
-      "source": "коридор — Cooke & Deserno 2005, arXiv:cond-mat/0509218 (ТОТ ЖЕ коридор, что у бесрастворительных ворот); среда — отношения глубин пар, выведенные из martini_v2.1.itp (Marrink et al., The MARTINI Force Field, J. Phys. Chem. B 2007, 111, 7812), задача 'hydrophobic-asymmetry', перезамерено задачей 'final-campaign' §3",
-      "conditions": "НОВЫЙ РЕЗУЛЬТАТ ЭТОЙ КАМПАНИИ: та же величина, что у ворот area-per-lipid, но измеренная в ЖИДКОЙ явной воде 0.8 sigma^-3 (4500 бидов) вокруг заплатки из 400 липидов с 2-бидовыми хвостами, seed 31, kT из data/params.json, с ходом по площади при НУЛЕВОМ натяжении (Метрополис, 10 попыток на 500 шагов МД, окно из 150 отсчётов, критерий осёдлости по дрейфу блочных средних ln A). Площадь здесь ИЗМЕРЕНА, а не задана построением — до задачи 'hydrophobic-asymmetry' в воде она была допущением 1.3 sigma^2, и заплатка тогда давала 12.2-12.4 sigma при коридоре 4-6 (broth-composition-report.md §4, water-calibration-report.md). Ранг C, а НЕ A: коридор литературный (ранг A), но само число получено в среде, чьи отношения глубин пар взяты из чужого силового поля и на этом дереве не калиброваны (ранг C), а множитель epsilonScale=1.0 несёт ранг D.",
-      "provenance": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-21T02:58:24.909Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 450 отсчётов, дрейф ln A -4.670e-6 (t=-0.71)"
+      "source": "corridor: Cooke & Deserno 2005, arXiv:cond-mat/0509218 (the same corridor as the solvent-free gate); medium: pair-depth ratios derived from martini_v2.1.itp (Marrink et al., The MARTINI Force Field, J. Phys. Chem. B 2007, 111, 7812), task 'hydrophobic-asymmetry', remeasured by task 'final-campaign' §3",
+      "conditions": "A new result of this campaign: the same quantity as the area-per-lipid gate, but measured in liquid explicit water at 0.8 sigma^-3 (4500 beads) around a patch of 400 lipids with 2-bead tails, seed 31, kT from data/params.json, with an area move at zero tension (Metropolis, 10 attempts per 500 MD steps, a window of 150 samples, a settling criterion based on the drift of block means of ln A). The area here is measured, not set by construction: before task 'hydrophobic-asymmetry' it was an assumed 1.3 sigma^2 in water, and the patch then gave 12.2-12.4 sigma against a corridor of 4-6 (broth-composition-report.md §4, water-calibration-report.md). Rank C, not A: the corridor is from the literature (rank A), but the number itself is obtained in a medium whose pair-depth ratios are taken from another force field and are not calibrated on this tree (rank C), and the multiplier epsilonScale=1.0 carries rank D.",
+      "provenance": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, measured 2026-08-23T09:42:01.057Z): 400 lipids + 4500 water beads at 0.8 sigma^-3, N=5700, settled=true, 300 samples, ln A drift -2.722e-6 (t=-0.71)"
     },
     {
       "id": "bilayer-thickness-water",
-      "title": "Толщина бислоя В ЯВНОЙ ВОДЕ",
-      "value": 4.906053163496518,
+      "title": "Bilayer thickness in explicit water",
+      "value": 4.468932297634941,
       "target": {
         "min": 4,
         "max": 6
@@ -33,113 +33,113 @@
       "rank": "C",
       "verdict": "passed",
       "corridor": "inside",
-      "source": "коридор — Cooke & Deserno 2005, arXiv:cond-mat/0509218; среда — martini_v2.1.itp (Marrink et al., J. Phys. Chem. B 2007, 111, 7812); задача 'hydrophobic-asymmetry', перезамерено задачей 'final-campaign' §3",
-      "conditions": "по максимумам плотности головных бидов, в ТОМ ЖЕ прогоне, что и area-per-lipid-water (те же 400 липидов, та же вода 0.8 sigma^-3, тот же ход по площади). Диагностика того же прогона публикуется рядом: доля закопанных голов и число водяных бидов в ядре — именно они, а не толщина, показали механизм предыдущего провала (закапывание голов 0.40-0.49 при отсутствии латеральной когезии листка). Ранг C по той же причине, что у area-per-lipid-water.",
-      "provenance": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-21T02:58:24.909Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 450 отсчётов, дрейф ln A -4.670e-6 (t=-0.71)"
+      "source": "corridor: Cooke & Deserno 2005, arXiv:cond-mat/0509218; medium: martini_v2.1.itp (Marrink et al., J. Phys. Chem. B 2007, 111, 7812); task 'hydrophobic-asymmetry', remeasured by task 'final-campaign' §3",
+      "conditions": "from the maxima of the head-bead density, in the same run as area-per-lipid-water (the same 400 lipids, the same water at 0.8 sigma^-3, the same area move). Diagnostics of the same run are published alongside: the fraction of buried heads and the number of water beads in the core; it was these, not the thickness, that showed the mechanism of the earlier failure (head burial 0.40-0.49 with no lateral cohesion of the leaflet). Rank C for the same reason as area-per-lipid-water.",
+      "provenance": "verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, measured 2026-08-23T09:42:01.057Z): 400 lipids + 4500 water beads at 0.8 sigma^-3, N=5700, settled=true, 300 samples, ln A drift -2.722e-6 (t=-0.71)"
     },
     {
       "id": "vesicle-closure-water",
-      "title": "Замкнутость: ИНКАПСУЛИРОВАННАЯ ВОДА против порога",
+      "title": "Closure: encapsulated water against the threshold",
       "value": 0,
       "target": {
         "min": 1
       },
-      "unit": "доля порога",
+      "unit": "fraction of threshold",
       "rank": "B",
       "verdict": "failed",
       "corridor": "outside",
-      "source": "критерий: замкнутая везикула обязана удерживать растворитель, недостижимый для объёма извне — периодическая заливка снаружи, soup/src/water-closure.ts (методика проверена задачей 'periodic-measurement'). Порог ВЫЧИСЛЯЕТСЯ на том же снимке: минимальный замкнутый объём 370.8656 sigma^3 (эти же ворота closure, выведен из ИЗМЕРЕННОЙ толщины бислоя — ворота bilayer-thickness, ранг A) умноженный на ИЗМЕРЕННУЮ на том же снимке объёмную числовую плотность воды. final-campaign-report.md §7.1",
-      "conditions": "Публикуется как ОТНОШЕНИЕ измеренного числа инкапсулированных водяных бидов к порогу, потому что сам порог пересчитывается на каждом снимке из живой объёмной плотности (замерено 317.1-320.9 бида по ходу кампании) — фиксированного числа в этом файле для него быть не может. Ранг B (посчитано): порог выведен из ворот ранга A через геометрию, а не импортирован. ЭТИ ВОРОТА ПРОВАЛЕНЫ, и это главный отрицательный результат проекта: инкапсулированной воды РОВНО НОЛЬ на всех снимках кампании, где периодический центр агрегата надёжен, closed=false везде. Отдельно и честно: на 9 из 15 влажных снимков water-closure.ts ОТКАЗЫВАЕТСЯ отвечать (центр не надёжен, когда протяжённость объекта сравнима с боксом) — сам отказ является независимым индикатором того же факта, что измеряют ворота aggregate-percolation.",
-      "provenance": "verify/out/gates-campaign-trace-confined.json (tests/continuous-run-audit.test.ts, off-GPU по чекпойнтам кампании, измерено 2026-08-21T02:46:09.152Z), шаг 225200: инкапсулировано 0 водяных бидов против порога 314.825 (объёмная плотность воды 0.8489 sigma^-3 x минимальный замкнутый объём 370.8656 sigma^3), closed=false; таких снимков с надёжным центром 18 из 19 влажных, и на КАЖДОМ инкапсулировано 0"
+      "source": "criterion: a closed vesicle must hold solvent that the bulk cannot reach from outside; periodic flood fill from outside, soup/src/water-closure.ts (method checked by task 'periodic-measurement'). The threshold is computed on the same checkpoint: the minimum closed volume 370.8656 sigma^3 (this same closure gate, derived from the measured bilayer thickness, gate bilayer-thickness, rank A) multiplied by the bulk water number density measured on the same checkpoint. final-campaign-report.md §7.1",
+      "conditions": "Published as the ratio of the measured number of encapsulated water beads to the threshold, because the threshold itself is recomputed on every checkpoint from the live bulk density (measured at 317.1-320.9 beads over the campaign), so this file cannot hold a fixed number for it. Rank B (computed): the threshold is derived from a rank-A gate through geometry, not imported. This gate fails, and this is the project's main negative result: encapsulated water is exactly zero on every campaign checkpoint where the periodic centre of the aggregate is reliable, closed=false everywhere. Separately, and stated plainly: on 9 of 15 wet checkpoints water-closure.ts refuses to answer (the centre is unreliable when the extent of the object is comparable to the box); the refusal itself is an independent indicator of the same fact that the aggregate-percolation gate measures.",
+      "provenance": "verify/out/gates-campaign-trace-confined.json (tests/continuous-run-audit.test.ts, off-GPU from the campaign checkpoints, measured 2026-08-21T03:14:32.000Z), step 225200: 0 water beads encapsulated against a threshold of 314.825 (bulk water density 0.8489 sigma^-3 x minimum closed volume 370.8656 sigma^3), closed=false; checkpoints with a reliable centre: 18 of 19 wet ones, and on each of them 0 were encapsulated"
     },
     {
       "id": "aggregate-percolation",
-      "title": "Крупнейший агрегат — КОНЕЧНЫЙ объект, а не сетка через весь бокс",
+      "title": "Largest aggregate is a finite object, not a network across the whole box",
       "value": 0,
       "target": {
         "max": 0
       },
-      "unit": "осей из 3",
+      "unit": "axes of 3",
       "rank": "B",
       "verdict": "passed",
       "corridor": "inside",
-      "source": "стандартный критерий обёртывающего кластера: агрегат реплицируется один раз вдоль оси на +L с этой осью, сделанной открытой, пары соединяются по ТОМУ ЖЕ радиусу связности, что и везде в проекте, и спрашивается, попала ли частица в одну компоненту со своим собственным образом. Порог не вводится: у конечного объекта таких осей 0 ПО ОПРЕДЕЛЕНИЮ. tests/percolation-check.test.ts, final-campaign-report.md §6",
-      "conditions": "Ранг B (посчитано из собственных величин проекта, без импортированной константы). ЭТИ ВОРОТА ПРОВАЛЕНЫ, и это НАЙДЕННОЕ СВЯЗЫВАЮЩЕЕ ОГРАНИЧЕНИЕ проекта: объект обёртывает бокс по 3 осям из 3 и касается всех 19 из 19 слоёв шириной радиуса связности по каждой оси, на всех 5 влажных снимках, охватывающих 135000 осевших шагов. У объекта, протянутого через периодический бокс, нет ни «внутри», ни «снаружи» — замкнуть он не может ничего, каким бы большим ни был. Инструмент различает: на трёх независимых системах, которые проект называет конечными стержнями (решающий прогон на шагах 41400 и 174400, плечо A), он даёт 0 осей из 3, а его собственный внутренний контроль (заведомо компактное подмножество в один слой) не обёртывает ни на одном снимке.",
-      "provenance": "verify/out/gates-percolation-confined.json (tests/percolation-check.test.ts, off-GPU по чекпойнтам кампании, измерено 2026-08-21T02:46:09.163Z): 20 снимков кампании, обёртывающих осей 0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0, слоёв затронуто 18/19/18/58 на шаге 105200; контроли (объекты, которые проект называет конечными): bbB76-step148200.json=3, dec54-step174400.json=0, swB54-step144400.json=3"
+      "source": "the standard wrapping-cluster criterion: the aggregate is replicated once along an axis at +L with that axis made open, pairs are connected by the same connectivity radius as everywhere else in the project, and the question is whether a particle falls into one component with its own image. No threshold is introduced: a finite object has 0 such axes by definition. tests/percolation-check.test.ts, final-campaign-report.md §6",
+      "conditions": "Rank B (computed from the project's own quantities, with no imported constant). This gate fails, and this is the binding constraint the project found: the object wraps the box along 3 axes of 3 and touches all 19 of 19 slabs of connectivity-radius width along each axis, on all 5 wet checkpoints covering 135000 settled steps. An object stretched across a periodic box has neither an \"inside\" nor an \"outside\": it cannot enclose anything, however large it is. The tool discriminates: on three independent systems that the project calls finite rods (the decisive run at steps 41400 and 174400, arm A) it gives 0 axes of 3, and its own internal control (a deliberately compact one-slab subset) does not wrap on any checkpoint.",
+      "provenance": "verify/out/gates-percolation-confined.json (tests/percolation-check.test.ts, off-GPU from the campaign checkpoints, measured 2026-08-21T03:14:32.000Z): 20 campaign checkpoints, wrapping axes 0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0, slabs touched 18/19/18/58 at step 105200; controls (objects the project calls finite): bbB76-step148200.json=3, dec54-step174400.json=0, swB54-step144400.json=3"
     },
     {
       "id": "vesicle-verdict",
-      "title": "ИТОГ ПРОЕКТА: самособранная ЗАМКНУТАЯ везикула",
+      "title": "Project outcome: a self-assembled closed vesicle",
       "value": 0,
       "target": {
         "min": 1
       },
-      "unit": "агрегатов",
+      "unit": "aggregates",
       "rank": "A",
       "verdict": "failed",
       "corridor": "outside",
-      "source": "измерено собственным распознавателем стадии (soup/src/aggregates.ts hasVesicleAggregate: замкнутость по инкапсулированной воде И два радиальных слоя голов И полость не меньше 370.8656 sigma^3) на каждом снимке всех кампаний; последняя и самая крупная — бокс 54 sigma, N=191778, 176400 шагов, жидкая вода 0.79999 sigma^-3, одно событие высушивания. final-campaign-report.md §0, §7, §8",
-      "conditions": "ПРОВАЛЕНО: ни одного везикулярного агрегата ни на одном снимке ни одной кампании. Связывающее ограничение названо по имени и это НЕ то, что останавливало предыдущие прогоны: подача (2.10x над порогом) и РАЗМЕР агрегата (2087.2 против порога 1004, то есть 2.08x НАД ним, впервые в проекте) сняты замером, краевая энергия при этом размере тоже снята (0.583 kT на молекулу против порога конкурентоспособности ~1 kT). Останавливает СВЯЗНОСТЬ — ворота aggregate-percolation: объект обёртывает бокс по всем трём осям. Всё остальное ниже по течению: радиальных слоёв голов 1 вместо 2 (то есть стенки бислоя нет вовсе), полость 50.5 +- 1.6 sigma^3 против 370.8656 (в 7.3 раза меньше), плоскостность 0.65-0.81 против <= 0.35 для ламеллярного объекта.",
-      "provenance": "verify/out/gates-campaign-trace-confined.json (измерено 2026-08-21T02:46:09.152Z): 21 снимков, hasVesicleAggregate=false на всех; последний влажный снимок — шаг 225200, агрегатов 1, крупнейший 2092 амфифилов, радиальных слоёв голов 1, полость 69.5 sigma^3 против порога 370.8656 sigma^3"
+      "source": "measured by the project's own stage recogniser (soup/src/aggregates.ts hasVesicleAggregate: closure by encapsulated water and two radial head shells and a cavity of at least 370.8656 sigma^3) on every checkpoint of every campaign; the last and largest: box 54 sigma, N=191778, 176400 steps, liquid water 0.79999 sigma^-3, one drying event. final-campaign-report.md §0, §7, §8",
+      "conditions": "Failed: not a single vesicular aggregate on any checkpoint of any campaign. The binding constraint is named, and it is not what stopped the earlier runs: supply (2.10x over the threshold) and aggregate size (2087.2 against a threshold of 1004, that is 2.08x above it, for the first time in the project) are ruled out by measurement, and the edge energy at this size is ruled out too (0.583 kT per molecule against a competitiveness threshold of ~1 kT). What stops it is connectivity, the aggregate-percolation gate: the object wraps the box along all three axes. Everything else is downstream: 1 radial head shell instead of 2 (that is, there is no bilayer wall at all), a cavity of 50.5 +- 1.6 sigma^3 against 370.8656 (7.3 times smaller), flatness 0.65-0.81 against <= 0.35 for a lamellar object.",
+      "provenance": "verify/out/gates-campaign-trace-confined.json (measured 2026-08-21T03:14:32.000Z): 21 checkpoints, hasVesicleAggregate=false on all of them; last wet checkpoint: step 225200, 1 aggregates, largest 2092 amphiphiles, radial head shells 1, cavity 69.5 sigma^3 against a threshold of 370.8656 sigma^3"
     },
     {
       "id": "chain-length-asf",
-      "title": "Распределение длин цепей: согласие с ASF (ворота 2 спецификации)",
+      "title": "Chain-length distribution: agreement with ASF (gate 2 of the specification)",
       "value": 0.18753762793497886,
       "target": {},
       "unit": "-",
       "rank": "D",
       "verdict": "unproven",
       "corridor": "none",
-      "source": "рамка Андерсона-Шульца-Флори для роста цепей на катализаторе: van der Laan & Beenackers, Kinetics and selectivity of the Fischer-Tropsch synthesis: a literature review, Catal. Rev. Sci. Eng. 41 (1999) 255-318; спецификация раздел 8, ворота 2. Реализация — soup/src/equilibrium.ts (asfPrediction, recoverAlphaFromChainLengths)",
-      "conditions": "Публикуемое число — относительное расхождение ASF-среднего 1/(1-alpha_ev), посчитанного из СОБЫТИЙНОГО отношения alpha_ev = cc_bond/(cc_bond+co_bond) без единого подогнанного параметра, с ИЗМЕРЕННЫМ средним числом бидов на хвост. Рядом публикуются оба alpha: событийное и восстановленное из самой гистограммы длин (recoverAlphaFromChainLengths) вместе с r^2 её лог-линейной подгонки — две независимые оценки одной величины. НЕДОКАЗАНО, и причина названа прямо: спецификация формулирует критерий этих ворот как «расхождение гистограмм», не давая числового коридора, и независимого литературного коридора для alpha ИМЕННО ЭТОЙ системы не существует — поэтому ворота несут ранг D и по правилу 1 verify/gates.ts выходят недоказанными при любом значении. Форма распределения при этом геометрическая, что и есть подпись ASF.",
-      "provenance": "verify/out/gates-campaign-trace-confined.json (измерено 2026-08-21T02:46:09.152Z), шаг 225200: alpha_ev=0.7465, ASF-среднее 1/(1-alpha_ev)=3.945, измеренное среднее на хвост=3.322, alpha восстановленное из гистограммы=0.792 (r^2=0.896)"
+      "source": "the Anderson-Schulz-Flory framework for chain growth on a catalyst: van der Laan & Beenackers, Kinetics and selectivity of the Fischer-Tropsch synthesis: a literature review, Catal. Rev. Sci. Eng. 41 (1999) 255-318; specification section 8, gate 2. Implementation: soup/src/equilibrium.ts (asfPrediction, recoverAlphaFromChainLengths)",
+      "conditions": "The published number is the relative deviation of the ASF mean 1/(1-alpha_ev), computed from the event ratio alpha_ev = cc_bond/(cc_bond+co_bond) with not a single fitted parameter, from the measured mean number of beads per tail. Both alphas are published alongside: the event one and the one recovered from the length histogram itself (recoverAlphaFromChainLengths), together with the r^2 of its log-linear fit: two independent estimates of one quantity. Unproven, and the reason is stated directly: the specification phrases the criterion of this gate as \"histogram mismatch\" without giving a numeric corridor, and no independent literature corridor exists for the alpha of this particular system, so the gate carries rank D and, by rule 1 of verify/gates.ts, comes out unproven at any value. The shape of the distribution is nevertheless geometric, which is the signature of ASF.",
+      "provenance": "verify/out/gates-campaign-trace-confined.json (measured 2026-08-21T03:14:32.000Z), step 225200: alpha_ev=0.7465, ASF mean 1/(1-alpha_ev)=3.945, measured mean per tail=3.322, alpha recovered from the histogram=0.792 (r^2=0.896)"
     },
     {
       "id": "mean-tail-length",
-      "title": "Среднее число бидов на хвост",
+      "title": "Mean number of beads per tail",
       "value": 3.322,
       "target": {
         "min": 2,
         "max": 3
       },
-      "unit": "бидов",
+      "unit": "beads",
       "rank": "D",
       "verdict": "unproven",
       "corridor": "outside",
-      "source": "наше отображение «число атомов углерода -> число бидов» (спецификация раздел 4: C8 -> 2, C12 -> 3, C16 -> 4), то есть окно 2-3 бида отвечает диапазону C8-C12; сами ворота отображения — chain-to-bead-mapping, ранг D",
-      "conditions": "Ранг D и, следовательно, НЕДОКАЗАНО по правилу 1 verify/gates.ts, ровно как и ворота chain-to-bead-mapping, через которые это отображение только и принимается (через ворота площади и толщины, а не напрямую). Число публикуется потому, что оно измерено, и потому что честнее показать его вместе с окном, чем прятать: если бы это отображение несло независимый коридор, значение ВЫШЕ 3 читалось бы как провал. В кампании длина хвоста растёт ПО ХОДУ прогона при неизменном составе (замерено 2.845 -> 3.490 на 135000 шагах), то есть это не одна цифра, а тренд, и разделить «второй хвост» и «длину хвоста» составом в этой модели нельзя — голова здесь и есть терминатор цепи.",
-      "provenance": "verify/out/gates-campaign-trace-confined.json (измерено 2026-08-21T02:46:09.152Z), шаг 225200: alpha_ev=0.7465, ASF-среднее 1/(1-alpha_ev)=3.945, измеренное среднее на хвост=3.322, alpha восстановленное из гистограммы=0.792 (r^2=0.896)"
+      "source": "our mapping \"number of carbon atoms -> number of beads\" (specification section 4: C8 -> 2, C12 -> 3, C16 -> 4), so the window of 2-3 beads corresponds to the range C8-C12; the mapping gate itself is chain-to-bead-mapping, rank D",
+      "conditions": "Rank D and therefore unproven by rule 1 of verify/gates.ts, exactly like the chain-to-bead-mapping gate, through which alone this mapping is accepted (through the area and thickness gates, not directly). The number is published because it is measured, and because it is more honest to show it with the window than to hide it: if this mapping carried an independent corridor, a value above 3 would read as a failure. In the campaign the tail length grows over the course of the run at fixed composition (measured 2.845 -> 3.490 over 135000 steps), so this is a trend rather than a single figure, and in this model \"second tail\" and \"tail length\" cannot be separated by composition: the head here is the chain terminator.",
+      "provenance": "verify/out/gates-campaign-trace-confined.json (measured 2026-08-21T03:14:32.000Z), step 225200: alpha_ev=0.7465, ASF mean 1/(1-alpha_ev)=3.945, measured mean per tail=3.322, alpha recovered from the histogram=0.792 (r^2=0.896)"
     }
   ],
   "detail": {
     "waterBilayer": {
       "measuredBy": "tests/water-bilayer-area-move.test.ts",
-      "generatedAt": "2026-08-21T02:58:24.908Z",
+      "generatedAt": "2026-08-23T09:42:01.057Z",
       "lipids": 400,
       "waterDensity": 0.8,
       "totalWater": 4500,
       "N": 5700,
-      "areaPerLipid": 1.1834503086016825,
-      "areaTailMin": 1.178472208070664,
-      "areaTailMax": 1.1880177278786812,
-      "thickness": 4.906053163496518,
+      "areaPerLipid": 1.1734461123400626,
+      "areaTailMin": 1.1695877806292108,
+      "areaTailMax": 1.176498681004865,
+      "thickness": 4.468932297634941,
       "settled": true,
-      "chunksUsed": 450,
-      "driftPerChunk": -0.000004669928006021617,
-      "driftT": -0.7058978128775982,
+      "chunksUsed": 300,
+      "driftPerChunk": -0.000002722146360702877,
+      "driftT": -0.7089250764364934,
       "clusterFraction": 1,
-      "waterInCore": 36,
-      "headBuriedFraction": 0.09510869565217392,
-      "acceptedFraction": 0.13644444444444445,
-      "trialsTotal": 4500,
-      "stepsPerSec": 1023.7477631111931,
-      "amphiphileCount": 368,
+      "waterInCore": 45,
+      "headBuriedFraction": 0.09186351706036745,
+      "acceptedFraction": 0.128,
+      "trialsTotal": 3000,
+      "stepsPerSec": 452.49878881154274,
+      "amphiphileCount": 381,
       "events": {
         "cc_bond": 0,
         "cc_break": 0,
         "co_bond": 0,
-        "co_break": 32
+        "co_break": 19
       },
       "corridors": {
         "area": [

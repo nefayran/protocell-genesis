@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>protocell-genesis — отчёт проверки</title>
+<title>protocell-genesis: verification report</title>
 <style>
   body { font: 15px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; max-width: 980px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
   table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
@@ -18,227 +18,227 @@
 </style>
 </head>
 <body>
-<h1>protocell-genesis — отчёт проверки (Ступень C, ворота 6)</h1>
-<p>Сгенерировано 2026-08-23T09:42:35.708Z, коммит <code>8b7b6dbc53d9e3f4748ce0f57acb16e4f862f8a1</code> <strong>(рабочее дерево на момент генерации было НЕ чистым — эти артефакты сгенерированы ДО коммита, который их содержит; указанный коммит — последний реальный, а не тот, что упаковывает этот файл)</strong>, run <code>3d6b0688-2dae-42e0-9828-35b78c279646</code>
-(тот же идентификатор проставлен на gates.json и kappa-measurement.json — расхождение означало бы, что артефакты из разных прогонов).</p>
+<h1>protocell-genesis: verification report (Stage C, gate 6)</h1>
+<p>Generated 2026-09-28T01:36:46.095Z, commit <code>658bc4604ce19e827f78de6d95a69228448c5767</code> <strong>(the working tree was not clean at generation time: these artifacts were generated before the commit that contains them; the commit shown is the last real one, not the one that packages this file)</strong>, run <code>a5939a30-86e4-444b-9b93-8d4224b4005b</code>
+(the same identifier is stamped on gates.json and kappa-measurement.json; a mismatch would mean the artifacts come from different runs).</p>
 <table>
   <thead>
-    <tr><th>ворота</th><th>значение</th><th>коридор</th><th>ранг</th><th>вердикт</th><th>откуда число</th><th>источник</th><th>условия</th></tr>
+    <tr><th>gate</th><th>value</th><th>corridor</th><th>rank</th><th>verdict</th><th>where the number comes from</th><th>source</th><th>conditions</th></tr>
   </thead>
   <tbody>
     
       <tr class="passed">
-        <td>Площадь на липид<br><span class="id">area-per-lipid</span></td>
-        <td>1.2056 sigma^2</td>
+        <td>Area per lipid<br><span class="id">area-per-lipid</span></td>
+        <td>1.2004 sigma^2</td>
         <td>1.1 – 1.5 sigma^2</td>
         <td>A</td>
-        <td class="verdict">пройдено</td>
-        <td>измерено этим прогоном (verify/run.ts)</td>
+        <td class="verdict">passed</td>
+        <td>measured by this run (verify/run.ts)</td>
         <td>Cooke &amp; Deserno 2005, arXiv:cond-mat/0509218</td>
-        <td>kT/eps = 1.1, w_c = 1.6 sigma, нулевое натяжение</td>
+        <td>kT/eps = 1.1, w_c = 1.6 sigma, zero tension</td>
       </tr>
 
       <tr class="passed">
-        <td>Толщина бислоя<br><span class="id">bilayer-thickness</span></td>
-        <td>4.4750 sigma</td>
+        <td>Bilayer thickness<br><span class="id">bilayer-thickness</span></td>
+        <td>4.4545 sigma</td>
         <td>4 – 6 sigma</td>
         <td>A</td>
-        <td class="verdict">пройдено</td>
-        <td>измерено этим прогоном (verify/run.ts)</td>
+        <td class="verdict">passed</td>
+        <td>measured by this run (verify/run.ts)</td>
         <td>Cooke &amp; Deserno 2005, arXiv:cond-mat/0509218</td>
-        <td>по максимумам плотности головных бидов</td>
+        <td>from the maxima of the head-bead density</td>
       </tr>
 
       <tr class="unproven">
-        <td>Модуль изгиба<br><span class="id">bending-modulus</span></td>
+        <td>Bending modulus<br><span class="id">bending-modulus</span></td>
         <td>—</td>
         <td>5 – 50 kT</td>
         <td>A</td>
-        <td class="verdict">недоказано</td>
-        <td>измерено этим прогоном (verify/run.ts)</td>
+        <td class="verdict">unproven</td>
+        <td>measured by this run (verify/run.ts)</td>
         <td>Cooke &amp; Deserno 2005, arXiv:cond-mat/0509218</td>
-        <td>из спектра ундуляций; окно подгонки по q выбирается ПО ДАННЫМ (растёт от наименьшей оболочки |q|, пока наклон log-log остаётся в допуске ±1 от -4, минимум 4 независимых оболочки), а не фиксированным потолком в 8 мод — в этом прогоне окно вышло на 4 оболочки до q_max ≈ 0.18</td>
+        <td>from the undulation spectrum; the fit window in q is chosen from the data (it grows from the smallest |q| shell while the log-log slope stays within ±1 of -4, with at least 4 independent shells), not by a fixed cap of 8 modes; in this run the window came out at 4 shells up to q_max ≈ 0.18</td>
       </tr>
 
       <tr class="passed">
-        <td>Площадь на липид В ЯВНОЙ ВОДЕ<br><span class="id">area-per-lipid-water</span></td>
+        <td>Area per lipid in explicit water<br><span class="id">area-per-lipid-water</span></td>
         <td>1.1734 sigma^2</td>
         <td>1.1 – 1.5 sigma^2</td>
         <td>C</td>
-        <td class="verdict">пройдено</td>
-        <td>verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-23T09:42:01.222Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 300 отсчётов, дрейф ln A -2.722e-6 (t=-0.71)</td>
-        <td>коридор — Cooke &amp; Deserno 2005, arXiv:cond-mat/0509218 (ТОТ ЖЕ коридор, что у бесрастворительных ворот); среда — отношения глубин пар, выведенные из martini_v2.1.itp (Marrink et al., The MARTINI Force Field, J. Phys. Chem. B 2007, 111, 7812), задача 'hydrophobic-asymmetry', перезамерено задачей 'final-campaign' §3</td>
-        <td>НОВЫЙ РЕЗУЛЬТАТ ЭТОЙ КАМПАНИИ: та же величина, что у ворот area-per-lipid, но измеренная в ЖИДКОЙ явной воде 0.8 sigma^-3 (4500 бидов) вокруг заплатки из 400 липидов с 2-бидовыми хвостами, seed 31, kT из data/params.json, с ходом по площади при НУЛЕВОМ натяжении (Метрополис, 10 попыток на 500 шагов МД, окно из 150 отсчётов, критерий осёдлости по дрейфу блочных средних ln A). Площадь здесь ИЗМЕРЕНА, а не задана построением — до задачи 'hydrophobic-asymmetry' в воде она была допущением 1.3 sigma^2, и заплатка тогда давала 12.2-12.4 sigma при коридоре 4-6 (broth-composition-report.md §4, water-calibration-report.md). Ранг C, а НЕ A: коридор литературный (ранг A), но само число получено в среде, чьи отношения глубин пар взяты из чужого силового поля и на этом дереве не калиброваны (ранг C), а множитель epsilonScale=1.0 несёт ранг D.</td>
+        <td class="verdict">passed</td>
+        <td>verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, measured 2026-08-23T09:42:01.057Z): 400 lipids + 4500 water beads at 0.8 sigma^-3, N=5700, settled=true, 300 samples, ln A drift -2.722e-6 (t=-0.71)</td>
+        <td>corridor: Cooke &amp; Deserno 2005, arXiv:cond-mat/0509218 (the same corridor as the solvent-free gate); medium: pair-depth ratios derived from martini_v2.1.itp (Marrink et al., The MARTINI Force Field, J. Phys. Chem. B 2007, 111, 7812), task 'hydrophobic-asymmetry', remeasured by task 'final-campaign' §3</td>
+        <td>A new result of this campaign: the same quantity as the area-per-lipid gate, but measured in liquid explicit water at 0.8 sigma^-3 (4500 beads) around a patch of 400 lipids with 2-bead tails, seed 31, kT from data/params.json, with an area move at zero tension (Metropolis, 10 attempts per 500 MD steps, a window of 150 samples, a settling criterion based on the drift of block means of ln A). The area here is measured, not set by construction: before task 'hydrophobic-asymmetry' it was an assumed 1.3 sigma^2 in water, and the patch then gave 12.2-12.4 sigma against a corridor of 4-6 (broth-composition-report.md §4, water-calibration-report.md). Rank C, not A: the corridor is from the literature (rank A), but the number itself is obtained in a medium whose pair-depth ratios are taken from another force field and are not calibrated on this tree (rank C), and the multiplier epsilonScale=1.0 carries rank D.</td>
       </tr>
 
       <tr class="passed">
-        <td>Толщина бислоя В ЯВНОЙ ВОДЕ<br><span class="id">bilayer-thickness-water</span></td>
+        <td>Bilayer thickness in explicit water<br><span class="id">bilayer-thickness-water</span></td>
         <td>4.4689 sigma</td>
         <td>4 – 6 sigma</td>
         <td>C</td>
-        <td class="verdict">пройдено</td>
-        <td>verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, измерено 2026-08-23T09:42:01.222Z): 400 липидов + 4500 бидов воды при 0.8 sigma^-3, N=5700, осёдлость=true, 300 отсчётов, дрейф ln A -2.722e-6 (t=-0.71)</td>
-        <td>коридор — Cooke &amp; Deserno 2005, arXiv:cond-mat/0509218; среда — martini_v2.1.itp (Marrink et al., J. Phys. Chem. B 2007, 111, 7812); задача 'hydrophobic-asymmetry', перезамерено задачей 'final-campaign' §3</td>
-        <td>по максимумам плотности головных бидов, в ТОМ ЖЕ прогоне, что и area-per-lipid-water (те же 400 липидов, та же вода 0.8 sigma^-3, тот же ход по площади). Диагностика того же прогона публикуется рядом: доля закопанных голов и число водяных бидов в ядре — именно они, а не толщина, показали механизм предыдущего провала (закапывание голов 0.40-0.49 при отсутствии латеральной когезии листка). Ранг C по той же причине, что у area-per-lipid-water.</td>
+        <td class="verdict">passed</td>
+        <td>verify/out/water-bilayer-area-move.json (tests/water-bilayer-area-move.test.ts, measured 2026-08-23T09:42:01.057Z): 400 lipids + 4500 water beads at 0.8 sigma^-3, N=5700, settled=true, 300 samples, ln A drift -2.722e-6 (t=-0.71)</td>
+        <td>corridor: Cooke &amp; Deserno 2005, arXiv:cond-mat/0509218; medium: martini_v2.1.itp (Marrink et al., J. Phys. Chem. B 2007, 111, 7812); task 'hydrophobic-asymmetry', remeasured by task 'final-campaign' §3</td>
+        <td>from the maxima of the head-bead density, in the same run as area-per-lipid-water (the same 400 lipids, the same water at 0.8 sigma^-3, the same area move). Diagnostics of the same run are published alongside: the fraction of buried heads and the number of water beads in the core; it was these, not the thickness, that showed the mechanism of the earlier failure (head burial 0.40-0.49 with no lateral cohesion of the leaflet). Rank C for the same reason as area-per-lipid-water.</td>
       </tr>
 
       <tr class="failed">
-        <td>Замкнутость: ИНКАПСУЛИРОВАННАЯ ВОДА против порога<br><span class="id">vesicle-closure-water</span></td>
-        <td>0.0000 доля порога</td>
-        <td>&gt; 1 доля порога</td>
+        <td>Closure: encapsulated water against the threshold<br><span class="id">vesicle-closure-water</span></td>
+        <td>0.0000 fraction of threshold</td>
+        <td>&gt; 1 fraction of threshold</td>
         <td>B</td>
-        <td class="verdict">провалено</td>
-        <td>verify/out/gates-campaign-trace.json (tests/continuous-run-audit.test.ts, off-GPU по чекпойнтам кампании, измерено 2026-08-20T23:16:48.537Z), шаг 148200: инкапсулировано 0 водяных бидов против порога 315.409 (объёмная плотность воды 0.8505 sigma^-3 x минимальный замкнутый объём 370.8656 sigma^3), closed=false; таких снимков с надёжным центром 25 из 27 влажных, и на КАЖДОМ инкапсулировано 0</td>
-        <td>критерий: замкнутая везикула обязана удерживать растворитель, недостижимый для объёма извне — периодическая заливка снаружи, soup/src/water-closure.ts (методика проверена задачей 'periodic-measurement'). Порог ВЫЧИСЛЯЕТСЯ на том же снимке: минимальный замкнутый объём 370.8656 sigma^3 (эти же ворота closure, выведен из ИЗМЕРЕННОЙ толщины бислоя — ворота bilayer-thickness, ранг A) умноженный на ИЗМЕРЕННУЮ на том же снимке объёмную числовую плотность воды. final-campaign-report.md §7.1</td>
-        <td>Публикуется как ОТНОШЕНИЕ измеренного числа инкапсулированных водяных бидов к порогу, потому что сам порог пересчитывается на каждом снимке из живой объёмной плотности (замерено 317.1-320.9 бида по ходу кампании) — фиксированного числа в этом файле для него быть не может. Ранг B (посчитано): порог выведен из ворот ранга A через геометрию, а не импортирован. ЭТИ ВОРОТА ПРОВАЛЕНЫ, и это главный отрицательный результат проекта: инкапсулированной воды РОВНО НОЛЬ на всех снимках кампании, где периодический центр агрегата надёжен, closed=false везде. Отдельно и честно: на 9 из 15 влажных снимков water-closure.ts ОТКАЗЫВАЕТСЯ отвечать (центр не надёжен, когда протяжённость объекта сравнима с боксом) — сам отказ является независимым индикатором того же факта, что измеряют ворота aggregate-percolation.</td>
+        <td class="verdict">failed</td>
+        <td>verify/out/gates-campaign-trace.json (tests/continuous-run-audit.test.ts, off-GPU from the campaign checkpoints, measured 2026-08-20T23:38:12.000Z), step 148200: 0 water beads encapsulated against a threshold of 315.409 (bulk water density 0.8505 sigma^-3 x minimum closed volume 370.8656 sigma^3), closed=false; checkpoints with a reliable centre: 25 of 27 wet ones, and on each of them 0 were encapsulated</td>
+        <td>criterion: a closed vesicle must hold solvent that the bulk cannot reach from outside; periodic flood fill from outside, soup/src/water-closure.ts (method checked by task 'periodic-measurement'). The threshold is computed on the same checkpoint: the minimum closed volume 370.8656 sigma^3 (this same closure gate, derived from the measured bilayer thickness, gate bilayer-thickness, rank A) multiplied by the bulk water number density measured on the same checkpoint. final-campaign-report.md §7.1</td>
+        <td>Published as the ratio of the measured number of encapsulated water beads to the threshold, because the threshold itself is recomputed on every checkpoint from the live bulk density (measured at 317.1-320.9 beads over the campaign), so this file cannot hold a fixed number for it. Rank B (computed): the threshold is derived from a rank-A gate through geometry, not imported. This gate fails, and this is the project's main negative result: encapsulated water is exactly zero on every campaign checkpoint where the periodic centre of the aggregate is reliable, closed=false everywhere. Separately, and stated plainly: on 9 of 15 wet checkpoints water-closure.ts refuses to answer (the centre is unreliable when the extent of the object is comparable to the box); the refusal itself is an independent indicator of the same fact that the aggregate-percolation gate measures.</td>
       </tr>
 
       <tr class="failed">
-        <td>Крупнейший агрегат — КОНЕЧНЫЙ объект, а не сетка через весь бокс<br><span class="id">aggregate-percolation</span></td>
-        <td>3.0000 осей из 3</td>
-        <td>&lt; 0 осей из 3</td>
+        <td>Largest aggregate is a finite object, not a network across the whole box<br><span class="id">aggregate-percolation</span></td>
+        <td>3.0000 axes of 3</td>
+        <td>&lt; 0 axes of 3</td>
         <td>B</td>
-        <td class="verdict">провалено</td>
-        <td>verify/out/gates-percolation.json (tests/percolation-check.test.ts, off-GPU по чекпойнтам кампании, измерено 2026-08-20T23:15:51.699Z): 23 снимков кампании, обёртывающих осей 3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3, слоёв затронуто 27/27/27/27 на шаге 41100; контроли (объекты, которые проект называет конечными): dec54-step41400.json=0, dec54-step174400.json=0, swB54-step144400.json=3</td>
-        <td>стандартный критерий обёртывающего кластера: агрегат реплицируется один раз вдоль оси на +L с этой осью, сделанной открытой, пары соединяются по ТОМУ ЖЕ радиусу связности, что и везде в проекте, и спрашивается, попала ли частица в одну компоненту со своим собственным образом. Порог не вводится: у конечного объекта таких осей 0 ПО ОПРЕДЕЛЕНИЮ. tests/percolation-check.test.ts, final-campaign-report.md §6</td>
-        <td>Ранг B (посчитано из собственных величин проекта, без импортированной константы). ЭТИ ВОРОТА ПРОВАЛЕНЫ, и это НАЙДЕННОЕ СВЯЗЫВАЮЩЕЕ ОГРАНИЧЕНИЕ проекта: объект обёртывает бокс по 3 осям из 3 и касается всех 19 из 19 слоёв шириной радиуса связности по каждой оси, на всех 5 влажных снимках, охватывающих 135000 осевших шагов. У объекта, протянутого через периодический бокс, нет ни «внутри», ни «снаружи» — замкнуть он не может ничего, каким бы большим ни был. Инструмент различает: на трёх независимых системах, которые проект называет конечными стержнями (решающий прогон на шагах 41400 и 174400, плечо A), он даёт 0 осей из 3, а его собственный внутренний контроль (заведомо компактное подмножество в один слой) не обёртывает ни на одном снимке.</td>
+        <td class="verdict">failed</td>
+        <td>verify/out/gates-percolation.json (tests/percolation-check.test.ts, off-GPU from the campaign checkpoints, measured 2026-08-20T23:38:12.000Z): 23 campaign checkpoints, wrapping axes 3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3/3, slabs touched 27/27/27/27 at step 41100; controls (objects the project calls finite): dec54-step41400.json=0, dec54-step174400.json=0, swB54-step144400.json=3</td>
+        <td>the standard wrapping-cluster criterion: the aggregate is replicated once along an axis at +L with that axis made open, pairs are connected by the same connectivity radius as everywhere else in the project, and the question is whether a particle falls into one component with its own image. No threshold is introduced: a finite object has 0 such axes by definition. tests/percolation-check.test.ts, final-campaign-report.md §6</td>
+        <td>Rank B (computed from the project's own quantities, with no imported constant). This gate fails, and this is the binding constraint the project found: the object wraps the box along 3 axes of 3 and touches all 19 of 19 slabs of connectivity-radius width along each axis, on all 5 wet checkpoints covering 135000 settled steps. An object stretched across a periodic box has neither an &quot;inside&quot; nor an &quot;outside&quot;: it cannot enclose anything, however large it is. The tool discriminates: on three independent systems that the project calls finite rods (the decisive run at steps 41400 and 174400, arm A) it gives 0 axes of 3, and its own internal control (a deliberately compact one-slab subset) does not wrap on any checkpoint.</td>
       </tr>
 
       <tr class="failed">
-        <td>ИТОГ ПРОЕКТА: самособранная ЗАМКНУТАЯ везикула<br><span class="id">vesicle-verdict</span></td>
-        <td>0.0000 агрегатов</td>
-        <td>&gt; 1 агрегатов</td>
+        <td>Project outcome: a self-assembled closed vesicle<br><span class="id">vesicle-verdict</span></td>
+        <td>0.0000 aggregates</td>
+        <td>&gt; 1 aggregates</td>
         <td>A</td>
-        <td class="verdict">провалено</td>
-        <td>verify/out/gates-campaign-trace.json (измерено 2026-08-20T23:16:48.537Z): 29 снимков, hasVesicleAggregate=false на всех; последний влажный снимок — шаг 148200, агрегатов 4, крупнейший 4512 амфифилов, радиальных слоёв голов 2, полость 139.25 sigma^3 против порога 370.8656 sigma^3</td>
-        <td>измерено собственным распознавателем стадии (soup/src/aggregates.ts hasVesicleAggregate: замкнутость по инкапсулированной воде И два радиальных слоя голов И полость не меньше 370.8656 sigma^3) на каждом снимке всех кампаний; последняя и самая крупная — бокс 54 sigma, N=191778, 176400 шагов, жидкая вода 0.79999 sigma^-3, одно событие высушивания. final-campaign-report.md §0, §7, §8</td>
-        <td>ПРОВАЛЕНО: ни одного везикулярного агрегата ни на одном снимке ни одной кампании. Связывающее ограничение названо по имени и это НЕ то, что останавливало предыдущие прогоны: подача (2.10x над порогом) и РАЗМЕР агрегата (2087.2 против порога 1004, то есть 2.08x НАД ним, впервые в проекте) сняты замером, краевая энергия при этом размере тоже снята (0.583 kT на молекулу против порога конкурентоспособности ~1 kT). Останавливает СВЯЗНОСТЬ — ворота aggregate-percolation: объект обёртывает бокс по всем трём осям. Всё остальное ниже по течению: радиальных слоёв голов 1 вместо 2 (то есть стенки бислоя нет вовсе), полость 50.5 +- 1.6 sigma^3 против 370.8656 (в 7.3 раза меньше), плоскостность 0.65-0.81 против &lt;= 0.35 для ламеллярного объекта.</td>
+        <td class="verdict">failed</td>
+        <td>verify/out/gates-campaign-trace.json (measured 2026-08-20T23:38:12.000Z): 29 checkpoints, hasVesicleAggregate=false on all of them; last wet checkpoint: step 148200, 4 aggregates, largest 4512 amphiphiles, radial head shells 2, cavity 139.25 sigma^3 against a threshold of 370.8656 sigma^3</td>
+        <td>measured by the project's own stage recogniser (soup/src/aggregates.ts hasVesicleAggregate: closure by encapsulated water and two radial head shells and a cavity of at least 370.8656 sigma^3) on every checkpoint of every campaign; the last and largest: box 54 sigma, N=191778, 176400 steps, liquid water 0.79999 sigma^-3, one drying event. final-campaign-report.md §0, §7, §8</td>
+        <td>Failed: not a single vesicular aggregate on any checkpoint of any campaign. The binding constraint is named, and it is not what stopped the earlier runs: supply (2.10x over the threshold) and aggregate size (2087.2 against a threshold of 1004, that is 2.08x above it, for the first time in the project) are ruled out by measurement, and the edge energy at this size is ruled out too (0.583 kT per molecule against a competitiveness threshold of ~1 kT). What stops it is connectivity, the aggregate-percolation gate: the object wraps the box along all three axes. Everything else is downstream: 1 radial head shell instead of 2 (that is, there is no bilayer wall at all), a cavity of 50.5 +- 1.6 sigma^3 against 370.8656 (7.3 times smaller), flatness 0.65-0.81 against &lt;= 0.35 for a lamellar object.</td>
       </tr>
 
       <tr class="unproven">
-        <td>Распределение длин цепей: согласие с ASF (ворота 2 спецификации)<br><span class="id">chain-length-asf</span></td>
+        <td>Chain-length distribution: agreement with ASF (gate 2 of the specification)<br><span class="id">chain-length-asf</span></td>
         <td>0.1594 -</td>
-        <td>нет коридора (принимается только через другие ворота)</td>
+        <td>no corridor (accepted only through other gates)</td>
         <td>D</td>
-        <td class="verdict">недоказано</td>
-        <td>verify/out/gates-campaign-trace.json (измерено 2026-08-20T23:16:48.537Z), шаг 148200: alpha_ev=0.7477, ASF-среднее 1/(1-alpha_ev)=3.964, измеренное среднее на хвост=3.419, alpha восстановленное из гистограммы=0.7648 (r^2=0.918)</td>
-        <td>рамка Андерсона-Шульца-Флори для роста цепей на катализаторе: van der Laan &amp; Beenackers, Kinetics and selectivity of the Fischer-Tropsch synthesis: a literature review, Catal. Rev. Sci. Eng. 41 (1999) 255-318; спецификация раздел 8, ворота 2. Реализация — soup/src/equilibrium.ts (asfPrediction, recoverAlphaFromChainLengths)</td>
-        <td>Публикуемое число — относительное расхождение ASF-среднего 1/(1-alpha_ev), посчитанного из СОБЫТИЙНОГО отношения alpha_ev = cc_bond/(cc_bond+co_bond) без единого подогнанного параметра, с ИЗМЕРЕННЫМ средним числом бидов на хвост. Рядом публикуются оба alpha: событийное и восстановленное из самой гистограммы длин (recoverAlphaFromChainLengths) вместе с r^2 её лог-линейной подгонки — две независимые оценки одной величины. НЕДОКАЗАНО, и причина названа прямо: спецификация формулирует критерий этих ворот как «расхождение гистограмм», не давая числового коридора, и независимого литературного коридора для alpha ИМЕННО ЭТОЙ системы не существует — поэтому ворота несут ранг D и по правилу 1 verify/gates.ts выходят недоказанными при любом значении. Форма распределения при этом геометрическая, что и есть подпись ASF.</td>
+        <td class="verdict">unproven</td>
+        <td>verify/out/gates-campaign-trace.json (measured 2026-08-20T23:38:12.000Z), step 148200: alpha_ev=0.7477, ASF mean 1/(1-alpha_ev)=3.964, measured mean per tail=3.419, alpha recovered from the histogram=0.7648 (r^2=0.918)</td>
+        <td>the Anderson-Schulz-Flory framework for chain growth on a catalyst: van der Laan &amp; Beenackers, Kinetics and selectivity of the Fischer-Tropsch synthesis: a literature review, Catal. Rev. Sci. Eng. 41 (1999) 255-318; specification section 8, gate 2. Implementation: soup/src/equilibrium.ts (asfPrediction, recoverAlphaFromChainLengths)</td>
+        <td>The published number is the relative deviation of the ASF mean 1/(1-alpha_ev), computed from the event ratio alpha_ev = cc_bond/(cc_bond+co_bond) with not a single fitted parameter, from the measured mean number of beads per tail. Both alphas are published alongside: the event one and the one recovered from the length histogram itself (recoverAlphaFromChainLengths), together with the r^2 of its log-linear fit: two independent estimates of one quantity. Unproven, and the reason is stated directly: the specification phrases the criterion of this gate as &quot;histogram mismatch&quot; without giving a numeric corridor, and no independent literature corridor exists for the alpha of this particular system, so the gate carries rank D and, by rule 1 of verify/gates.ts, comes out unproven at any value. The shape of the distribution is nevertheless geometric, which is the signature of ASF.</td>
       </tr>
 
       <tr class="unproven">
-        <td>Среднее число бидов на хвост<br><span class="id">mean-tail-length</span></td>
-        <td>3.4190 бидов</td>
-        <td>2 – 3 бидов</td>
+        <td>Mean number of beads per tail<br><span class="id">mean-tail-length</span></td>
+        <td>3.4190 beads</td>
+        <td>2 – 3 beads</td>
         <td>D</td>
-        <td class="verdict">недоказано</td>
-        <td>verify/out/gates-campaign-trace.json (измерено 2026-08-20T23:16:48.537Z), шаг 148200: alpha_ev=0.7477, ASF-среднее 1/(1-alpha_ev)=3.964, измеренное среднее на хвост=3.419, alpha восстановленное из гистограммы=0.7648 (r^2=0.918)</td>
-        <td>наше отображение «число атомов углерода -&gt; число бидов» (спецификация раздел 4: C8 -&gt; 2, C12 -&gt; 3, C16 -&gt; 4), то есть окно 2-3 бида отвечает диапазону C8-C12; сами ворота отображения — chain-to-bead-mapping, ранг D</td>
-        <td>Ранг D и, следовательно, НЕДОКАЗАНО по правилу 1 verify/gates.ts, ровно как и ворота chain-to-bead-mapping, через которые это отображение только и принимается (через ворота площади и толщины, а не напрямую). Число публикуется потому, что оно измерено, и потому что честнее показать его вместе с окном, чем прятать: если бы это отображение несло независимый коридор, значение ВЫШЕ 3 читалось бы как провал. В кампании длина хвоста растёт ПО ХОДУ прогона при неизменном составе (замерено 2.845 -&gt; 3.490 на 135000 шагах), то есть это не одна цифра, а тренд, и разделить «второй хвост» и «длину хвоста» составом в этой модели нельзя — голова здесь и есть терминатор цепи.</td>
+        <td class="verdict">unproven</td>
+        <td>verify/out/gates-campaign-trace.json (measured 2026-08-20T23:38:12.000Z), step 148200: alpha_ev=0.7477, ASF mean 1/(1-alpha_ev)=3.964, measured mean per tail=3.419, alpha recovered from the histogram=0.7648 (r^2=0.918)</td>
+        <td>our mapping &quot;number of carbon atoms -&gt; number of beads&quot; (specification section 4: C8 -&gt; 2, C12 -&gt; 3, C16 -&gt; 4), so the window of 2-3 beads corresponds to the range C8-C12; the mapping gate itself is chain-to-bead-mapping, rank D</td>
+        <td>Rank D and therefore unproven by rule 1 of verify/gates.ts, exactly like the chain-to-bead-mapping gate, through which alone this mapping is accepted (through the area and thickness gates, not directly). The number is published because it is measured, and because it is more honest to show it with the window than to hide it: if this mapping carried an independent corridor, a value above 3 would read as a failure. In the campaign the tail length grows over the course of the run at fixed composition (measured 2.845 -&gt; 3.490 over 135000 steps), so this is a trend rather than a single figure, and in this model &quot;second tail&quot; and &quot;tail length&quot; cannot be separated by composition: the head here is the chain terminator.</td>
       </tr>
 
       <tr class="unproven">
-        <td>Замкнутая полость<br><span class="id">closure</span></td>
+        <td>Closed cavity<br><span class="id">closure</span></td>
         <td>1284.8750 sigma^3</td>
         <td>&gt; 370.8656 sigma^3</td>
         <td>D</td>
-        <td class="verdict">недоказано</td>
-        <td>измерено этим прогоном (verify/run.ts)</td>
-        <td>детектор заливкой снаружи проверен на синтетической тестовой оболочке (шар из бидов, построенный вручную в verify/run.ts) — движок ЕЩЁ НЕ ПОКАЗАЛ самособранную замкнутую везикулу; спецификация раздел 7</td>
-        <td>сетка 0.5 sigma, радиус бида 0.6 sigma. ИСПРАВЛЕНО (было min:1): 1 читался как «есть хоть одна незалитая ячейка сетки» — техническая проверка самого флуд-фила, не физический критерий везикулы. Живой прогон (36000 шагов, стандартный бульон, 548 распознанных амфифилов) дал enclosedVolume=1.1250 — при cell=0.5σ это ровно 9 ячеек (1.125/0.5³=9), карман между несколькими бидами, а не внутренность мембраны, и старый порог 1 объявил его везикулой. Новый порог — объём шара радиусом, ПРЕВЫШАЮЩИМ измеренную в этом же кодовом дереве толщину бислоя t≈4.457σ (verify/out/gates.json, гейт bilayer-thickness, Cooke &amp; Deserno 2005 калибровка, см. также data/soup.json's startBasis): полость меньше такого шара физически не может быть внутренностью везикулы, потому что сама мембрана, которая должна её огибать, толще этой полости. min = (4/3)·π·t³ = (4/3)·π·4.457³ ≈ 370.8656 σ³ — примерно в 330 раз больше девяти ячеек, которые старый порог принял за везикулу. Тот же порог обязан использовать data/soup.json's stageThresholds.enclosedVolume (лестница стадий); soup/src/stages.ts's loadStageThresholds() читает это значение из ДАННОГО файла и бросает ошибку, если числа расходятся, а не полагается на две вручную синхронизируемые копии. Ранг D сохранён — это физически обоснованный порог самого детектора, а не измеренное свойство самособранной везикулы (см. verify/gates.ts's правило 1).</td>
+        <td class="verdict">unproven</td>
+        <td>measured by this run (verify/run.ts)</td>
+        <td>the outside flood-fill detector is checked on a synthetic test shell (a ball of beads built by hand in verify/run.ts); the engine has not yet shown a self-assembled closed vesicle; specification section 7</td>
+        <td>grid 0.5 sigma, bead radius 0.6 sigma. Corrected (was min:1): 1 read as &quot;there is at least one unfilled grid cell&quot;, a technical check of the flood fill itself, not a physical vesicle criterion. A live run (36000 steps, standard broth, 548 recognised amphiphiles) gave enclosedVolume=1.1250; at cell=0.5σ that is exactly 9 cells (1.125/0.5³=9), a pocket between a few beads, not the interior of a membrane, and the old threshold of 1 declared it a vesicle. The new threshold is the volume of a ball whose radius exceeds the bilayer thickness t≈4.457σ measured in this same code tree (verify/out/gates.json, gate bilayer-thickness, Cooke &amp; Deserno 2005 calibration, see also data/soup.json's startBasis): a cavity smaller than such a ball physically cannot be the interior of a vesicle, because the membrane that must wrap around it is itself thicker than that cavity. min = (4/3)·π·t³ = (4/3)·π·4.457³ ≈ 370.8656 σ³, about 330 times more than the nine cells the old threshold took for a vesicle. data/soup.json's stageThresholds.enclosedVolume (the stage ladder) must use the same threshold; soup/src/stages.ts's loadStageThresholds() reads this value from this file and throws if the numbers differ, rather than relying on two manually synchronised copies. Rank D is kept: this is a physically justified threshold of the detector itself, not a measured property of a self-assembled vesicle (see verify/gates.ts's rule 1).</td>
       </tr>
 
       <tr class="unproven">
-        <td>Соответствие числа атомов углерода числу бидов<br><span class="id">chain-to-bead-mapping</span></td>
+        <td>Correspondence between the number of carbon atoms and the number of beads<br><span class="id">chain-to-bead-mapping</span></td>
         <td>3.0000 -</td>
-        <td>нет коридора (принимается только через другие ворота)</td>
+        <td>no corridor (accepted only through other gates)</td>
         <td>D</td>
-        <td class="verdict">недоказано</td>
-        <td>измерено этим прогоном (verify/run.ts)</td>
-        <td>наше допущение, спецификация раздел 7</td>
-        <td>принимается только через ворота площади и толщины</td>
+        <td class="verdict">unproven</td>
+        <td>measured by this run (verify/run.ts)</td>
+        <td>our assumption, specification section 7</td>
+        <td>accepted only through the area and thickness gates</td>
       </tr>
   </tbody>
 </table>
 
     <section class="kappa">
-      <h2>Модуль изгиба κ — почему «недоказано»</h2>
-      <p>Изгибная мода релаксирует со скоростью порядка q⁻³…q⁻⁴, поэтому подгонка нуждается именно
-      в самых медленных, наименее сошедшихся оболочках q. У оболочек, которые требует окно подгонки,
-      наблюдается разброс 11.1–58.7% между модами, которые по симметрии решётки обязаны совпадать —
-      прямое, не требующее эталона доказательство того, что эти оболочки ещё не сошлись.</p>
+      <h2>Bending modulus κ: why "unproven"</h2>
+      <p>The bending mode relaxes at a rate of order q⁻³…q⁻⁴, so the fit needs precisely
+      the slowest, least converged q shells. The shells that the fit window requires
+      show a spread of 5.5–35.1% between modes that lattice symmetry requires to coincide:
+      direct, reference-free evidence that these shells have not converged yet.</p>
       <table class="meta-table">
-        <tr><td>наклон log-log подгонки</td><td>-1.7265</td></tr>
-        <tr><td>число мод в окне подгонки</td><td>20</td></tr>
-        <tr><td>число оболочек в окне подгонки</td><td>4</td></tr>
-        <tr><td>q_max окна</td><td>0.1806</td></tr>
-        <tr><td>окно валидно</td><td>нет</td></tr>
+        <tr><td>slope of the log-log fit</td><td>-0.6882</td></tr>
+        <tr><td>number of modes in the fit window</td><td>20</td></tr>
+        <tr><td>number of shells in the fit window</td><td>4</td></tr>
+        <tr><td>q_max of the window</td><td>0.1803</td></tr>
+        <tr><td>window valid</td><td>no</td></tr>
       </table>
       <table>
         <thead>
-          <tr><th>q, σ⁻¹</th><th>вырождение</th><th>⟨|h_q|²⟩</th><th>разброс между вырожденными модами</th><th>в окне подгонки</th></tr>
+          <tr><th>q, σ⁻¹</th><th>degeneracy</th><th>⟨|h_q|²⟩</th><th>spread between degenerate modes</th><th>in fit window</th></tr>
         </thead>
         <tbody>
-          <tr><td>0.0808</td><td>4</td><td>2.639e-2</td><td>51.8%</td><td>да</td></tr>
-<tr><td>0.1142</td><td>4</td><td>1.525e-2</td><td>11.1%</td><td>да</td></tr>
-<tr><td>0.1615</td><td>4</td><td>1.639e-2</td><td>58.7%</td><td>да</td></tr>
-<tr><td>0.1806</td><td>8</td><td>7.910e-3</td><td>101.8%</td><td>нет</td></tr>
-<tr><td>0.2285</td><td>4</td><td>6.932e-3</td><td>90.9%</td><td>нет</td></tr>
-<tr><td>0.2423</td><td>4</td><td>9.068e-4</td><td>3.6%</td><td>нет</td></tr>
-<tr><td>0.2554</td><td>8</td><td>3.075e-3</td><td>49.3%</td><td>нет</td></tr>
-<tr><td>0.2912</td><td>8</td><td>1.380e-3</td><td>59.2%</td><td>нет</td></tr>
-<tr><td>0.3231</td><td>4</td><td>1.803e-3</td><td>65.2%</td><td>нет</td></tr>
-<tr><td>0.3330</td><td>8</td><td>1.017e-3</td><td>44.1%</td><td>нет</td></tr>
-<tr><td>0.3427</td><td>4</td><td>1.020e-3</td><td>36.7%</td><td>нет</td></tr>
-<tr><td>0.3612</td><td>8</td><td>4.855e-4</td><td>43.2%</td><td>нет</td></tr>
-<tr><td>0.4039</td><td>12</td><td>5.425e-4</td><td>36.3%</td><td>нет</td></tr>
-<tr><td>0.4119</td><td>8</td><td>4.800e-4</td><td>24.1%</td><td>нет</td></tr>
-<tr><td>0.4350</td><td>8</td><td>4.221e-4</td><td>12.7%</td><td>нет</td></tr>
-<tr><td>0.4569</td><td>4</td><td>2.699e-4</td><td>3.9%</td><td>нет</td></tr>
-<tr><td>0.4710</td><td>8</td><td>2.627e-4</td><td>13.4%</td><td>нет</td></tr>
-<tr><td>0.4846</td><td>4</td><td>2.384e-4</td><td>22.7%</td><td>нет</td></tr>
-<tr><td>0.4913</td><td>8</td><td>2.207e-4</td><td>46.5%</td><td>нет</td></tr>
-<tr><td>0.5108</td><td>8</td><td>1.958e-4</td><td>20.0%</td><td>нет</td></tr>
-<tr><td>0.5172</td><td>8</td><td>1.606e-4</td><td>19.1%</td><td>нет</td></tr>
-<tr><td>0.5418</td><td>8</td><td>2.025e-4</td><td>8.1%</td><td>нет</td></tr>
-<tr><td>0.5654</td><td>4</td><td>1.527e-4</td><td>0.2%</td><td>нет</td></tr>
-<tr><td>0.5711</td><td>12</td><td>1.118e-4</td><td>20.2%</td><td>нет</td></tr>
-<tr><td>0.5825</td><td>8</td><td>1.441e-4</td><td>16.8%</td><td>нет</td></tr>
-<tr><td>0.5880</td><td>8</td><td>1.184e-4</td><td>17.7%</td><td>нет</td></tr>
-<tr><td>0.6151</td><td>8</td><td>1.255e-4</td><td>13.0%</td><td>нет</td></tr>
-<tr><td>0.6308</td><td>8</td><td>9.077e-5</td><td>19.9%</td><td>нет</td></tr>
-<tr><td>0.6462</td><td>4</td><td>1.154e-4</td><td>20.5%</td><td>нет</td></tr>
+          <tr><td>0.0806</td><td>4</td><td>3.020e-2</td><td>35.1%</td><td>yes</td></tr>
+<tr><td>0.1140</td><td>4</td><td>1.172e-2</td><td>5.5%</td><td>yes</td></tr>
+<tr><td>0.1612</td><td>4</td><td>1.038e-2</td><td>14.4%</td><td>yes</td></tr>
+<tr><td>0.1803</td><td>8</td><td>1.681e-2</td><td>43.5%</td><td>no</td></tr>
+<tr><td>0.2280</td><td>4</td><td>3.969e-3</td><td>26.0%</td><td>no</td></tr>
+<tr><td>0.2418</td><td>4</td><td>1.901e-3</td><td>25.1%</td><td>no</td></tr>
+<tr><td>0.2549</td><td>8</td><td>4.456e-3</td><td>80.3%</td><td>no</td></tr>
+<tr><td>0.2907</td><td>8</td><td>1.810e-3</td><td>33.0%</td><td>no</td></tr>
+<tr><td>0.3225</td><td>4</td><td>1.414e-3</td><td>15.0%</td><td>no</td></tr>
+<tr><td>0.3324</td><td>8</td><td>6.026e-4</td><td>38.2%</td><td>no</td></tr>
+<tr><td>0.3420</td><td>4</td><td>1.865e-3</td><td>14.0%</td><td>no</td></tr>
+<tr><td>0.3605</td><td>8</td><td>7.062e-4</td><td>30.2%</td><td>no</td></tr>
+<tr><td>0.4031</td><td>12</td><td>4.718e-4</td><td>27.9%</td><td>no</td></tr>
+<tr><td>0.4111</td><td>8</td><td>4.049e-4</td><td>6.8%</td><td>no</td></tr>
+<tr><td>0.4341</td><td>8</td><td>3.842e-4</td><td>30.6%</td><td>no</td></tr>
+<tr><td>0.4560</td><td>4</td><td>2.484e-4</td><td>32.9%</td><td>no</td></tr>
+<tr><td>0.4701</td><td>8</td><td>2.507e-4</td><td>14.5%</td><td>no</td></tr>
+<tr><td>0.4837</td><td>4</td><td>3.091e-4</td><td>2.4%</td><td>no</td></tr>
+<tr><td>0.4904</td><td>8</td><td>2.107e-4</td><td>27.5%</td><td>no</td></tr>
+<tr><td>0.5098</td><td>8</td><td>1.857e-4</td><td>22.5%</td><td>no</td></tr>
+<tr><td>0.5162</td><td>8</td><td>2.003e-4</td><td>24.7%</td><td>no</td></tr>
+<tr><td>0.5408</td><td>8</td><td>1.549e-4</td><td>9.1%</td><td>no</td></tr>
+<tr><td>0.5643</td><td>4</td><td>1.623e-4</td><td>12.4%</td><td>no</td></tr>
+<tr><td>0.5700</td><td>12</td><td>1.284e-4</td><td>14.8%</td><td>no</td></tr>
+<tr><td>0.5813</td><td>8</td><td>1.458e-4</td><td>22.3%</td><td>no</td></tr>
+<tr><td>0.5869</td><td>8</td><td>1.237e-4</td><td>9.0%</td><td>no</td></tr>
+<tr><td>0.6139</td><td>8</td><td>1.233e-4</td><td>20.0%</td><td>no</td></tr>
+<tr><td>0.6296</td><td>8</td><td>1.347e-4</td><td>11.6%</td><td>no</td></tr>
+<tr><td>0.6449</td><td>4</td><td>9.211e-5</td><td>3.0%</td><td>no</td></tr>
         </tbody>
       </table>
     </section>
 
     <section class="closure-note">
-      <p><strong>О числе замкнутой полости:</strong> объём полости синтетической проверочной оболочки детектора (радиус 8σ, толщина 1.5σ, 40000 бидов, seed 2026) = 1284.875 σ³ — это свойство
-      синтетической проверочной раскладки самого детектора заливкой, а не измеренный объём внутренней
-      полости мембраны.</p>
+      <p><strong>On the closed-cavity number:</strong> cavity volume of the detector's synthetic test shell (radius 8σ, thickness 1.5σ, 40000 beads, seed 2026) = 1284.875 σ³: this is a property
+      of the detector's own synthetic flood-fill test layout, not a measured volume of the membrane's
+      inner cavity.</p>
     </section>
 
     <section class="performance">
-      <h2>Производительность</h2>
+      <h2>Performance</h2>
       <table class="meta-table">
-        <tr><td>шагов в секунду</td><td>2615.3</td></tr>
-        <tr><td>бидов в системе</td><td>3600</td></tr>
-        <tr><td>время перестройки сетки соседей, мс (отдельный замер)</td><td>1.400</td></tr>
-        <tr><td>сценарий</td><td>lipids=1200 (3600 бидов), box=[28,28,28], layout=bilayer, 20000 шагов</td></tr>
+        <tr><td>steps per second</td><td>1970.6</td></tr>
+        <tr><td>beads in the system</td><td>3600</td></tr>
+        <tr><td>neighbour grid rebuild time, ms (separate measurement)</td><td>1.400</td></tr>
+        <tr><td>scenario</td><td>lipids=1200 (3600 beads), box=[28,28,28], layout=bilayer, 20000 steps</td></tr>
       </table>
     </section>
 
     <section class="caveats">
-      <h2>Оговорки</h2>
+      <h2>Caveats</h2>
       <ul>
-        <li>Движок не бит-воспроизводим от запуска к запуску: сетка соседей раскладывает бидов по ячейкам через atomicAdd, порядок суммирования сил внутри ячейки меняется, а система (~3600 тел) хаотична и усиливает эту микроскопическую разницу до качественно разных траекторий.</li>
-<li>Порог самосборки (largest-cluster fraction &gt; 0.8) выполнен с эмпирическим запасом на 1 000 000 шагов, а не доказан как гарантия: один прогон на 400 000 шагах застрял на доле 0.53 с двумя не слившимися агрегатами.</li>
-<li>`areaPerLipid` делит площадь бокса на СОЗДАННОЕ, а не выжившее число липидов — это смещает оценку на очень длинных прогонах, откуда часть бидов уходит по z и перестаёт быть частью бислоя.</li>
-<li>Плато площади на липид (≈1.208 σ²) лежит в нижней половине литературного коридора 1.1–1.5 σ², а не в его середине.</li>
-<li>Перетянутый бислой, запущенный из состояния около 1.9 σ² на липид, иногда рвётся; после разрыва «площадь на липид» не является содержательной величиной, так как её знаменатель предполагает один целый лист мембраны, покрывающий весь бокс.</li>
-<li>Динамика фактически термостатируется к kT ≈ 1.1355 (дискретизационное смещение ~3.2% над номинальным значением, измерено в tests/sim.test.ts: Euler–Maruyama трения + жёсткая FENE-связь под velocity-Verlet), тогда как критерий Метрополиса в areaMove и префактор κ = kT/(A·exp(intercept)) в подгонке спектра используют номинальное data/params.json kT=1.1 — расхождение около 3%, не устранённое в этом прогоне.</li>
+        <li>The engine is not bit-reproducible from run to run: the neighbour grid places beads into cells via atomicAdd, the order of force summation within a cell changes, and the system (~3600 bodies) is chaotic and amplifies this microscopic difference into qualitatively different trajectories.</li>
+<li>The self-assembly threshold (largest-cluster fraction &gt; 0.8) is met with an empirical margin at 1 000 000 steps, not proven as a guarantee: one run at 400 000 steps got stuck at a fraction of 0.53 with two aggregates that had not merged.</li>
+<li>`areaPerLipid` divides the box area by the created number of lipids, not the surviving one; this biases the estimate on very long runs, from which some beads leave along z and stop being part of the bilayer.</li>
+<li>The area-per-lipid plateau (≈1.208 σ²) lies in the lower half of the literature corridor 1.1–1.5 σ², not in its middle.</li>
+<li>An overstretched bilayer started from a state near 1.9 σ² per lipid sometimes ruptures; after rupture, &quot;area per lipid&quot; is not a meaningful quantity, because its denominator assumes one intact membrane sheet covering the whole box.</li>
+<li>The dynamics is in fact thermostatted to kT ≈ 1.1355 (a discretisation bias of ~3.2% above the nominal value, measured in tests/sim.test.ts: Euler–Maruyama friction + a stiff FENE bond under velocity-Verlet), while the Metropolis criterion in areaMove and the prefactor κ = kT/(A·exp(intercept)) in the spectrum fit use the nominal data/params.json kT=1.1; a discrepancy of about 3%, not removed in this run.</li>
       </ul>
     </section>
-<footer>verify/report.ts только форматирует; данные подаёт verify/run.ts из ОДНОГО прогона измерения в этом же процессе (runId выше) — verify/out/gates.json и verify/out/kappa-measurement.json пишутся ИЗ ТОГО ЖЕ измерения, а не читаются этим отчётом с диска, и не наоборот.</footer>
+<footer>verify/report.ts only formats; the data is supplied by verify/run.ts from one measurement run in this same process (runId above). verify/out/gates.json and verify/out/kappa-measurement.json are written from that same measurement, not read from disk by this report, and not the other way round.</footer>
 </body>
 </html>
