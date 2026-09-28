@@ -1,6 +1,6 @@
 [
  {
-  "name": "базовый: 8 радиальных, 5.0 Å",
+  "name": "base: 8 radial, 5.0 Å",
   "D": 84,
   "metrics": {
    "energy_mae_mev_per_atom": 12.811219992745466,
@@ -12,7 +12,7 @@
   "t_train": 462.8685892079957
  },
  {
-  "name": "16 радиальных, 5.0 Å",
+  "name": "16 radial, 5.0 Å",
   "D": 132,
   "metrics": {
    "energy_mae_mev_per_atom": 15.212763550389354,
@@ -24,7 +24,7 @@
   "t_train": 523.007015167037
  },
  {
-  "name": "16 радиальных, 6.0 Å",
+  "name": "16 radial, 6.0 Å",
   "D": 132,
   "metrics": {
    "energy_mae_mev_per_atom": 12.029197317867027,
@@ -36,7 +36,7 @@
   "t_train": 506.32513583404943
  },
  {
-  "name": "24 радиальных, 6.0 Å + 5 ширин",
+  "name": "24 radial, 6.0 Å + 5 widths",
   "D": 276,
   "metrics": {
    "energy_mae_mev_per_atom": 4.698774505359325,

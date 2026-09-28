@@ -181,12 +181,12 @@ export function derivedMinAmphiphilesPerAggregate(): number {
   const p = loadParams()
   const soup = loadSoup()
   const carbon = soup.monomers.find((m) => m.kind === 'carbon')
-  if (!carbon) throw new Error('data/soup.json: не найден мономер вида carbon')
+  if (!carbon) throw new Error('data/soup.json: no monomer of kind carbon found')
   const tailLength = wcaCutoff(p.sigma * carbon.radiusSigma)
   const gates = (rawLiterature as { gates: Array<{ id: string; target: { min?: number; max?: number } }> }).gates
   const gate = gates.find((g) => g.id === 'area-per-lipid')
   if (!gate || gate.target.min === undefined || gate.target.max === undefined) {
-    throw new Error('data/literature.json: отсутствует area-per-lipid.target.min/max')
+    throw new Error('data/literature.json: missing area-per-lipid.target.min/max')
   }
   const areaPerLipidMid = (gate.target.min + gate.target.max) / 2
   const sphereArea = 4 * Math.PI * tailLength * tailLength

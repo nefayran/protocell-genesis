@@ -250,7 +250,7 @@ test('same-process continue: writes real checkpoint files for a fresh-process re
 //     configuration is identical to the pre-checkpoint one, which it could not be if the wall term
 //     had been dropped (the outermost beads carry a nonzero wall force, asserted separately so a
 //     configuration that happened to have none could not pass this vacuously).
-test('confined-parcel: удержание переживает checkpoint -> resume, и стенка после резюме РЕАЛЬНО на месте', async () => {
+test('confined-parcel: confinement survives checkpoint -> resume, and the wall is really in place after the resume', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api
@@ -301,10 +301,10 @@ test('confined-parcel: удержание переживает checkpoint -> res
     return { confA, confB, confInFile: file.config.confine, maxPos, maxVel, bondDiff, maxForce, wallShare, steps: file.globalStep }
   })
   console.log(
-    `CONFINE-ROUNDTRIP шаг=${r.steps} в_файле=${JSON.stringify(r.confInFile)} ` +
-      `R_live до=${Number((r.confA as any).radiusLive).toFixed(6)} после=${Number((r.confB as any).radiusLive).toFixed(6)} ` +
-      `max|dPos|=${r.maxPos} max|dVel|=${r.maxVel} различий_в_связях=${r.bondDiff} max|dF|=${r.maxForce} ` +
-      `max|F_стенки| в этой конфигурации=${r.wallShare.toFixed(4)}`,
+    `CONFINE-ROUNDTRIP step=${r.steps} in_file=${JSON.stringify(r.confInFile)} ` +
+      `R_live before=${Number((r.confA as any).radiusLive).toFixed(6)} after=${Number((r.confB as any).radiusLive).toFixed(6)} ` +
+      `max|dPos|=${r.maxPos} max|dVel|=${r.maxVel} bond_differences=${r.bondDiff} max|dF|=${r.maxForce} ` +
+      `max|F_wall| in this configuration=${r.wallShare.toFixed(4)}`,
   )
   expect(r.confInFile).toEqual({ radiusSigma: 16, stiffness: 100 })
   expect((r.confB as any).radiusLive).toBe((r.confA as any).radiusLive)

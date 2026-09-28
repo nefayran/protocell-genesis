@@ -5,7 +5,7 @@ import { gpuPage, shutdownGpu } from './helpers/gpu'
 
 afterAll(shutdownGpu)
 
-test('кластеризация различает две далёкие группы', () => {
+test('clustering tells apart two distant groups', () => {
   const pos: number[] = []
   for (let i = 0; i < 10; i++) pos.push(1 + i * 0.2, 1, 1, 1)
   for (let i = 0; i < 6; i++) pos.push(20 + i * 0.2, 20, 20, 1)
@@ -35,7 +35,7 @@ test('кластеризация различает две далёкие гру
 //     metastable trap, not a physics change.
 // Sampled every 40_000 steps (26 points including the t=0 baseline) so the aggregation PATHWAY is
 // visible — including any stall — rather than asserting only the final number.
-test('из случайного раствора вырастает один крупный агрегат', async () => {
+test('one large aggregate grows from a random solution', async () => {
   const p = loadParams()
   const cutoff = wcaCutoff(p.beadSizes.tail_tail) + p.attraction.wc // r_c + w_c, per the brief
 

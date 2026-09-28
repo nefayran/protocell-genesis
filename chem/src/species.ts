@@ -68,13 +68,13 @@ function loadMolecules(): MoleculesData {
 
 function requireBond(mol: MoleculesData, key: string): number {
   const v = mol.bondLengths[key]
-  if (v === undefined) throw new Error(`data/molecules.json: нет длины связи "${key}"`)
+  if (v === undefined) throw new Error(`data/molecules.json: no bond length "${key}"`)
   return v
 }
 
 function requireAngle(mol: MoleculesData, key: string): number {
   const v = mol.angles[key]
-  if (v === undefined) throw new Error(`data/molecules.json: нет угла "${key}"`)
+  if (v === undefined) throw new Error(`data/molecules.json: no angle "${key}"`)
   return v
 }
 
@@ -115,7 +115,7 @@ function splitAB2(formula: string): { central: string; terminal: string } {
   const central = entries.find(([, c]) => c === 1)?.[0]
   const terminal = entries.find(([, c]) => c === 2)?.[0]
   if (!central || !terminal || entries.length !== 2) {
-    throw new Error(`species: формула "${formula}" не подходит под AB2-геометрию`)
+    throw new Error(`species: formula "${formula}" does not fit an AB2 geometry`)
   }
   return { central, terminal }
 }
@@ -139,7 +139,7 @@ export function molarMass(formula: string): number {
   let mass = 0
   for (const [element, n] of Object.entries(counts)) {
     const info = atoms.elements[element]
-    if (!info) throw new Error(`data/atoms.json: неизвестный элемент "${element}"`)
+    if (!info) throw new Error(`data/atoms.json: unknown element "${element}"`)
     mass += info.mass * n
   }
   return mass
@@ -154,13 +154,13 @@ function buildSpeciesEntry(entry: SpeciesEntry, mol: MoleculesData): Species {
     case 'single': {
       const els = flattenFormula(entry.formula)
       atoms = [{ element: els[0], position: [0, 0, 0] }]
-      source = 'одноатомный ион — геометрия не применима'
+      source = 'monatomic ion: geometry does not apply'
       break
     }
     case 'diatomic': {
       const bondLen = requireBond(mol, entry.bond!)
       const els = flattenFormula(entry.formula)
-      if (els.length !== 2) throw new Error(`species: диатомная формула должна давать 2 атома: "${entry.formula}"`)
+      if (els.length !== 2) throw new Error(`species: a diatomic formula must give 2 atoms: "${entry.formula}"`)
       atoms = [
         { element: els[0], position: [0, 0, 0] },
         { element: els[1], position: [bondLen, 0, 0] },
@@ -216,7 +216,7 @@ function buildSpeciesEntry(entry: SpeciesEntry, mol: MoleculesData): Species {
       break
     }
     default:
-      throw new Error(`species: неизвестный вид геометрии "${entry.kind}"`)
+      throw new Error(`species: unknown geometry kind "${entry.kind}"`)
   }
 
   return { id: entry.id, formula: entry.formula, charge: entry.charge, atoms, bonds, source }
@@ -237,7 +237,7 @@ export function loadSpecies(): Record<string, Species> {
  * atoms actually placed, so it cannot silently disagree with the geometry.
  */
 export function buildAlkanoicAcid(n: number): Species {
-  if (n < 1) throw new Error('buildAlkanoicAcid: n должно быть >= 1')
+  if (n < 1) throw new Error('buildAlkanoicAcid: n must be >= 1')
   const mol = loadMolecules()
 
   const ccBond = requireBond(mol, 'CC_single')

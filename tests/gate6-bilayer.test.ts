@@ -28,7 +28,7 @@ afterAll(shutdownGpu)
 //    reported by the same call), which is roughly the distance from the true value to the lower
 //    literature bound — a single frame therefore decides this gate by luck, and used to: one run in
 //    six landed exactly on the bound.
-test('готовый бислой при нулевом натяжении держит площадь и толщину из литературы', async () => {
+test('a ready-made bilayer at zero tension holds the area and thickness from the literature', async () => {
   const page = await gpuPage()
   const m = await page.evaluate(async () => {
     const api = (window as any).api
@@ -117,7 +117,7 @@ test('готовый бислой при нулевом натяжении де�
 // different outcome from a run that is merely slow, so it gets a different, explicitly-labelled
 // failure (RUPTURE) instead of being folded into "did not converge" or, worse, silently judged by a
 // number that no longer describes an intact structure.
-test('площадь сходится в литературный коридор и из слишком большого, и из слишком малого бокса', async () => {
+test('the area converges into the literature corridor from both a too-large and a too-small box', async () => {
   const page = await gpuPage()
   const CAP = 2500 // hard cap on sampling moves per side; convergence is expected far earlier (see report)
   const TAIL = 200 // trailing window checked for "inside corridor + flat drift" — same width the old fixed-budget test used
@@ -171,7 +171,7 @@ test('площадь сходится в литературный коридор
       //  - largestClusterFractionOf: essentially all tail beads must sit in one connected component
       //    (the same connectivity the self-assembly gate uses to judge aggregation);
       //  - bilayerPeaks on the head-density z-profile must find a genuine second peak — it throws
-      //    "второй пик не найден" when the heads are no longer bimodal, which is exactly what a torn
+      //    "second peak not found" when the heads are no longer bimodal, which is exactly what a torn
       //    or interdigitated sheet looks like.
       async function structuralCheck(sys: any): Promise<{ intact: boolean; clusterFraction: number; peaksOk: boolean }> {
         const clusterFraction = await api.largestClusterFractionOf(sys)

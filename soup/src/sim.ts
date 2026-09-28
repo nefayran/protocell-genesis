@@ -101,7 +101,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   // room for the 5th species (water) without yet another restructure the next time one more is
   // needed.
   if (soup.monomers.length > 8) {
-    throw new Error(`data/soup.json: ${soup.monomers.length} видов мономеров — шейдер вмещает не больше 8`)
+    throw new Error(`data/soup.json: ${soup.monomers.length} monomer kinds, but the shader holds at most 8`)
   }
   const baseParams = loadParams()
   const p: Params = { ...baseParams, thermostat: { ...baseParams.thermostat, kT: opts.kT } }
@@ -145,9 +145,9 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   const capacityN = countsByKind.reduce((a, b) => a + b, 0)
   const activeCounts: Record<string, number> = opts.resume?.activeCounts ? { ...opts.resume.activeCounts } : { ...startCounts }
   const N = soup.monomers.reduce((sum, m) => sum + (activeCounts[m.id] ?? 0), 0)
-  if (capacityN === 0) throw new Error('createSoup: стартовый состав пуст')
+  if (capacityN === 0) throw new Error('createSoup: the starting composition is empty')
   if (N > capacityN) {
-    throw new Error(`createSoup: живой состав (${N}) больше стартового (${capacityN}) -- буферы выделяются под стартовый`)
+    throw new Error(`createSoup: the live composition (${N}) is larger than the starting one (${capacityN}) -- buffers are allocated for the starting one`)
   }
 
   // Neighbour-grid/Verlet-list geometry, WITH its three throwing completeness guards (walk-radius
@@ -187,7 +187,7 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
   let confine: Confinement | null = null
   const occupiedVolumeOf = (b: [number, number, number]) => (confine ? parcelVolume(liveRadius(confine, b)) : b[0] * b[1] * b[2])
   if (opts.confine) {
-    if (clay) throw new Error('confine: удержание в парцелле несовместимо с минеральной пластиной (clay) -- это две стенки сразу; используйте clay:false')
+    if (clay) throw new Error('confine: confinement in a parcel is incompatible with a mineral sheet (clay) -- that would be two walls at once; use clay:false')
     // The longest reach anything in this system has: the Verlet list's build radius and, when charge
     // is on, the long-range electrostatic list's. The electrostatic cutoff is not known yet (it needs
     // the dry box, which needs the parcel), so the bound used here is the file's OWN requested target
@@ -304,10 +304,10 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     for (const [what, bytes] of candidates) {
       if (bytes > bindingLimit || bytes > bufferLimit) {
         throw new Error(
-          `буфер ${what} требует ${bytes} байт при N=${capacityN} -- ` +
-            `предел устройства maxStorageBufferBindingSize=${bindingLimit}, maxBufferSize=${bufferLimit}. ` +
-            `WebGPU отказал бы в выделении МОЛЧА (только предупреждение в консоли), и каждый последующий ` +
-            `dispatch стал бы пустой операцией: прогон вернул бы нули, выглядящие как успех`,
+          `buffer ${what} needs ${bytes} bytes at N=${capacityN} -- ` +
+            `device limit maxStorageBufferBindingSize=${bindingLimit}, maxBufferSize=${bufferLimit}. ` +
+            `WebGPU would refuse the allocation silently (only a console warning), and every subsequent ` +
+            `dispatch would become a no-op: the run would return zeros that look like success`,
         )
       }
     }
@@ -567,11 +567,11 @@ export async function createSoup(opts: CreateSoupOpts): Promise<SoupSystem> {
     nonFiniteCount: () => scanNonFinite(rt),
     relaxColdStart: makeRelaxColdStart(rt, () => readback.forces(rt)),
     evaporateDEBUG: async (targetSolvent: number) => {
-      if (!evap) throw new Error('evaporateDEBUG: система создана без испарения растворителя (CreateSoupOpts.evaporateSolvent)')
+      if (!evap) throw new Error('evaporateDEBUG: the system was created without solvent evaporation (CreateSoupOpts.evaporateSolvent)')
       await evaporateSolventTo(rt, evap, targetSolvent, rt.live.liveBox)
     },
     rehydrateDEBUG: async (targetSolvent: number) => {
-      if (!evap) throw new Error('rehydrateDEBUG: система создана без испарения растворителя (CreateSoupOpts.evaporateSolvent)')
+      if (!evap) throw new Error('rehydrateDEBUG: the system was created without solvent evaporation (CreateSoupOpts.evaporateSolvent)')
       return rehydrateSolventTo(rt, evap, targetSolvent, rt.live.liveBox, particles, () => readback.forces(rt), opts.seed)
     },
     get box(): [number, number, number] {

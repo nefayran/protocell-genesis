@@ -54,7 +54,7 @@ const TAIL = Number(process.env.ACID_SOAP_TAIL ?? '100')
 const BLOCKS = 6
 
 test(
-  'кислотно-мыльная пара: свип силы -- площадь/толщина бислоя, доля спаренных и время жизни пары',
+  'acid-soap pair: a strength sweep -- bilayer area/thickness, paired fraction and pair lifetime',
   async () => {
     const page = await gpuPage()
     const rows: any[] = []
@@ -412,20 +412,20 @@ test(
         `ACID-SOAP-SWEEP S=${result.acidSoap} pH=${result.pH} N=${result.N} settled=${result.settled} ` +
           `chunks=${result.chunksUsed} steps=${result.stepsRun} ` +
           `area=${result.areaTailMean.toFixed(4)} [${result.areaTailMin.toFixed(4)}, ${result.areaTailMax.toFixed(4)}] ` +
-          `коридор ${AREA_MIN}-${AREA_MAX} -> ${inArea ? 'ВНУТРИ' : 'ВНЕ'} | ` +
-          `толщина=${result.final.thickness === null ? 'N/A' : result.final.thickness.toFixed(4)} ` +
-          `коридор ${THICKNESS_MIN}-${THICKNESS_MAX} -> ${inThickness ? 'ВНУТРИ' : 'ВНЕ'} | ` +
+          `corridor ${AREA_MIN}-${AREA_MAX} -> ${inArea ? 'inside' : 'outside'} | ` +
+          `thickness=${result.final.thickness === null ? 'N/A' : result.final.thickness.toFixed(4)} ` +
+          `corridor ${THICKNESS_MIN}-${THICKNESS_MAX} -> ${inThickness ? 'inside' : 'outside'} | ` +
           `drift(lnA)=${result.driftPerChunk.toExponential(2)} t=${result.driftT.toFixed(2)} ` +
           `acc=${result.acceptedFraction.toFixed(3)} cluster=${result.final.clusterFraction.toFixed(4)} ` +
           `buried=${result.final.headBuriedFraction === null ? 'N/A' : result.final.headBuriedFraction.toFixed(4)} ` +
           `water_in_core=${result.final.waterInCore}/${result.final.totalWater} ` +
           `amph=${result.final.amphiphileCount}/400 ` +
           `alpha=${result.alphaMean === null ? 'N/A' : result.alphaMean.toFixed(4)} ` +
-          `спаренных=${result.pairedFractionMean === null ? 'N/A' : result.pairedFractionMean.toFixed(4)} ` +
-          `избыток_неодинаковых=${result.unlikeExcessMean === null ? 'N/A' : result.unlikeExcessMean.toFixed(3)} ` +
-          `выживание=${result.pairSurvivalMean === null ? 'N/A' : result.pairSurvivalMean.toFixed(4)} ` +
-          `за ${result.survivalInterval} шагов -> время_жизни=${result.pairLifetimeMean === null ? 'N/A(цензура)' : result.pairLifetimeMean.toFixed(0)} шагов ` +
-          `throughput=${result.stepsPerSec.toFixed(1)} шаг/с`,
+          `paired=${result.pairedFractionMean === null ? 'N/A' : result.pairedFractionMean.toFixed(4)} ` +
+          `unlike_excess=${result.unlikeExcessMean === null ? 'N/A' : result.unlikeExcessMean.toFixed(3)} ` +
+          `survival=${result.pairSurvivalMean === null ? 'N/A' : result.pairSurvivalMean.toFixed(4)} ` +
+          `over ${result.survivalInterval} steps -> lifetime=${result.pairLifetimeMean === null ? 'N/A(censored)' : result.pairLifetimeMean.toFixed(0)} steps ` +
+          `throughput=${result.stepsPerSec.toFixed(1)} steps/s`,
       )
       console.log(
         'ACID-SOAP-SWEEP-TRAJECTORY S=' + result.acidSoap + '\n  ' +
@@ -470,7 +470,7 @@ test(
         2,
       ),
     )
-    console.log(`ACID-SOAP-SWEEP WROTE ${ARTIFACT} (${arms.length + rows.length} плеч)`)
+    console.log(`ACID-SOAP-SWEEP WROTE ${ARTIFACT} (${arms.length + rows.length} arms)`)
     expect(rows.length).toBe(STRENGTHS.length)
     // Every arm must be a MEASUREMENT, not a snapshot of a wandering coordinate: the box moved, the
     // acceptance is in a usable Metropolis band. Whether it stays inside the literature corridors is

@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { fitBendingModulus, spectrum, synthesizeHeightField } from '../engine/src/spectrum'
 
-test('оценка κ восстанавливает величину, заложенную в синтетическое поле', () => {
+test('the κ estimate recovers the value built into a synthetic field', () => {
   const n = 64
   const box: [number, number, number] = [40, 40, 40]
   const kT = 1.1

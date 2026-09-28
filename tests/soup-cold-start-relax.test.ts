@@ -26,7 +26,7 @@ const START = { C: 551, O: 2205, H: 551, M: 37, W: 6400 }
 const PAYOFF_STEPS = 3000
 
 test(
-  'минимизация холодного старта: не трогает ничего измеряемого и делает жидкую воду проходимой',
+  'cold-start minimisation: touches nothing that is measured and makes liquid water runnable',
   async () => {
     const page = await gpuPage()
     const consoleWarnings: string[] = []
@@ -173,9 +173,9 @@ test(
     )
     console.log(`COLD-START-RELAX-REFUSAL ${r.refusal}`)
     console.log(
-      `COLD-START-RELAX-PAYOFF без минимизации: ${r.bareError ? `ОШИБКА на шаге=${r.bareStepsAtThrow}: ${r.bareError}` : 'прошло без ошибки'}\n` +
-        `                     с минимизацией: steps=${r.relaxedSteps} nonFinite=${JSON.stringify(r.relaxedNonFinite)} ` +
-        `err=${r.relaxedError ?? 'нет'} maxF ${r.relaxedRelax.maxForceBefore.toExponential(4)} -> ${r.relaxedRelax.maxForceAfter.toExponential(4)}`,
+      `COLD-START-RELAX-PAYOFF without minimisation: ${r.bareError ? `error at step=${r.bareStepsAtThrow}: ${r.bareError}` : 'passed without error'}\n` +
+        `                     with minimisation: steps=${r.relaxedSteps} nonFinite=${JSON.stringify(r.relaxedNonFinite)} ` +
+        `err=${r.relaxedError ?? 'none'} maxF ${r.relaxedRelax.maxForceBefore.toExponential(4)} -> ${r.relaxedRelax.maxForceAfter.toExponential(4)}`,
     )
 
     // --- INVARIANTS: everything the stage must not touch --------------------------------------
@@ -200,20 +200,20 @@ test(
 
     // --- REFUSAL: it is impossible to put a minimisation inside a trajectory ------------------
     expect(r.refusal).not.toBeNull()
-    expect(r.refusal).toMatch(/минимизация разрешена ТОЛЬКО до первого шага/)
-    expect(r.refusal).toMatch(/уже на шаге 1\b/)
+    expect(r.refusal).toMatch(/minimisation is allowed only before the first step/)
+    expect(r.refusal).toMatch(/already at step 1\b/)
     expect(r.nonFiniteAfterOneStep).toEqual({ pos: 0, vel: 0 })
 
     // --- PAYOFF: liquid-density water becomes reachable ---------------------------------------
     // Without the stage this exact composition dies, LOUDLY (which is the other half of this task).
     expect(r.bareError).not.toBeNull()
-    expect(r.bareError).toMatch(/нефинитное состояние/)
+    expect(r.bareError).toMatch(/non-finite state/)
     // With it, the same composition runs clean.
     expect(r.relaxedError).toBeNull()
     expect(r.relaxedSteps).toBe(PAYOFF_STEPS)
     expect(r.relaxedNonFinite).toEqual({ pos: 0, vel: 0 })
 
-    expect(consoleWarnings, `браузер сообщил об ошибке/предупреждении GPU во время теста:\n${consoleWarnings.join('\n')}`).toEqual([])
+    expect(consoleWarnings, `the browser reported a GPU error/warning during the test:\n${consoleWarnings.join('\n')}`).toEqual([])
   },
   300_000,
 )

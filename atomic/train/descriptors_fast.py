@@ -1,16 +1,19 @@
 """
-Те же дескрипторы, посчитанные векторно: угловая часть без цикла по парам соседей.
+The same descriptors computed vectorized: the angular part without a loop over neighbor
+pairs.
 
-Зачем понадобилось. В прямой реализации (train/descriptors.py) угловые функции считаются
-двойным циклом по парам соседей на питоне. Замер: 173 секунды на 336 кадров, то есть при
-пяти тысячах кадров дескрипторы стали бы стоить сорок минут -- дороже, чем разметка их
-дорогим учителем. Причина не в объёме арифметики, а в том, что при сорока соседях пар около
-780 на атом, и каждая проходит через интерпретатор.
+Why this was needed. In the direct implementation (train/descriptors.py), angular
+functions are computed with a double Python loop over neighbor pairs. Measured: 173
+seconds for 336 frames, i.e. at five thousand frames the descriptors would cost forty
+minutes, more expensive than labeling them with the expensive teacher. The cause is not
+the amount of arithmetic but that at forty neighbors there are about 780 pairs per atom,
+and each one passes through the interpreter.
 
-Здесь ровно та же математика, но все пары одного атома обрабатываются одним массивом. Формулы
-не меняются -- меняется только способ их выполнения, и это проверяется побайтовым сравнением с
-прямой реализацией (validate/test_descriptors_fast.py): расхождение обязано быть на уровне
-машинной точности, а не «примерно совпадать».
+Here it is exactly the same math, but all pairs of one atom are processed as a single
+array. The formulas do not change, only the way they are executed does, and this is
+verified by a byte-for-byte comparison with the direct implementation
+(validate/test_descriptors_fast.py): the discrepancy must be at the level of machine
+precision, not "approximately matching".
 """
 from __future__ import annotations
 
@@ -33,7 +36,7 @@ def compute_descriptors_fast(
     cell: np.ndarray | None = None,
     with_gradients: bool = True,
 ):
-    """Векторная версия `compute_descriptors` с тем же смыслом возвращаемых величин."""
+    """Vectorized version of `compute_descriptors` with the same meaning of returned values."""
     n = len(numbers)
     d_len = descriptor_length(spec, species)
     g = np.zeros((n, d_len))
@@ -61,7 +64,7 @@ def compute_descriptors_fast(
         unit = dij / rij[:, None]
         fc, dfc = cutoff_function(rij, spec.cutoff)
 
-        # --- радиальная часть: как в прямой версии, она уже векторная -------------------
+        # --- radial part: as in the direct version, it is already vectorized ------------
         diff = rij[:, None] - mu[None, :]
         parts, dparts = [], []
         for scale in spec.eta_scales:
@@ -89,7 +92,7 @@ def compute_descriptors_fast(
         if idx.size < 2:
             continue
 
-        # --- угловая часть: ВСЕ пары соседей одним массивом -----------------------------
+        # --- angular part: ALL neighbor pairs as a single array ------------------------
         ia, ib = np.triu_indices(idx.size, k=1)
         va, vb = dij[ia], dij[ib]
         ra, rb = rij[ia], rij[ib]
@@ -109,7 +112,7 @@ def compute_descriptors_fast(
             [species_pair_index(int(numbers[idx[a]]), int(numbers[idx[b]]), species) for a, b in zip(ia, ib)]
         )
 
-        # производные геометрических множителей -- те же выражения, что в прямой версии
+        # derivatives of the geometric factors: the same expressions as in the direct version
         dcos_dva = vb / (ra * rb)[:, None] - cos_t[:, None] * va / (ra**2)[:, None]
         dcos_dvb = va / (ra * rb)[:, None] - cos_t[:, None] * vb / (rb**2)[:, None]
         dfcc_dva = (dfc[ia] * fc[ib] * fc_jk)[:, None] * (va / ra[:, None])
@@ -151,7 +154,7 @@ def compute_descriptors_fast(
                             + common * dfcc_dvjk
                         )
                         ja, jb = idx[ia], idx[ib]
-                        # np.add.at по трём индексам сразу: пары могут делить атомы
+                        # np.add.at over three indices at once: pairs can share atoms
                         np.add.at(dg[i], (col, ja), dva)
                         np.add.at(dg[i], (col, jb), dvb)
                         np.add.at(dg[i], (col, np.full_like(ja, i)), -(dva + dvb))

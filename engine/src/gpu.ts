@@ -11,9 +11,9 @@ export async function getGpu(): Promise<Gpu> {
   if (gpuPromise) return gpuPromise
 
   gpuPromise = (async () => {
-    if (!navigator.gpu) throw new Error('navigator.gpu отсутствует')
+    if (!navigator.gpu) throw new Error('navigator.gpu is missing')
     const adapter = await navigator.gpu.requestAdapter()
-    if (!adapter) throw new Error('адаптер WebGPU не выдан')
+    if (!adapter) throw new Error('no WebGPU adapter was provided')
     // Surface growth / adsorption (adsorption-report.md): the soup's bond-form kernels
     // (soup/wgsl/bond.wgsl) grew past the WebGPU DEFAULT per-stage storage-buffer limit (8) once
     // centerHeldSteps/desorbEvents joined pos2/cellStart/cellIdx/bondSlots/bondEvents/bondRng/
@@ -63,8 +63,8 @@ export async function readBack(device: GPUDevice, src: GPUBuffer, bytes: number)
   // from silent zeros into a thrown error.
   if ((src.usage & GPUBufferUsage.COPY_SRC) === 0) {
     throw new Error(
-      `readBack: буфер создан без GPUBufferUsage.COPY_SRC (usage=${src.usage}) -- копирование было бы ` +
-        `ошибкой валидации, submit тихо отбрасывается, и вызывающий получил бы НУЛИ вместо данных`,
+      `readBack: the buffer was created without GPUBufferUsage.COPY_SRC (usage=${src.usage}) -- the copy would be ` +
+        `a validation error, the submit is silently dropped, and the caller would get zeros instead of data`,
     )
   }
   const dst = device.createBuffer({ size: bytes, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ })

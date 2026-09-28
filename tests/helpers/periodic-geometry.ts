@@ -50,7 +50,7 @@ export interface AxisCircularStat {
  * (rayleighRMin, data/periodic-measurement.json's own written basis), not a fixed R bar. */
 export function circularAxisStat(coordsRaw: readonly number[], boxLen: number, alpha: number): AxisCircularStat {
   const n = coordsRaw.length
-  if (n === 0) throw new Error('circularAxisStat: пустой список координат')
+  if (n === 0) throw new Error('circularAxisStat: empty list of coordinates')
   let sc = 0
   let ss = 0
   for (const x of coordsRaw) {
@@ -349,7 +349,7 @@ function farthestEmptyCellSeed(occ: Uint8Array, dims: readonly [number, number, 
     }
   }
   if (best < 0) {
-    throw new Error('farthestEmptyCellSeed: сетка полностью занята -- нет ни одной пустой клетки для затравки периодической заливки')
+    throw new Error('farthestEmptyCellSeed: the grid is fully occupied -- there is not a single empty cell to seed the periodic flood fill')
   }
   return best
 }

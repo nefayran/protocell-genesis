@@ -32,7 +32,7 @@ afterAll(shutdownGpu)
 //     behind": water counts in Nbeads and in Nmol identically, so if the molecule map did not move
 //     water at all, the water-water virial would be missing from one side only.
 
-test('карта rigid-COM: композиция = прямое отображение, связи целы, растворитель переносится', () => {
+test('rigid-COM map: composition = the direct map, bonds intact, solvent is carried along', () => {
   // 3-bead chain (0,1,2) + three unbonded "solvent" beads (3,4,5) -- the soup's own shape: a free
   // bead is a molecule of size 1.
   const box: [number, number, number] = [10, 10, 10]
@@ -88,7 +88,7 @@ test('карта rigid-COM: композиция = прямое отображе
 })
 
 test(
-  'потенциал на CPU = первообразная сил GPU, и якобиан по площади даёт (Nбидов-Nмолекул)·kT',
+  'the CPU potential = the antiderivative of the GPU forces, and the area Jacobian gives (Nbeads-Nmolecules)·kT',
   async () => {
     const page = await gpuPage()
     const p = loadParams()

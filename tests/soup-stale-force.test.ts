@@ -25,7 +25,7 @@ afterAll(shutdownGpu)
 //  (b) it must NOT match the force of the geometry that existed BEFORE the box change (this is what
 //      makes (a) a real claim rather than an artefact of the two numbers being similar anyway --
 //      without the fix the buffer is exactly that pre-change force, bit for bit).
-test('изменение бокса обязано оставить F(x_n) для НОВОЙ геометрии, а не для прежней', async () => {
+test('a box change must leave F(x_n) for the new geometry, not for the previous one', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api
@@ -95,7 +95,7 @@ test('изменение бокса обязано оставить F(x_n) дл�
 // solvent insertion use (soup/src/soup-relax.ts's relaxIterations), applied at the current box with
 // no box change and no solvent movement. Pinned here so a future edit cannot quietly make the
 // control arm receive a different perturbation from the arm it controls for.
-test('минимизация ПОСРЕДИ прогона: тот же минимизатор, на текущем боксе, состав и граф связей целы', async () => {
+test('minimisation mid-run: the same minimiser, on the current box, composition and bond graph intact', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api

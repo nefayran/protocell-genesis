@@ -42,7 +42,7 @@ function parseArm(spec: string, seed: number): ClayArm {
 }
 
 // --- the bracket itself, on the CPU: two mappings, both citing the table, neither inventing a number
-test('химия поверхности глины: две границы вилки, обе — псевдонимы уже существующих уровней', () => {
+test('clay surface chemistry: two limits of the bracket, both aliases of already existing levels', () => {
   const soup = loadSoup()
   const clay = soup.clay!
   const levels = soup.solvent.attractionScale!.pairEpsilon!.levels
@@ -111,7 +111,7 @@ test('химия поверхности глины: две границы вил
 
   // An unknown chemistry THROWS by name rather than falling back to a default -- a silently wrong
   // surface is exactly the error a later measurement would attribute to physics.
-  expect(() => claySurfaceChemistryOf(soup, 'nonexistent')).toThrow(/не объявлена/)
+  expect(() => claySurfaceChemistryOf(soup, 'nonexistent')).toThrow(/is not declared/)
 
   // Nothing about the non-mineral part of the table depends on the chemistry: the same three classes
   // keep the same depths, so switching the surface cannot silently re-tune the water or the lipids.
@@ -123,7 +123,7 @@ test('химия поверхности глины: две границы вил
 })
 
 // --- the arms: the same four measurements at each limit, plus the two missing controls -------------
-test('химия поверхности глины: четыре замера на каждом плече (CHEM_ARMS)', async () => {
+test('clay surface chemistry: four measurements on each arm (CHEM_ARMS)', async () => {
   const page = await gpuPage()
   let diverged = 0
   let total = 0
@@ -172,8 +172,8 @@ test('химия поверхности глины: четыре замера н
       if (r.nonFinite > 0) {
         diverged++
         console.log(
-          `CHEM-DIVERGED seed=${seed} ${label} nonFinite=${r.nonFinite} of ${r.N * 4} cc=${r.ccBond} — ` +
-            `прогон разошёлся; замеры этого плеча в статистику НЕ идут`,
+          `CHEM-DIVERGED seed=${seed} ${label} nonFinite=${r.nonFinite} of ${r.N * 4} cc=${r.ccBond}: ` +
+            `the run diverged; this arm's measurements do not go into the statistics`,
         )
         expect(arm.mode === 'hydrophilic' || arm.mode === 'apolar').toBe(true)
         continue

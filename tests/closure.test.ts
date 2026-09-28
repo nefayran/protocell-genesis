@@ -31,7 +31,7 @@ function shiftXY(positions: Float32Array, box: [number, number, number], dx: num
   return out
 }
 
-test('замкнутая оболочка даёт полость близкую к объёму шара', () => {
+test('a closed shell gives a cavity close to the volume of the ball', () => {
   const box: [number, number, number] = [40, 40, 40]
   const occ = occupancy(shell(8, 1.5, 40_000), box, 0.5, 0.6)
   const v = enclosedVolume(occ, [80, 80, 80], 0.5)
@@ -40,7 +40,7 @@ test('замкнутая оболочка даёт полость близкую
   expect(v).toBeLessThan(ideal * 1.3)
 })
 
-test('оболочка, пересекающая границу по x, даёт ту же полость после рецентровки', () => {
+test('a shell crossing the boundary along x gives the same cavity after recentring', () => {
   const box: [number, number, number] = [40, 40, 40]
   const centered = shell(8, 1.5, 40_000)
   const straddling = shiftXY(centered, box, -20, 0) // centre moves from x=20 to x=0: half the shell wraps to x~38-40
@@ -53,7 +53,7 @@ test('оболочка, пересекающая границу по x, даёт
   expect(vStraddling).toBeLessThan(vCentered * 1.3)
 })
 
-test('оболочка в углу коробки (x и y сразу) даёт ту же полость после рецентровки', () => {
+test('a shell in a corner of the box (x and y at once) gives the same cavity after recentring', () => {
   const box: [number, number, number] = [40, 40, 40]
   const centered = shell(8, 1.5, 40_000)
   const corner = shiftXY(centered, box, -20, -20) // centre moves from (20,20) to (0,0): both periodic faces at once
@@ -63,7 +63,7 @@ test('оболочка в углу коробки (x и y сразу) даёт �
   expect(vCorner).toBeLessThan(vCentered * 1.3)
 })
 
-test('плоский лист полости не даёт', () => {
+test('a flat sheet gives no cavity', () => {
   const box: [number, number, number] = [40, 40, 40]
   const pos: number[] = []
   for (let i = 0; i < 20_000; i++) pos.push(Math.random() * 40, Math.random() * 40, 20 + (Math.random() - 0.5), 1)
@@ -88,7 +88,7 @@ test('плоский лист полости не даёт', () => {
 // the big synthetic shell) must clear the gate, and the EXACT reported 9-cell pocket must not --
 // regardless of how saturated the rest of the ladder is (a fully saturated AggregateAnalysis with
 // hasLamellarAggregate:true still must not read `vesicle` when hasVesicleAggregate comes out false).
-test('исправленный порог closure: настоящая большая полость на агрегате даёт vesicle, карман в 9 клеток из живого прогона — нет, независимо от насыщенности остальной лестницы', () => {
+test('corrected closure threshold: a real large cavity on an aggregate gives vesicle, a 9-cell pocket from a live run does not, regardless of the saturation of the rest of the ladder', () => {
   const thresholds = loadStageThresholds()
 
   // Genuine cavity: the SAME big synthetic shell as this file's very first test (radius 8, thickness
@@ -136,7 +136,7 @@ test('исправленный порог closure: настоящая больш
 // it is a labelling of the SAME unreached cells, not a second measurement -- and (b) the facade
 // correctly undoes the internal recentring, so a cavity's reported centre/voxels land back in the
 // SAME (possibly box-face-straddling) frame the caller's own positions were given in.
-test('cavities() размечает полости без изменения суммарного объёма enclosedVolume()', () => {
+test('cavities() labels cavities without changing the total volume of enclosedVolume()', () => {
   const box: [number, number, number] = [40, 40, 40]
   const positions = shell(8, 1.5, 40_000)
   const dims = dimsFor(box, 0.5)
@@ -155,7 +155,7 @@ test('cavities() размечает полости без изменения с�
   }
 })
 
-test('cavitiesFromPositions переносит центр и вокселы полости обратно в исходную систему координат вызывающего', () => {
+test('cavitiesFromPositions carries the centre and the voxels of a cavity back into the caller\'s original coordinate system', () => {
   const box: [number, number, number] = [40, 40, 40]
   const centered = shell(8, 1.5, 40_000)
   const straddling = shiftXY(centered, box, -20, 0) // same shift as this file's boundary-straddling test above
@@ -171,7 +171,7 @@ test('cavitiesFromPositions переносит центр и вокселы по
   expect(largest.centre[0] < 3 || largest.centre[0] > 37).toBe(true)
 })
 
-test('версия на GPU совпадает с эталоном на TypeScript', async () => {
+test('the GPU version matches the TypeScript reference', async () => {
   const page = await gpuPage()
   const rel = await page.evaluate(async () => {
     const api = (window as any).api

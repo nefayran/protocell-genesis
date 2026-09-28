@@ -50,7 +50,7 @@ const p = loadParams()
 const soup = loadSoup()
 const es0 = soup.electrostatics!
 
-test.skipIf(CHECKPOINTS.length === 0)('калибровка дальнодействия: солевой сдвиг pKa как функция обрезки', () => {
+test.skipIf(CHECKPOINTS.length === 0)('long-range calibration: the salt shift of pKa as a function of the cutoff', () => {
   const out: Record<string, unknown>[] = []
   for (const path of CHECKPOINTS) {
     const file = JSON.parse(readFileSync(path, 'utf8'))
@@ -62,8 +62,8 @@ test.skipIf(CHECKPOINTS.length === 0)('калибровка дальнодейс
     const heads = headIndices(pos, soup.monomers.findIndex((m) => m.id === es0.chargedKind))
     const rho = heads.length / (box[0] * box[1] * box[2])
     console.log(
-      `ES-CAL-CHECKPOINT ${path.split('/').pop()} шаг=${file.globalStep} box=${box[0].toFixed(4)} ` +
-        `N=${pos.length / 4} голов=${heads.length} rho_голов=${rho.toFixed(6)} потолок_образа=${imageCap.toFixed(4)}`,
+      `ES-CAL-CHECKPOINT ${path.split('/').pop()} step=${file.globalStep} box=${box[0].toFixed(4)} ` +
+        `N=${pos.length / 4} heads=${heads.length} rho_heads=${rho.toFixed(6)} image_cap=${imageCap.toFixed(4)}`,
     )
     // The cutoffs to sweep: the caller's list, plus ALWAYS the predecessor's own 2.7224620 as the
     // "before" row and ALWAYS the shipped rule (longRangeDebyeLengths * lambda_D, capped) as the
@@ -105,9 +105,9 @@ test.skipIf(CHECKPOINTS.length === 0)('калибровка дальнодейс
         }
         out.push(row)
         console.log(
-          `ES-CAL I=${I} rc=${rc.toFixed(4)} (=${(rc / lam).toFixed(3)} lambdaD, отброшено=${row.discardedIntegrated.toFixed(4)}) ` +
+          `ES-CAL I=${I} rc=${rc.toFixed(4)} (=${(rc / lam).toFixed(3)} lambdaD, discarded=${row.discardedIntegrated.toFixed(4)}) ` +
             `alpha=${alpha.toFixed(5)}+-${sd.toFixed(5)} pKa_app=${row.pKaApp.toFixed(4)} U(0.95)=${uContact.toFixed(4)}kT U(1.0663)=${uWca.toFixed(4)}kT ` +
-            `подметаний=${SWEEPS} ${row.ms}мс  траектория=[${traj.map((x) => x.toFixed(4)).join(' ')}]`,
+            `sweeps=${SWEEPS} ${row.ms}ms  trajectory=[${traj.map((x) => x.toFixed(4)).join(' ')}]`,
         )
       }
     }
@@ -123,9 +123,9 @@ test.skipIf(CHECKPOINTS.length === 0)('калибровка дальнодейс
       if (!lo || !hi) continue
       if (Math.abs((lo.debyeLengths as number) - nd) > 0.35 || Math.abs((hi.debyeLengths as number) - nd) > 0.35) continue
       shifts.push(
-        `  при ${nd} lambdaD: pKa(${lo.I})=${(lo.pKaApp as number).toFixed(4)} rc=${(lo.cutoff as number).toFixed(3)} | ` +
+        `  at ${nd} lambdaD: pKa(${lo.I})=${(lo.pKaApp as number).toFixed(4)} rc=${(lo.cutoff as number).toFixed(3)} | ` +
           `pKa(${hi.I})=${(hi.pKaApp as number).toFixed(4)} rc=${(hi.cutoff as number).toFixed(3)} | ` +
-          `СДВИГ=${((lo.pKaApp as number) - (hi.pKaApp as number)).toFixed(4)} против литературных ~-0.7`,
+          `shift=${((lo.pKaApp as number) - (hi.pKaApp as number)).toFixed(4)} vs the literature ~-0.7`,
       )
     }
     // And the shared-cutoff comparison the predecessor was forced into, for the same configuration.
@@ -133,8 +133,8 @@ test.skipIf(CHECKPOINTS.length === 0)('калибровка дальнодейс
     const hiShort = rows.find((r) => r.I === Math.max(...IONIC) && Math.abs((r.cutoff as number) - 2.7224620) < 1e-6)
     if (loShort && hiShort) {
       shifts.push(
-        `  ОБЩАЯ ОБРЕЗКА 2.7224620 (как у предшественника): pKa(${loShort.I})=${(loShort.pKaApp as number).toFixed(4)} | ` +
-          `pKa(${hiShort.I})=${(hiShort.pKaApp as number).toFixed(4)} | СДВИГ=${((loShort.pKaApp as number) - (hiShort.pKaApp as number)).toFixed(4)}`,
+        `  shared cutoff 2.7224620 (as in the predecessor): pKa(${loShort.I})=${(loShort.pKaApp as number).toFixed(4)} | ` +
+          `pKa(${hiShort.I})=${(hiShort.pKaApp as number).toFixed(4)} | shift=${((loShort.pKaApp as number) - (hiShort.pKaApp as number)).toFixed(4)}`,
       )
     }
     console.log(`ES-CAL-SHIFT ${path.split('/').pop()}\n${shifts.join('\n')}`)

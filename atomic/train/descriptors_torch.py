@@ -1,21 +1,24 @@
 """
-Дескрипторы на тензорах: тот же расчёт без питоновского цикла по атомам.
+Descriptors on tensors: the same computation without a Python loop over atoms.
 
-Зачем. Замер показал, что вся выгода нашей модели съедается реализацией: на 3 атомах мы
-быстрее учителя в 57 раз, на 24 -- в 3, на 81 -- в 1.2, а на 192 атомах уже МЕДЛЕННЕЕ (0.90).
-Причина не в модели: на 192 атомах ей нужно около семи миллионов операций на расчёт сил, то
-есть меньше миллисекунды при скромной производительности, против замеренных 618 мс. Разница --
-это питоновский цикл по атомам и по парам соседей.
+Why. A measurement showed that the entire benefit of our model is eaten up by the
+implementation: at 3 atoms we are 57x faster than the teacher, at 24 atoms 3x, at 81 atoms
+1.2x, and at 192 atoms already SLOWER (0.90x). The cause is not the model: at 192 atoms it
+needs about seven million operations to compute forces, i.e. less than a millisecond even
+at modest throughput, against a measured 618 ms. The difference is the Python loop over
+atoms and over neighbor pairs.
 
-Здесь тот же самый набор симметрийных функций считается пакетно: все атомы разом, все пары
-соседей разом, на процессоре или на карте. Формулы не меняются -- меняется только способ, и это
-проверяется сравнением с эталонной реализацией (validate/test_descriptors_torch.py): расхождение
-обязано быть на уровне одинарной точности, а не «примерно совпадать».
+Here the same set of symmetry functions is computed batch-wise: all atoms at once, all
+neighbor pairs at once, on CPU or GPU. The formulas do not change, only the method of
+computing them does, and this is verified by comparison with the reference implementation
+(validate/test_descriptors_torch.py): the discrepancy must be at the level of single
+precision, not "approximately matching".
 
-Устройство расчёта. Соседи ищутся один раз на кадр и хранятся плоскими списками пар: так
-периодичность учитывается одним вычитанием, а не поиском по ячейкам. Для угловой части строятся
-все ТРОЙКИ (центр, сосед a, сосед b) -- их число растёт как квадрат числа соседей, поэтому они
-собираются блоками, чтобы не выйти за память.
+Computation design. Neighbors are searched for once per frame and stored as flat lists of
+pairs: this way periodicity is handled by a single subtraction rather than a search over
+cells. For the angular part, all TRIPLETS (center, neighbor a, neighbor b) are built; their
+count grows as the square of the number of neighbors, so they are assembled in blocks to
+stay within memory.
 """
 from __future__ import annotations
 
@@ -25,7 +28,7 @@ from .descriptors import DescriptorSpec, descriptor_length, n_pair_channels
 
 
 def _pair_channel_matrix(species: tuple[int, ...]) -> np.ndarray:
-    """Таблица канала для пары сортов: (n_sp, n_sp) -> индекс неупорядоченной пары."""
+    """Channel table for a pair of species: (n_sp, n_sp) -> index of an unordered pair."""
     n = len(species)
     table = np.zeros((n, n), dtype=np.int64)
     idx = 0
@@ -38,10 +41,11 @@ def _pair_channel_matrix(species: tuple[int, ...]) -> np.ndarray:
 
 class TorchDescriptors:
     """
-    Пакетный расчёт дескрипторов и их производных.
+    Batched computation of descriptors and their derivatives.
 
-    `triplet_block` -- сколько троек обрабатывать за раз. Значение подбирается ЗАМЕРОМ под
-    доступную память: тройки это главный расход, их число на кадр порядка N·nb²/2.
+    `triplet_block` is how many triplets to process at a time. The value is chosen by
+    MEASUREMENT against available memory: triplets are the main cost, their count per frame
+    is of order N·nb²/2.
     """
 
     def __init__(self, spec: DescriptorSpec, species: tuple[int, ...], device: str = "cpu",
@@ -71,7 +75,7 @@ class TorchDescriptors:
         self.pair_table = torch.tensor(_pair_channel_matrix(species), device=device)
         self.species_index = {int(z): i for i, z in enumerate(species)}
 
-    # --- вспомогательное ------------------------------------------------------------------
+    # --- helpers -----------------------------------------------------------------------
     def _cutoff(self, r):
         import torch
 
@@ -83,22 +87,23 @@ class TorchDescriptors:
 
     def _triplets(self, i_idx, n_atoms):
         """
-        Пары соседей одного центра БЕЗ цикла по атомам.
+        Neighbor pairs of a single center WITHOUT a loop over atoms.
 
-        Соседи в плоском списке пар идут группами по центрам, поэтому все внутригрупповые
-        пары строятся одной арифметикой: для группы длины c это c(c-1)/2 пар, а смещения
-        считаются накопленной суммой. Замер, из-за которого это переписано: цикл по атомам на
-        питоне заметно виден уже при сотне атомов, а его работа -- это только раскладка индексов.
+        Neighbors in the flat pair list come in groups by center, so all within-group
+        pairs are built with a single piece of arithmetic: for a group of length c that is
+        c(c-1)/2 pairs, and offsets are computed as a cumulative sum. Measurement that led
+        to this rewrite: the Python loop over atoms becomes noticeably slow already at a
+        hundred atoms, and all its work is just index bookkeeping.
         """
         import torch
 
-        # Раскладка индексов считается НА ПРОЦЕССОРЕ в двойной точности и только потом
-        # переносится на устройство. Две причины, обе измеренные: Metal не поддерживает
-        # float64 вовсе (бэкенд на нём падал с "Cannot convert a MPS Tensor to float64"), а
-        # обратная нумерация верхнего треугольника идёт через квадратный корень, где одинарной
-        # точности не хватает -- при 200 тысячах троек ошибка на единицу в floor даёт неверную
-        # пару соседей. Стоимость этой раскладки ничтожна против самого счёта, поэтому держать
-        # её на процессоре ничего не стоит.
+        # The index bookkeeping is computed ON THE CPU in double precision and only then
+        # moved to the device. Two reasons, both measured: Metal does not support float64
+        # at all (the backend crashed on it with "Cannot convert a MPS Tensor to float64"),
+        # and the inverse numbering of the upper triangle goes through a square root, where
+        # single precision is not enough; at 200 thousand triplets, an off-by-one error in
+        # floor gives the wrong neighbor pair. The cost of this bookkeeping is negligible
+        # against the computation itself, so keeping it on the CPU costs nothing.
         counts_cpu = torch.bincount(i_idx.cpu(), minlength=n_atoms)
         starts = torch.cumsum(counts_cpu, 0) - counts_cpu
         pairs_per = counts_cpu * (counts_cpu - 1) // 2
@@ -118,11 +123,11 @@ class TorchDescriptors:
 
     def compute(self, positions, numbers, cell=None):
         """
-        Возвращает (G, dG) как тензоры: G размера (N, D), dG размера (N, D, N, 3).
+        Returns (G, dG) as tensors: G of shape (N, D), dG of shape (N, D, N, 3).
 
-        Форма dG та же, что у эталонной реализации, чтобы обучение и проверки работали без
-        изменений. Она расточительна по памяти -- в производственном расчёте силы собираются
-        на лету, но здесь важна сверяемость с эталоном.
+        The shape of dG is the same as in the reference implementation, so that training
+        and checks work unchanged. It is wasteful in memory; in production forces are
+        gathered on the fly, but here comparability with the reference matters.
         """
         import torch
 
@@ -137,7 +142,7 @@ class TorchDescriptors:
         g = torch.zeros((n, self.d_len), device=self.device, dtype=self.torch_dtype)
         dg = torch.zeros((n, self.d_len, n, 3), device=self.device, dtype=self.torch_dtype)
 
-        # --- все пары внутри радиуса, одним проходом --------------------------------------
+        # --- all pairs within the radius, in a single pass ---------------------------------
         delta = pos[None, :, :] - pos[:, None, :]
         if cell_t is not None:
             inv = torch.linalg.inv(cell_t.T)
@@ -156,7 +161,7 @@ class TorchDescriptors:
         unit = vij / rij[:, None]
         fc, dfc = self._cutoff(rij)
 
-        # --- радиальная часть -------------------------------------------------------------
+        # --- radial part -------------------------------------------------------------------
         diff = rij[:, None] - self.mu[None, :]                                  # (P, n_radial)
         gauss = torch.exp(-self.etas[:, None, None] * diff[None] ** 2)          # (S, P, n_radial)
         value = (gauss * fc[None, :, None]).permute(1, 0, 2).reshape(len(rij), -1)
@@ -164,7 +169,7 @@ class TorchDescriptors:
             gauss * (-2.0 * self.etas[:, None, None] * diff[None] * fc[None, :, None] + dfc[None, :, None])
         ).permute(1, 0, 2).reshape(len(rij), -1)
 
-        base_col = sp_of[j_idx] * self.n_rad                                    # канал по сорту СОСЕДА
+        base_col = sp_of[j_idx] * self.n_rad                                    # channel by NEIGHBOR species
         cols = base_col[:, None] + torch.arange(self.n_rad, device=self.device)[None, :]
         g.index_put_((i_idx[:, None].expand_as(cols), cols), value, accumulate=True)
 
@@ -181,8 +186,8 @@ class TorchDescriptors:
                 -grad[:, :, axis], accumulate=True,
             )
 
-        # --- угловая часть: тройки блоками ------------------------------------------------
-        # соседи каждого центра идут подряд, поэтому тройки строятся по границам групп
+        # --- angular part: triplets in blocks -----------------------------------------------
+        # neighbors of each center are contiguous, so triplets are built by group boundaries
         counts = torch.bincount(i_idx, minlength=n)
         starts = torch.cumsum(counts, 0) - counts
         triples = []
@@ -262,22 +267,23 @@ class TorchDescriptors:
 
     def energy_forces_direct(self, positions, numbers, de_dg_fn, cell=None):
         """
-        Силы БЕЗ построения тензора производных дескрипторов.
+        Forces WITHOUT building the descriptor-derivative tensor.
 
-        Ключевая мысль, из-за которой этот метод существует: в расчёте нужны силы, а не
-        производные дескрипторов. Если сначала получить dE/dG (один дешёвый проход сети по
-        всем атомам), то силу можно собирать прямо в обходе пар и троек:
+        The key idea behind this method: the computation needs forces, not descriptor
+        derivatives. If dE/dG is obtained first (one cheap network pass over all atoms),
+        the force can be assembled directly while walking pairs and triplets:
 
             F_k = - sum_i sum_d (dE/dG_i,d) * (dG_i,d / dr_k)
 
-        и каждое слагаемое учитывается сразу, а тензор (N, D, N, 3) никогда не появляется.
-        Замер, из-за которого это понадобилось: с этим тензором тензорная версия давала лишь
-        2.1-2.5x против эталонной, потому что вся работа уходила в запись в память, а не в счёт
-        (81 атом, D=132 -- это 2.6 миллиона чисел на кадр).
+        and each term is accounted for immediately, so the (N, D, N, 3) tensor never
+        appears. Measurement that made this necessary: with that tensor, the tensor
+        version gave only 2.1-2.5x against the reference, because all the work went into
+        writing to memory rather than computing (81 atoms, D=132 is 2.6 million numbers
+        per frame).
 
-        `de_dg_fn` -- функция, которая по (N, D) дескрипторам возвращает (E, dE/dG). Разделение
-        нужно, чтобы этот метод ничего не знал о виде модели: сеть, линейная модель или что
-        угодно ещё подставляется снаружи.
+        `de_dg_fn` is a function that, given (N, D) descriptors, returns (E, dE/dG). This
+        separation is needed so that this method knows nothing about the model's form: a
+        network, a linear model, or anything else is plugged in from outside.
         """
         import torch
 
@@ -311,7 +317,7 @@ class TorchDescriptors:
         unit = vij / rij[:, None]
         fc, dfc = self._cutoff(rij)
 
-        # --- ПЕРВЫЙ проход: только дескрипторы (без производных) --------------------------
+        # --- FIRST pass: descriptors only (no derivatives) ----------------------------------
         diff = rij[:, None] - self.mu[None, :]
         gauss = torch.exp(-self.etas[:, None, None] * diff[None] ** 2)
         value = (gauss * fc[None, :, None]).permute(1, 0, 2).reshape(len(rij), -1)
@@ -356,10 +362,10 @@ class TorchDescriptors:
                     (pa, pb, centre, ja, jb, va, vb, ra, rb, vjk, rjk, fc_jk, dfc_jk, cos_t, fcc, r2sum, channel)
                 )
 
-        # --- сеть: энергия и dE/dG --------------------------------------------------------
+        # --- network: energy and dE/dG ------------------------------------------------------
         energy, de_dg = de_dg_fn(g)
 
-        # --- ВТОРОЙ проход: силы, с уже известным dE/dG -----------------------------------
+        # --- SECOND pass: forces, with dE/dG already known ----------------------------------
         w_rad = torch.gather(de_dg[i_idx], 1, cols_rad)                   # (P, n_rad)
         radial_scalar = (w_rad * dvalue).sum(dim=1)                       # (P,)
         contrib = radial_scalar[:, None] * unit
@@ -403,17 +409,19 @@ class TorchDescriptors:
 
     def energy_forces_fused(self, positions, numbers, de_dg_fn, cell=None):
         """
-        То же, что `energy_forces_direct`, но все угловые сочетания считаются ОДНИМ проходом.
+        The same as `energy_forces_direct`, but all angular combinations are computed in a
+        SINGLE pass.
 
-        Замер, из-за которого это понадобилось. На 192 атомах: 8906 пар, 202831 тройка, 46.4
-        соседа в среднем, угловая часть -- 48.7 млн операций. Прямой путь тратил на неё около
-        180 запусков ядер (12 сочетаний × 3 оси × 3 накопления плюс промежуточные), и при
-        замеренных 105 мс это выходило меньше полугигафлопса: машина была занята накладными
-        расходами, а не счётом.
+        Measurement that made this necessary. At 192 atoms: 8906 pairs, 202831 triplets,
+        46.4 neighbors on average, angular part 48.7 million operations. The direct path
+        spent about 180 kernel launches on it (12 combinations x 3 axes x 3 accumulations
+        plus intermediates), and at a measured 105 ms this came out to less than half a
+        gigaflop: the machine was busy with overhead, not computation.
 
-        Здесь кратности, четности и ширины раскрываются в ОДНУ ось длиной n_angular, поэтому
-        вместо 180 запусков остаётся около десяти. Формулы не меняются; совпадение с прямым
-        путём проверяется отдельно и обязано быть на уровне одинарной точности.
+        Here the multiplicities, parities and widths are unrolled into ONE axis of length
+        n_angular, so instead of 180 launches about ten remain. The formulas do not change;
+        agreement with the direct path is verified separately and must be at the level of
+        single precision.
         """
         import torch
 
@@ -447,7 +455,7 @@ class TorchDescriptors:
         unit = vij / rij[:, None]
         fc, dfc = self._cutoff(rij)
 
-        # --- радиальная часть (как в прямом пути) -----------------------------------------
+        # --- radial part (same as in the direct path) ---------------------------------------
         diff = rij[:, None] - self.mu[None, :]
         gauss = torch.exp(-self.etas[:, None, None] * diff[None] ** 2)
         value = (gauss * fc[None, :, None]).permute(1, 0, 2).reshape(len(rij), -1)
@@ -478,8 +486,8 @@ class TorchDescriptors:
                 r2sum = ra**2 + rb**2 + rjk**2
                 channel = self.pair_table[sp_of[ja], sp_of[jb]]
 
-                # --- ВСЕ сочетания одной осью ------------------------------------------
-                # expo: (T, n_eta); base/angular: (T, n_zeta, n_lam) -> общая ось n_angular
+                # --- ALL combinations on a single axis ----------------------------------
+                # expo: (T, n_eta); base/angular: (T, n_zeta, n_lam) -> combined n_angular axis
                 expo = torch.exp(-self.eta_ang[None, :] * r2sum[:, None])            # (T, E)
                 base = 1.0 + self.lambdas[None, :] * cos_t[:, None]                  # (T, L)
                 zeta = self.zetas
@@ -489,7 +497,7 @@ class TorchDescriptors:
                     zeta[None, :, None] * self.lambdas[None, None, :] * base[:, None, :] ** (zeta[None, :, None] - 1.0),
                     torch.zeros_like(angular),
                 )
-                # порядок оси совпадает с порядком заполнения в эталоне: eta -> zeta -> lambda
+                # the axis order matches the fill order in the reference: eta -> zeta -> lambda
                 ang_flat = (angular[:, None, :, :] * expo[:, :, None, None]).reshape(len(cos_t), -1)
                 dang_flat = (dang[:, None, :, :] * expo[:, :, None, None]).reshape(len(cos_t), -1)
                 ang_only = angular[:, None, :, :].expand(-1, len(self.eta_ang), -1, -1).reshape(len(cos_t), -1)
@@ -509,13 +517,13 @@ class TorchDescriptors:
 
         energy, de_dg = de_dg_fn(g)
 
-        # --- силы: радиальная часть -------------------------------------------------------
+        # --- forces: radial part -------------------------------------------------------------
         w_rad = torch.gather(de_dg[i_idx], 1, cols_rad)
         contrib = (w_rad * dvalue).sum(dim=1)[:, None] * unit
         forces.index_add_(0, j_idx, -contrib)
         forces.index_add_(0, i_idx, contrib)
 
-        # --- силы: угловая часть, все сочетания сразу -------------------------------------
+        # --- forces: angular part, all combinations at once -----------------------------
         for (centre, ja, jb, va, vb, ra, rb, vjk, rjk, fc_a, fc_b, fc_jk,
              dfc_a, dfc_b, dfc_jk, cos_t, fcc, cols,
              ang_flat, dang_flat, ang_only, expo_only, eta_col) in cache:
@@ -526,12 +534,13 @@ class TorchDescriptors:
             dfcc_dvb = (dfc_b * fc_a * fc_jk)[:, None] * (vb / rb[:, None])
             dfcc_dvjk = (dfc_jk * fc_a * fc_b)[:, None] * (vjk / rjk[:, None])
 
-            # Свёртка по оси сочетаний ДО умножения на векторы: (T, A) -> (T,).
-            # `ang_flat` не содержит функции обрезания, поэтому член с её производной -- это
-            # ПРОСТО произведение, без деления. Первая версия делила на fcc и умножала обратно,
-            # и на границе радиуса, где fcc = 0, это давало 0/0 = NaN: силы совпадали с прямым
-            # путём на 192 атомах и были NaN на 24, то есть ошибка проявлялась не всегда --
-            # самый скверный вид ошибки, и её поймала только сверка двух путей.
+            # Reduction over the combinations axis BEFORE multiplying by vectors: (T, A) -> (T,).
+            # `ang_flat` does not contain the cutoff function, so the term with its
+            # derivative is JUST a product, without division. The first version divided by
+            # fcc and multiplied back, and at the radius boundary, where fcc = 0, this gave
+            # 0/0 = NaN: forces matched the direct path at 192 atoms and were NaN at 24,
+            # i.e. the bug did not show up consistently, the nastiest kind of bug, and only
+            # cross-checking the two paths caught it.
             s_dang = (w * dang_flat).sum(dim=1) * fcc
             s_ang = (w * ang_flat).sum(dim=1)
             s_expo_ang = (w * ang_only * expo_only * eta_col).sum(dim=1) * fcc

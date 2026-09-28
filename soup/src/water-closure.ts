@@ -62,7 +62,7 @@ export interface AxisCircularStat {
 
 function circularAxisStat(coordsRaw: readonly number[], boxLen: number, alpha: number): AxisCircularStat {
   const n = coordsRaw.length
-  if (n === 0) throw new Error('circularAxisStat: пустой список координат')
+  if (n === 0) throw new Error('circularAxisStat: empty list of coordinates')
   let sc = 0
   let ss = 0
   for (const x of coordsRaw) {
@@ -219,7 +219,7 @@ function farthestEmptyCellSeed(
     }
   }
   if (best < 0) {
-    throw new Error('farthestEmptyCellSeed: сетка полностью занята -- нет пустой клетки для затравки периодической заливки')
+    throw new Error('farthestEmptyCellSeed: the grid is fully occupied -- there is no empty cell to seed the periodic flood fill')
   }
   return best
 }

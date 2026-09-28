@@ -8,7 +8,7 @@ afterAll(shutdownGpu)
 // made a genuine hang (see soup/src/sim.ts's STEP_CHUNK comment) indistinguishable from "just slow"
 // until timed directly. 450_000ms gives >2x headroom over the measured total for a slower machine.
 test(
-  'связи образуются только на каталитическом центре там, где правило это требует',
+  'bonds form only at a catalytic site where the rule requires it',
   async () => {
     const page = await gpuPage()
     const r = await page.evaluate(async () => {
@@ -20,8 +20,8 @@ test(
       // forgets it silently gets a platelet"). With the platelet AND this fixture's DOUBLED catalyst
       // pool (catalystCount 200 -> 50 frozen sites of the largest bead in the file) the mobile phase is
       // squeezed hard enough against the sheet that data/soup.json's verletList.listCapacity=2500 is
-      // insufficient and the safety guard throws: "список Верле: verletList.listCapacity=2500 было
-      // недостаточно". Measured: at HEAD (7030e82) the whole file passed 2 of 2 runs; with this task's
+      // insufficient and the safety guard throws: "Verlet list: verletList.listCapacity=2500 was
+      // insufficient". Measured: at HEAD (7030e82) the whole file passed 2 of 2 runs; with this task's
       // larger, correct exclusion slab (soup/src/soup-clay.ts -- the slab must clear the SITE bead's
       // radius, not only the mineral bead's) it threw in 2 of 4 runs. The capacity was NOT raised
       // instead: that is a per-particle memory cost (2500 x N x 4 B = 150 MB at N=15000) paid by every
@@ -51,7 +51,7 @@ test(
   450_000,
 )
 
-test('число мономеров каждого сорта и заряд сохраняются при работающих реакциях', async () => {
+test('the count of monomers of each kind and the charge are conserved while reactions run', async () => {
   const page = await gpuPage()
   const inv = await page.evaluate(async () => {
     const api = (window as any).api
@@ -98,8 +98,8 @@ test('число мономеров каждого сорта и заряд со
 // same fixed step budget, not less -- a chemistry-population confound swamping the actual assembly
 // signal in a box this dense. data/soup.json's own stageThresholds.basis already documents that the
 // DILUTE box (50 sigma) is the one this project's own prior work found necessary to see genuine
-// discrete, round, micelle-like aggregates at all ("на разбавленном прогоне... ~15 визуально
-// различимых, круглых, дискретных агрегатов" -- the dense box was reported there as NOT showing
+// discrete, round, micelle-like aggregates at all ("on the dilute run... ~15 visually
+// distinct, round, discrete aggregates" -- the dense box was reported there as NOT showing
 // that shape). Switched to that same dilute box/composition (C:12000 O:4000 H:12000 M:400,
 // particle-scale 2, the box every measurement in this task's own report uses) for exactly that
 // documented reason, not to force a particular pass/fail direction.
@@ -138,7 +138,7 @@ test('число мономеров каждого сорта и заряд со
 // agitation shrinks the dominant cluster even in a regime where small pairs/triples keep forming
 // and dissolving freely, which "bound vs not" cannot see.
 test(
-  'при более высокой температуре агрегация ослабевает — сборка (не ковалентная химия) подчиняется детальному балансу',
+  'at a higher temperature aggregation weakens: assembly (not covalent chemistry) obeys detailed balance',
   async () => {
     const page = await gpuPage()
     const r = await page.evaluate(async () => {
@@ -187,7 +187,7 @@ test(
       }
       return out
     })
-    console.log('ASSEMBLY_TEMPERATURE_RESULT (largestClusterFraction, все C+O частицы)', JSON.stringify(r))
+    console.log('ASSEMBLY_TEMPERATURE_RESULT (largestClusterFraction, all C+O particles)', JSON.stringify(r))
     expect(r['1.8']).toBeLessThan(r['0.9'])
   },
   1_800_000,

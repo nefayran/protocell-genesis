@@ -23,7 +23,7 @@ afterAll(shutdownGpu)
 //    removes from the question by giving the heads no bonds at all.
 // The all-same arms are the ones that could not be faked: a term that attracted every head pair (the
 // polarPolar cell this project has kept at 0 all along) would show up there immediately.
-test('кислотно-мыльная пара: притягиваются ТОЛЬКО голова протонированная + голова депротонированная', async () => {
+test('acid-soap pair: only a protonated head + a deprotonated head attract', async () => {
   const page = await gpuPage()
   const consoleWarnings: string[] = []
   page.on('console', (msg) => {
@@ -146,14 +146,14 @@ test('кислотно-мыльная пара: притягиваются ТО�
     const expectedNet = S * (dvdr(s - 1.2) - dvdr(1.2))
     return { ...out, expectedNet, near: dvdr(1.2), far: dvdr(s - 1.2), rc, S, headCount: heads.length, N }
   })
-  expect(consoleWarnings, `браузер сообщил об ошибке/предупреждении GPU:\n${consoleWarnings.join('\n')}`).toEqual([])
+  expect(consoleWarnings, `the browser reported a GPU error/warning:\n${consoleWarnings.join('\n')}`).toEqual([])
   console.log(
-    `ACID-SOAP-RULE N=${r.N} голов=${r.headCount} rc=${r.rc.toFixed(7)} S=${r.S} ожидаемая net|dF|=${r.expectedNet.toFixed(5)} (ближняя 1.2 -> ${r.near.toFixed(5)}, дальняя 1.8 -> ${r.far.toFixed(5)})\n` +
-      `  ВСЕ НЕЙТРАЛЬНЫ:   max|dF| голова=${r.neutral.maxHeadDiff.toExponential(3)} прочие=${r.neutral.maxOtherDiff.toExponential(3)}\n` +
-      `  ВСЕ ЗАРЯЖЕНЫ:     max|dF| голова=${r.charged.maxHeadDiff.toExponential(3)} прочие=${r.charged.maxOtherDiff.toExponential(3)}\n` +
-      `  ЧЕРЕДУЮЩИЕСЯ:     max|dF| голова=${r.alternating.maxHeadDiff.toExponential(4)} среднее=${r.alternating.meanHeadDiff.toExponential(3)} прочие=${r.alternating.maxOtherDiff.toExponential(3)}\n` +
-      `  сетка против перебора: нейтрали ${r.neutral.bruteDiff0.toExponential(2)}/${r.neutral.bruteDiff1.toExponential(2)} ` +
-      `чередующиеся ${r.alternating.bruteDiff0.toExponential(2)}/${r.alternating.bruteDiff1.toExponential(2)}`,
+    `ACID-SOAP-RULE N=${r.N} heads=${r.headCount} rc=${r.rc.toFixed(7)} S=${r.S} expected net|dF|=${r.expectedNet.toFixed(5)} (near 1.2 -> ${r.near.toFixed(5)}, far 1.8 -> ${r.far.toFixed(5)})\n` +
+      `  all neutral:      max|dF| head=${r.neutral.maxHeadDiff.toExponential(3)} others=${r.neutral.maxOtherDiff.toExponential(3)}\n` +
+      `  all charged:      max|dF| head=${r.charged.maxHeadDiff.toExponential(3)} others=${r.charged.maxOtherDiff.toExponential(3)}\n` +
+      `  alternating:      max|dF| head=${r.alternating.maxHeadDiff.toExponential(4)} mean=${r.alternating.meanHeadDiff.toExponential(3)} others=${r.alternating.maxOtherDiff.toExponential(3)}\n` +
+      `  grid vs brute force: neutral ${r.neutral.bruteDiff0.toExponential(2)}/${r.neutral.bruteDiff1.toExponential(2)} ` +
+      `alternating ${r.alternating.bruteDiff0.toExponential(2)}/${r.alternating.bruteDiff1.toExponential(2)}`,
   )
 
   // 1. SAME protonation state on every head -> the term is structurally absent. Exactly zero, not
@@ -187,7 +187,7 @@ test('кислотно-мыльная пара: притягиваются ТО�
 // The control that makes the number mean something: the SAME comparison with the acid-soap depth at 0
 // on both sides. If the residual is the same size in both arms, the residual is this instrument's
 // finite-difference floor and not the new term.
-test('CPU-потенциал согласован с силой GPU при включённой кислотно-мыльной паре (F = -grad U)', async () => {
+test('the CPU potential agrees with the GPU force with the acid-soap pair enabled (F = -grad U)', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api
@@ -322,10 +322,10 @@ test('CPU-потенциал согласован с силой GPU при вк�
   })
   console.log(
     `ACID-SOAP-CPU-TWIN S=${r.S}\n` +
-      `  ВКЛ:  acidSoap(basis)=${r.on.acidSoap.toFixed(4)} проб=${r.on.rows} max|числ - анал|=${r.on.maxAbs.toExponential(3)} ` +
-      `относ=${r.on.maxRel.toExponential(3)} масштаб|F|=${r.on.scale.toFixed(4)}\n` +
-      `  ВЫКЛ: acidSoap(basis)=${r.off.acidSoap.toFixed(4)} проб=${r.off.rows} max|числ - анал|=${r.off.maxAbs.toExponential(3)} ` +
-      `относ=${r.off.maxRel.toExponential(3)} масштаб|F|=${r.off.scale.toFixed(4)}`,
+      `  on:  acidSoap(basis)=${r.on.acidSoap.toFixed(4)} probes=${r.on.rows} max|num - anal|=${r.on.maxAbs.toExponential(3)} ` +
+      `rel=${r.on.maxRel.toExponential(3)} scale|F|=${r.on.scale.toFixed(4)}\n` +
+      `  off: acidSoap(basis)=${r.off.acidSoap.toFixed(4)} probes=${r.off.rows} max|num - anal|=${r.off.maxAbs.toExponential(3)} ` +
+      `rel=${r.off.maxRel.toExponential(3)} scale|F|=${r.off.scale.toFixed(4)}`,
   )
   expect(r.on.acidSoap).toBeCloseTo(r.S, 10)
   expect(r.off.acidSoap).toBe(0)
@@ -351,7 +351,7 @@ test('CPU-потенциал согласован с силой GPU при вк�
 //  - the rank is D, and it must stay D: the value is a gate-constrained choice, not a measurement, and
 //    the project's own rule makes any gate resting only on D unproven by definition;
 //  - kcal <-> kJ is the actual conversion, not a rounded copy.
-test('глубина кислотно-мыльной пары: файл несёт ровно ту силу, что прошла свип, и ранг D', () => {
+test('acid-soap pair depth: the file carries exactly the strength that passed the sweep, and rank D', () => {
   const soup = loadSoup()
   const params = loadParams()
   const as = soup.solvent.attractionScale!.acidSoapPair!
@@ -359,9 +359,9 @@ test('глубина кислотно-мыльной пары: файл несё
   const normalised = acidSoapScaleOf(soup)
   const bound = as.measuredUpperBoundKJ / ref.epsilonKJ
   console.log(
-    `ACID-SOAP-DEPTH файл=${as.epsilonKJ} кДж/моль / эталон ${ref.epsilonKJ} = ${normalised.toFixed(6)} ` +
-      `(потолок ${as.measuredKcalPerMol} ккал/моль = ${as.measuredUpperBoundKJ} кДж/моль = ${bound.toFixed(4)} => ` +
-      `доля ${(as.epsilonKJ / as.measuredUpperBoundKJ).toFixed(4)}), ранг=${as.rank}, epsilon(ранг A)=${params.epsilon}`,
+    `ACID-SOAP-DEPTH file=${as.epsilonKJ} kJ/mol / reference ${ref.epsilonKJ} = ${normalised.toFixed(6)} ` +
+      `(ceiling ${as.measuredKcalPerMol} kcal/mol = ${as.measuredUpperBoundKJ} kJ/mol = ${bound.toFixed(4)} => ` +
+      `fraction ${(as.epsilonKJ / as.measuredUpperBoundKJ).toFixed(4)}), rank=${as.rank}, epsilon(rank A)=${params.epsilon}`,
   )
   expect(normalised).toBeCloseTo(2.0, 10)
   expect(as.epsilonKJ).toBe(7.0)

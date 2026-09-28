@@ -1,11 +1,12 @@
 """
-Физика движка против точных утверждений, а не против ожиданий.
+Engine physics against exact statements, not against expectations.
 
-Каждый тест проверяет то, что ОБЯЗАНО выполняться, если код верен: совпадение силы с
-численным градиентом энергии, сохранение импульса, сохранение энергии в NVE и её порядок по
-шагу, известный период гармонического осциллятора, выход термостата на заданную температуру.
-Все проверки идут на аналитическом потенциале с известной производной: если они проходят,
-странный результат на квантовом бэкенде -- это уже не ошибка интегратора, и наоборот.
+Every test checks something that MUST hold if the code is correct: force matching the
+numerical gradient of the energy, conservation of momentum, conservation of energy in NVE
+and its order with respect to the step, the known period of a harmonic oscillator, the
+thermostat converging to the target temperature. All checks run on an analytical potential
+with a known derivative: if they pass, a strange result on the quantum backend is no longer
+an integrator error, and vice versa.
 """
 from __future__ import annotations
 
@@ -51,13 +52,13 @@ def test_momentum_conserved_exactly_in_nve():
     for _ in range(200):
         cached, _ = velocity_verlet(st, pot, dt_fs=1.0, cached=cached)
     drift = float(np.abs(st.total_momentum() - p0).max())
-    assert drift < 1e-10, f"импульс уплыл на {drift}"
+    assert drift < 1e-10, f"momentum drifted by {drift}"
 
 
 def test_energy_conserved_in_nve_and_scales_with_dt_squared():
-    """Симплектический интегратор второго порядка: ошибка энергии падает как dt². Проверяется
-    не только малость дрейфа, но и ПОРЯДОК -- это отличает верный интегратор от случайно
-    малой ошибки."""
+    """A second-order symplectic integrator: the energy error falls off as dt². This checks
+    not just that the drift is small but also the ORDER: that is what distinguishes a
+    correct integrator from one with an accidentally small error."""
 
     def drift_for(dt_fs: float) -> float:
         rng = np.random.default_rng(3)
@@ -75,12 +76,12 @@ def test_energy_conserved_in_nve_and_scales_with_dt_squared():
     coarse, fine = drift_for(4.0), drift_for(2.0)
     assert fine < coarse
     ratio = coarse / max(fine, 1e-18)
-    assert 2.0 < ratio < 8.0, f"порядок точности не второй: отношение дрейфов {ratio:.2f}"
+    assert 2.0 < ratio < 8.0, f"accuracy order is not second: drift ratio {ratio:.2f}"
 
 
 def test_harmonic_period_matches_analytic():
     k, mu_amu = 30.0, 1.008 / 2.0
-    omega = np.sqrt(k / (mu_amu * AMU_A2_PER_FS2_IN_EV))  # 1/фс
+    omega = np.sqrt(k / (mu_amu * AMU_A2_PER_FS2_IN_EV))  # 1/fs
     period_fs = 2 * np.pi / omega
 
     st = from_symbols(["H", "H"], [[0, 0, 0], [0, 0, 0.84]])
@@ -94,7 +95,7 @@ def test_harmonic_period_matches_analytic():
     minima = [i for i in range(1, len(seps) - 1) if seps[i] < seps[i - 1] and seps[i] < seps[i + 1]]
     measured = float(np.mean(np.diff(minima)) * dt)
     assert abs(measured - period_fs) / period_fs < 0.01, (
-        f"период {measured:.3f} против аналитического {period_fs:.3f} фс"
+        f"period {measured:.3f} vs the analytical {period_fs:.3f} fs"
     )
 
 
@@ -112,7 +113,7 @@ def test_langevin_reaches_target_temperature():
         if step > 1500:
             temps.append(diag.temperature_k)
     mean_t = float(np.mean(temps))
-    assert abs(mean_t - target) / target < 0.10, f"термостат держит {mean_t:.1f} K вместо {target} K"
+    assert abs(mean_t - target) / target < 0.10, f"thermostat is holding {mean_t:.1f} K instead of {target} K"
 
 
 def test_potential_refuses_nonfinite():

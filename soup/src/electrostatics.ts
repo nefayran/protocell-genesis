@@ -183,9 +183,9 @@ export function makeEsBasis(soup: Soup, p: Params, over?: EsOverrides): EsBasis 
   const pH = over?.pH ?? es.pH
   const ionicStrengthMolar = over?.ionicStrengthMolar ?? es.ionicStrengthMolar
   const chargedKind = soup.monomers.findIndex((m) => m.id === es.chargedKind)
-  if (chargedKind < 0) throw new Error(`electrostatics.chargedKind='${es.chargedKind}' нет среди monomers`)
-  if (!(ionicStrengthMolar > 0)) throw new Error(`electrostatics: ionicStrengthMolar должен быть > 0, дано ${ionicStrengthMolar}`)
-  if (!(es.sigmaToNm > 0)) throw new Error(`electrostatics: sigmaToNm должен быть > 0, дано ${es.sigmaToNm}`)
+  if (chargedKind < 0) throw new Error(`electrostatics.chargedKind='${es.chargedKind}' is not among monomers`)
+  if (!(ionicStrengthMolar > 0)) throw new Error(`electrostatics: ionicStrengthMolar must be > 0, given ${ionicStrengthMolar}`)
+  if (!(es.sigmaToNm > 0)) throw new Error(`electrostatics: sigmaToNm must be > 0, given ${es.sigmaToNm}`)
   const sigmaNm = es.sigmaToNm
   // lambda_D = (lambda_D at 1 M) / sqrt(I[M]), then expressed in sigma.
   const debyeSigma = es.debyeLengthNmAtUnitMolar / Math.sqrt(ionicStrengthMolar) / sigmaNm
@@ -204,9 +204,9 @@ export function makeEsBasis(soup: Soup, p: Params, over?: EsOverrides): EsBasis 
   const esCutoff = over?.cutoffSigma ?? Math.max(cutoff, Math.min(targetCutoff, imageCap))
   if (over?.minBoxSigma !== undefined && esCutoff > over.minBoxSigma / 2) {
     throw new Error(
-      `electrostatics: обрезка rc_es=${esCutoff.toFixed(6)} нарушает соглашение минимального образа ` +
-        `при min(box)=${over.minBoxSigma.toFixed(4)} (нужно rc_es <= ${(over.minBoxSigma / 2).toFixed(4)}) -- ` +
-        `бокс слишком мал для ${es.longRangeDebyeLengths} дебаевских длин при I=${ionicStrengthMolar} М`,
+      `electrostatics: the cutoff rc_es=${esCutoff.toFixed(6)} violates the minimum image convention ` +
+        `at min(box)=${over.minBoxSigma.toFixed(4)} (need rc_es <= ${(over.minBoxSigma / 2).toFixed(4)}) -- ` +
+        `the box is too small for ${es.longRangeDebyeLengths} Debye lengths at I=${ionicStrengthMolar} M`,
     )
   }
   // The long-range list's per-head capacity, DERIVED from the tightest box this run visits, not typed.

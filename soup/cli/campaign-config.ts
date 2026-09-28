@@ -126,49 +126,49 @@ export interface Args {
 export function printUsage(): void {
   console.log(
     [
-      'Использование:',
-      '  npx tsx soup/cli/campaign.ts --label <имя> --steps <n> --box <n> --start \'{"C":300,"O":100,"H":300,"M":20}\' [флаги]',
+      'Usage:',
+      '  npx tsx soup/cli/campaign.ts --label <name> --steps <n> --box <n> --start \'{"C":300,"O":100,"H":300,"M":20}\' [flags]',
       '',
-      'Обязательные:',
-      '  --label <имя>     различает файлы контрольных точек одного каталога (несколько кампаний могут делить --dir)',
-      '  --steps <n>       сколько ЕЩЁ шагов сделать в ЭТОМ вызове -- при резюме отсчитывается от найденного шага, не от нуля',
-      '  --box <n>         кубический бокс (одно число, все три оси)',
-      '  --start <json>    стартовый состав по id мономера, например \'{"C":300,"O":100,"H":300,"M":20}\'',
+      'Required:',
+      '  --label <name>    tells apart the checkpoint files of one directory (several campaigns may share --dir)',
+      '  --steps <n>       how many more steps to take in this call; on resume, counted from the step found, not from zero',
+      '  --box <n>         cubic box (one number, all three axes)',
+      '  --start <json>    starting composition by monomer id, for example \'{"C":300,"O":100,"H":300,"M":20}\'',
       '',
-      'Опциональные:',
-      `  --every <n>       шагов между контрольными точками (по умолчанию из data/soup.json's checkpoint.everySteps)`,
-      `  --dir <path>      каталог контрольных точек (по умолчанию из data/soup.json's checkpoint.dir)`,
-      '  --seed <n>        (по умолчанию 1)',
-      '  --kT <n>          (по умолчанию data/params.json thermostat.kT)',
-      '  --catalyst <n>    переопределяет число катализатора отдельно от --start (как CreateSoupOpts.catalystCount)',
-      '  --cycle           включает сухо-влажное циклирование (data/soup.json dryWetCycle) для ЭТОЙ системы',
-      '  --evaporate       сухая фаза УБИРАЕТ биды растворителя из системы, регидратация возвращает их (требует --cycle)',
-      '  --relax           минимизация энергии холодного старта (data/soup.json coldStartRelax) ДО первого шага;',
-      '                    только для СВЕЖЕГО прогона, при резюме молча пропускается',
-      '  --expandTo <n>            одноразовое рамп-расширение живого бокса до [n,n,n] сразу после создания/резюме,',
-      '                            ДО основного цикла шагов (idempotent: пропускается, если бокс уже расширен)',
-      '  --expandRampSteps <n>     шагов рампы для --expandTo (по умолчанию 15)',
-      '  --expandRampRelaxSteps <n>  шагов обычной динамики между приращениями рампы (по умолчанию 60)',
-      '  --cycles <n>      число циклов сухо-влажного цикла для ЭТОГО прогона (переопределяет data/soup.json',
-      '                    dryWetCycle.cycles; входит в подпись резюме -- один цикл и шесть суть разные опыты)',
-      '  --minimiseAt <s1,s2,...>  глобальные шаги, на которых применить минимизацию энергии ПОСРЕДИ прогона',
-      '                    (контроль «только минимизации», без циклирования; входит в подпись резюме)',
-      '  --minimiseIterations <n>  итераций на каждую такую минимизацию (по умолчанию coldStartRelax.iterations;',
-      '                    для контроля берётся число из [evaporation]-строк циклированного плеча)',
-      '  --charge          включает экранированную электростатику + равновесие протонирования голов',
-      '                    (data/soup.json electrostatics) для ЭТОГО прогона; входит в подпись резюме',
-      '  --pH <n>          pH прогона (по умолчанию data/soup.json electrostatics.pH); входит в подпись',
-      '  --ionicStrength <n>  ионная сила, моль/л -- задаёт дебаевскую длину (по умолчанию из файла);',
-      '                    входит в подпись резюме',
-      '  --confineRadius <n>  РАДИУС КОНЕЧНОЙ ПАРЦЕЛЛЫ ВОДЫ в sigma: система удерживается мягкой',
-      '                    нейтральной отталкивающей стенкой вместо полностью периодического бокса.',
-      '                    Бокс при этом обязан быть НАМНОГО больше парцеллы (createSoup бросит, если',
-      '                    зазор L/2-R не превосходит наибольшего радиуса взаимодействия) -- именно так',
-      '                    периодичность и снимается: mi3/обёртка становятся тождеством по построению.',
-      '                    Отсутствие флага = периодический бокс, как во всех прежних кампаниях.',
-      '                    Входит в подпись резюме. Несовместимо с clay и с areaMove.',
-      '  --confineStiffness <n>  жёсткость стенки, epsilon/sigma^2 (по умолчанию 100 -- omega*dt=0.10,',
-      '                    тепловое продавливание ~0.148 sigma; обоснование в campaign-config.ts)',
+      'Optional:',
+      `  --every <n>       steps between checkpoints (default from data/soup.json's checkpoint.everySteps)`,
+      `  --dir <path>      checkpoint directory (default from data/soup.json's checkpoint.dir)`,
+      '  --seed <n>        (default 1)',
+      '  --kT <n>          (default data/params.json thermostat.kT)',
+      '  --catalyst <n>    overrides the catalyst count separately from --start (like CreateSoupOpts.catalystCount)',
+      '  --cycle           enables dry-wet cycling (data/soup.json dryWetCycle) for this system',
+      '  --evaporate       the dry phase removes solvent beads from the system, rehydration returns them (requires --cycle)',
+      '  --relax           cold-start energy minimisation (data/soup.json coldStartRelax) before the first step;',
+      '                    only for a fresh run, silently skipped on resume',
+      '  --expandTo <n>            one-off ramped expansion of the live box to [n,n,n] right after creation/resume,',
+      '                            before the main step loop (idempotent: skipped if the box is already expanded)',
+      '  --expandRampSteps <n>     ramp steps for --expandTo (default 15)',
+      '  --expandRampRelaxSteps <n>  steps of ordinary dynamics between ramp increments (default 60)',
+      '  --cycles <n>      number of dry-wet cycles for this run (overrides data/soup.json',
+      '                    dryWetCycle.cycles; part of the resume signature: one cycle and six are different experiments)',
+      '  --minimiseAt <s1,s2,...>  global steps at which to apply energy minimisation mid-run',
+      '                    ("minimisation only" control, no cycling; part of the resume signature)',
+      '  --minimiseIterations <n>  iterations for each such minimisation (default coldStartRelax.iterations;',
+      '                    for the control, the number is taken from the [evaporation] lines of the cycled arm)',
+      '  --charge          enables screened electrostatics + head protonation equilibrium',
+      '                    (data/soup.json electrostatics) for this run; part of the resume signature',
+      '  --pH <n>          pH of the run (default data/soup.json electrostatics.pH); part of the signature',
+      '  --ionicStrength <n>  ionic strength, mol/L; sets the Debye length (default from the file);',
+      '                    part of the resume signature',
+      '  --confineRadius <n>  radius of a finite water parcel in sigma: the system is confined by a soft',
+      '                    neutral repulsive wall instead of a fully periodic box.',
+      '                    The box must then be much larger than the parcel (createSoup throws if',
+      '                    the clearance L/2-R does not exceed the largest interaction radius); this is how',
+      '                    periodicity is removed: mi3/wrapping become the identity by construction.',
+      '                    No flag = periodic box, as in all earlier campaigns.',
+      '                    Part of the resume signature. Incompatible with clay and with areaMove.',
+      '  --confineStiffness <n>  wall stiffness, epsilon/sigma^2 (default 100: omega*dt=0.10,',
+      '                    thermal penetration ~0.148 sigma; justification in campaign-config.ts)',
     ].join('\n'),
   )
 }
@@ -177,7 +177,7 @@ export function parseCliArgs(): Args {
   const soup = loadSoup()
   const params = loadParams()
   if (!soup.checkpoint) {
-    throw new Error("data/soup.json: отсутствует секция 'checkpoint' -- campaign.ts не может выбрать интервал/каталог по умолчанию без неё")
+    throw new Error("data/soup.json: missing section 'checkpoint' -- campaign.ts cannot choose the default interval/directory without it")
   }
   const { values } = parseArgs({
     options: {
@@ -215,7 +215,7 @@ export function parseCliArgs(): Args {
   const missing = (['label', 'steps', 'box', 'start'] as const).filter((k) => values[k] === undefined)
   if (missing.length > 0) {
     printUsage()
-    throw new Error(`campaign.ts: обязательные флаги отсутствуют: ${missing.map((m) => `--${m}`).join(', ')}`)
+    throw new Error(`campaign.ts: required flags missing: ${missing.map((m) => `--${m}`).join(', ')}`)
   }
   return {
     label: String(values.label),

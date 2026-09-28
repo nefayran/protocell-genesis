@@ -49,7 +49,7 @@ afterAll(shutdownGpu)
 // them), so a plateau HERE is honest exhaustion, which is exactly what the predecessor run's plateau
 // was NOT. The distinction is the whole point of the diagnosis and must not be asserted away.
 test(
-  'катализатор оборачивается: за один и тот же прогон нуклеируется больше цепей и расходуется больше углерода',
+  'the catalyst turns over: in one and the same run more chains nucleate and more carbon is consumed',
   async () => {
     const page = await gpuPage()
     page.on('console', (m) => console.log(`[page] ${m.text()}`))

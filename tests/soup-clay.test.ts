@@ -25,7 +25,7 @@ const MEASURE_STEPS = Number(process.env.CLAY_STEPS ?? 20_000)
 
 // --- geometry and schema, no GPU ----------------------------------------------------------------
 
-test('пластина глины: схема и производная геометрия (без GPU)', () => {
+test('clay sheet: the scheme and the derived geometry (no GPU)', () => {
   const soup = loadSoup()
   const p = loadParams()
   const clay = soup.clay
@@ -129,7 +129,7 @@ test('пластина глины: схема и производная геом
   expect(distanceToPlatelet(box[2] - 1, L.planeZ, box[2])).toBeCloseTo(box[2] / 2 - 1, 12)
 })
 
-test('пластина глины: изменение коробки ОТКАЗЫВАЕТСЯ, а не портит решётку', async () => {
+test('clay sheet: a box change refuses instead of spoiling the lattice', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api
@@ -154,13 +154,13 @@ test('пластина глины: изменение коробки ОТКАЗ�
   })
   console.log('CLAY-BOXCHANGE', JSON.stringify(r))
   expect(r.frozenCount).toBeGreaterThan(0)
-  expect(r.threw).toMatch(/минеральной пластиной/)
-  expect(r.threwScale).toMatch(/минеральной пластиной/)
+  expect(r.threw).toMatch(/mineral sheet/)
+  expect(r.threwScale).toMatch(/mineral sheet/)
 }, 180_000)
 
 // --- immobility, site placement and impermeability, PROVEN by measurement ------------------------
 
-test('пластина глины: неподвижность, посадка центров и непроницаемость — замером, не осмотром', async () => {
+test('clay sheet: immobility, site placement and impermeability, by measurement, not by inspection', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async (steps: number) => {
     const api = (window as any).api
@@ -262,7 +262,7 @@ test('пластина глины: неподвижность, посадка ц
 // --- the four measurements ----------------------------------------------------------------------
 
 
-test('пластина глины: концентрирование, рост/терминация и место сборки — с глиной и без', async () => {
+test('clay sheet: concentration, growth/termination and the assembly location, with clay and without', async () => {
   const page = await gpuPage()
   for (const seed of SEEDS) {
     const withClay = await runClayArm(page, { seed, steps: MEASURE_STEPS, mode: 'hydrophilic' })

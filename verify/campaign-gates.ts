@@ -14,14 +14,15 @@
 //     start on someone's working machine.
 //
 // So those metrics are read from artifacts, and the ONE rule that makes that honest is enforced
-// here rather than documented: every value carries the artifact it came from AND that artifact's own
-// mtime, and a MISSING artifact yields no metric at all -- so evaluateGates() publishes the gate as
-// `unproven` with a reason, and nothing stale is ever carried forward as if it were fresh. The two
-// race conditions verify/run.ts's header warns about cannot apply: each path below has exactly ONE
-// writer, and none of them is verify/run.ts.
+// here rather than documented: every value carries the artifact it came from AND the time that
+// artifact was measured (see measuredAtOf), and a MISSING artifact yields no metric at all -- so
+// evaluateGates() publishes the gate as `unproven` with a reason, and nothing stale is ever carried
+// forward as if it were fresh. The two race conditions verify/run.ts's header warns about cannot
+// apply: each path below has exactly ONE writer, and none of them is verify/run.ts.
 //
 // Every artifact below is produced by re-running measurement code on data ALREADY on disk (the
 // campaign's own checkpoints), never by re-running the campaign.
+import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 
 /** Where each group of metrics is read from. Paths, not globs: the point is that a reader can go
@@ -45,7 +46,25 @@ export interface CampaignGateInputs {
 
 function readJson<T>(path: string): { value: T; measuredAt: string } | null {
   if (!existsSync(path)) return null
-  return { value: JSON.parse(readFileSync(path, 'utf8')) as T, measuredAt: statSync(path).mtime.toISOString() }
+  const value = JSON.parse(readFileSync(path, 'utf8')) as T
+  return { value, measuredAt: measuredAtOf(path, value) }
+}
+
+// When the artifact was measured. A file's mtime is only right on the machine that wrote it: git does
+// not store mtimes, so in a fresh clone it is the checkout time. An artifact that stamps its own
+// generatedAt is dated by that; an unstamped one that is committed and unmodified is dated by the
+// commit that last changed it; only a new or locally modified file falls back to its mtime.
+function measuredAtOf(path: string, value: unknown): string {
+  const stamped = (value as { generatedAt?: unknown } | null)?.generatedAt
+  if (typeof stamped === 'string') return stamped
+  try {
+    execFileSync('git', ['diff', '--quiet', 'HEAD', '--', path], { stdio: 'ignore' })
+    const committed = execFileSync('git', ['log', '-1', '--format=%cI', '--', path], { encoding: 'utf8' }).trim()
+    if (committed) return new Date(committed).toISOString()
+  } catch {
+    // modified against HEAD, untracked, or no git at all
+  }
+  return statSync(path).mtime.toISOString()
 }
 
 interface WaterBilayerArtifact {
@@ -145,23 +164,23 @@ export function collectCampaignGateInputs(
     metrics.areaPerLipidWater = w.areaPerLipid
     if (w.thickness !== null) metrics.thicknessWater = w.thickness
     const prov =
-      `${WATER_BILAYER_ARTIFACT} (tests/water-bilayer-area-move.test.ts, измерено ${water.measuredAt}): ` +
-      `${w.lipids} липидов + ${w.totalWater} бидов воды при ${w.waterDensity} sigma^-3, N=${w.N}, ` +
-      `осёдлость=${w.settled}, ${w.chunksUsed} отсчётов, дрейф ln A ${w.driftPerChunk.toExponential(3)} (t=${w.driftT.toFixed(2)})`
+      `${WATER_BILAYER_ARTIFACT} (tests/water-bilayer-area-move.test.ts, measured ${water.measuredAt}): ` +
+      `${w.lipids} lipids + ${w.totalWater} water beads at ${w.waterDensity} sigma^-3, N=${w.N}, ` +
+      `settled=${w.settled}, ${w.chunksUsed} samples, ln A drift ${w.driftPerChunk.toExponential(3)} (t=${w.driftT.toFixed(2)})`
     provenance['area-per-lipid-water'] = prov
     provenance['bilayer-thickness-water'] = prov
     detail.waterBilayer = w
     if (w.thickness === null) {
       notes['bilayer-thickness-water'] =
-        'толщина не измерена в этом прогоне (bilayerPeaks не нашёл двух пиков плотности голов) — ' +
-        'публикуется как недоказанная, а не как число из прошлого прогона'
+        'thickness not measured in this run (bilayerPeaks did not find two head-density peaks); ' +
+        'published as unproven, not as a number from an earlier run'
     }
   } else {
     const note =
-      `нечего измерять: артефакт ${WATER_BILAYER_ARTIFACT} отсутствует, поэтому свежего числа нет, ` +
-      `а старое не подставляется. Опубликованные значения этих ворот и полная методика — ` +
-      `.superpowers/sdd/2026-08-16-soup-to-vesicle/hydrophobic-asymmetry-report.md (площадь 1.1777 sigma^2, ` +
-      `толщина 4.7990 sigma, перезамерено final-campaign-report.md §3). Пересобрать: ` +
+      `nothing to measure: artifact ${WATER_BILAYER_ARTIFACT} is missing, so there is no fresh number, ` +
+      `and the old one is not substituted. Published values of these gates and the full method: ` +
+      `.superpowers/sdd/2026-08-16-soup-to-vesicle/hydrophobic-asymmetry-report.md (area 1.1777 sigma^2, ` +
+      `thickness 4.7990 sigma, remeasured in final-campaign-report.md §3). To rebuild: ` +
       `nice -n 15 npx vitest run tests/water-bilayer-area-move.test.ts --no-file-parallelism`
     notes['area-per-lipid-water'] = note
     notes['bilayer-thickness-water'] = note
@@ -187,12 +206,12 @@ export function collectCampaignGateInputs(
       const { encapsulatedCount, encapsulationThresholdCount, closed, bulkWaterDensity } = lastReportable.e
       metrics.encapsulatedWaterOverThreshold = encapsulatedCount / encapsulationThresholdCount
       provenance['vesicle-closure-water'] =
-        `${campaignTraceArtifact} (tests/continuous-run-audit.test.ts, off-GPU по чекпойнтам кампании, ` +
-        `измерено ${audit.measuredAt}), шаг ${lastReportable.c.step}: инкапсулировано ${encapsulatedCount} ` +
-        `водяных бидов против порога ${encapsulationThresholdCount.toFixed(3)} (объёмная плотность воды ` +
-        `${bulkWaterDensity.toFixed(4)} sigma^-3 x минимальный замкнутый объём ${lastReportable.c.closureThreshold} sigma^3), ` +
-        `closed=${closed}; таких снимков с надёжным центром ${reportable.length} из ${wet.length} влажных, и на ` +
-        `КАЖДОМ инкапсулировано 0`
+        `${campaignTraceArtifact} (tests/continuous-run-audit.test.ts, off-GPU from the campaign checkpoints, ` +
+        `measured ${audit.measuredAt}), step ${lastReportable.c.step}: ${encapsulatedCount} water beads ` +
+        `encapsulated against a threshold of ${encapsulationThresholdCount.toFixed(3)} (bulk water density ` +
+        `${bulkWaterDensity.toFixed(4)} sigma^-3 x minimum closed volume ${lastReportable.c.closureThreshold} sigma^3), ` +
+        `closed=${closed}; checkpoints with a reliable centre: ${reportable.length} of ${wet.length} wet ones, and on ` +
+        `each of them 0 were encapsulated`
       detail.closure = {
         step: lastReportable.c.step,
         encapsulatedCount,
@@ -209,9 +228,9 @@ export function collectCampaignGateInputs(
       }
     } else {
       notes['vesicle-closure-water'] =
-        `ни на одном влажном снимке артефакта ${campaignTraceArtifact} периодический центр агрегата не ` +
-        `надёжен, поэтому soup/src/water-closure.ts отказывается отвечать — это сам по себе результат ` +
-        `(см. ворота aggregate-percolation), но числа для этих ворот он не даёт. final-campaign-report.md §7.1`
+        `on no wet checkpoint of artifact ${campaignTraceArtifact} is the periodic centre of the aggregate ` +
+        `reliable, so soup/src/water-closure.ts refuses to answer; that is a result in itself ` +
+        `(see the aggregate-percolation gate), but it gives no number for this gate. final-campaign-report.md §7.1`
     }
 
     // Chain-length statistics, from the last wet checkpoint.
@@ -219,9 +238,9 @@ export function collectCampaignGateInputs(
       metrics.meanPerTail = last.meanPerTail
       metrics.asfMeanRelativeDeviation = Math.abs(last.asfMeanFromEventAlpha - last.meanPerTail) / last.meanPerTail
       const prov =
-        `${campaignTraceArtifact} (измерено ${audit.measuredAt}), шаг ${last.step}: ` +
-        `alpha_ev=${last.alphaEvent}, ASF-среднее 1/(1-alpha_ev)=${last.asfMeanFromEventAlpha}, ` +
-        `измеренное среднее на хвост=${last.meanPerTail}, alpha восстановленное из гистограммы=` +
+        `${campaignTraceArtifact} (measured ${audit.measuredAt}), step ${last.step}: ` +
+        `alpha_ev=${last.alphaEvent}, ASF mean 1/(1-alpha_ev)=${last.asfMeanFromEventAlpha}, ` +
+        `measured mean per tail=${last.meanPerTail}, alpha recovered from the histogram=` +
         `${last.alphaRecovered} (r^2=${last.alphaRecoveredR2})`
       provenance['chain-length-asf'] = prov
       provenance['mean-tail-length'] = prov
@@ -244,11 +263,11 @@ export function collectCampaignGateInputs(
     // checkpoint of this trace -- the maximum, so a single closed object anywhere would show up.
     metrics.vesicleAggregates = trace.some((c) => c.hasVesicleAggregate) ? 1 : 0
     provenance['vesicle-verdict'] =
-      `${campaignTraceArtifact} (измерено ${audit.measuredAt}): ${trace.length} снимков, ` +
-      `hasVesicleAggregate=false на всех; последний влажный снимок — шаг ${last.step}, ` +
-      `агрегатов ${last.aggregateCount}, крупнейший ${last.largest[0]?.amphiphileCount ?? 0} амфифилов, ` +
-      `радиальных слоёв голов ${String(last.largest[0]?.radialHeadShells ?? 'н/д')}, ` +
-      `полость ${last.largest[0]?.cavityVolume ?? 0} sigma^3 против порога ${last.closureThreshold} sigma^3`
+      `${campaignTraceArtifact} (measured ${audit.measuredAt}): ${trace.length} checkpoints, ` +
+      `hasVesicleAggregate=false on all of them; last wet checkpoint: step ${last.step}, ` +
+      `${last.aggregateCount} aggregates, largest ${last.largest[0]?.amphiphileCount ?? 0} amphiphiles, ` +
+      `radial head shells ${String(last.largest[0]?.radialHeadShells ?? 'n/a')}, ` +
+      `cavity ${last.largest[0]?.cavityVolume ?? 0} sigma^3 against a threshold of ${last.closureThreshold} sigma^3`
     detail.verdict = {
       checkpoints: trace.length,
       wetCheckpoints: wet.length,
@@ -261,10 +280,10 @@ export function collectCampaignGateInputs(
     }
   } else {
     const note =
-      `нечего измерять: артефакт ${campaignTraceArtifact} отсутствует или пуст, поэтому свежего числа ` +
-      `нет, а старое не подставляется. Опубликованные значения — ` +
-      `.superpowers/sdd/2026-08-16-soup-to-vesicle/final-campaign-report.md §5, §7, §8. Пересобрать без ` +
-      `повторного прогона кампании (off-GPU, по её собственным чекпойнтам): CONTINUOUS_RUN_CHECKPOINTS=... ` +
+      `nothing to measure: artifact ${campaignTraceArtifact} is missing or empty, so there is no fresh number, ` +
+      `and the old one is not substituted. Published values: ` +
+      `.superpowers/sdd/2026-08-16-soup-to-vesicle/final-campaign-report.md §5, §7, §8. To rebuild without ` +
+      `rerunning the campaign (off-GPU, from its own checkpoints): CONTINUOUS_RUN_CHECKPOINTS=... ` +
       `CONTINUOUS_RUN_ARTIFACT=${campaignTraceArtifact} npx vitest run tests/continuous-run-audit.test.ts`
     for (const id of ['vesicle-closure-water', 'chain-length-asf', 'mean-tail-length', 'vesicle-verdict']) {
       notes[id] = note
@@ -287,21 +306,21 @@ export function collectCampaignGateInputs(
     metrics.wrappingAxes = worst.wrappingAxes
     const controls = (perc.value ?? []).filter((r) => !isCampaign(r))
     provenance['aggregate-percolation'] =
-      `${percolationArtifact} (tests/percolation-check.test.ts, off-GPU по чекпойнтам кампании, ` +
-      `измерено ${perc.measuredAt}): ${campaignRows.length} снимков кампании, обёртывающих осей ` +
-      `${campaignRows.map((r) => r.wrappingAxes).join('/')}, слоёв затронуто ` +
-      `${worst.slabsTouchedOfTotal.join('/')} на шаге ${worst.step}` +
+      `${percolationArtifact} (tests/percolation-check.test.ts, off-GPU from the campaign checkpoints, ` +
+      `measured ${perc.measuredAt}): ${campaignRows.length} campaign checkpoints, wrapping axes ` +
+      `${campaignRows.map((r) => r.wrappingAxes).join('/')}, slabs touched ` +
+      `${worst.slabsTouchedOfTotal.join('/')} at step ${worst.step}` +
       (controls.length > 0
-        ? `; контроли (объекты, которые проект называет конечными): ` +
+        ? `; controls (objects the project calls finite): ` +
           controls.map((r) => `${r.file.split('/').pop()}=${r.wrappingAxes}`).join(', ')
         : '')
     detail.percolation = { campaign: campaignRows, controls }
   } else {
     notes['aggregate-percolation'] =
-      `нечего измерять: артефакт ${percolationArtifact} отсутствует или не содержит снимков кампании, ` +
-      `поэтому свежего числа нет, а старое не подставляется. Опубликованное значение (3 оси из 3 на 5 из 5 ` +
-      `влажных снимков, 19/19 слоёв) — .superpowers/sdd/2026-08-16-soup-to-vesicle/final-campaign-report.md §6. ` +
-      `Пересобрать: PERC_CHECKPOINTS=... PERC_ARTIFACT=${percolationArtifact} npx vitest run tests/percolation-check.test.ts`
+      `nothing to measure: artifact ${percolationArtifact} is missing or contains no campaign checkpoints, ` +
+      `so there is no fresh number, and the old one is not substituted. Published value (3 axes of 3 on 5 of 5 ` +
+      `wet checkpoints, 19/19 slabs): .superpowers/sdd/2026-08-16-soup-to-vesicle/final-campaign-report.md §6. ` +
+      `To rebuild: PERC_CHECKPOINTS=... PERC_ARTIFACT=${percolationArtifact} npx vitest run tests/percolation-check.test.ts`
   }
 
   return { metrics, provenance, notes, detail }

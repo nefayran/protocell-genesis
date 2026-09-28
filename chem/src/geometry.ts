@@ -32,7 +32,7 @@ export function vLength(a: Vec3): number {
 
 export function vNormalize(a: Vec3): Vec3 {
   const len = vLength(a)
-  if (len === 0) throw new Error('geometry: нормализация нулевого вектора')
+  if (len === 0) throw new Error('geometry: normalising a zero vector')
   return vScale(a, 1 / len)
 }
 

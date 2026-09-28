@@ -54,7 +54,7 @@ const TAIL = 150
 const BLOCKS = 6
 
 test(
-  'бислойная заплатка в явной воде: площадь на липид ИЗМЕРЕНА при нулевом натяжении',
+  'bilayer patch in explicit water: area per lipid measured at zero tension',
   async () => {
     const page = await gpuPage()
     const result = await page.evaluate(

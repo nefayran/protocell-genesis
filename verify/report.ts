@@ -45,9 +45,9 @@ interface ClosureMeta {
 }
 
 const VERDICT_RU: Record<GateResult['verdict'], string> = {
-  passed: 'пройдено',
-  failed: 'провалено',
-  unproven: 'недоказано',
+  passed: 'passed',
+  failed: 'failed',
+  unproven: 'unproven',
 }
 
 function escapeHtml(s: string): string {
@@ -63,7 +63,7 @@ function corridorText(target: GateResult['target'], unit: string): string {
   if (target.min !== undefined && target.max !== undefined) return `${target.min} – ${target.max} ${unit}`
   if (target.min !== undefined) return `> ${target.min} ${unit}`
   if (target.max !== undefined) return `< ${target.max} ${unit}`
-  return 'нет коридора (принимается только через другие ворота)'
+  return 'no corridor (accepted only through other gates)'
 }
 
 // Rule 4's caveats, verbatim in substance: facts already established and documented in the
@@ -73,12 +73,12 @@ function corridorText(target: GateResult['target'], unit: string): string {
 // of which particular numbers this run's own scenarios land on, so they are carried as fixed prose
 // rather than re-derived from this run's artifact.
 const CAVEATS: string[] = [
-  'Движок не бит-воспроизводим от запуска к запуску: сетка соседей раскладывает бидов по ячейкам через atomicAdd, порядок суммирования сил внутри ячейки меняется, а система (~3600 тел) хаотична и усиливает эту микроскопическую разницу до качественно разных траекторий.',
-  'Порог самосборки (largest-cluster fraction > 0.8) выполнен с эмпирическим запасом на 1 000 000 шагов, а не доказан как гарантия: один прогон на 400 000 шагах застрял на доле 0.53 с двумя не слившимися агрегатами.',
-  '`areaPerLipid` делит площадь бокса на СОЗДАННОЕ, а не выжившее число липидов — это смещает оценку на очень длинных прогонах, откуда часть бидов уходит по z и перестаёт быть частью бислоя.',
-  'Плато площади на липид (≈1.208 σ²) лежит в нижней половине литературного коридора 1.1–1.5 σ², а не в его середине.',
-  'Перетянутый бислой, запущенный из состояния около 1.9 σ² на липид, иногда рвётся; после разрыва «площадь на липид» не является содержательной величиной, так как её знаменатель предполагает один целый лист мембраны, покрывающий весь бокс.',
-  'Динамика фактически термостатируется к kT ≈ 1.1355 (дискретизационное смещение ~3.2% над номинальным значением, измерено в tests/sim.test.ts: Euler–Maruyama трения + жёсткая FENE-связь под velocity-Verlet), тогда как критерий Метрополиса в areaMove и префактор κ = kT/(A·exp(intercept)) в подгонке спектра используют номинальное data/params.json kT=1.1 — расхождение около 3%, не устранённое в этом прогоне.',
+  'The engine is not bit-reproducible from run to run: the neighbour grid places beads into cells via atomicAdd, the order of force summation within a cell changes, and the system (~3600 bodies) is chaotic and amplifies this microscopic difference into qualitatively different trajectories.',
+  'The self-assembly threshold (largest-cluster fraction > 0.8) is met with an empirical margin at 1 000 000 steps, not proven as a guarantee: one run at 400 000 steps got stuck at a fraction of 0.53 with two aggregates that had not merged.',
+  '`areaPerLipid` divides the box area by the created number of lipids, not the surviving one; this biases the estimate on very long runs, from which some beads leave along z and stop being part of the bilayer.',
+  'The area-per-lipid plateau (≈1.208 σ²) lies in the lower half of the literature corridor 1.1–1.5 σ², not in its middle.',
+  'An overstretched bilayer started from a state near 1.9 σ² per lipid sometimes ruptures; after rupture, "area per lipid" is not a meaningful quantity, because its denominator assumes one intact membrane sheet covering the whole box.',
+  'The dynamics is in fact thermostatted to kT ≈ 1.1355 (a discretisation bias of ~3.2% above the nominal value, measured in tests/sim.test.ts: Euler–Maruyama friction + a stiff FENE bond under velocity-Verlet), while the Metropolis criterion in areaMove and the prefactor κ = kT/(A·exp(intercept)) in the spectrum fit use the nominal data/params.json kT=1.1; a discrepancy of about 3%, not removed in this run.',
 ]
 
 export function renderReport(results: GateResult[], meta: Record<string, unknown>): string {
@@ -109,7 +109,7 @@ export function renderReport(results: GateResult[], meta: Record<string, unknown
         <td>${escapeHtml(corridorText(g.target, g.unit))}</td>
         <td>${escapeHtml(g.rank)}</td>
         <td class="verdict">${VERDICT_RU[g.verdict]}</td>
-        <td>${escapeHtml(g.provenance ?? (g.note ? `НЕ ИЗМЕРЯЛОСЬ В ЭТОМ ПРОГОНЕ: ${g.note}` : 'измерено этим прогоном (verify/run.ts)'))}</td>
+        <td>${escapeHtml(g.provenance ?? (g.note ? `Not measured in this run: ${g.note}` : 'measured by this run (verify/run.ts)'))}</td>
         <td>${escapeHtml(g.source)}</td>
         <td>${escapeHtml(g.conditions)}</td>
       </tr>`,
@@ -124,33 +124,33 @@ export function renderReport(results: GateResult[], meta: Record<string, unknown
   const inWindowSpreads = kappaDetail?.spectrumTable.filter((r) => r.inFitWindow).map((r) => r.degenerateSpreadRel) ?? []
   const spreadSentence =
     inWindowSpreads.length > 0
-      ? `наблюдается разброс ${(Math.min(...inWindowSpreads) * 100).toFixed(1)}–${(Math.max(...inWindowSpreads) * 100).toFixed(1)}% между модами, которые по симметрии решётки обязаны совпадать —`
-      : `наблюдается большой и неравномерный разброс между модами, которые по симметрии решётки обязаны совпадать —`
+      ? `show a spread of ${(Math.min(...inWindowSpreads) * 100).toFixed(1)}–${(Math.max(...inWindowSpreads) * 100).toFixed(1)}% between modes that lattice symmetry requires to coincide:`
+      : `show a large and uneven spread between modes that lattice symmetry requires to coincide:`
 
   const kappaSection = kappaDetail
     ? `
     <section class="kappa">
-      <h2>Модуль изгиба κ — почему «недоказано»</h2>
-      <p>Изгибная мода релаксирует со скоростью порядка q⁻³…q⁻⁴, поэтому подгонка нуждается именно
-      в самых медленных, наименее сошедшихся оболочках q. У оболочек, которые требует окно подгонки,
+      <h2>Bending modulus κ: why "unproven"</h2>
+      <p>The bending mode relaxes at a rate of order q⁻³…q⁻⁴, so the fit needs precisely
+      the slowest, least converged q shells. The shells that the fit window requires
       ${spreadSentence}
-      прямое, не требующее эталона доказательство того, что эти оболочки ещё не сошлись.</p>
+      direct, reference-free evidence that these shells have not converged yet.</p>
       <table class="meta-table">
-        <tr><td>наклон log-log подгонки</td><td>${fmtNum(kappaDetail.slope)}</td></tr>
-        <tr><td>число мод в окне подгонки</td><td>${kappaDetail.fitModes}</td></tr>
-        <tr><td>число оболочек в окне подгонки</td><td>${kappaDetail.fitShells}</td></tr>
-        <tr><td>q_max окна</td><td>${fmtNum(kappaDetail.qMax)}</td></tr>
-        <tr><td>окно валидно</td><td>${kappaDetail.valid ? 'да' : 'нет'}</td></tr>
+        <tr><td>slope of the log-log fit</td><td>${fmtNum(kappaDetail.slope)}</td></tr>
+        <tr><td>number of modes in the fit window</td><td>${kappaDetail.fitModes}</td></tr>
+        <tr><td>number of shells in the fit window</td><td>${kappaDetail.fitShells}</td></tr>
+        <tr><td>q_max of the window</td><td>${fmtNum(kappaDetail.qMax)}</td></tr>
+        <tr><td>window valid</td><td>${kappaDetail.valid ? 'yes' : 'no'}</td></tr>
       </table>
       <table>
         <thead>
-          <tr><th>q, σ⁻¹</th><th>вырождение</th><th>⟨|h_q|²⟩</th><th>разброс между вырожденными модами</th><th>в окне подгонки</th></tr>
+          <tr><th>q, σ⁻¹</th><th>degeneracy</th><th>⟨|h_q|²⟩</th><th>spread between degenerate modes</th><th>in fit window</th></tr>
         </thead>
         <tbody>
           ${kappaDetail.spectrumTable
             .map(
               (r) =>
-                `<tr><td>${r.q.toFixed(4)}</td><td>${r.degeneracy}</td><td>${r.mean.toExponential(3)}</td><td>${(r.degenerateSpreadRel * 100).toFixed(1)}%</td><td>${r.inFitWindow ? 'да' : 'нет'}</td></tr>`,
+                `<tr><td>${r.q.toFixed(4)}</td><td>${r.degeneracy}</td><td>${r.mean.toExponential(3)}</td><td>${(r.degenerateSpreadRel * 100).toFixed(1)}%</td><td>${r.inFitWindow ? 'yes' : 'no'}</td></tr>`,
             )
             .join('\n')}
         </tbody>
@@ -161,36 +161,36 @@ export function renderReport(results: GateResult[], meta: Record<string, unknown
   const closureSection = closureDetail
     ? `
     <section class="closure-note">
-      <p><strong>О числе замкнутой полости:</strong> ${escapeHtml(closureDetail.label)} — это свойство
-      синтетической проверочной раскладки самого детектора заливкой, а не измеренный объём внутренней
-      полости мембраны.</p>
+      <p><strong>On the closed-cavity number:</strong> ${escapeHtml(closureDetail.label)}: this is a property
+      of the detector's own synthetic flood-fill test layout, not a measured volume of the membrane's
+      inner cavity.</p>
     </section>`
     : ''
 
   const perfSection = `
     <section class="performance">
-      <h2>Производительность</h2>
+      <h2>Performance</h2>
       <table class="meta-table">
-        <tr><td>шагов в секунду</td><td>${performance.stepsPerSecond !== undefined ? performance.stepsPerSecond.toFixed(1) : '—'}</td></tr>
-        <tr><td>бидов в системе</td><td>${performance.beads ?? '—'}</td></tr>
-        <tr><td>время перестройки сетки соседей, мс (отдельный замер)</td><td>${performance.neighborBuildMs !== undefined ? performance.neighborBuildMs.toFixed(3) : '—'}</td></tr>
-        ${performance.scenario ? `<tr><td>сценарий</td><td>${escapeHtml(performance.scenario)}</td></tr>` : ''}
+        <tr><td>steps per second</td><td>${performance.stepsPerSecond !== undefined ? performance.stepsPerSecond.toFixed(1) : '—'}</td></tr>
+        <tr><td>beads in the system</td><td>${performance.beads ?? '—'}</td></tr>
+        <tr><td>neighbour grid rebuild time, ms (separate measurement)</td><td>${performance.neighborBuildMs !== undefined ? performance.neighborBuildMs.toFixed(3) : '—'}</td></tr>
+        ${performance.scenario ? `<tr><td>scenario</td><td>${escapeHtml(performance.scenario)}</td></tr>` : ''}
       </table>
     </section>`
 
   const caveatsSection = `
     <section class="caveats">
-      <h2>Оговорки</h2>
+      <h2>Caveats</h2>
       <ul>
         ${CAVEATS.map((c) => `<li>${escapeHtml(c)}</li>`).join('\n')}
       </ul>
     </section>`
 
   return `<!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>protocell-genesis — отчёт проверки</title>
+<title>protocell-genesis: verification report</title>
 <style>
   body { font: 15px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; max-width: 980px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
   table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
@@ -206,16 +206,16 @@ export function renderReport(results: GateResult[], meta: Record<string, unknown
 </style>
 </head>
 <body>
-<h1>protocell-genesis — отчёт проверки (Ступень C, ворота 6)</h1>
-<p>Сгенерировано ${escapeHtml(generatedAt)}, коммит <code>${escapeHtml(commitSha)}</code>${
+<h1>protocell-genesis: verification report (Stage C, gate 6)</h1>
+<p>Generated ${escapeHtml(generatedAt)}, commit <code>${escapeHtml(commitSha)}</code>${
     commitDirty
-      ? ' <strong>(рабочее дерево на момент генерации было НЕ чистым — эти артефакты сгенерированы ДО коммита, который их содержит; указанный коммит — последний реальный, а не тот, что упаковывает этот файл)</strong>'
-      : ' (рабочее дерево было чистым — коммит выше действительно содержит код, который дал эти числа)'
+      ? ' <strong>(the working tree was not clean at generation time: these artifacts were generated before the commit that contains them; the commit shown is the last real one, not the one that packages this file)</strong>'
+      : ' (the working tree was clean: the commit above really contains the code that produced these numbers)'
   }, run <code>${escapeHtml(runId)}</code>
-(тот же идентификатор проставлен на gates.json и kappa-measurement.json — расхождение означало бы, что артефакты из разных прогонов).</p>
+(the same identifier is stamped on gates.json and kappa-measurement.json; a mismatch would mean the artifacts come from different runs).</p>
 <table>
   <thead>
-    <tr><th>ворота</th><th>значение</th><th>коридор</th><th>ранг</th><th>вердикт</th><th>откуда число</th><th>источник</th><th>условия</th></tr>
+    <tr><th>gate</th><th>value</th><th>corridor</th><th>rank</th><th>verdict</th><th>where the number comes from</th><th>source</th><th>conditions</th></tr>
   </thead>
   <tbody>
     ${rows}
@@ -225,7 +225,7 @@ ${kappaSection}
 ${closureSection}
 ${perfSection}
 ${caveatsSection}
-<footer>verify/report.ts только форматирует; данные подаёт verify/run.ts из ОДНОГО прогона измерения в этом же процессе (runId выше) — verify/out/gates.json и verify/out/kappa-measurement.json пишутся ИЗ ТОГО ЖЕ измерения, а не читаются этим отчётом с диска, и не наоборот.</footer>
+<footer>verify/report.ts only formats; the data is supplied by verify/run.ts from one measurement run in this same process (runId above). verify/out/gates.json and verify/out/kappa-measurement.json are written from that same measurement, not read from disk by this report, and not the other way round.</footer>
 </body>
 </html>`
 }

@@ -1,23 +1,28 @@
 """
-Дескрипторы окружения атома и их производные, написанные руками.
+Descriptors of an atom's environment and their derivatives, hand-written.
 
-Выбор вида модели -- главное решение всей затеи, и он сделан из соображений СКОРОСТИ НА GPU,
-а не из моды. Взяты симметрийные функции Белера-Паринелло (Behler & Parrinello, PRL 98 (2007)
-146401; Behler, JCP 134 (2011) 074106): радиальные G2 и угловые G4. Причины:
+The choice of the model's form is the main decision of the whole scheme, and it was made
+for reasons of GPU SPEED, not fashion. Behler-Parrinello symmetry functions are used
+(Behler & Parrinello, PRL 98 (2007) 146401; Behler, JCP 134 (2011) 074106): radial G2 and
+angular G4. Reasons:
 
-1. Они инвариантны к переносу, вращению и перестановке одинаковых атомов -- то есть
-   удовлетворяют тем же симметриям, что энергия, и модель не тратит ёмкость на их изучение.
-2. Их производные по координатам выражаются в замкнутом виде через те же величины, что и
-   сами дескрипторы. Значит силы считаются БЕЗ автоматического дифференцирования -- а именно
-   автодифференцирование делает нейросетевые потенциалы дорогими в цикле динамики.
-3. Модель по ним ЛИНЕЙНА, поэтому обучение -- это одна задача наименьших квадратов с точным
-   решением, без итераций, без скорости обучения и без переобучения на шуме оптимизатора.
-   Если линейной ёмкости не хватит, это будет видно как ошибка на отложенной выборке, и тогда
-   поверх тех же дескрипторов встанет маленькая сеть -- дескрипторы при этом не меняются.
+1. They are invariant under translation, rotation and permutation of identical atoms,
+   i.e. they satisfy the same symmetries as energy, and the model does not spend capacity
+   learning them.
+2. Their derivatives with respect to coordinates are expressed in closed form through the
+   same quantities as the descriptors themselves. So forces are computed WITHOUT automatic
+   differentiation, and it is exactly automatic differentiation that makes neural-network
+   potentials expensive in the dynamics loop.
+3. The model on top of them is LINEAR, so training is a single least-squares problem with
+   an exact solution, without iterations, without a learning rate, and without overfitting
+   to optimizer noise. If linear capacity is not enough, it will show up as error on the
+   held-out set, and then a small network is placed on top of the same descriptors; the
+   descriptors themselves do not change.
 
-Стоимость на атом: (число соседей) × (число радиальных функций) для G2 плюс (число пар
-соседей) × (число угловых функций) для G4. Это единицы тысяч операций против миллионов у
-модели с обменом сообщениями -- и вся арифметика поэлементная, то есть идеальна для GPU.
+Cost per atom: (number of neighbors) × (number of radial functions) for G2 plus (number
+of neighbor pairs) × (number of angular functions) for G4. This is thousands of
+operations against millions for a message-passing model, and all the arithmetic is
+element-wise, i.e. ideal for the GPU.
 """
 from __future__ import annotations
 
@@ -29,14 +34,16 @@ import numpy as np
 @dataclass(frozen=True)
 class DescriptorSpec:
     """
-    Набор дескрипторов. Параметры -- не подгонка под ответ, а покрытие пространства:
-    центры радиальных гауссиан размещаются равномерно от контактного расстояния до радиуса
-    обрезания, ширина берётся равной шагу сетки центров (чтобы соседние функции перекрывались
-    и набор не имел слепых зон), а угловые функции берут стандартный набор кратностей.
+    A set of descriptors. The parameters are not a fit to the answer but coverage of the
+    space: the centers of the radial Gaussians are placed evenly from the contact
+    distance to the cutoff radius, the width is taken equal to the grid step of the
+    centers (so neighboring functions overlap and the set has no blind spots), and the
+    angular functions use a standard set of multiplicities.
 
-    `cutoff` -- физическая величина: за ним взаимодействие считается нулевым. 5 Å выбран как
-    расстояние, на котором водородная связь и первая координационная сфера воды уже внутри,
-    а стоимость ещё умеренная (число соседей около 40 при плотности жидкой воды).
+    `cutoff` is a physical quantity: beyond it, the interaction is treated as zero. 5 Å is
+    chosen as the distance at which the hydrogen bond and the first coordination shell of
+    water are already inside, while the cost is still moderate (about 40 neighbors at the
+    density of liquid water).
     """
 
     cutoff: float = 5.0
@@ -45,21 +52,22 @@ class DescriptorSpec:
     lambdas: tuple[float, ...] = (1.0, -1.0)
     eta_angular: float = 0.08
     r_min: float = 0.8
-    # НАБОР ширин, а не одна: узкие функции разрешают положение первого пика, широкие видят
-    # вторую координационную сферу. С одной шириной (первая версия) отложенная ошибка сил
-    # держалась на 1327 мэВ/Å -- набор ширин это прямое расширение ёмкости базиса без
-    # изменения его вида и без роста стоимости на порядок.
+    # A SET of widths, not one: narrow functions resolve the position of the first peak,
+    # wide ones see the second coordination shell. With a single width (the first
+    # version), the held-out force error stayed at 1327 meV/Å; a set of widths is a
+    # direct expansion of the basis's capacity without changing its form and without
+    # raising the cost by an order of magnitude.
     eta_scales: tuple[float, ...] = (0.5, 1.0, 2.0)
     eta_angular_scales: tuple[float, ...] = (0.5, 2.0)
 
     @property
     def mu(self) -> np.ndarray:
-        """Центры радиальных гауссиан."""
+        """Centers of the radial Gaussians."""
         return np.linspace(self.r_min, self.cutoff * 0.95, self.n_radial)
 
     @property
     def eta_radial(self) -> float:
-        """Ширина из шага сетки центров: перекрытие соседних функций около половины высоты."""
+        """Width from the grid step of the centers: neighboring functions overlap at about half height."""
         step = (self.cutoff * 0.95 - self.r_min) / max(1, self.n_radial - 1)
         return 1.0 / (2.0 * step**2)
 
@@ -74,11 +82,12 @@ class DescriptorSpec:
 
 def cutoff_function(r: np.ndarray, rc: float) -> tuple[np.ndarray, np.ndarray]:
     """
-    Косинусная функция обрезания f = 0.5(cos(pi r/rc) + 1) и её производная.
+    Cosine cutoff function f = 0.5(cos(pi r/rc) + 1) and its derivative.
 
-    Обрезание обязано зануляться ВМЕСТЕ С ПРОИЗВОДНОЙ на радиусе: иначе сила скачком меняется,
-    когда сосед пересекает границу списка, и энергия в NVE не сохраняется. У косинусной формы
-    и значение, и производная равны нулю в r = rc -- это её причина существования.
+    The cutoff must vanish TOGETHER WITH ITS DERIVATIVE at the radius: otherwise force
+    jumps discontinuously when a neighbor crosses the list boundary, and energy is not
+    conserved in NVE. For the cosine form, both the value and the derivative are zero at
+    r = rc; this is its reason for existing.
     """
     inside = r < rc
     f = np.where(inside, 0.5 * (np.cos(np.pi * r / rc) + 1.0), 0.0)
@@ -87,7 +96,7 @@ def cutoff_function(r: np.ndarray, rc: float) -> tuple[np.ndarray, np.ndarray]:
 
 
 def species_pair_index(z_a: int, z_b: int, species: tuple[int, ...]) -> int:
-    """Индекс НЕупорядоченной пары сортов: (H,O) и (O,H) -- один канал."""
+    """Index of an UNordered pair of species: (H,O) and (O,H) are one channel."""
     ia, ib = species.index(z_a), species.index(z_b)
     lo, hi = min(ia, ib), max(ia, ib)
     n = len(species)
@@ -100,7 +109,7 @@ def n_pair_channels(species: tuple[int, ...]) -> int:
 
 
 def descriptor_length(spec: DescriptorSpec, species: tuple[int, ...]) -> int:
-    """Полная длина вектора дескрипторов одного атома."""
+    """Total length of a single atom's descriptor vector."""
     n_pairs = n_pair_channels(species)
     return spec.n_radial_total * len(species) + spec.n_angular * n_pairs
 
@@ -114,14 +123,16 @@ def compute_descriptors(
     with_gradients: bool = True,
 ):
     """
-    Дескрипторы всех атомов и, если нужно, их производные по координатам.
+    Descriptors of all atoms and, if needed, their derivatives with respect to
+    coordinates.
 
-    Возвращает (G, dG) где G имеет форму (N, D), а dG -- (N, D, N, 3): производная
-    дескриптора d атома i по координате атома k. Форма расточительна по памяти и годится
-    только для обучения на малых системах; в динамике силы собираются на лету, без хранения
-    полного тензора (см. atomic/train/model.py и порт в WGSL).
+    Returns (G, dG) where G has shape (N, D), and dG has shape (N, D, N, 3): the derivative
+    of descriptor d of atom i with respect to the coordinate of atom k. The shape is
+    wasteful in memory and is suited only for training on small systems; in dynamics
+    forces are gathered on the fly, without storing the full tensor (see
+    atomic/train/model.py and the WGSL port).
 
-    Периодичность учитывается минимальным образом по всем осям, если задана ячейка.
+    Periodicity is handled in a minimal way along all axes, if a cell is given.
     """
     n = len(numbers)
     d_len = descriptor_length(spec, species)
@@ -134,7 +145,7 @@ def compute_descriptors(
     n_rad_block = spec.n_radial_total * n_sp
 
     for i in range(n):
-        # --- список соседей внутри радиуса обрезания ---------------------------------
+        # --- list of neighbors within the cutoff radius -------------------------------
         d = positions - positions[i]
         if cell is not None:
             frac = np.linalg.solve(cell.T, d.T).T
@@ -150,8 +161,8 @@ def compute_descriptors(
         unit = dij / rij[:, None]
         fc, dfc = cutoff_function(rij, spec.cutoff)
 
-        # --- G2: радиальные -----------------------------------------------------------
-        # g2[n] = sum_j exp(-eta (r_ij - mu_n)^2) fc(r_ij), отдельным каналом на сорт соседа
+        # --- G2: radial ------------------------------------------------------------------
+        # g2[n] = sum_j exp(-eta (r_ij - mu_n)^2) fc(r_ij), in a separate channel per neighbor species
         diff = rij[:, None] - mu[None, :]
         contrib_parts, dcontrib_parts = [], []
         for scale in spec.eta_scales:
@@ -167,12 +178,12 @@ def compute_descriptors(
             block = slice(sp * spec.n_radial_total, (sp + 1) * spec.n_radial_total)
             g[i, block] += contrib[k]
             if dg is not None:
-                # производная по r_ij, разложенная по осям через единичный вектор
+                # derivative with respect to r_ij, decomposed onto axes via the unit vector
                 grad = dcontrib_dr[k][:, None] * unit[k][None, :]
                 dg[i, block, j, :] += grad
                 dg[i, block, i, :] -= grad
 
-        # --- G4: угловые ---------------------------------------------------------------
+        # --- G4: angular -------------------------------------------------------------------
         # g4 = sum_{j<k} (1 + lambda cos(theta_ijk))^zeta * exp(-eta(r_ij^2+r_ik^2+r_jk^2)) * fc fc fc
         if idx.size >= 2:
             for a in range(idx.size - 1):
@@ -201,7 +212,7 @@ def compute_descriptors(
                             angular = (1.0 + lam * cos_t) ** zeta
                             g[i, base + slot] += angular * expo * fcc
                             if dg is not None:
-                                # производные по трём расстояниям и по косинусу угла
+                                # derivatives with respect to the three distances and to the cosine of the angle
                                 dang_dcos = (
                                     zeta * lam * (1.0 + lam * cos_t) ** (zeta - 1.0)
                                     if abs(1.0 + lam * cos_t) > 1e-12
@@ -219,7 +230,7 @@ def compute_descriptors(
                                 dfcc_dvb = dfc[b] * (vb / rb) * fc[a] * fc_jk
                                 dfcc_dvjk = dfc_jk * (vjk / rjk) * fc[a] * fc[b]
 
-                                # полная производная по va и vb (vjk = vb - va)
+                                # full derivative with respect to va and vb (vjk = vb - va)
                                 dva = (
                                     dang_dcos * dcos_dva * expo * fcc
                                     + angular * dexpo_dva * fcc

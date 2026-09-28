@@ -1,19 +1,20 @@
 """
-Обучение пакетами на карте: кадры одного размера считаются одним тензором.
+Batched GPU training: frames of the same size are computed as a single tensor.
 
-Замер, из-за которого это появилось: в облаке один вариант обучения занимал от 1957 до 4369
-секунд на 465 кадрах. Причина не в объёме арифметики, а в том, что цикл шёл ПО КАДРАМ на
-питоне, и на каждый кадр приходился отдельный вызов сети и отдельное автодифференцирование --
-карта при этом простаивала так же, как при поштучной разметке.
+The measurement that led to this: in the cloud, one training run took between 1957 and
+4369 seconds on 465 frames. The cause was not the amount of arithmetic but the fact that
+the loop ran PER FRAME in Python, with a separate network call and separate autodiff for
+every frame; the GPU was idle just as much as with per-item labeling.
 
-Здесь кадры группируются по числу атомов (тензор обязан быть прямоугольным) и внутри группы
-считаются одним пакетом: сеть применяется к (B, N, D) сразу, силы собираются одним einsum.
-Математика та же, что в train/nn.py -- это проверяется сравнением предсказаний обеих версий на
-одних и тех же весах (validate/test_fast_train.py).
+Here frames are grouped by number of atoms (the tensor must be rectangular) and computed
+as a single batch within a group: the network is applied to (B, N, D) at once, and forces
+are gathered with a single einsum. The math is the same as in train/nn.py; this is verified
+by comparing the predictions of both versions on the same weights
+(validate/test_fast_train.py).
 
-Память -- главное ограничение пакета: тензор производных имеет размер B×N×D×N×3, то есть растёт
-как КВАДРАТ числа атомов. Поэтому размер пакета выводится из числа атомов и заданного предела
-памяти, а не назначается одним числом на все размеры.
+Memory is the main constraint on the batch: the derivative tensor has size B×N×D×N×3, i.e.
+it grows as the SQUARE of the number of atoms. So the batch size is derived from the number
+of atoms and a given memory budget, rather than fixed to one number for all sizes.
 """
 from __future__ import annotations
 
@@ -32,17 +33,17 @@ class FastTrainingConfig:
     seed: int = 0
     memory_budget_mb: float = 512.0
     dtype: str = "float32"
-    lr_final_fraction: float = 0.05   # к концу обучения шаг падает до этой доли начального
+    lr_final_fraction: float = 0.05   # by the end of training, the step drops to this fraction of the initial one
 
 
 def _batch_size_for(n_atoms: int, d_len: int, budget_mb: float, bytes_per_number: int) -> int:
-    """Сколько кадров такого размера влезает в заданный предел памяти."""
+    """How many frames of this size fit within a given memory budget."""
     per_frame = n_atoms * d_len * n_atoms * 3 * bytes_per_number
     return max(1, int(budget_mb * 1e6 / max(per_frame, 1)))
 
 
 def group_by_size(frames, precomputed):
-    """Группы кадров одинакового размера: {n_atoms: (индексы, G, dG)}."""
+    """Groups of frames of the same size: {n_atoms: (indices, G, dG)}."""
     groups: dict[int, list[int]] = {}
     for k, fr in enumerate(frames):
         groups.setdefault(len(fr["numbers"]), []).append(k)
@@ -56,11 +57,11 @@ def group_by_size(frames, precomputed):
 
 def train_fast(frames, spec, species, cfg: FastTrainingConfig, precomputed, device: str = "cpu", verbose=True):
     """
-    Обучение по энергиям и силам, пакетами, на заданном устройстве.
+    Training on energies and forces, in batches, on a given device.
 
-    Затухание шага обучения по косинусу -- не украшение: при постоянном шаге невязка на
-    последних эпохах колебалась (замер: 2190 -> 3824 между эпохами 222 и 296), то есть
-    оптимизатор ходил вокруг минимума, не садясь в него.
+    Cosine decay of the learning rate is not decoration: with a constant step, the loss
+    oscillated in the final epochs (measured: 2190 -> 3824 between epochs 222 and 296),
+    i.e. the optimizer was circling the minimum without settling into it.
     """
     import torch
 
@@ -85,7 +86,7 @@ def train_fast(frames, spec, species, cfg: FastTrainingConfig, precomputed, devi
     mean_t = torch.tensor(mean, device=device, dtype=dtype)
     std_t = torch.tensor(std, device=device, dtype=dtype)
 
-    # --- подготовка групп: один раз, на устройстве ------------------------------------
+    # --- prepare groups: once, on the device -------------------------------------------
     prepared = []
     for n_atoms, (idxs, g, dg) in group_by_size(frames, precomputed).items():
         batch = _batch_size_for(n_atoms, d_len, cfg.memory_budget_mb, bytes_per)
@@ -115,13 +116,14 @@ def train_fast(frames, spec, species, cfg: FastTrainingConfig, precomputed, devi
                 }
             )
     if verbose:
-        print(f"    пакетов {len(prepared)}, размеры {[p['g'].shape[0] for p in prepared][:12]}", flush=True)
+        print(f"    batches {len(prepared)}, sizes {[p['g'].shape[0] for p in prepared][:12]}", flush=True)
 
-    # Группировка по размеру -- требование прямоугольного тензора, но НЕ способ обучения:
-    # если каждый шаг оптимизатора видит кадры одного размера, шаг смещён в сторону этого
-    # размера. Замер: обучение по однородным пакетам дало 548 мэВ/атом против 246 у прежней
-    # версии, которая смешивала размеры в одном пакете. Поэтому градиент НАКАПЛИВАЕТСЯ по всем
-    # группам, и только потом делается шаг: тензоры остаются прямоугольными, а шаг -- смешанным.
+    # Grouping by size is a requirement of the rectangular tensor, but NOT a training
+    # method: if every optimizer step only sees frames of one size, the step is biased
+    # toward that size. Measured: training on homogeneous batches gave 548 meV/atom against
+    # 246 for the previous version, which mixed sizes within one batch. So the gradient is
+    # ACCUMULATED across all groups, and only then is a step taken: the tensors stay
+    # rectangular, while the step is mixed.
     rng = np.random.default_rng(cfg.seed)
     for epoch in range(cfg.epochs):
         order = rng.permutation(len(prepared))
@@ -144,8 +146,8 @@ def train_fast(frames, spec, species, cfg: FastTrainingConfig, precomputed, devi
         opt.step()
         sched.step()
         if verbose and (epoch + 1) % max(1, cfg.epochs // 10) == 0:
-            print(f"    эпоха {epoch + 1:5d}/{cfg.epochs}: невязка {total / len(prepared):.5f}, "
-                  f"шаг {sched.get_last_lr()[0]:.2e}", flush=True)
+            print(f"    epoch {epoch + 1:5d}/{cfg.epochs}: loss {total / len(prepared):.5f}, "
+                  f"lr {sched.get_last_lr()[0]:.2e}", flush=True)
 
     return {
         "net": net, "mean": mean, "std": std, "baseline": baseline,
@@ -154,7 +156,7 @@ def train_fast(frames, spec, species, cfg: FastTrainingConfig, precomputed, devi
 
 
 def evaluate_fast(model, frames, precomputed, device: str | None = None) -> dict:
-    """Ошибки против учителя, пакетами. Тот же смысл величин, что у `train.nn.evaluate`."""
+    """Errors against the teacher, in batches. Same meaning of quantities as `train.nn.evaluate`."""
     import torch
 
     from .nn import baseline_energy

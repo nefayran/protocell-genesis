@@ -50,7 +50,7 @@ async function main(): Promise<void> {
   if (args.confineRadius !== undefined) {
     const wb = JSON.parse(readFileSync(WALL_SHELL_JSON, 'utf8'))
     wallShell = wb.thickness
-    console.log(`[campaign] оболочка стенки для замера налипания = ${wallShell.toFixed(4)} sigma (толщина бислоя из ${WALL_SHELL_JSON})`)
+    console.log(`[campaign] wall shell for the adsorption measurement = ${wallShell.toFixed(4)} sigma (bilayer thickness from ${WALL_SHELL_JSON})`)
   }
   const config: CheckpointConfig = {
     box: [args.box, args.box, args.box],
@@ -82,13 +82,13 @@ async function main(): Promise<void> {
   const found = findNewestMatchingCheckpoint(args.dir, args.label, sig)
   console.log(
     found
-      ? `[campaign] резюме label=${args.label} из ${found.path}, шаг=${found.file.globalStep}`
-      : `[campaign] новый запуск label=${args.label} (совпадающих контрольных точек в ${args.dir} нет)`,
+      ? `[campaign] resume label=${args.label} from ${found.path}, step=${found.file.globalStep}`
+      : `[campaign] new run label=${args.label} (no matching checkpoints in ${args.dir})`,
   )
 
   let stopRequested = false
   const onSignal = (signal: string) => {
-    console.log(`[campaign] получен ${signal} -- сохраню контрольную точку и остановлюсь после текущего блока`)
+    console.log(`[campaign] received ${signal} -- will save a checkpoint and stop after the current block`)
     stopRequested = true
   }
   process.on('SIGINT', () => onSignal('SIGINT'))
@@ -129,15 +129,15 @@ async function main(): Promise<void> {
       JSON.stringify(config),
       found ? JSON.stringify(found.file) : null,
     )
-    console.log(`[campaign] система готова N=${created.N} стартовый_шаг=${created.steps} цель=${targetStep}`)
+    console.log(`[campaign] system ready N=${created.N} start_step=${created.steps} target=${targetStep}`)
     if (created.confinement) {
       const cf = created.confinement as Record<string, number | boolean | number[]>
       console.log(
-        `[campaign] УДЕРЖАНИЕ: парцелла R_wet=${Number(cf.radiusWet).toFixed(4)} R_live=${Number(cf.radiusLive).toFixed(4)} ` +
-          `k=${cf.stiffness} box_live=${JSON.stringify(cf.boxLive)} V_парцеллы=${Number(cf.parcelVolumeLive).toFixed(1)} ` +
-          `V_бокса=${Number(cf.boxVolumeLive).toFixed(1)} (V_бокса/V_парцеллы=${(Number(cf.boxVolumeLive) / Number(cf.parcelVolumeLive)).toFixed(3)}) ` +
-          `наибольший_радиус_взаимодействия=${Number(cf.cutMax).toFixed(4)} зазор_L/2-R=${Number(cf.clearanceLive).toFixed(4)} ` +
-          `сильное_условие_2R<L/2=${cf.strongNoWrapLive}`,
+        `[campaign] confinement: parcel R_wet=${Number(cf.radiusWet).toFixed(4)} R_live=${Number(cf.radiusLive).toFixed(4)} ` +
+          `k=${cf.stiffness} box_live=${JSON.stringify(cf.boxLive)} V_parcel=${Number(cf.parcelVolumeLive).toFixed(1)} ` +
+          `V_box=${Number(cf.boxVolumeLive).toFixed(1)} (V_box/V_parcel=${(Number(cf.boxVolumeLive) / Number(cf.parcelVolumeLive)).toFixed(3)}) ` +
+          `largest_interaction_radius=${Number(cf.cutMax).toFixed(4)} clearance_L/2-R=${Number(cf.clearanceLive).toFixed(4)} ` +
+          `strong_condition_2R<L/2=${cf.strongNoWrapLive}`,
       )
     }
 
@@ -147,13 +147,13 @@ async function main(): Promise<void> {
     // the guard here is about not printing a confusing skip line rather than about safety.
     if (args.relax) {
       if (startStep !== 0) {
-        console.log(`[campaign] --relax пропущен: это резюме с шага=${startStep}, минимизация допустима только на свежем старте`)
+        console.log(`[campaign] --relax skipped: this is a resume from step=${startStep}, minimisation is allowed only on a fresh start`)
       } else {
         const r = await page.evaluate(async () => (window as any).__sys.relaxColdStart())
         console.log(
-          `[campaign] минимизация холодного старта: итераций=${r.iterations} шаг_первой=${r.maxDisplacementStart} ` +
-            `граница_суммарного_смещения=${r.displacementBound.toFixed(4)} max|F| ${r.maxForceBefore.toExponential(4)} -> ${r.maxForceAfter.toExponential(4)} ` +
-            `нефинитных_до=${r.nonFiniteBefore} нефинитных_после=${r.nonFiniteAfter} шаг_системы=${await page.evaluate(() => (window as any).__sys.steps)}`,
+          `[campaign] cold-start minimisation: iterations=${r.iterations} first_step=${r.maxDisplacementStart} ` +
+            `total_displacement_bound=${r.displacementBound.toFixed(4)} max|F| ${r.maxForceBefore.toExponential(4)} -> ${r.maxForceAfter.toExponential(4)} ` +
+            `nonfinite_before=${r.nonFiniteBefore} nonfinite_after=${r.nonFiniteAfter} system_step=${await page.evaluate(() => (window as any).__sys.steps)}`,
         )
       }
     }
@@ -173,7 +173,7 @@ async function main(): Promise<void> {
       const liveBoxNow = (await page.evaluate(() => (window as any).__sys.box)) as [number, number, number]
       if (Math.abs(liveBoxNow[0] - args.expandTo) > 1e-6) {
         console.log(
-          `[campaign] расширение бокса ${JSON.stringify(liveBoxNow)} -> [${args.expandTo},${args.expandTo},${args.expandTo}] ` +
+          `[campaign] box expansion ${JSON.stringify(liveBoxNow)} -> [${args.expandTo},${args.expandTo},${args.expandTo}] ` +
             `(growBoxTo, rampSteps=${args.expandRampSteps}, rampRelaxSteps=${args.expandRampRelaxSteps})`,
         )
         // Grid-cost measurement runs on a THROWAWAY probe system, resumed fresh from the SAME
@@ -216,7 +216,7 @@ async function main(): Promise<void> {
         const checkpointJson = found ? JSON.stringify(found.file) : null
         const before = await probeDebug(cfgJson, checkpointJson, GRID_DEBUG_N, null, 0, 0)
         console.log(
-          `[campaign] ДО расширения (probe): box=${JSON.stringify(before.box)} steps=${before.steps} n=${GRID_DEBUG_N} ` +
+          `[campaign] before expansion (probe): box=${JSON.stringify(before.box)} steps=${before.steps} n=${GRID_DEBUG_N} ` +
             `full=${before.debug.full.toFixed(4)}ms gridBuild=${before.debug.gridBuild.toFixed(4)}ms ` +
             `force=${before.debug.force.toFixed(4)}ms bondAttempts=${before.debug.bondAttempts.toFixed(4)}ms ` +
             `integration=${before.debug.integration.toFixed(4)}ms`,
@@ -258,16 +258,16 @@ async function main(): Promise<void> {
           // velocity/bond state is still real and checkpoint-worthy at whatever box size was reached
           // -- save it before re-throwing, so a partial expansion is not a total loss of this run's
           // own GPU time.
-          console.error(`[campaign] growBoxTo бросил на промежуточном боксе: ${(err as Error).message}`)
+          console.error(`[campaign] growBoxTo threw on an intermediate box: ${(err as Error).message}`)
           const partialBox = await page.evaluate(() => (window as any).__sys.box)
-          console.log(`[campaign] сохраняю аварийную контрольную точку на боксе=${JSON.stringify(partialBox)}`)
+          console.log(`[campaign] saving an emergency checkpoint at box=${JSON.stringify(partialBox)}`)
           const partialCheckpoint = await page.evaluate(async (cfgJson2: string) => {
             const api = (window as any).api
             const sys = (window as any).__sys
             return api.encodeCheckpoint(sys, JSON.parse(cfgJson2))
           }, JSON.stringify(config))
           const partialPath = writeCheckpointFile(args.dir, args.label, partialCheckpoint)
-          console.log(`[campaign] аварийная контрольная точка сохранена: ${partialPath}`)
+          console.log(`[campaign] emergency checkpoint saved: ${partialPath}`)
           throw err
         }
         const expandMs = Date.now() - expandT0
@@ -285,7 +285,7 @@ async function main(): Promise<void> {
           return { sum, sample }
         })
 
-        // "После расширения" probe: a SEPARATE fresh resume, box-grown to the SAME target via the
+        // "After expansion" probe: a SEPARATE fresh resume, box-grown to the SAME target via the
         // SAME (rampSteps, rampRelaxSteps) as the real expansion above, so its box exactly matches
         // window.__sys's post-expansion state -- then stepPhasesDEBUG on THAT throwaway, never on
         // window.__sys itself. growBoxTo moves no particle, so this probe's positions are identical
@@ -293,13 +293,13 @@ async function main(): Promise<void> {
         // by growBoxTo) -- only the grid/Verlet state differs, which is exactly what this measures.
         const after = await probeDebug(cfgJson, checkpointJson, GRID_DEBUG_N, args.expandTo, args.expandRampSteps, args.expandRampRelaxSteps)
         console.log(
-          `[campaign] ПОСЛЕ расширения (${expandMs}ms стенных часов, probe): box=${JSON.stringify(after.box)} steps=${after.steps} n=${GRID_DEBUG_N} ` +
+          `[campaign] after expansion (${expandMs}ms wall clock, probe): box=${JSON.stringify(after.box)} steps=${after.steps} n=${GRID_DEBUG_N} ` +
             `full=${after.debug.full.toFixed(4)}ms gridBuild=${after.debug.gridBuild.toFixed(4)}ms ` +
             `force=${after.debug.force.toFixed(4)}ms bondAttempts=${after.debug.bondAttempts.toFixed(4)}ms ` +
             `integration=${after.debug.integration.toFixed(4)}ms`,
         )
         console.log(
-          `[campaign] window.__sys реально после расширения: box=${JSON.stringify(boxAfter)} steps=${stepsAfter} ` +
+          `[campaign] window.__sys actually after expansion: box=${JSON.stringify(boxAfter)} steps=${stepsAfter} ` +
             `invariantsBefore=${JSON.stringify(invariantsBefore)} invariantsAfter=${JSON.stringify(invariantsAfter)} ` +
             `fingerprintSumBefore=${fingerprintBefore.sum} fingerprintSumAfter=${fingerprintAfter.sum}`,
         )
@@ -313,13 +313,13 @@ async function main(): Promise<void> {
         // concern at this exact particle count).
         if (JSON.stringify(invariantsBefore.monomers) !== JSON.stringify(invariantsAfter.monomers) || invariantsBefore.charge !== invariantsAfter.charge) {
           throw new Error(
-            `[campaign] расширение бокса потеряло/добавило частицы: ${JSON.stringify(invariantsBefore.monomers)} -> ${JSON.stringify(invariantsAfter.monomers)}`,
+            `[campaign] box expansion lost/added particles: ${JSON.stringify(invariantsBefore.monomers)} -> ${JSON.stringify(invariantsAfter.monomers)}`,
           )
         }
         if (fingerprintBefore.sum !== fingerprintAfter.sum || JSON.stringify(fingerprintBefore.sample) !== JSON.stringify(fingerprintAfter.sample)) {
-          throw new Error('[campaign] расширение бокса (growBoxTo) сдвинуло хотя бы одну частицу -- отпечаток позиций изменился, а не должен был')
+          throw new Error('[campaign] box expansion (growBoxTo) moved at least one particle -- the position fingerprint changed, and it must not have')
         }
-        console.log('[campaign] инвариант подтверждён: число частиц по мономерам, заряд и отпечаток позиций не изменились расширением бокса (growBoxTo)')
+        console.log('[campaign] invariant confirmed: the per-monomer particle count, the charge and the position fingerprint were not changed by the box expansion (growBoxTo)')
 
         // Immediate checkpoint right after expansion, before the main loop below -- this milestone
         // must survive even if the process is killed before the next --every interval.
@@ -329,9 +329,9 @@ async function main(): Promise<void> {
           return api.encodeCheckpoint(sys, JSON.parse(cfgJson))
         }, JSON.stringify(config))
         const savedExpandedPath = writeCheckpointFile(args.dir, args.label, expandedCheckpoint)
-        console.log(`[campaign] контрольная точка после расширения сохранена: ${savedExpandedPath}`)
+        console.log(`[campaign] checkpoint after expansion saved: ${savedExpandedPath}`)
       } else {
-        console.log(`[campaign] бокс уже расширен до ${JSON.stringify(liveBoxNow)} -- пропускаю (idempotent-резюме)`)
+        console.log(`[campaign] box already expanded to ${JSON.stringify(liveBoxNow)} -- skipping (idempotent resume)`)
       }
     }
 
@@ -348,8 +348,8 @@ async function main(): Promise<void> {
     const minimiseDue = args.minimiseAt.filter((x) => x > currentStep && x <= targetStep).sort((a, b) => a - b)
     if (args.minimiseAt.length > 0) {
       console.log(
-        `[campaign] контроль «только минимизации»: шаги=${JSON.stringify(args.minimiseAt)} итераций_каждая=${args.minimiseIterations} ` +
-          `ещё предстоит в этом вызове=${JSON.stringify(minimiseDue)}`,
+        `[campaign] "minimisation only" control: steps=${JSON.stringify(args.minimiseAt)} iterations_each=${args.minimiseIterations} ` +
+          `still_due_in_this_call=${JSON.stringify(minimiseDue)}`,
       )
     }
     while (currentStep < targetStep && !stopRequested) {
@@ -376,9 +376,9 @@ async function main(): Promise<void> {
           displacementBound: number
         }
         console.log(
-          `[campaign] минимизация ПОСРЕДИ прогона на шаге=${m.globalStep} итераций=${m.iterations} ` +
+          `[campaign] mid-run minimisation at step=${m.globalStep} iterations=${m.iterations} ` +
             `max|F| ${m.maxForceBefore.toExponential(4)} -> ${m.maxForceAfter.toExponential(4)} ` +
-            `граница_смещения=${m.displacementBound.toFixed(4)}`,
+            `displacement_bound=${m.displacementBound.toFixed(4)}`,
         )
       }
 
@@ -434,11 +434,11 @@ async function main(): Promise<void> {
             // it is the thing this run is about and because it is derived (4*lambda_D, capped by the
             // minimum image) rather than typed -- a report must never have to re-derive which cutoff a
             // run actually used.
-            ` rc_es=${es.cutoff.toFixed(4)}(=${es.debyeLengthsSpanned.toFixed(3)}lD, отброшено=${es.discardedIntegratedFraction.toFixed(4)})` +
+            ` rc_es=${es.cutoff.toFixed(4)}(=${es.debyeLengthsSpanned.toFixed(3)}lD, discarded=${es.discardedIntegratedFraction.toFixed(4)})` +
             ` pH=${es.pH} I=${es.ionicStrengthMolar} alpha=${pr.alpha.toFixed(4)} pKaApp=${api.apparentPKa(pr.alpha, es.pH).toFixed(3)}` +
-            ` спаренных=${pr.pairedFraction.toFixed(4)} неодинаковых=${pr.unlikeFraction.toFixed(4)}(случайно ${pr.unlikeFractionRandom.toFixed(4)})` +
-            ` подметаний=${es.sweeps}` +
-            (es.last ? ` последнее(принято=${es.last.accepted}/${es.last.attempts} dEs=${es.last.dEsMeanKT.toFixed(4)}kT)` : '')
+            ` paired=${pr.pairedFraction.toFixed(4)} unlike=${pr.unlikeFraction.toFixed(4)}(random ${pr.unlikeFractionRandom.toFixed(4)})` +
+            ` sweeps=${es.sweeps}` +
+            (es.last ? ` last(accepted=${es.last.accepted}/${es.last.attempts} dEs=${es.last.dEsMeanKT.toFixed(4)}kT)` : '')
         }
         // Task 'confined-parcel' (2026-08-21): THE COMPETING SINK, in every progress line, because it
         // is the way this experiment most plausibly fails -- amphiphiles plastering the container
@@ -462,19 +462,19 @@ async function main(): Promise<void> {
             soupW.monomers.findIndex((m: any) => m.id === soupW.solvent.waterId),
           )
           wallLine =
-            ` R=${Number(cf.radiusLive).toFixed(4)} maxR=${ws.maxRadius.toFixed(4)} продавливание=${ws.penetration.toFixed(4)}` +
-            ` зазор_до_грани=${ws.faceClearance.toFixed(4)} maxПара=${ws.maxPairSeparation.toFixed(3)} L/2=${ws.halfBox.toFixed(3)}` +
-            ` сильное=${ws.strongNoWrap} оболочка=${ws.shell.toFixed(3)} доля_равномерная=${ws.species[0].uniformFraction.toFixed(4)}` +
-            ` обогащение={${ws.species.map((x: any) => `${x.id}:${x.enrichment.toFixed(3)}`).join(',')}}` +
-            ` обогащение_к_воде={${ws.species.map((x: any) => `${x.id}:${x.enrichmentVsSolvent.toFixed(4)}`).join(',')}}` +
-            ` в_оболочке={${ws.species.map((x: any) => `${x.id}:${x.inShell}`).join(',')}}`
+            ` R=${Number(cf.radiusLive).toFixed(4)} maxR=${ws.maxRadius.toFixed(4)} penetration=${ws.penetration.toFixed(4)}` +
+            ` face_clearance=${ws.faceClearance.toFixed(4)} maxPair=${ws.maxPairSeparation.toFixed(3)} L/2=${ws.halfBox.toFixed(3)}` +
+            ` strong=${ws.strongNoWrap} shell=${ws.shell.toFixed(3)} uniform_fraction=${ws.species[0].uniformFraction.toFixed(4)}` +
+            ` enrichment={${ws.species.map((x: any) => `${x.id}:${x.enrichment.toFixed(3)}`).join(',')}}` +
+            ` enrichment_vs_water={${ws.species.map((x: any) => `${x.id}:${x.enrichmentVsSolvent.toFixed(4)}`).join(',')}}` +
+            ` in_shell={${ws.species.map((x: any) => `${x.id}:${x.inShell}`).join(',')}}`
         }
         // Task 'confined-parcel': encapsulated water and its DERIVED threshold, in the progress line,
         // because in a confined run the threshold depends on a density measured inside the parcel.
         const enc = largest?.encapsulatedWater ?? null
         const encLine = enc
-          ? ` encH2O=${enc.encapsulatedCount}/${Number(enc.encapsulationThresholdCount).toFixed(2)} закрыто=${enc.closed}` +
-            ` плотность_воды_объёма=${enc.bulkWaterDensity.toFixed(4)}`
+          ? ` encH2O=${enc.encapsulatedCount}/${Number(enc.encapsulationThresholdCount).toFixed(2)} closed=${enc.closed}` +
+            ` bulk_water_density=${enc.bulkWaterDensity.toFixed(4)}`
           : ''
         return {
           esLine,
@@ -499,20 +499,20 @@ async function main(): Promise<void> {
       const progressMs = Date.now() - t2
 
       console.log(
-        `[campaign] шаг=${currentStep}/${targetStep} stage=${progress.stage} агрегатов=${progress.aggregateCount} ` +
-          `крупнейший=${progress.largestAggregateSize} headShells=${progress.headShells} cavityVolume=${progress.cavityVolume.toFixed(3)} ` +
-          `фаза=${progress.phase}/${progress.cycleIndex} box=${progress.box.toFixed(4)} связей=${progress.bonds} census=${JSON.stringify(progress.census)} ` +
+        `[campaign] step=${currentStep}/${targetStep} stage=${progress.stage} aggregates=${progress.aggregateCount} ` +
+          `largest=${progress.largestAggregateSize} headShells=${progress.headShells} cavityVolume=${progress.cavityVolume.toFixed(3)} ` +
+          `phase=${progress.phase}/${progress.cycleIndex} box=${progress.box.toFixed(4)} bonds=${progress.bonds} census=${JSON.stringify(progress.census)} ` +
           `flat=${progress.flatness.toFixed(4)} inPl=${progress.inPlane.toFixed(4)} rg=${progress.rg.toFixed(3)} ` +
-          `гистограмма=${JSON.stringify(progress.sizeHistogramTop)} ` +
-          `stepMs=${stepMs} checkpointMs=${checkpointMs} progressMs=${progressMs} сохранено=${savedPath}` +
+          `histogram=${JSON.stringify(progress.sizeHistogramTop)} ` +
+          `stepMs=${stepMs} checkpointMs=${checkpointMs} progressMs=${progressMs} saved=${savedPath}` +
           progress.encLine + progress.esLine + progress.wallLine,
       )
     }
 
     if (stopRequested) {
-      console.log(`[campaign] остановлен по сигналу на шаге=${currentStep} -- следующий вызов с теми же флагами продолжит с этой точки`)
+      console.log(`[campaign] stopped by signal at step=${currentStep} -- the next call with the same flags will continue from this point`)
     } else {
-      console.log(`[campaign] бюджет шагов выполнен полностью: шаг=${currentStep}`)
+      console.log(`[campaign] step budget fully completed: step=${currentStep}`)
     }
   } finally {
     await shutdownGpu()

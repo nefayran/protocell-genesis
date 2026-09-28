@@ -171,21 +171,21 @@ export function layoutVesicle(lipids: number, box: [number, number, number], p: 
   const discriminant = K / 2 - L * L
   if (discriminant <= 0) {
     throw new Error(
-      `layoutVesicle: lipids=${lipids} слишком мало для двухслойной сферы ` +
-        `(K/2-L^2=${discriminant.toFixed(4)} <= 0) — нужно больше липидов`,
+      `layoutVesicle: lipids=${lipids} is too few for a two-leaflet sphere ` +
+        `(K/2-L^2=${discriminant.toFixed(4)} <= 0); more lipids are needed`,
     )
   }
   const rHeadOut = L + Math.sqrt(discriminant)
   const midR = rHeadOut - L
   const rHeadIn = midR - L
   if (rHeadIn <= 0) {
-    throw new Error(`layoutVesicle: внутренний радиус головного слоя ${rHeadIn.toFixed(4)} <= 0 — нужно больше липидов`)
+    throw new Error(`layoutVesicle: the inner radius of the head leaflet ${rHeadIn.toFixed(4)} <= 0; more lipids are needed`)
   }
   const maxReach = Math.min(box[0], box[1], box[2]) / 2
   if (rHeadOut >= maxReach) {
     throw new Error(
-      `layoutVesicle: внешний радиус ${rHeadOut.toFixed(4)} не помещается в box=[${box[0]},${box[1]},${box[2]}] ` +
-        `с центром в середине (нужно min(box)/2 > R)`,
+      `layoutVesicle: the outer radius ${rHeadOut.toFixed(4)} does not fit into box=[${box[0]},${box[1]},${box[2]}] ` +
+        `centred in the middle (need min(box)/2 > R)`,
     )
   }
   const center: [number, number, number] = [box[0] / 2, box[1] / 2, box[2] / 2]

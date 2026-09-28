@@ -86,7 +86,7 @@ export function heightField(positions: Float32Array, box: [number, number, numbe
       nonEmpty += 1
     }
   }
-  if (nonEmpty === 0) throw new Error(`heightField: сетка ${n}x${n} пуста — ни одна бусина не попала ни в одну колонку`)
+  if (nonEmpty === 0) throw new Error(`heightField: the ${n}x${n} grid is empty, not a single bead fell into any column`)
   const globalMean = sumMean / nonEmpty
 
   const out = new Float32Array(n * n)
@@ -147,7 +147,7 @@ export function columnNoiseStats(positions: Float32Array, box: [number, number, 
       nonEmpty += 1
     }
   }
-  if (nonEmpty === 0) throw new Error(`columnNoiseStats: сетка ${n}x${n} пуста`)
+  if (nonEmpty === 0) throw new Error(`columnNoiseStats: the ${n}x${n} grid is empty`)
   const meanBeadsPerColumn = totalBeads / nonEmpty
   const meanColumnVariance = weightedVarSum / totalBeads
   const N = n * n
@@ -170,7 +170,7 @@ export function columnNoiseStats(positions: Float32Array, box: [number, number, 
 export function tailEndBeads(positions: Float32Array): Float32Array {
   const n = positions.length / 4
   if (n % 3 !== 0) {
-    throw new Error(`tailEndBeads: ${n} бусин не делится на 3 — раскладка не head/tail1/tail2 по липиду`)
+    throw new Error(`tailEndBeads: ${n} beads is not divisible by 3, so the layout is not head/tail1/tail2 per lipid`)
   }
   const nLipids = n / 3
   const out = new Float32Array(nLipids * 4)
@@ -243,7 +243,7 @@ export function logLogFit(s: Spectrum, qMax: number): { slope: number; intercept
     }
   }
   const n = xs.length
-  if (n < 2) throw new Error(`logLogFit: только ${n} мод(ы) с q<=${qMax} — недостаточно для регрессии`)
+  if (n < 2) throw new Error(`logLogFit: only ${n} mode(s) with q<=${qMax}, not enough for a regression`)
   const mx = xs.reduce((a, b) => a + b, 0) / n
   const my = ys.reduce((a, b) => a + b, 0) / n
   let sxy = 0
@@ -358,8 +358,8 @@ export function fitBendingModulus(s: Spectrum, kT: number, area: number, qMax: n
   const { slope, intercept } = logLogFit(s, qMax)
   if (Math.abs(slope - -4) > SLOPE_TOLERANCE) {
     throw new Error(
-      `fitBendingModulus: наклон log<|h_q|^2> vs log q равен ${slope.toFixed(3)}, ` +
-        `а не около -4 (допуск +/-${SLOPE_TOLERANCE}) — это не спектр изгибных мод`,
+      `fitBendingModulus: the slope of log<|h_q|^2> vs log q is ${slope.toFixed(3)}, ` +
+        `not about -4 (tolerance +/-${SLOPE_TOLERANCE}); this is not a spectrum of bending modes`,
     )
   }
   return kT / (area * Math.exp(intercept))

@@ -3,7 +3,7 @@ import { gpuPage, shutdownGpu } from './helpers/gpu'
 
 afterAll(shutdownGpu)
 
-test('просмотрщик рисует кадры и показывает бейдж масштаба времени', async () => {
+test('the viewer draws frames and shows the time-scale badge', async () => {
   const page = await gpuPage()
   // Corrected from the brief: `new URL('viewer/index.html', page.url())` resolves relative to
   // tests/runner.html (the page gpuPage() just navigated to) and would request

@@ -1,13 +1,15 @@
 """
-Интерфейс потенциала и аналитические потенциалы для ПРОВЕРКИ движка.
+Potential interface and analytical potentials for VALIDATING the engine.
 
-Разделение принципиальное. Настоящая химия приходит из электронной структуры
-(atomic/engine/backends), но проверить интегратор на ней нельзя: там нет замкнутого
-выражения, с которым можно сверить силу. Поэтому в движке всегда есть аналитический
-потенциал с точной производной -- на нём проверяются сохранение энергии, сохранение
-импульса и совпадение силы с численным градиентом. Если эти три проверки проходят на
-аналитике, а результат на квантовом бэкенде странный, значит дело в бэкенде, а не в
-интеграторе, и наоборот. Без такого разделения любая ошибка выглядит как "физика такая".
+The separation is fundamental. Real chemistry comes from the electronic structure
+(atomic/engine/backends), but the integrator cannot be validated on it: there is no
+closed-form expression there against which the force could be checked. That is why the
+engine always has an analytical potential with an exact derivative: it is used to check
+energy conservation, momentum conservation, and agreement of the force with the
+numerical gradient. If these three checks pass on the analytical potential while the
+result on the quantum backend looks wrong, the issue is in the backend, not the
+integrator, and vice versa. Without this separation, any bug looks like "that's just
+how the physics is."
 """
 from __future__ import annotations
 
@@ -22,8 +24,9 @@ from .state import AtomicState
 @dataclass
 class PotentialResult:
     """
-    Энергия в эВ, силы в эВ/Å. `extra` -- всё, что бэкенд может дать сверх этого
-    (порядки связей, заряды, диполь): именно оттуда берётся химия, а не из наших правил.
+    Energy in eV, forces in eV/Å. `extra` is everything the backend can provide beyond
+    that (bond orders, charges, dipole): chemistry is taken from there, not from our
+    own rules.
     """
 
     energy_ev: float
@@ -36,14 +39,14 @@ class PotentialResult:
             self.extra = {}
         if not np.isfinite(self.energy_ev) or not np.all(np.isfinite(self.forces_ev_per_a)):
             raise FloatingPointError(
-                "потенциал вернул нечисловое значение: "
-                f"energy={self.energy_ev}, нечисловых компонент силы="
+                "potential returned a non-numeric value: "
+                f"energy={self.energy_ev}, non-numeric force components="
                 f"{int((~np.isfinite(self.forces_ev_per_a)).sum())}"
             )
 
 
 class Potential(Protocol):
-    """Всё, что умеет считать энергию и силы для состояния."""
+    """Anything that can compute energy and forces for a state."""
 
     name: str
 
@@ -52,9 +55,9 @@ class Potential(Protocol):
 
 def numerical_forces(potential: Potential, state: AtomicState, h: float = 1e-4) -> np.ndarray:
     """
-    Силы центральной разностью энергии: -dE/dx. Единственный способ проверить силу,
-    не доверяя её выводу. Стоит 6N вычислений энергии, поэтому применяется к маленьким
-    системам в тестах, а не в прогонах.
+    Forces from the central difference of energy: -dE/dx. The only way to check a force
+    without trusting its derivation. Costs 6N energy evaluations, so it is used on small
+    systems in tests, not in production runs.
     """
     forces = np.zeros_like(state.positions)
     probe = state.copy()
@@ -72,12 +75,12 @@ def numerical_forces(potential: Potential, state: AtomicState, h: float = 1e-4) 
 
 class LennardJones:
     """
-    Парный Леннард-Джонс со сдвигом энергии на радиусе обрезания.
+    Pairwise Lennard-Jones with an energy shift at the cutoff radius.
 
-    Сдвиг обязателен, а не косметичен: без него энергия скачком меняется, когда пара
-    проходит радиус обрезания, и сохранение энергии в NVE нарушается ступеньками --
-    это классическая ошибка, которую тест NVE обязан ловить. Сила при этом не сдвигается
-    (сдвиг постоянный), поэтому численный градиент и аналитическая сила совпадают.
+    The shift is mandatory, not cosmetic: without it, energy jumps discontinuously when
+    a pair crosses the cutoff radius, and energy conservation in NVE breaks in steps;
+    this is a classic bug that the NVE test must catch. The force is not shifted (the
+    shift is a constant), so the numerical gradient and the analytical force agree.
     """
 
     name = "lennard-jones"
@@ -120,15 +123,16 @@ class LennardJones:
 
 class HarmonicBonds:
     """
-    Набор гармонических связей: U = sum k/2 (r - r0)^2. Точное аналитическое решение для
-    двух атомов известно, поэтому на нём проверяется и период колебания, и сохранение
-    энергии при разных шагах -- прямой тест порядка точности интегратора.
+    A set of harmonic bonds: U = sum k/2 (r - r0)^2. The exact analytical solution for
+    two atoms is known, so it is used to check both the vibration period and energy
+    conservation at different step sizes: a direct test of the integrator's order of
+    accuracy.
     """
 
     name = "harmonic-bonds"
 
     def __init__(self, bonds: list[tuple[int, int, float, float]]) -> None:
-        # (i, j, k в эВ/Å², r0 в Å)
+        # (i, j, k in eV/Å^2, r0 in Å)
         self.bonds = [(int(i), int(j), float(k), float(r0)) for i, j, k, r0 in bonds]
 
     def compute(self, state: AtomicState) -> PotentialResult:
@@ -138,7 +142,7 @@ class HarmonicBonds:
             d = state.positions[j] - state.positions[i]
             r = float(np.linalg.norm(d))
             if r == 0.0:
-                raise FloatingPointError(f"совпавшие атомы {i} и {j} в гармонической связи")
+                raise FloatingPointError(f"coincident atoms {i} and {j} in a harmonic bond")
             energy += 0.5 * k * (r - r0) ** 2
             f = -k * (r - r0) * d / r
             forces[j] += f
@@ -147,7 +151,7 @@ class HarmonicBonds:
 
 
 class SumPotential:
-    """Сумма потенциалов: энергии складываются, силы складываются. Больше ничего."""
+    """Sum of potentials: energies are added, forces are added. Nothing else."""
 
     def __init__(self, *parts: Potential) -> None:
         self.parts = parts

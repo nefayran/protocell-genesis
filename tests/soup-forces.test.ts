@@ -3,8 +3,8 @@ import { gpuPage, shutdownGpu } from './helpers/gpu'
 
 afterAll(shutdownGpu)
 
-// perf2-report.md correctness gate, mirroring tests/sim.test.ts's "сетка соседей даёт те же силы,
-// что и полный перебор" for the soup engine's own dynamic-topology force kernel (soup/wgsl/
+// perf2-report.md correctness gate, mirroring tests/sim.test.ts's "the neighbour grid gives the same
+// forces as brute force" for the soup engine's own dynamic-topology force kernel (soup/wgsl/
 // step.wgsl's soup_force_main/soup_force_list_main against soup_force_brute_main, an O(N^2)
 // reference with no neighbour grid at all). COMMITTED per the task brief: a neighbour-grid bug in
 // this repo once silently doubled every force and looked like success, and while writing perf2's
@@ -16,7 +16,7 @@ afterAll(shutdownGpu)
 // Caught only by listening on the page's console for the browser's own GPU validation warnings,
 // which this test now does itself and fails on, specifically so that failure mode cannot recur
 // silently: a correctness test that can itself be silently skipped is not a correctness test.
-test('сетка соседей (в т.ч. список Верле) даёт те же силы, что и полный перебор', async () => {
+test('the neighbour grid (including the Verlet list) gives the same forces as brute force', async () => {
   const page = await gpuPage()
   const consoleWarnings: string[] = []
   page.on('console', (msg) => {
@@ -24,10 +24,10 @@ test('сетка соседей (в т.ч. список Верле) даёт т�
   })
   const r = await page.evaluate(async () => {
     const api = (window as any).api
-    // box=[16,16,16] с составом поменьше стандартного: достаточно частиц (~1220) и всех 4 видов
-    // мономеров (включая катализатор и полярную голову), чтобы упражнять каждую ветку
-    // nonbondedSoup/bondedForce, но не полный масштаб (13100/box 30) -- O(N^2) перебор растёт
-    // квадратично, а это диагностика, не производственный прогон.
+    // box=[16,16,16] with a smaller-than-standard composition: enough particles (~1220) and all 4 monomer
+    // kinds (including the catalyst and the polar head) to exercise every branch of
+    // nonbondedSoup/bondedForce, but not the full scale (13100/box 30) -- the O(N^2) brute force grows
+    // quadratically, and this is a diagnostic, not a production run.
     const sys = await api.createSoup({
       box: [16, 16, 16],
       seed: 7,
@@ -43,9 +43,9 @@ test('сетка соседей (в т.ч. список Верле) даёт т�
       clay: false,
       start: { C: 600, O: 100, H: 500, M: 20, W: 0 },
     })
-    // Несколько реальных шагов ПЕРЕД сравнением -- проверяем силы не только на стартовой решётке
-    // (где расстояния почти идеальны и многие ветки WCA/attr не задействованы), а на уже
-    // разошедшейся конфигурации.
+    // A few real steps before the comparison -- the forces are checked not only on the starting lattice
+    // (where distances are almost ideal and many WCA/attr branches are not exercised) but on an
+    // already dispersed configuration.
     await sys.step(200)
     const a = await sys.forces()
     const b = await sys.forcesBruteForce()
@@ -57,10 +57,10 @@ test('сетка соседей (в т.ч. список Верле) даёт т�
     }
     return { maxDiff: max, meanAbsRef: sumAbs / a.length, n: a.length }
   })
-  expect(consoleWarnings, `браузер сообщил об ошибке/предупреждении GPU во время теста:\n${consoleWarnings.join('\n')}`).toEqual([])
-  // Допуск float32: силы здесь порядка нескольких десятков (WCA близко к контакту может давать
-  // большие отталкивающие пики), поэтому абсолютный порог даётся с запасом поверх типичной
-  // float32-ошибки накопления суммы по ~30-60 соседям на частицу.
+  expect(consoleWarnings, `the browser reported a GPU error/warning during the test:\n${consoleWarnings.join('\n')}`).toEqual([])
+  // float32 tolerance: forces here are of the order of a few tens (WCA near contact can give
+  // large repulsive spikes), so the absolute threshold is given with a margin above the typical
+  // float32 accumulation error of a sum over ~30-60 neighbours per particle.
   expect(r.maxDiff).toBeLessThan(1e-2)
 })
 
@@ -78,7 +78,7 @@ test('сетка соседей (в т.ч. список Верле) даёт т�
 // same configuration with charge off, by more than the float32 tolerance. Otherwise a test that
 // silently ran with all-zero charges would pass and prove nothing -- which is the exact false-pass
 // class the header above was written about.
-test('электростатика: сетка, список Верле и полный перебор дают ОДНИ силы, и заряд их МЕНЯЕТ', async () => {
+test('electrostatics: the grid, the Verlet list and brute force give the same forces, and the charge changes them', async () => {
   const page = await gpuPage()
   const consoleWarnings: string[] = []
   page.on('console', (msg) => {
@@ -125,10 +125,10 @@ test('электростатика: сетка, список Верле и по�
     neutral.dispose()
     return { maxDiff: max, meanAbsRef: sumAbs / a.length, chargedBeads, heads: 100, maxVsNeutral, esInfo }
   })
-  expect(consoleWarnings, `браузер сообщил об ошибке/предупреждении GPU во время теста:\n${consoleWarnings.join('\n')}`).toEqual([])
+  expect(consoleWarnings, `the browser reported a GPU error/warning during the test:\n${consoleWarnings.join('\n')}`).toEqual([])
   console.log(
-    `SOUP-FORCES-ES maxDiff(сетка+Верле против перебора)=${r.maxDiff.toExponential(4)} meanAbsRef=${r.meanAbsRef.toFixed(4)} ` +
-      `заряженных_голов=${r.chargedBeads}/${r.heads} maxDiff(заряд против нейтрали)=${r.maxVsNeutral.toFixed(4)} ` +
+    `SOUP-FORCES-ES maxDiff(grid+Verlet vs brute force)=${r.maxDiff.toExponential(4)} meanAbsRef=${r.meanAbsRef.toFixed(4)} ` +
+      `charged_heads=${r.chargedBeads}/${r.heads} maxDiff(charged vs neutral)=${r.maxVsNeutral.toFixed(4)} ` +
       `A=${(r.esInfo as any).coeffA.toFixed(6)} kappa=${(r.esInfo as any).kappa.toFixed(6)} rc=${(r.esInfo as any).cutoff.toFixed(7)}`,
   )
   expect(r.maxDiff).toBeLessThan(1e-2)
@@ -153,7 +153,7 @@ test('электростатика: сетка, список Верле и по�
 // 3.80 sigma and the cutoff is the longest this engine ever runs (13.5 sigma here, the minimum-image
 // ceiling 0.45*30 biting before 4*lambda_D = 15.2 does). At the short cutoff the same instrument read
 // 2.2888e-5; a broken list would not read anything like it.
-test('дальнодействие: список только по головам ПОЛОН на 13.5 sigma -- перебор согласен', async () => {
+test('long range: the heads-only list is complete at 13.5 sigma -- brute force agrees', async () => {
   const page = await gpuPage()
   const consoleWarnings: string[] = []
   page.on('console', (msg) => {
@@ -184,13 +184,13 @@ test('дальнодействие: список только по голова�
     sys.dispose()
     return { maxDiff: max, meanAbsRef: sumAbs / a.length, es }
   })
-  expect(consoleWarnings, `браузер сообщил об ошибке/предупреждении GPU во время теста:\n${consoleWarnings.join('\n')}`).toEqual([])
+  expect(consoleWarnings, `the browser reported a GPU error/warning during the test:\n${consoleWarnings.join('\n')}`).toEqual([])
   const es = r.es as any
   console.log(
-    `SOUP-FORCES-ES-LONG maxDiff(сетка+Верле+список_голов против полного перебора)=${r.maxDiff.toExponential(4)} ` +
+    `SOUP-FORCES-ES-LONG maxDiff(grid+Verlet+head_list vs full brute force)=${r.maxDiff.toExponential(4)} ` +
       `meanAbsRef=${r.meanAbsRef.toFixed(4)} rc_es=${es.cutoff.toFixed(4)} (=${es.debyeLengthsSpanned.toFixed(3)} lambdaD, ` +
-      `цель=${es.targetCutoff.toFixed(4)}, потолок_образа=${es.imageCap.toFixed(4)}) splitRadius=${es.splitRadius.toFixed(7)} ` +
-      `nbCutoff_было=${es.nbCutoff.toFixed(7)} отброшено_интегрально=${es.discardedIntegratedFraction.toFixed(4)}`,
+      `target=${es.targetCutoff.toFixed(4)}, image_cap=${es.imageCap.toFixed(4)}) splitRadius=${es.splitRadius.toFixed(7)} ` +
+      `nbCutoff_was=${es.nbCutoff.toFixed(7)} discarded_integrated=${es.discardedIntegratedFraction.toFixed(4)}`,
   )
   expect(r.maxDiff).toBeLessThan(1e-2)
   // The cutoff really is the long one, and really was bounded by the minimum image here.
@@ -213,7 +213,7 @@ test('дальнодействие: список только по голова�
 // confined geometry too: that list's capacity is derived from a head DENSITY, and in a confined box
 // the box-average density is 5.8x below the real one -- an under-sized list silently drops
 // interactions, and a dropped interaction shows up here as a grid-vs-brute disagreement.
-test('удержание: стенка добавлена ОДИНАКОВО на пути сетки/Верле и на полном переборе (и заряд на месте)', async () => {
+test('confinement: the wall is added identically on the grid/Verlet path and on brute force (and the charge is in place)', async () => {
   const page = await gpuPage()
   const consoleWarnings: string[] = []
   page.on('console', (msg) => {
@@ -267,19 +267,19 @@ test('удержание: стенка добавлена ОДИНАКОВО н�
     sys.dispose()
     return { maxDiff: max, meanAbsRef: sumAbs / a.length, maxWall, outside, n: pos.length / 4, es, vc, occ, conf }
   })
-  expect(consoleWarnings, `браузер сообщил об ошибке/предупреждении GPU во время теста:\n${consoleWarnings.join('\n')}`).toEqual([])
+  expect(consoleWarnings, `the browser reported a GPU error/warning during the test:\n${consoleWarnings.join('\n')}`).toEqual([])
   const es = r.es as any
   const vc = r.vc as any
   const occ = r.occ as any
   console.log(
-    `SOUP-FORCES-CONFINED maxDiff(сетка+Верле+список_голов против перебора)=${r.maxDiff.toExponential(4)} ` +
-      `meanAbsRef=${r.meanAbsRef.toFixed(4)} N=${r.n} снаружи_парцеллы=${r.outside} max|F_стенки|=${r.maxWall.toFixed(4)}\n` +
-      `SOUP-FORCES-CONFINED R=${Number((r.conf as any).radiusLive).toFixed(4)} V_парцеллы=${Number((r.conf as any).parcelVolumeLive).toFixed(1)} ` +
-      `V_бокса/V_парцеллы=${(Number((r.conf as any).boxVolumeLive) / Number((r.conf as any).parcelVolumeLive)).toFixed(3)} ` +
-      `rc_es=${es.cutoff.toFixed(4)} ёмкость_списка_голов=${es.listCapacity} ёмкость_Верле=${vc.listCapacity} ` +
-      `плотнейшая_плотность=${vc.densestDensity.toFixed(4)}\n` +
-      `SOUP-FORCES-CONFINED заполнение: главный max=${occ.main ? occ.main.max : 'n/a'}/${vc.listCapacity} ` +
-      `головы max=${occ.es ? occ.es.max : 'n/a'}/${es.listCapacity}`,
+    `SOUP-FORCES-CONFINED maxDiff(grid+Verlet+head_list vs brute force)=${r.maxDiff.toExponential(4)} ` +
+      `meanAbsRef=${r.meanAbsRef.toFixed(4)} N=${r.n} outside_parcel=${r.outside} max|F_wall|=${r.maxWall.toFixed(4)}\n` +
+      `SOUP-FORCES-CONFINED R=${Number((r.conf as any).radiusLive).toFixed(4)} V_parcel=${Number((r.conf as any).parcelVolumeLive).toFixed(1)} ` +
+      `V_box/V_parcel=${(Number((r.conf as any).boxVolumeLive) / Number((r.conf as any).parcelVolumeLive)).toFixed(3)} ` +
+      `rc_es=${es.cutoff.toFixed(4)} head_list_capacity=${es.listCapacity} Verlet_capacity=${vc.listCapacity} ` +
+      `densest_density=${vc.densestDensity.toFixed(4)}\n` +
+      `SOUP-FORCES-CONFINED occupancy: main max=${occ.main ? occ.main.max : 'n/a'}/${vc.listCapacity} ` +
+      `heads max=${occ.es ? occ.es.max : 'n/a'}/${es.listCapacity}`,
   )
   expect(r.maxDiff).toBeLessThan(1e-2)
   // The wall really is part of this configuration's force field, on more than one bead.

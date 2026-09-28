@@ -94,8 +94,8 @@ export async function assertVerletSafety(rt: SoupRuntime): Promise<void> {
   const overflow = new Uint32Array(rawOverflow.buffer, rawOverflow.byteOffset, 1)[0]
   if (overflow !== 0) {
     throw new Error(
-      `список Верле: verletList.listCapacity=${verlet.listCapacity} было недостаточно -- ` +
-        `хотя бы одна частица нашла больше кандидатов, чем вмещает список (данные могли быть тихо отброшены)`,
+      `Verlet list: verletList.listCapacity=${verlet.listCapacity} was insufficient -- ` +
+        `at least one particle found more candidates than the list holds (data may have been silently dropped)`,
     )
   }
   // Task 'long-range-electrostatics' (2026-08-20): the SAME guard for the dedicated long-range list.
@@ -108,9 +108,9 @@ export async function assertVerletSafety(rt: SoupRuntime): Promise<void> {
     const meta = new Uint32Array(rawEs.buffer, rawEs.byteOffset, 2)
     if (meta[1] !== 0) {
       throw new Error(
-        `дальнодействующий список электростатики: longRangeListCapacity=${rt.protonation.es.listCapacity} ` +
-          `или размер headIdx (${rt.esHeads}) было недостаточно при rc_es=${rt.protonation.es.cutoff.toFixed(4)} ` +
-          `(найдено голов=${meta[0]}) -- данные могли быть тихо отброшены`,
+        `long-range electrostatics list: longRangeListCapacity=${rt.protonation.es.listCapacity} ` +
+          `or the headIdx size (${rt.esHeads}) was insufficient at rc_es=${rt.protonation.es.cutoff.toFixed(4)} ` +
+          `(heads found=${meta[0]}) -- data may have been silently dropped`,
       )
     }
   }
@@ -125,14 +125,14 @@ export async function assertVerletSafety(rt: SoupRuntime): Promise<void> {
   // it ever IS reached the failure is loud instead of a false pass.
   if (!Number.isFinite(drift)) {
     throw new Error(
-      `список Верле: измеренный дрейф не является числом (${drift}) -- состояние уже нефинитно, ` +
-        `см. soup/src/soup-health.ts's assertStateFinite`,
+      `Verlet list: the measured drift is not a number (${drift}) -- the state is already non-finite, ` +
+        `see soup/src/soup-health.ts's assertStateFinite`,
     )
   }
   if (drift > bound + 1e-6) {
     throw new Error(
-      `список Верле: измеренный дрейф ${drift.toFixed(4)} превышает skin/2=${bound.toFixed(4)} -- ` +
-        `аналитическая граница (verletList.basis) не сработала для реальной траектории, перестройка была недостаточно частой`,
+      `Verlet list: the measured drift ${drift.toFixed(4)} exceeds skin/2=${bound.toFixed(4)} -- ` +
+        `the analytic bound (verletList.basis) did not hold for the real trajectory, the rebuild was not frequent enough`,
     )
   }
 }

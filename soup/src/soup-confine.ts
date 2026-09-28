@@ -139,10 +139,10 @@ export function resolveConfine(
   boxesVisited: readonly [number, number, number][],
   cutMax: number,
 ): Confinement {
-  if (!(opts.radiusSigma > 0)) throw new Error(`confine: радиус=${opts.radiusSigma} должен быть положительным`)
-  if (!(opts.stiffness > 0)) throw new Error(`confine: жёсткость стенки=${opts.stiffness} должна быть положительной`)
+  if (!(opts.radiusSigma > 0)) throw new Error(`confine: radius=${opts.radiusSigma} must be positive`)
+  if (!(opts.stiffness > 0)) throw new Error(`confine: wall stiffness=${opts.stiffness} must be positive`)
   if (!(box[0] === box[1] && box[1] === box[2])) {
-    throw new Error(`confine: удержание реализовано только в кубическом боксе, дано [${box.join(', ')}]`)
+    throw new Error(`confine: confinement is implemented only in a cubic box, given [${box.join(', ')}]`)
   }
   const c: Confinement = {
     radiusWet: opts.radiusSigma,
@@ -161,10 +161,10 @@ export function resolveConfine(
     const clearance = b[0] / 2 - r
     if (!(clearance > cutMax)) {
       throw new Error(
-        `confine: зазор до грани бокса L/2-R=${clearance.toFixed(4)} не превосходит наибольшего радиуса взаимодействия ` +
-          `${cutMax.toFixed(4)} при box=[${b.map((x) => x.toFixed(4)).join(', ')}], R=${r.toFixed(4)} -- ` +
-          `частица у поверхности парцеллы чувствовала бы СВОЙ ЖЕ образ через границу, то есть периодичность не снята. ` +
-          `Возьмите бокс не меньше ${(2 * (r + cutMax) + 2).toFixed(1)}`,
+        `confine: the clearance to the box face L/2-R=${clearance.toFixed(4)} does not exceed the largest interaction radius ` +
+          `${cutMax.toFixed(4)} at box=[${b.map((x) => x.toFixed(4)).join(', ')}], R=${r.toFixed(4)} -- ` +
+          `a particle at the parcel surface would feel its own image across the boundary, so periodicity is not removed. ` +
+          `Use a box of at least ${(2 * (r + cutMax) + 2).toFixed(1)}`,
       )
     }
   }

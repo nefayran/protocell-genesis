@@ -1,13 +1,15 @@
 """
-Свой обученный потенциал как обычный вычислитель движка.
+Our own trained potential as an ordinary engine calculator.
 
-Смысл этого файла -- поставить нашу модель на то же место, где стоят GFN2 и DFT, чтобы её можно
-было проверять теми же тестами и гонять тем же интегратором. Никаких поблажек: если модель
-плоха, это покажут те же проверки, что ловили ошибки у остальных бэкендов.
+The point of this file is to put our model in the same slot as GFN2 and DFT, so it can
+be validated with the same tests and driven by the same integrator. No special
+treatment: if the model is bad, the same checks that caught bugs in the other backends
+will show it.
 
-Стоимость на атом здесь -- дескрипторы плюс две-три матричные операции крошечной сети. Именно
-это и должно дать выигрыш против модели с обменом сообщениями, и именно это надо ЗАМЕРИТЬ, а не
-объявить: замер лежит в atomic/validate/test_student.py рядом с проверкой точности.
+The per-atom cost here is the descriptors plus two or three matrix operations of a tiny
+network. That is exactly what is supposed to give the advantage over a message-passing
+model, and that is exactly what must be MEASURED, not asserted: the benchmark lives in
+atomic/validate/test_student.py alongside the accuracy check.
 """
 from __future__ import annotations
 
@@ -18,7 +20,7 @@ from ..state import AtomicState
 
 
 class StudentPotential:
-    """Обученная сеть поверх симметрийных дескрипторов, загруженная из файла обучения."""
+    """Trained network on top of symmetry descriptors, loaded from a training file."""
 
     name = "student"
 
@@ -39,8 +41,9 @@ class StudentPotential:
         self.device = device
         self.dtype = torch.float32
 
-        # сеть восстанавливается из сохранённых весов по их же форме: число слоёв и их размеры
-        # не задаются здесь заново, иначе файл и код могли бы разойтись молча
+        # the network is reconstructed from the saved weights by their own shape: the
+        # number of layers and their sizes are not set here again, otherwise the file
+        # and the code could silently diverge
         self.nets = {}
         for z in self.species:
             weights, biases = [], []
@@ -48,18 +51,19 @@ class StudentPotential:
             while f"{z}_{i}.weight" in data:
                 weights.append(data[f"{z}_{i}.weight"])
                 biases.append(data[f"{z}_{i}.bias"])
-                i += 2      # в Sequential между линейными слоями стоит нелинейность
+                i += 2      # in the Sequential there is a nonlinearity between linear layers
             if not weights:
-                raise ValueError(f"в файле {npz_path} нет весов для сорта Z={z}")
+                raise ValueError(f"file {npz_path} has no weights for species Z={z}")
             self.nets[z] = [
                 (torch.tensor(w, device=device, dtype=self.dtype),
                  torch.tensor(b, device=device, dtype=self.dtype))
                 for w, b in zip(weights, biases)
             ]
-        # Слитый путь расчёта -- не деталь реализации, а причина, по которой этот бэкенд
-        # вообще имеет смысл: замер против учителя даёт 11-31 раз именно на нём, а на прежнем
-        # пути (через полный тензор производных) наш потенциал был МЕДЛЕННЕЕ учителя на 192
-        # атомах. Подробности и числа -- в atomic/README.md.
+        # The fused computation path is not an implementation detail but the reason this
+        # backend makes sense at all: benchmarking against the teacher gives an 11-31x
+        # speedup precisely on this path, while on the previous path (through the full
+        # derivative tensor) our potential was SLOWER than the teacher at 192 atoms.
+        # Details and numbers are in atomic/README.md.
         from train.descriptors_torch import TorchDescriptors
 
         self.mean_t = torch.tensor(self.mean, device=device, dtype=self.dtype)
@@ -71,7 +75,7 @@ class StudentPotential:
         self.name = f"student/D={len(self.mean)}/{device}"
 
     def _de_dg(self, g, numbers):
-        """Энергия и производная энергии по дескрипторам -- всё, что нужно для сил."""
+        """Energy and the derivative of energy with respect to descriptors: everything needed for forces."""
         import torch
 
         gt = ((g - self.mean_t) / self.std_t).detach().requires_grad_(True)
@@ -89,7 +93,7 @@ class StudentPotential:
             atom_e[idx] = x.squeeze(-1)
         energy = atom_e.sum()
         (grad,) = torch.autograd.grad(energy, gt)
-        # цепное правило по нормировке: dE/dG = (dE/dG_norm) / std
+        # chain rule through normalization: dE/dG = (dE/dG_norm) / std
         return float(energy.item()), grad / self.std_t
 
     def compute(self, state: AtomicState) -> PotentialResult:

@@ -200,7 +200,7 @@ export async function enclosedVolumeGpu(sys: System, opts: { cell: number; radiu
  * decorrelate first, then regressing the block means, is the standard fix. */
 function blockDrift(ys: number[], blocks: number): { perStep: number; stdErr: number; t: number } {
   const per = Math.floor(ys.length / blocks)
-  if (per < 2 || blocks < 4) throw new Error(`blockDrift: серия из ${ys.length} точек мала для ${blocks} блоков`)
+  if (per < 2 || blocks < 4) throw new Error(`blockDrift: a series of ${ys.length} points is too short for ${blocks} blocks`)
   const xs: number[] = []
   const ms: number[] = []
   for (let b = 0; b < blocks; b++) {

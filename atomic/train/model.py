@@ -1,21 +1,23 @@
 """
-Линейная модель энергии по дескрипторам и её обучение методом наименьших квадратов.
+A linear energy model over descriptors and its training by least squares.
 
-Вид модели:
+Model form:
     E = sum_i [ e0(Z_i) + w(Z_i) . G_i ]
-то есть у каждого сорта атома свой вектор коэффициентов и своя постоянная. Постоянная нужна
-обязательно: учитель (MACE) считает энергию относительно своих атомных отсчётов, и без
-свободного члена подгонка тратила бы ёмкость на воспроизведение этих отсчётов вместо физики.
+i.e. each atomic species has its own coefficient vector and its own constant. The constant
+is mandatory: the teacher (MACE) computes energy relative to its own atomic baselines, and
+without the free term the fit would spend its capacity reproducing these baselines instead
+of physics.
 
-Обучение идёт ПО СИЛАМ И ЭНЕРГИЯМ одновременно (force matching). Причина не в аккуратности, а
-в количестве данных: одна конфигурация из N атомов даёт 1 уравнение по энергии и 3N по силам,
-то есть силы дают в сотни раз больше связей на ту же стоимость расчёта учителем. Вес сил
-относительно энергий -- единственный свободный параметр обучения, и он выбирается по ошибке на
-ОТЛОЖЕННОЙ выборке, а не по ошибке на обучающей.
+Training runs ON FORCES AND ENERGIES simultaneously (force matching). The reason is not
+accuracy but the amount of data: one configuration of N atoms gives 1 equation for energy
+and 3N for forces, i.e. forces give hundreds of times more constraints for the same cost
+of a teacher evaluation. The weight of forces relative to energies is the single free
+training parameter, and it is chosen by the error on the HELD-OUT set, not by the error on
+the training set.
 
-Решение находится точно (наименьшие квадраты с гребневой регуляризацией), без итераций и без
-скорости обучения. Поэтому «переобучение» здесь проверяется одним числом: разностью ошибок на
-обучающей и отложенной выборках.
+The solution is found exactly (least squares with ridge regularization), without
+iterations and without a learning rate. So "overfitting" here is checked with a single
+number: the difference between the errors on the training and held-out sets.
 """
 from __future__ import annotations
 
@@ -28,7 +30,7 @@ from .descriptors import DescriptorSpec, compute_descriptors, descriptor_length
 
 @dataclass
 class LinearPotentialModel:
-    """Обученная модель: коэффициенты по сортам плюс постоянные."""
+    """A trained model: coefficients per species plus constants."""
 
     spec: DescriptorSpec
     species: tuple[int, ...]
@@ -79,11 +81,11 @@ class LinearPotentialModel:
 
 def build_design_matrices(frames, spec: DescriptorSpec, species: tuple[int, ...]):
     """
-    Собирает матрицы задачи наименьших квадратов.
+    Builds the design matrices for the least-squares problem.
 
-    `frames` -- список словарей с ключами positions, numbers, energy, forces, cell.
-    Возвращает (A_energy, b_energy, A_force, b_force), где число столбцов равно
-    n_species*(D+1): D коэффициентов и одна постоянная на сорт.
+    `frames` is a list of dicts with keys positions, numbers, energy, forces, cell.
+    Returns (A_energy, b_energy, A_force, b_force), where the number of columns equals
+    n_species*(D+1): D coefficients plus one constant per species.
     """
     n_sp = len(species)
     d = descriptor_length(spec, species)
@@ -95,18 +97,18 @@ def build_design_matrices(frames, spec: DescriptorSpec, species: tuple[int, ...]
         g, dg = compute_descriptors(pos, num, spec, species, cell=fr.get("cell"))
         sp_idx = np.array([species.index(int(z)) for z in num])
 
-        # --- энергия: одна строка ------------------------------------------------------
+        # --- energy: one row -------------------------------------------------------------
         row = np.zeros(n_cols)
         for s in range(n_sp):
             sel = sp_idx == s
             if sel.any():
                 row[s * (d + 1) : s * (d + 1) + d] = g[sel].sum(axis=0)
-                row[s * (d + 1) + d] = float(sel.sum())      # множитель постоянной = число атомов сорта
+                row[s * (d + 1) + d] = float(sel.sum())      # constant's multiplier = number of atoms of that species
         rows_e.append(row)
         rhs_e.append(float(fr["energy"]))
 
-        # --- силы: 3N строк ------------------------------------------------------------
-        # F_k,a = -sum_i w(Z_i) . dG_i/dr_k,a  -- постоянные в силы не входят вовсе
+        # --- forces: 3N rows ---------------------------------------------------------------
+        # F_k,a = -sum_i w(Z_i) . dG_i/dr_k,a; constants do not enter forces at all
         n = len(num)
         block = np.zeros((n * 3, n_cols))
         for s in range(n_sp):
@@ -135,17 +137,18 @@ def fit_linear_model(
     ridge: float = 1e-8,
 ) -> LinearPotentialModel:
     """
-    Точное решение задачи наименьших квадратов по энергиям и силам.
+    Exact solution of the least-squares problem over energies and forces.
 
-    Гребневая добавка нужна не «для устойчивости вообще», а потому что дескрипторы заведомо
-    линейно зависимы (перекрывающиеся гауссианы): без неё матрица вырождена и решение зависит
-    от численного шума. Значение подбирается по отложенной выборке.
+    The ridge term is not needed "for stability in general" but because the descriptors
+    are known to be linearly dependent (overlapping Gaussians): without it the matrix is
+    singular and the solution depends on numerical noise. The value is chosen by the
+    held-out set.
     """
     a_e, b_e, a_f, b_f = build_design_matrices(frames, spec, species)
     a = np.vstack([a_e, force_weight * a_f])
     b = np.concatenate([b_e, force_weight * b_f])
 
-    # нормальные уравнения с гребнем: (A^T A + lambda I) x = A^T b
+    # normal equations with a ridge: (A^T A + lambda I) x = A^T b
     ata = a.T @ a
     ata[np.diag_indices_from(ata)] += ridge * np.trace(ata) / ata.shape[0]
     x = np.linalg.solve(ata, a.T @ b)
@@ -161,7 +164,7 @@ def fit_linear_model(
 
 
 def evaluate(model: LinearPotentialModel, frames) -> dict:
-    """Ошибки против учителя: на атом по энергии и покомпонентно по силам."""
+    """Errors against the teacher: per atom for energy, and component-wise for forces."""
     de, df = [], []
     for fr in frames:
         e, f = model.energy_and_forces(

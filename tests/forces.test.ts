@@ -12,7 +12,7 @@ function wcaAnalytic(r: number, b: number): number {
   return (-24 * p.epsilon / r) * (2 * b6 * b6 - b6)
 }
 
-test('WCA совпадает с аналитической производной и обрезается', async () => {
+test('WCA matches the analytic derivative and is cut off', async () => {
   const page = await gpuPage()
   const radii = [0.8, 0.9, 1.0, 1.05, 1.2]
   const got = await page.evaluate((r) => (window as any).api.probeForces('wca', 1.0, r), radii)
@@ -25,7 +25,7 @@ test('WCA совпадает с аналитической производно�
   expect(got[4]).toBe(0)
 })
 
-test('FENE тянет к центру и растёт у предела растяжения', async () => {
+test('FENE pulls towards the centre and grows near the stretching limit', async () => {
   const page = await gpuPage()
   const radii = [0.0, 0.5, 1.0, 1.4]
   const got = await page.evaluate((r) => (window as any).api.probeForces('fene', 1.0, r), radii)
@@ -39,7 +39,7 @@ test('FENE тянет к центру и растёт у предела раст
   expect(got[3]).toBeGreaterThan(got[2])
 })
 
-test('изгибный потенциал линеен вокруг r0', async () => {
+test('the bending potential is linear around r0', async () => {
   const page = await gpuPage()
   const radii = [3.0, 4.0, 5.0]
   const got = await page.evaluate((r) => (window as any).api.probeForces('bend', 1.0, r), radii)
@@ -48,7 +48,7 @@ test('изгибный потенциал линеен вокруг r0', async (
   expect(got[2]).toBeCloseTo(p.bend.k * (5 - p.bend.r0), 5)
 })
 
-test('притяжение хвостов гладко сходит к нулю на обоих концах', async () => {
+test('tail attraction goes smoothly to zero at both ends', async () => {
   const page = await gpuPage()
   const rc = wcaCutoff(p.beadSizes.tail_tail)
   const wc = p.attraction.wc

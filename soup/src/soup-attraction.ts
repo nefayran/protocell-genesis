@@ -66,13 +66,13 @@ function pairKey(ci: number, cj: number): string {
  * physics. */
 export function claySurfaceChemistryOf(soup: Soup, override?: string): ClaySurfaceChemistry & { name: string } {
   const c = soup.clay
-  if (!c) throw new Error('claySurfaceChemistryOf: data/soup.json не содержит секции clay')
+  if (!c) throw new Error('claySurfaceChemistryOf: data/soup.json has no clay section')
   const name = override ?? c.surfaceChemistry
   const chem = c.surfaceChemistries?.[name]
   if (chem === undefined) {
     throw new Error(
-      `data/soup.json: химия поверхности глины "${name}" не объявлена в clay.surfaceChemistries ` +
-        `(есть: ${Object.keys(c.surfaceChemistries ?? {}).join(', ') || 'ни одной'})`,
+      `data/soup.json: clay surface chemistry "${name}" is not declared in clay.surfaceChemistries ` +
+        `(available: ${Object.keys(c.surfaceChemistries ?? {}).join(', ') || 'none'})`,
     )
   }
   return { name, ...chem }
@@ -89,7 +89,7 @@ function levelKeyFor(soup: Soup, ci: number, cj: number, chemistry?: string): st
   const alias = claySurfaceChemistryOf(soup, chemistry).pairs[key]
   if (alias === undefined) {
     throw new Error(
-      `data/soup.json: clay.surfaceChemistries["${chemistry ?? soup.clay.surfaceChemistry}"].pairs не задаёт пару "${key}"`,
+      `data/soup.json: clay.surfaceChemistries["${chemistry ?? soup.clay.surfaceChemistry}"].pairs does not set the pair "${key}"`,
     )
   }
   return alias
@@ -112,7 +112,7 @@ export function attractionScaleTable(soup: Soup, override?: number, chemistry?: 
   for (let ci = 0; ci < CLASS_COUNT; ci++) table.push(new Array(CLASS_COUNT).fill(0))
   const global = override ?? sc?.epsilonScale ?? 1
   if (!Number.isFinite(global) || global <= 0) {
-    throw new Error(`soup attraction: epsilonScale=${global} должен быть конечным положительным числом`)
+    throw new Error(`soup attraction: epsilonScale=${global} must be a finite positive number`)
   }
   if (sc?.pairEpsilon === undefined) {
     // Pre-'hydrophobic-asymmetry' shape: the boolean rule (solvent with solvent, or solvent with
@@ -130,7 +130,7 @@ export function attractionScaleTable(soup: Soup, override?: number, chemistry?: 
   const ref = pe.levels[pe.reference]
   if (ref === undefined || !(Number.isFinite(ref.epsilonKJ) && ref.epsilonKJ > 0)) {
     throw new Error(
-      `data/soup.json: solvent.attractionScale.pairEpsilon.reference="${pe.reference}" не указывает на уровень с положительным epsilonKJ`,
+      `data/soup.json: solvent.attractionScale.pairEpsilon.reference="${pe.reference}" does not point to a level with positive epsilonKJ`,
     )
   }
   for (let ci = 0; ci < CLASS_COUNT; ci++) {
@@ -138,7 +138,7 @@ export function attractionScaleTable(soup: Soup, override?: number, chemistry?: 
       const key = levelKeyFor(soup, ci, cj, chemistry)
       const lvl = pe.levels[key]
       if (lvl === undefined) {
-        throw new Error(`data/soup.json: solvent.attractionScale.pairEpsilon.levels не содержит пары "${key}"`)
+        throw new Error(`data/soup.json: solvent.attractionScale.pairEpsilon.levels has no pair "${key}"`)
       }
       table[ci][cj] = (global * lvl.epsilonKJ) / ref.epsilonKJ
     }
@@ -164,18 +164,18 @@ export function acidSoapScaleOf(soup: Soup, override?: number, epsilonScaleOverr
   const pe = sc?.pairEpsilon
   if (override !== undefined) {
     if (!Number.isFinite(override) || override < 0) {
-      throw new Error(`soup attraction: acidSoapScaleOverride=${override} должен быть конечным неотрицательным числом`)
+      throw new Error(`soup attraction: acidSoapScaleOverride=${override} must be a finite non-negative number`)
     }
     return override
   }
   const as = sc?.acidSoapPair
   if (as === undefined || pe === undefined) return 0
   if (!Number.isFinite(as.epsilonKJ) || as.epsilonKJ < 0) {
-    throw new Error(`data/soup.json: solvent.attractionScale.acidSoapPair.epsilonKJ=${as.epsilonKJ} должен быть конечным неотрицательным`)
+    throw new Error(`data/soup.json: solvent.attractionScale.acidSoapPair.epsilonKJ=${as.epsilonKJ} must be finite and non-negative`)
   }
   const ref = pe.levels[pe.reference]
   if (ref === undefined || !(ref.epsilonKJ > 0)) {
-    throw new Error(`data/soup.json: acidSoapPair нельзя нормировать -- reference="${pe.reference}" не даёт положительного epsilonKJ`)
+    throw new Error(`data/soup.json: acidSoapPair cannot be normalised -- reference="${pe.reference}" does not give a positive epsilonKJ`)
   }
   const global = epsilonScaleOverride ?? sc?.epsilonScale ?? 1
   return (global * as.epsilonKJ) / ref.epsilonKJ

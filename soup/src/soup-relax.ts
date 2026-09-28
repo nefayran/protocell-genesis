@@ -146,23 +146,23 @@ export function makeRelaxColdStart(
     const cfg = rt.soup.coldStartRelax
     if (!cfg && (opts?.iterations === undefined || opts?.maxDisplacementSigma === undefined)) {
       throw new Error(
-        'relaxColdStart: в data/soup.json нет секции coldStartRelax, а вызов не задал iterations и maxDisplacementSigma явно',
+        'relaxColdStart: data/soup.json has no coldStartRelax section, and the call did not set iterations and maxDisplacementSigma explicitly',
       )
     }
     const iterations = opts?.iterations ?? cfg!.iterations
     const maxDisplacementSigma = opts?.maxDisplacementSigma ?? cfg!.maxDisplacementSigma
     if (!Number.isInteger(iterations) || iterations < 1) {
-      throw new Error(`relaxColdStart: iterations=${iterations} должно быть целым >= 1`)
+      throw new Error(`relaxColdStart: iterations=${iterations} must be an integer >= 1`)
     }
     if (!(maxDisplacementSigma > 0)) {
-      throw new Error(`relaxColdStart: maxDisplacementSigma=${maxDisplacementSigma} должно быть положительным`)
+      throw new Error(`relaxColdStart: maxDisplacementSigma=${maxDisplacementSigma} must be positive`)
     }
     // The one hard precondition, checked rather than documented: a minimisation applied after the
     // trajectory started would BE part of the trajectory.
     if (rt.live.globalStep !== 0) {
       throw new Error(
-        `relaxColdStart: система уже на шаге ${rt.live.globalStep} -- минимизация разрешена ТОЛЬКО до первого шага, ` +
-          `иначе она попадает внутрь траектории, по которой считаются измерения`,
+        `relaxColdStart: the system is already at step ${rt.live.globalStep} -- minimisation is allowed only before the first step, ` +
+          `otherwise it lands inside the trajectory on which the measurements are taken`,
       )
     }
     const d0 = maxDisplacementSigma * rt.p.sigma

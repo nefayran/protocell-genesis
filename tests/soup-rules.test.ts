@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { assertRulesConsistent, forwardBackwardRatio, loadSoup } from '../soup/src/rules'
 
-test('каждое правило образования имеет парный разрыв и детальный баланс', () => {
+test('every formation rule has a paired break and detailed balance', () => {
   const s = loadSoup()
   expect(() => assertRulesConsistent(s)).not.toThrow()
   for (const r of s.rules.filter((x) => x.kind === 'bond')) {
@@ -11,22 +11,22 @@ test('каждое правило образования имеет парный
   }
 })
 
-test('все скорости синтеза объявлены рангом D с обоснованием', () => {
+test('all synthesis rates are declared with rank D and a justification', () => {
   for (const r of loadSoup().rules) {
     expect(r.rank).toBe('D')
     expect(r.basis.length).toBeGreaterThan(10)
   }
 })
 
-test('стартовый состав содержит только мономеры и не содержит готовых амфифилов', () => {
+test('the starting composition contains only monomers and no ready-made amphiphiles', () => {
   const s = loadSoup()
   const ids = new Set(s.monomers.map((m) => m.id))
   for (const k of Object.keys(s.start)) expect(ids.has(k)).toBe(true)
   expect(Object.keys(s.start).length).toBeGreaterThan(2)
 })
 
-test('несогласованный набор правил выявляется', () => {
+test('an inconsistent rule set is detected', () => {
   const s = loadSoup()
   const broken = { ...s, rules: s.rules.filter((r) => r.kind !== 'break') }
-  expect(() => assertRulesConsistent(broken)).toThrow(/разрыв/)
+  expect(() => assertRulesConsistent(broken)).toThrow(/paired break/)
 })

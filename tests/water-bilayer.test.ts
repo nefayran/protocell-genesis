@@ -45,7 +45,7 @@ const AREA_TARGET = (AREA_MIN + AREA_MAX) / 2 // corridor midpoint -- the same c
 const CHECKPOINTS = [500, 1000, 2000, 4000, 8000, 15000, 25000, 40000]
 
 test(
-  'бислойная заплатка в явной воде: площадь на липид (принятая) и толщина (измеренная) против литературного коридора',
+  'bilayer patch in explicit water: area per lipid (assumed) and thickness (measured) against the literature corridor',
   async () => {
     const page = await gpuPage()
     const result = await page.evaluate(

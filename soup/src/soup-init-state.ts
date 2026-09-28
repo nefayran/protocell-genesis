@@ -100,11 +100,11 @@ export function buildInitialState(
   if (opts.resume) {
     if (opts.resume.positions.length !== activeN * 4) {
       throw new Error(
-        `createSoup: резюме содержит ${opts.resume.positions.length / 4} частиц, а состав этого вызова даёт N=${activeN} -- checkpoint не соответствует конфигурации`,
+        `createSoup: the resume contains ${opts.resume.positions.length / 4} particles, but the composition of this call gives N=${activeN} -- the checkpoint does not match the configuration`,
       )
     }
     if (opts.resume.velocities.length !== activeN * 4) {
-      throw new Error(`createSoup: резюме содержит ${opts.resume.velocities.length / 4} скоростей, а N=${activeN}`)
+      throw new Error(`createSoup: the resume contains ${opts.resume.velocities.length / 4} velocities, but N=${activeN}`)
     }
     positions0.set(opts.resume.positions)
     velocities0.set(opts.resume.velocities)
@@ -147,7 +147,7 @@ export function buildInitialState(
     if (clay) {
       for (let k = 0; k < clay.latticeCount; k++) if (!claySites.has(k)) clayFree.push(k)
       if (claySites.size !== clay.siteCount) {
-        throw new Error(`createSoup: разметка центров на пластине дала ${claySites.size} позиций вместо ${clay.siteCount}`)
+        throw new Error(`createSoup: marking the sites on the sheet gave ${claySites.size} positions instead of ${clay.siteCount}`)
       }
     }
     // The free slab runs from just above the TOP sheet plane, around through the periodic wrap, to
@@ -156,8 +156,8 @@ export function buildInitialState(
     const zSpan = clay ? box[2] - (clay.planeZ[clay.planeZ.length - 1] - clay.planeZ[0]) - 2 * clay.exclusionHalfWidth : box[2]
     if (clay && zSpan <= 0) {
       throw new Error(
-        `createSoup: пластина глины (${clay.planeZ.length} слоёв) вместе с исключённой зоной ${clay.exclusionHalfWidth.toFixed(3)}σ ` +
-          `не оставляет места в коробке высотой ${box[2]}σ`,
+        `createSoup: the clay sheet (${clay.planeZ.length} layers) together with the exclusion zone ${clay.exclusionHalfWidth.toFixed(3)}σ ` +
+          `leaves no room in a box of height ${box[2]}σ`,
       )
     }
     // The mineral beads and the surface sites are consumed in lattice order as their kind comes up in
@@ -210,7 +210,7 @@ export function buildInitialState(
     }
     if (clay && (mineralCursor !== clay.mineralCount || siteCursor !== clay.siteCount)) {
       throw new Error(
-        `createSoup: пластина разложена не полностью — минеральных ${mineralCursor}/${clay.mineralCount}, центров ${siteCursor}/${clay.siteCount}`,
+        `createSoup: the sheet was not laid out completely: mineral ${mineralCursor}/${clay.mineralCount}, sites ${siteCursor}/${clay.siteCount}`,
       )
     }
 
@@ -231,12 +231,12 @@ export function buildInitialState(
     if (bulkFrozen > 0) {
       if (clay) {
         throw new Error(
-          'createSoup: frozenBulkCatalysts — это КОНТРОЛЬ БЕЗ ПЛАСТИНЫ (замороженные катализаторы в объёме); ' +
-            'вместе с clay=true он смешал бы два способа обездвижить катализатор — используйте clay.siteCatalystFraction',
+          'createSoup: frozenBulkCatalysts is the no-sheet control (catalysts frozen in the bulk); ' +
+            'together with clay=true it would mix two ways of immobilising the catalyst; use clay.siteCatalystFraction',
         )
       }
       const catalystKindIdx = soup.monomers.findIndex((m) => m.kind === 'catalyst')
-      if (catalystKindIdx < 0) throw new Error('createSoup: frozenBulkCatalysts, но в monomers нет частицы с kind="catalyst"')
+      if (catalystKindIdx < 0) throw new Error('createSoup: frozenBulkCatalysts, but monomers has no particle with kind="catalyst"')
       let frozenSoFar = 0
       for (let i = 0; i < N && frozenSoFar < bulkFrozen; i++) {
         if (Math.round(positions0[i * 4 + 3]) !== catalystKindIdx) continue
@@ -248,7 +248,7 @@ export function buildInitialState(
       }
       if (frozenSoFar !== bulkFrozen) {
         throw new Error(
-          `createSoup: frozenBulkCatalysts=${bulkFrozen}, но в составе всего ${frozenSoFar} частиц-катализаторов`,
+          `createSoup: frozenBulkCatalysts=${bulkFrozen}, but the composition has only ${frozenSoFar} catalyst particles`,
         )
       }
     }
@@ -279,12 +279,12 @@ export function buildInitialState(
   const eventsInit = new Uint32Array(rules.length * 2)
   if (opts.resume) {
     const r = opts.resume
-    if (r.bondSlots.length !== activeN * 3) throw new Error(`createSoup: резюме содержит ${r.bondSlots.length} bondSlots-слотов, ожидалось ${activeN * 3}`)
-    if (r.centerLink.length !== activeN) throw new Error(`createSoup: резюме содержит ${r.centerLink.length} centerLink-записей, ожидалось ${activeN}`)
-    if (r.centerHeldSteps.length !== activeN) throw new Error(`createSoup: резюме содержит ${r.centerHeldSteps.length} centerHeldSteps-записей, ожидалось ${activeN}`)
-    if (r.desorbEvents.length !== 2) throw new Error(`createSoup: резюме содержит ${r.desorbEvents.length} desorbEvents-счётчиков, ожидалось 2`)
-    if (r.bondRng.length !== activeN) throw new Error(`createSoup: резюме содержит ${r.bondRng.length} bondRng-состояний, ожидалось ${activeN}`)
-    if (r.thermoRng.length !== activeN) throw new Error(`createSoup: резюме содержит ${r.thermoRng.length} thermoRng-состояний, ожидалось ${activeN}`)
+    if (r.bondSlots.length !== activeN * 3) throw new Error(`createSoup: the resume contains ${r.bondSlots.length} bondSlots slots, expected ${activeN * 3}`)
+    if (r.centerLink.length !== activeN) throw new Error(`createSoup: the resume contains ${r.centerLink.length} centerLink entries, expected ${activeN}`)
+    if (r.centerHeldSteps.length !== activeN) throw new Error(`createSoup: the resume contains ${r.centerHeldSteps.length} centerHeldSteps entries, expected ${activeN}`)
+    if (r.desorbEvents.length !== 2) throw new Error(`createSoup: the resume contains ${r.desorbEvents.length} desorbEvents counters, expected 2`)
+    if (r.bondRng.length !== activeN) throw new Error(`createSoup: the resume contains ${r.bondRng.length} bondRng states, expected ${activeN}`)
+    if (r.thermoRng.length !== activeN) throw new Error(`createSoup: the resume contains ${r.thermoRng.length} thermoRng states, expected ${activeN}`)
     bondSlots0.set(r.bondSlots)
     centerLink0.set(r.centerLink)
     centerHeldSteps0.set(r.centerHeldSteps)

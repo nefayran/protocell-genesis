@@ -82,11 +82,11 @@ export function planClay(
   siteFractionOverride?: number,
 ): ClayLayout {
   const c = soup.clay
-  if (!c) throw new Error('planClay: data/soup.json не содержит секции clay')
+  if (!c) throw new Error('planClay: data/soup.json has no clay section')
   const mineralKind = soup.monomers.findIndex((m) => m.id === c.mineralId)
-  if (mineralKind < 0) throw new Error(`planClay: clay.mineralId="${c.mineralId}" не найден среди monomers`)
+  if (mineralKind < 0) throw new Error(`planClay: clay.mineralId="${c.mineralId}" not found among monomers`)
   const catalystKind = soup.monomers.findIndex((m) => m.kind === 'catalyst')
-  if (catalystKind < 0) throw new Error('planClay: в monomers нет частицы с kind="catalyst" — некому быть центром на поверхности')
+  if (catalystKind < 0) throw new Error('planClay: monomers has no particle with kind="catalyst", so nothing can be a site on the surface')
 
   const mineralRadius = soup.monomers[mineralKind].radiusSigma
   const target = mineralSpacingTarget(p, mineralRadius)
@@ -94,8 +94,8 @@ export function planClay(
   const ny = Math.round(box[1] / target)
   if (nx < 2 || ny < 2) {
     throw new Error(
-      `planClay: коробка ${box[0]}x${box[1]} вмещает решётку ${nx}x${ny} при шаге ${target.toFixed(4)}σ — ` +
-        `пластина из одного ряда бидов не является поверхностью`,
+      `planClay: the box ${box[0]}x${box[1]} holds a ${nx}x${ny} lattice at spacing ${target.toFixed(4)}σ; ` +
+        `a sheet of a single row of beads is not a surface`,
     )
   }
   const spacingX = box[0] / nx
@@ -117,7 +117,7 @@ export function planClay(
   // soup/src/rules-validate.ts, so a sweep cannot ask for a fraction the schema would refuse.
   const siteFraction = siteFractionOverride ?? c.siteCatalystFraction
   if (!(siteFraction >= 0) || !(siteFraction <= 1)) {
-    throw new Error(`planClay: доля центров на пластине ${siteFraction} должна лежать в [0,1]`)
+    throw new Error(`planClay: the fraction of sites on the sheet ${siteFraction} must lie in [0,1]`)
   }
   const siteCount = Math.min(Math.round(siteFraction * catalystTotal), latticeCount)
   const mineralCount = latticeCount - siteCount

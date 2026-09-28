@@ -1,21 +1,22 @@
 """
-Барьер реакции: метод упругой ленты с подъёмом изображения (CI-NEB).
+Reaction barrier: the nudged elastic band method with climbing image (CI-NEB).
 
-Зачем он существует в этом движке. Прямая динамика измеренно НЕ преодолевает барьер в
-несколько электронвольт: 2000 шагов при 6000 K на перекиси водорода не дали ни одного разрыва
-(atomic/validate/test_reactions.py). Причина не в терпении, а в статистике -- при частоте
-попыток около одной на 27 фс и больцмановском множителе для 2 эВ ожидаемое число событий за
-доступное время меньше единицы. Значит редкие события надо не ждать, а СЧИТАТЬ: найти путь
-наименьшей энергии между двумя состояниями, взять его вершину и получить частоту по формуле
-переходного состояния. Это переводит доступное время из наносекунд в секунды.
+Why it exists in this engine. Direct dynamics measurably does NOT cross a barrier of a
+few electronvolts: 2000 steps at 6000 K on hydrogen peroxide produced not a single bond
+breaking (atomic/validate/test_reactions.py). The reason is not patience but statistics:
+at an attempt frequency of about one per 27 fs and the Boltzmann factor for 2 eV, the
+expected number of events over the available time is below one. So rare events must not
+be waited for but COMPUTED: find the minimum-energy path between two states, take its
+peak, and get the rate from transition state theory. This converts the available time
+from nanoseconds to seconds.
 
-Метод: Henkelman & Jonsson, JCP 113 (2000) 9978 (NEB) и Henkelman, Uberuaga & Jonsson,
-JCP 113 (2000) 9901 (climbing image). Устройство:
-  * цепочка промежуточных состояний («изображений») между началом и концом;
-  * настоящая сила проецируется ПЕРПЕНДИКУЛЯРНО пути, пружинная -- ВДОЛЬ него; иначе цепочка
-    либо соскальзывает в минимумы, либо срезает углы;
-  * изображение с наибольшей энергией лезет ВВЕРХ по пути (climbing image) -- без этого
-    вершина попадает между изображениями и барьер систематически занижен.
+Method: Henkelman & Jonsson, JCP 113 (2000) 9978 (NEB) and Henkelman, Uberuaga & Jonsson,
+JCP 113 (2000) 9901 (climbing image). Design:
+  * a chain of intermediate states ("images") between the start and the end;
+  * the true force is projected PERPENDICULAR to the path, the spring force ALONG it;
+    otherwise the chain either slides down into minima or cuts corners;
+  * the highest-energy image climbs UP along the path (climbing image); without this the
+    peak falls between images and the barrier is systematically underestimated.
 """
 from __future__ import annotations
 
@@ -29,13 +30,13 @@ from .state import AtomicState
 
 @dataclass
 class BarrierResult:
-    """Найденный путь и его вершина."""
+    """The found path and its peak."""
 
-    energies_ev: np.ndarray          # энергия каждого изображения
-    images: list[np.ndarray]         # координаты каждого изображения
-    forward_barrier_ev: float        # вершина минус начало
-    reverse_barrier_ev: float        # вершина минус конец
-    reaction_energy_ev: float        # конец минус начало
+    energies_ev: np.ndarray          # energy of each image
+    images: list[np.ndarray]         # coordinates of each image
+    forward_barrier_ev: float        # peak minus start
+    reverse_barrier_ev: float        # peak minus end
+    reaction_energy_ev: float        # end minus start
     peak_index: int
     converged: bool
     iterations: int
@@ -43,13 +44,14 @@ class BarrierResult:
 
     def rate_per_second(self, temperature_k: float, prefactor_hz: float = 1.0e13) -> float:
         """
-        Частота переходов по формуле переходного состояния: k = A exp(-Ea / kB T).
+        Transition rate from transition state theory: k = A exp(-Ea / kB T).
 
-        Предэкспонента 1e13 Гц -- это НЕ измеренная величина, а порядок типичной частоты
-        колебаний связи (около 1000 см⁻¹ = 3e13 Гц); честная оценка требует расчёта
-        колебательных частот в минимуме и в седле. Поэтому число возвращается вместе с явным
-        аргументом: кто им пользуется, обязан знать, что множитель приблизителен, а
-        экспоненциальная часть -- посчитана.
+        The prefactor 1e13 Hz is NOT a measured quantity but the order of magnitude of a
+        typical bond vibration frequency (about 1000 cm^-1 = 3e13 Hz); a proper estimate
+        would require computing the vibrational frequencies at the minimum and at the
+        saddle point. That is why the number is returned together with an explicit
+        argument: whoever uses it must know that the prefactor is approximate, while the
+        exponential part is actually computed.
         """
         from .units import KB_EV_PER_K
 
@@ -58,11 +60,12 @@ class BarrierResult:
 
 def _tangent(prev: np.ndarray, cur: np.ndarray, nxt: np.ndarray, e_prev: float, e_cur: float, e_next: float) -> np.ndarray:
     """
-    Касательная к пути по «улучшенной» схеме: направление берётся к более ВЫСОКОМУ соседу.
+    Tangent to the path using the "improved" scheme: the direction is taken toward the
+    HIGHER-energy neighbor.
 
-    Наивная центральная разность (nxt - prev) даёт изломы на крутых участках и приводит к
-    появлению ложных изгибов цепочки -- это известная беда первых реализаций NEB, и улучшенная
-    касательная (Henkelman & Jonsson 2000, раздел II) её устраняет.
+    The naive central difference (nxt - prev) produces kinks on steep sections and leads
+    to spurious chain distortions; this is a known problem of early NEB implementations,
+    and the improved tangent (Henkelman & Jonsson 2000, section II) removes it.
     """
     tau_plus = nxt - cur
     tau_minus = cur - prev
@@ -90,23 +93,25 @@ def find_barrier(
     step_a: float = 0.02,
 ) -> BarrierResult:
     """
-    Ищет путь наименьшей энергии между `initial` и `final`.
+    Searches for the minimum-energy path between `initial` and `final`.
 
-    Начальная цепочка -- линейная интерполяция координат. Это годится, когда конечное состояние
-    получено из начального небольшим смещением (перенос протона, поворот, разрыв одной связи), и
-    НЕ годится, когда между ними перестройка нескольких связей: там линейная интерполяция
-    проводит атомы друг через друга, и цепочка стартует из нефизичной области. Признак беды --
-    огромная энергия начальных изображений, и она видна в возвращаемом массиве, а не спрятана.
+    The initial chain is a linear interpolation of coordinates. This works when the final
+    state is obtained from the initial one by a small displacement (proton transfer,
+    rotation, breaking one bond), and does NOT work when several bonds rearrange between
+    them: there, linear interpolation drives atoms through each other, and the chain
+    starts in an unphysical region. The telltale sign is a huge energy for the initial
+    images, and it is visible in the returned array, not hidden.
 
-    `climbing_after` -- итерация, с которой вершина начинает лезть вверх. Раньше включать нельзя:
-    пока цепочка не распрямилась, «вершиной» может оказаться случайное изображение.
+    `climbing_after` is the iteration from which the peak starts climbing up. It must not
+    be enabled earlier: until the chain has straightened out, the "peak" could turn out
+    to be a random image.
     """
     if initial.n_atoms != final.n_atoms:
-        raise ValueError("число атомов в начальном и конечном состоянии не совпадает")
+        raise ValueError("number of atoms in the initial and final state does not match")
     if not np.array_equal(initial.numbers, final.numbers):
-        raise ValueError("сорта атомов в начальном и конечном состоянии не совпадают")
+        raise ValueError("atom species in the initial and final state do not match")
 
-    # линейная интерполяция; крайние изображения фиксированы
+    # linear interpolation; the endpoint images are fixed
     images = [
         initial.positions + (final.positions - initial.positions) * t
         for t in np.linspace(0.0, 1.0, n_images)
@@ -124,13 +129,13 @@ def find_barrier(
     energies = np.zeros(n_images)
     forces = [None] * n_images
 
-    # --- FIRE (Bitzek et al., PRL 97 (2006) 170201) вместо спуска с постоянным шагом --------
-    # Замер, из-за которого это переписано: на инверсии аммиака простой спуск с шагом 0.03 Å
-    # не сошёлся за 120 итераций (перпендикулярная сила осталась 1.64 эВ/Å), хотя барьер уже
-    # был близок к опытному. FIRE добавляет инерцию и САМ подбирает шаг: пока сила и скорость
-    # смотрят в одну сторону, шаг растёт; как только направление сменилось -- скорость
-    # сбрасывается, а шаг уменьшается. Ни одного подбираемого руками числа сверх начального
-    # шага при этом не появляется.
+    # --- FIRE (Bitzek et al., PRL 97 (2006) 170201) instead of a fixed-step descent --------
+    # The measurement that motivated this rewrite: on ammonia inversion, a plain descent
+    # with a 0.03 Å step did not converge in 120 iterations (perpendicular force stayed at
+    # 1.64 eV/Å), even though the barrier was already close to the experimental value.
+    # FIRE adds inertia and picks the step itself: while force and velocity point the same
+    # way, the step grows; as soon as the direction flips, the velocity is reset and the
+    # step shrinks. No hand-tuned number beyond the initial step appears as a result.
     velocities = [np.zeros_like(images[0]) for _ in range(n_images)]
     dt = step_a
     dt_max = step_a * 10.0
@@ -157,7 +162,7 @@ def find_barrier(
             f_perp = f_true - f_parallel_mag * tau
 
             if climbing and k == peak:
-                # вершина лезет ВВЕРХ: истинная сила вдоль пути инвертируется, пружин нет
+                # the peak climbs UP: the true force along the path is inverted, no spring force
                 total = f_perp - f_parallel_mag * tau
             else:
                 spring = spring_k * (
@@ -165,9 +170,9 @@ def find_barrier(
                 )
                 total = f_perp + spring * tau
             worst_perp = max(worst_perp, float(np.abs(f_perp).max()))
-            updates[k] = total          # это СИЛА; шагом управляет FIRE ниже
+            updates[k] = total          # this is a FORCE; the step is handled by FIRE below
 
-        # --- шаг FIRE по всей ленте сразу: она одна система, а не набор независимых точек ---
+        # --- FIRE step for the whole band at once: it is one system, not a set of independent points ---
         power = sum(float((velocities[k] * updates[k]).sum()) for k in range(1, n_images - 1))
         if power > 0.0:
             n_positive += 1
@@ -188,7 +193,7 @@ def find_barrier(
             if f_norm > 1e-12:
                 velocities[k] = (1.0 - alpha) * velocities[k] + alpha * v_norm * updates[k] / f_norm
             move = dt * velocities[k]
-            # ограничение длины шага остаётся: оно защищает первую итерацию из плохой геометрии
+            # the step-length limit stays in place: it protects the first iteration from bad geometry
             norm = np.linalg.norm(move)
             if norm > step_a:
                 move *= step_a / norm

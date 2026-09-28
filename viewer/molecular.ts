@@ -148,13 +148,13 @@ async function main(): Promise<void> {
 
   function elementColor(element: string): THREE.Color {
     const info = atomsData.elements[element]
-    if (!info) throw new Error(`viewer/molecular: неизвестный элемент "${element}" в data/atoms.json`)
+    if (!info) throw new Error(`viewer/molecular: unknown element "${element}" in data/atoms.json`)
     return color.set(info.color)
   }
 
   function elementRadius(element: string): number {
     const info = atomsData.elements[element]
-    if (!info) throw new Error(`viewer/molecular: неизвестный элемент "${element}" в data/atoms.json`)
+    if (!info) throw new Error(`viewer/molecular: unknown element "${element}" in data/atoms.json`)
     return info.vdw * ATOM_RADIUS_SCALE
   }
 
@@ -249,11 +249,11 @@ async function main(): Promise<void> {
   // --- honesty badge -----------------------------------------------------------------------------
   function renderBadge(shown: number, total: number): string {
     return (
-      `Положения тяжёлого скелета взяты из ПРОВЕРЕННОЙ огрублённой (coarse-grained) динамики — ` +
-      `площадь на липид и толщина этой же мембраны сверены с Cooke & Deserno 2005. Атомная ` +
-      `детализация ВОССТАНОВЛЕНА ПО СПРАВОЧНОЙ ГЕОМЕТРИИ (литературные длины связей и углы), а НЕ ` +
-      `досчитана независимой атомистической симуляцией — это реконструкция, не симуляция. ` +
-      `Атом за атомом показано ${shown} молекул из ${total}, остальные — те же коарс-грейн биды.`
+      `The heavy-skeleton positions come from validated coarse-grained dynamics: ` +
+      `the area per lipid and the thickness of this same membrane are checked against Cooke & Deserno 2005. The atomic ` +
+      `detail is reconstructed from reference geometry (literature bond lengths and angles), not ` +
+      `computed by an independent atomistic simulation: this is a reconstruction, not a simulation. ` +
+      `${shown} of ${total} molecules are shown atom by atom; the rest are the same coarse-grained beads.`
     )
   }
 
@@ -299,8 +299,8 @@ async function main(): Promise<void> {
     molecular.reconstructionBadge = renderBadge(indices.length, sys.lipids)
     badgeEl.textContent = molecular.reconstructionBadge
     countsEl.textContent =
-      `кадр ${molecular.frames} · атомно ${molecular.molecules}/${sys.lipids} молекул · ` +
-      `${molecular.atoms} атомов · ${molecular.bonds} связей (сегментов)`
+      `frame ${molecular.frames} · atomistic ${molecular.molecules}/${sys.lipids} molecules · ` +
+      `${molecular.atoms} atoms · ${molecular.bonds} bonds (segments)`
 
     requestAnimationFrame(() => {
       frame()

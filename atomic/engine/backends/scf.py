@@ -1,15 +1,17 @@
 """
-Опорная точность: настоящая электронная структура через pyscf -- Хартри-Фок и DFT.
+Reference accuracy: real electronic structure via pyscf, Hartree-Fock and DFT.
 
-Роль этого бэкенда в движке -- НЕ считать динамику (он для этого слишком дорог), а давать
-числа, против которых проверяется дешёвый бэкенд: длины связей, углы, энергии реакций,
-барьеры в характерных точках. Правило разделения ответственности записано в gfn2.py:
-GFN2 везёт траекторию, DFT проверяет энергетику.
+The role of this backend in the engine is NOT to run dynamics (it is too expensive for
+that), but to provide numbers against which the cheap backend is validated: bond
+lengths, angles, reaction energies, barriers at characteristic points. The
+division-of-responsibility rule is written in gfn2.py: GFN2 carries the trajectory, DFT
+validates the energetics.
 
-Базис и функционал -- аргументы, а не константы внутри: они определяют точность и стоимость,
-и обязаны быть видны в отчёте вместе с числом, которое ими получено. По умолчанию взят
-def2-SVP + B3LYP-D3 не как «лучший», а как самый распространённый в литературе набор для
-органики, чтобы наши числа было с чем сравнивать.
+The basis set and functional are arguments, not constants baked in: they determine
+accuracy and cost, and must be visible in the report alongside the number obtained with
+them. The default is def2-SVP + B3LYP-D3, chosen not as "the best" but as the most
+common combination in the literature for organic chemistry, so our numbers have
+something to compare against.
 """
 from __future__ import annotations
 
@@ -21,7 +23,7 @@ from ..units import BOHR_IN_ANGSTROM, HARTREE_IN_EV
 
 
 class PySCF:
-    """Хартри-Фок или DFT с аналитическим градиентом."""
+    """Hartree-Fock or DFT with an analytical gradient."""
 
     def __init__(
         self,
@@ -42,8 +44,8 @@ class PySCF:
 
         if state.cell is not None and any(state.pbc):
             raise NotImplementedError(
-                "периодический pyscf (pbc-модуль) здесь не заявлен: этот бэкенд считает "
-                "изолированные системы, а периодику везёт GFN2"
+                "periodic pyscf (the pbc module) is not supported here: this backend "
+                "computes isolated systems, periodicity is carried by GFN2"
             )
         mol = gto.Mole()
         mol.atom = [
@@ -52,23 +54,24 @@ class PySCF:
         mol.unit = "Angstrom"
         mol.basis = self.basis
         mol.charge = int(state.charge)
-        mol.spin = int(state.spin_multiplicity - 1)  # pyscf ждёт 2S, а не 2S+1
+        mol.spin = int(state.spin_multiplicity - 1)  # pyscf expects 2S, not 2S+1
         mol.verbose = 0
         mol.build()
 
-        # Открытая оболочка считается НЕОГРАНИЧЕННЫМ методом (U), а не ограниченным по
-        # спину (RO). Разница не косметическая: радикал с ограниченным по спину описанием
-        # получает завышенную энергию, и энергия разрыва связи выходит систематически
-        # неверной -- ровно та ошибка, из-за которой гомолитический разрыв в дешёвом
-        # бэкенде завышен в 2.4 раза (см. atomic/validate/test_reactions.py).
+        # An open shell is computed with the UNRESTRICTED method (U), not the
+        # spin-restricted one (RO). The difference is not cosmetic: a radical described
+        # with a spin-restricted method gets an inflated energy, and the bond-breaking
+        # energy comes out systematically wrong; this is exactly the error that made
+        # homolytic bond breaking in the cheap backend overestimated by 2.4x (see
+        # atomic/validate/test_reactions.py).
         if self.method == "hf":
             mf = scf.RHF(mol) if mol.spin == 0 else scf.UHF(mol)
         else:
             mf = dft.RKS(mol) if mol.spin == 0 else dft.UKS(mol)
             mf.xc = self.method
             if self.dispersion:
-                # эмпирическая поправка Гримме: без неё дисперсия отсутствует, и энергии
-                # связывания слабых комплексов (например, димера воды) систематически низкие
+                # empirical Grimme correction: without it there is no dispersion, and
+                # binding energies of weak complexes (e.g. the water dimer) are systematically too low
                 try:
                     mf = mf.apply(__import__("pyscf.dft.dispersion", fromlist=["dispersion"]).DFTD3Dispersion) if False else mf
                     mf.disp = "d3bj"
@@ -82,8 +85,8 @@ class PySCF:
         energy_hartree = mf.kernel()
         if not mf.converged:
             raise FloatingPointError(
-                f"{self.name}: SCF не сошёлся за {self.max_cycle} итераций -- "
-                "результат не является решением и не возвращается"
+                f"{self.name}: SCF did not converge in {self.max_cycle} iterations, "
+                "the result is not a solution and is not returned"
             )
         grad = mf.nuc_grad_method().kernel()  # Hartree/Bohr
         forces = -np.asarray(grad, dtype=float) * (HARTREE_IN_EV / BOHR_IN_ANGSTROM)

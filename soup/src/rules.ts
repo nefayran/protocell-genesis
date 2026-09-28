@@ -1,6 +1,6 @@
 import raw from '../../data/soup.json'
 
-/** Один из элементарных строительных блоков — не готовый амфифил. `water` (task 'explicit-water',
+/** One of the elementary building blocks, not a ready-made amphiphile. `water` (task 'explicit-water',
  * 2026-08-18) is the solvent bead: `solvent=true` marks it for the attraction rule below, `polar`
  * stays false for it (polar denotes the carboxyl HEAD group specifically, not "hydrophilic" in
  * general -- see soup/wgsl/step.wgsl's shouldAttract for how the two flags combine). */
@@ -34,10 +34,10 @@ export interface Monomer {
 }
 
 /**
- * Правило образования или разрыва связи между двумя видами мономеров.
- * У каждого 'bond' обязана быть парная 'break' с ТОЙ ЖЕ энергией — это и есть
- * детальный баланс: абсолютная скорость (rank D, оценка) не откалибрована,
- * но отношение вперёд/назад калибровано энергией и поэтому честное.
+ * A rule for forming or breaking a bond between two monomer kinds.
+ * Every 'bond' must have a paired 'break' with the same energy; that is what
+ * detailed balance means here: the absolute rate (rank D, an estimate) is not calibrated,
+ * but the forward/backward ratio is calibrated by the energy and is therefore honest.
  */
 export interface Rule {
   id: string
@@ -520,7 +520,7 @@ export interface ColdStartRelax {
 }
 
 export interface Soup {
-  /** Единственная явная калибровка временнóй шкалы модели (kappa_t на экране в отчётах). */
+  /** The single explicit calibration of the model's time scale (kappa_t on screen in the reports). */
   kappaT: number
   monomers: Monomer[]
   rules: Rule[]
@@ -556,34 +556,34 @@ export function loadSoup(): Soup {
   const s = raw as unknown as Soup
   for (const key of REQUIRED) {
     if ((s as unknown as Record<string, unknown>)[key] === undefined) {
-      throw new Error(`data/soup.json: отсутствует поле ${key}`)
+      throw new Error(`data/soup.json: missing field ${key}`)
     }
   }
   return s
 }
 
 /**
- * Отношение обратной скорости к прямой при детальном балансе для правила
- * образования связи: exp(-энергия связи в единицах kT). При acceptanceProbability
- * с kT=1 (базовая калибровка kappaT) это ровно то отношение, которое получает
- * система из связки acceptanceProbability(bond)/acceptanceProbability(break).
+ * The ratio of the backward rate to the forward rate under detailed balance for a bond
+ * formation rule: exp(-bond energy in units of kT). With acceptanceProbability
+ * at kT=1 (the base kappaT calibration) this is exactly the ratio that the
+ * system gets from the pair acceptanceProbability(bond)/acceptanceProbability(break).
  */
 export function forwardBackwardRatio(r: Rule): number {
   return Math.exp(-r.energyKT)
 }
 
-/** Вероятность ПОПЫТКИ реакции за шаг интегратора; dt приходит извне (engine/src/params), не хардкодится здесь. */
+/** Probability of a reaction attempt per integrator step; dt comes from outside (engine/src/params) and is not hardcoded here. */
 export function attemptProbability(r: Rule, dt: number): number {
   return r.attemptRate * dt
 }
 
 /**
- * Вероятность ПРИНЯТИЯ попытки по Метрополису. Образование связи снижает
- * энергию на energyKT (ΔE = -energyKT) и поэтому принимается всегда;
- * разрыв — та же связь в обратную сторону (ΔE = +energyKT) и принимается
- * с вероятностью exp(-energyKT/kT). Оба случая — одна формула, поэтому
- * прямое и обратное направления автоматически удовлетворяют детальному
- * балансу и не могут разъехаться по отдельным константам.
+ * Metropolis probability of accepting an attempt. Bond formation lowers the
+ * energy by energyKT (ΔE = -energyKT) and is therefore always accepted;
+ * a break is the same bond in the opposite direction (ΔE = +energyKT) and is accepted
+ * with probability exp(-energyKT/kT). Both cases are one formula, so the
+ * forward and backward directions automatically satisfy detailed balance
+ * and cannot drift apart through separate constants.
  */
 export function acceptanceProbability(r: Rule, kT: number): number {
   const deltaE = r.kind === 'bond' ? -r.energyKT : r.energyKT

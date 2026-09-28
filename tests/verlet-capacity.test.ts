@@ -25,7 +25,7 @@ const LIST_RANGE = (() => {
   return wcaCutoff(p.sigma * Math.max(...soup.monomers.map((m) => m.radiusSigma))) + p.attraction.wc + soup.verletList.skin
 })()
 
-test('ёмкость списка ВЫВОДИТСЯ из плотности, а не берётся из файла — и арифметика потолка сходится', () => {
+test('the list capacity is derived from the density, not taken from the file, and the ceiling arithmetic adds up', () => {
   const soup = loadSoup()
   expect(LIST_RANGE).toBeCloseTo(4.446954, 6)
 
@@ -81,7 +81,7 @@ test('ёмкость списка ВЫВОДИТСЯ из плотности, а
 })
 
 test(
-  'переполнение ёмкости — ГРОМКИЙ throw, а выведенная ёмкость того же бокса не переполняется',
+  'a capacity overflow is a loud throw, and the derived capacity of the same box does not overflow',
   async () => {
     const page = await gpuPage()
     // Liquid water at rho_W = 0.8 in a box 30: measured occupancy max 304, mean 287.32 (see
@@ -93,7 +93,7 @@ test(
       const sys = await api.createSoup({ box: [30, 30, 30], seed: 19, kT: 1.1, start: st, clay: false, verletOverride: { listCapacity: 64 } })
       try {
         await sys.step(1)
-        return 'НЕ БРОСИЛ -- список молча усечён'
+        return 'did not throw -- the list was silently truncated'
       } catch (e) {
         return (e as Error).message
       } finally {
@@ -102,7 +102,7 @@ test(
     }, start)
     console.log(`VERLET-OVERFLOW ${overflowed}`)
     expect(overflowed).toMatch(/listCapacity=64/)
-    expect(overflowed).toMatch(/недостаточно/)
+    expect(overflowed).toMatch(/insufficient/)
 
     const ok = await page.evaluate(async (st: Record<string, number>) => {
       const api = (window as any).api
@@ -131,13 +131,13 @@ test(
       try {
         const sys = await api.createSoup({ box: [30, 30, 30], seed: 19, kT: 1.1, start: st, clay: false, verletOverride: { listCapacity: 200000 } })
         sys.dispose()
-        return 'НЕ БРОСИЛ -- устройство отказало бы молча'
+        return 'did not throw -- the device would have refused silently'
       } catch (e) {
         return (e as Error).message
       }
     }, start)
     console.log(`VERLET-CEILING ${refused}`)
-    expect(refused).toMatch(/17280000000 байт/)
+    expect(refused).toMatch(/17280000000 bytes/)
     expect(refused).toMatch(/maxStorageBufferBindingSize=4294967292/)
   },
   180_000,

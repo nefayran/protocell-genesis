@@ -95,8 +95,8 @@ export async function applyBoxScaleOnce(
   // runs clay-free, which is what the bilayer gates need anyway -- see data/soup.json's clay.basis §7.
   if (rt.frozenCount > 0) {
     throw new Error(
-      `изменение коробки невозможно на системе с минеральной пластиной: ${rt.frozenCount} неподвижных бидов ` +
-        `(areaMove/scaleBoxTo/dryWetCycle требуют CreateSoupOpts.clay=false — см. data/soup.json clay.basis §7)`,
+      `changing the box is impossible on a system with a mineral sheet: ${rt.frozenCount} immobile beads ` +
+        `(areaMove/scaleBoxTo/dryWetCycle require CreateSoupOpts.clay=false, see data/soup.json clay.basis §7)`,
     )
   }
   const before = await particles()
@@ -140,8 +140,8 @@ export async function applyBoxScaleOnce(
     const beforeD = distBefore[k / 2]
     if (Math.abs(d - beforeD) > 1e-3) {
       throw new Error(
-        `applyBoxScale: внутримолекулярное расстояние изменилось (${beforeD.toFixed(6)} -> ${d.toFixed(6)}) ` +
-          `для связи ${rigidEdges[k]}-${rigidEdges[k + 1]} при box [${rt.live.liveBox}] -> [${targetBox}] -- scaleMoleculesRigid нарушен`,
+        `applyBoxScale: an intramolecular distance changed (${beforeD.toFixed(6)} -> ${d.toFixed(6)}) ` +
+          `for bond ${rigidEdges[k]}-${rigidEdges[k + 1]} at box [${rt.live.liveBox}] -> [${targetBox}] -- scaleMoleculesRigid is broken`,
       )
     }
   }
@@ -451,10 +451,10 @@ export async function applyEvaporatingTransition(
     }
     const after = relaxed > 0 ? maxAbsForce(await forces(), rt.N) : spike
     console.log(
-      `[evaporation] ${phase === 'dry' ? 'испарение' : 'регидратация'} приращение=${s + 1}/${ladder.length} ` +
-        `box=${rung.box[0].toFixed(4)} растворителя=${rt.N - plan.solventBlockStart} N=${rt.N} ` +
-        `max|F|=${spike.toExponential(3)} итераций_минимизации=${relaxed} max|F|_после=${after.toExponential(3)} ` +
-        `перетянутых_привязок=${tether.cleared} самая_длинная=${tether.longest.toFixed(4)} порог=${tether.maxLength.toFixed(4)}`,
+      `[evaporation] ${phase === 'dry' ? 'evaporation' : 'rehydration'} increment=${s + 1}/${ladder.length} ` +
+        `box=${rung.box[0].toFixed(4)} solvent=${rt.N - plan.solventBlockStart} N=${rt.N} ` +
+        `max|F|=${spike.toExponential(3)} minimisation_iterations=${relaxed} max|F|_after=${after.toExponential(3)} ` +
+        `overstretched_tethers=${tether.cleared} longest=${tether.longest.toFixed(4)} threshold=${tether.maxLength.toFixed(4)}`,
     )
     if (s < ladder.length - 1 && cfg.rampRelaxSteps > 0) await step(cfg.rampRelaxSteps)
   }
@@ -509,10 +509,10 @@ export function makeStepCycled(
           const reports = await applyEvaporatingTransition(rt, rt.evap, phase, particles, bonds, forces, centerLinks, step, evapCfg, rt.soup.dryWetCycle.targetDryDensity, seed)
           for (const r of reports) {
             console.log(
-              `[evaporation] регидратация: вставлено=${r.inserted} ниже_порога=${r.shortOfFloor} ` +
-                `минимальное_расстояние=${r.minAchieved.toFixed(4)} итераций_минимизации=${r.relaxIterations} ` +
+              `[evaporation] rehydration: inserted=${r.inserted} short_of_floor=${r.shortOfFloor} ` +
+                `min_distance=${r.minAchieved.toFixed(4)} minimisation_iterations=${r.relaxIterations} ` +
                 `max|F| ${r.maxForceBefore.toExponential(4)} -> ${r.maxForceAfter.toExponential(4)} ` +
-                `смещение_прежних rms=${r.preexistingRmsDisplacement.toFixed(4)} max=${r.preexistingMaxDisplacement.toFixed(4)} граница=${r.displacementBound.toFixed(4)}`,
+                `preexisting_displacement rms=${r.preexistingRmsDisplacement.toFixed(4)} max=${r.preexistingMaxDisplacement.toFixed(4)} bound=${r.displacementBound.toFixed(4)}`,
             )
           }
         } else {
@@ -525,7 +525,7 @@ export function makeStepCycled(
         // forever -- cannot happen given nextCycleTransition's own contract (it only ever returns a
         // step strictly greater than the current one, or Infinity), kept as a hard stop rather than
         // a silent infinite loop if that contract is ever violated by a future edit.
-        throw new Error('stepCycled: расписание циклов зациклилось -- nextCycleTransition вернул текущий globalStep')
+        throw new Error('stepCycled: the cycle schedule looped -- nextCycleTransition returned the current globalStep')
       }
     }
   }

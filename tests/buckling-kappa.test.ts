@@ -72,7 +72,7 @@ const SAMPLE_SPACING = 250 // same rationale as line-tension.test.ts: a whole-sy
 const OUT_DIR = 'verify/out'
 const OUT_FILE = `${OUT_DIR}/buckling-kappa.json`
 
-test('модуль изгиба (kappa) через закритическое сжатие периодического бислоя (buckling, Hu-Diggins-Deserno 2013)', async () => {
+test('bending modulus (kappa) from supercritical compression of a periodic bilayer (buckling, Hu-Diggins-Deserno 2013)', async () => {
   const page = await gpuPage()
   page.on('console', (msg) => console.log(`[page] ${msg.text()}`))
 

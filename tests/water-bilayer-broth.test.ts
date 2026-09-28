@@ -61,7 +61,7 @@ const AREA_TARGET = (AREA_MIN + AREA_MAX) / 2
 const CHECKPOINTS = [500, 2000, 8000, 20000]
 
 test(
-  'бислойная заплатка в явной воде на плотности 0.8: толщина (измеренная) против литературного коридора',
+  'bilayer patch in explicit water at density 0.8: thickness (measured) against the literature corridor',
   async () => {
     const page = await gpuPage()
     const result = await page.evaluate(

@@ -196,7 +196,7 @@ export function createControlPanel(
     // classes this function reports). Both are refused rather than silently clamped/ignored --
     // createSoup() itself would otherwise either throw a much less specific error (`startCounts.O`
     // negative propagating into a GPU buffer size) or, for N===0, its own already-existing
-    // 'стартовый состав пуст' throw -- refusing here, before createSoup is ever called, gives the
+    // 'the starting composition is empty' throw -- refusing here, before createSoup is ever called, gives the
     // SAME guarantee this task's other two guards already have: a clear message, never a crash.
     if (startCounts.O < 0) {
       reasons.push(

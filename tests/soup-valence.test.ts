@@ -19,7 +19,7 @@ afterAll(shutdownGpu)
 // this test asserts no head ever exceeds WHATEVER that configured value is, not a number hardcoded
 // here, so it stays a true regression guard across future capacity changes too.
 test(
-  'ни один атом углерода не превышает 2 связей C-C и 1 связь C-O; ни одна голова не превышает configured chainCapacity связей, за 45000 шагов',
+  'no carbon atom exceeds 2 C-C bonds and 1 C-O bond; no head exceeds the configured chainCapacity bonds, over 45000 steps',
   async () => {
     const soup = loadSoup()
     const carbonId = soup.monomers.find((m) => m.kind === 'carbon')!.id

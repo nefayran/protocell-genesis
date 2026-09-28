@@ -7,7 +7,7 @@
 //
 // What is pinned, and why each assertion exists rather than being a restatement of the config:
 //  1. data/soup.json's dryWetCycle.targetDryDensity must EXCEED the density of the project's own
-//     liquid-water broth. deriveCycleConfig throws otherwise ("сухая фаза обязана концентрировать"),
+//     liquid-water broth. deriveCycleConfig throws otherwise ("the dry phase must concentrate"),
 //     so this is the arithmetic that forced the re-derivation: the previous value (0.6) is BELOW
 //     that density and is asserted here to be refused, which is the evidence that 0.6 -> 1.34 was
 //     structural and not cosmetic.
@@ -47,7 +47,7 @@ test('dry-wet cycling: the dry phase must concentrate, and the re-derived amplit
   expect(dwc.targetDryDensity).toBeGreaterThan(rhoWet)
   const stale = { ...soup, dryWetCycle: { ...dwc, targetDryDensity: 0.6 } }
   expect(() => deriveCycleConfig(stale as never, { box: BOX30, dryWetCycle: true } as never, BOX30, N30, START30)).toThrow(
-    /не превышает текущую/,
+    /does not exceed the current/,
   )
 
   // Below the close-packed density of unit-diameter cores -- above it the "dry" medium would be a

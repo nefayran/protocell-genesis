@@ -1,27 +1,28 @@
 """
-Реакции, которые движок ОБНАРУЖИВАЕТ, а не которые ему заданы, и цена дешёвого бэкенда,
-названная числом.
+Reactions that the engine DETECTS, rather than ones it is given, and the price of the cheap
+backend, named as a number.
 
-В этих проверках нет ни одного правила реакции, ни одной ставки, ни одного порога энергии
-реакции. Есть гамильтониан, температура и время; что произойдёт -- решает электронная
-структура, а наше дело прочитать связность.
+There is not a single reaction rule in these checks, not a single wager, not a single
+reaction energy threshold. There is a Hamiltonian, a temperature, and time; what happens is
+decided by the electronic structure, and our job is only to read out the connectivity.
 
-Три проверки намеренно разного смысла:
-  1. При комнатной температуре молекула ОБЯЗАНА остаться целой -- проверка на отсутствие
-     ложных реакций (движок, где связи рвутся сами, бесполезен).
-  2. Перенос протона в ионе Цунделя ОБЯЗАН происходить -- проверка на способность к реакции
-     с переносом заряда (движок, где не происходит ничего, бесполезен ровно так же).
-  3. Разрыв связи при растяжении ОБЯЗАН читаться как исчезновение связи, а энергия разрыва --
-     совпадать с опытной. Здесь же измерена и записана ГРАНИЦА ПРИМЕНИМОСТИ дешёвого метода.
+Three checks, deliberately of different meaning:
+  1. At room temperature the molecule MUST stay intact: a check for the absence of spurious
+     reactions (an engine where bonds break on their own is useless).
+  2. Proton transfer in the Zundel ion MUST happen: a check for the ability to undergo a
+     charge-transfer reaction (an engine where nothing happens at all is equally useless).
+  3. Bond breaking under stretching MUST be read as the disappearance of a bond, and the
+     dissociation energy must match the experimental one. This is also where the APPLICABILITY
+     LIMIT of the cheap method is measured and recorded.
 
-Про редкие события сказано прямо: прямая динамика при 300 K не преодолевает барьер в
-несколько электронвольт ни за какое доступное время, и это правильно физически. Такие
-события требуют либо высокой температуры, либо методов ускоренной выборки (NEB,
-метадинамика) -- их в движке пока НЕТ, и это ограничение, а не недосмотр.
+About rare events, stated plainly: direct dynamics at 300 K does not overcome a barrier of a
+few electronvolts in any available time, and that is physically correct. Such events require
+either high temperature or enhanced-sampling methods (NEB, metadynamics); those are NOT in
+the engine yet, and that is a limitation, not an oversight.
 
-Опытные значения:
-  D0(H2O2 -> 2 OH) = 2.15 эВ = 207 кДж/моль (Ruscic, Active Thermochemical Tables)
-  r(O-O) в H2O2   = 1.4556 Å, r(O-H) в OH = 0.9697 Å (Herzberg; Huber & Herzberg)
+Experimental values:
+  D0(H2O2 -> 2 OH) = 2.15 eV = 207 kJ/mol (Ruscic, Active Thermochemical Tables)
+  r(O-O) in H2O2   = 1.4556 Å, r(O-H) in OH = 0.9697 Å (Herzberg; Huber & Herzberg)
 """
 from __future__ import annotations
 
@@ -40,27 +41,28 @@ H2O2_GEOM = [[0.84, 0.60, 0.36], [0.0, 0.73, -0.05], [0.0, -0.73, -0.05], [-0.84
 
 
 def test_water_stays_intact_at_room_temperature():
-    """Ложных реакций нет: 1000 шагов по 0.5 фс при 300 K, связность неизменна."""
+    """No spurious reactions: 1000 steps of 0.5 fs at 300 K, connectivity unchanged."""
     st = from_symbols(["O", "H", "H"], [[0, 0, 0], [0, -0.96, 0.30], [0, 0.96, 0.30]])
     res = run(st, GFN, steps=1000, dt_fs=0.5, temperature_k=300.0, seed=1, sample_every=25)
-    assert res.events == [], f"при 300 K зафиксированы реакции, которых быть не должно: {res.events}"
+    assert res.events == [], f"reactions were recorded at 300 K that should not have happened: {res.events}"
     assert all(f.species == ("H2O",) for f in res.frames), (
-        f"состав менялся: {sorted({f.species for f in res.frames})}"
+        f"composition changed: {sorted({f.species for f in res.frames})}"
     )
 
 
 def test_proton_transfer_in_protonated_water_dimer():
     """
-    H5O2+ (ион Цунделя): мостиковый протон переходит между кислородами практически без
-    барьера. Это настоящая реакция с ПЕРЕНОСОМ ЗАРЯДА, и в предыдущем движке этого проекта
-    она была невозможна в принципе -- там протонирование было ходом Монте-Карло по внешнему
-    параметру pH, а не следствием электронной структуры.
+    H5O2+ (the Zundel ion): the bridging proton hops between the two oxygens with
+    essentially no barrier. This is a real reaction with CHARGE TRANSFER, and in this
+    project's previous engine it was impossible in principle: protonation there was a Monte
+    Carlo move driven by an external pH parameter, not a consequence of the electronic
+    structure.
     """
     st = from_symbols(
         ["O", "H", "H", "H", "O", "H", "H"],
         [
             [0.00, 0.00, 0.00], [-0.55, 0.78, 0.00], [-0.55, -0.78, 0.00],
-            [1.05, 0.00, 0.00],                      # мостиковый протон
+            [1.05, 0.00, 0.00],                      # bridging proton
             [2.45, 0.00, 0.00], [3.00, 0.78, 0.00], [3.00, -0.78, 0.00],
         ],
         charge=1,
@@ -70,7 +72,7 @@ def test_proton_transfer_in_protonated_water_dimer():
     d_left = np.array([np.linalg.norm(f.positions[3] - f.positions[0]) for f in res.frames])
     d_right = np.array([np.linalg.norm(f.positions[3] - f.positions[4]) for f in res.frames])
     assert (d_left < d_right).any() and (d_right < d_left).any(), (
-        f"мостиковый протон не переходил: d(O1-H) {d_left.min():.2f}-{d_left.max():.2f}, "
+        f"the bridging proton did not transfer: d(O1-H) {d_left.min():.2f}-{d_left.max():.2f}, "
         f"d(O2-H) {d_right.min():.2f}-{d_right.max():.2f} Å"
     )
     final = GFN.compute(st)
@@ -79,10 +81,11 @@ def test_proton_transfer_in_protonated_water_dimer():
 
 def test_stretching_breaks_the_bond_in_the_connectivity():
     """
-    Разрыв связи виден как ИСЧЕЗНОВЕНИЕ связи из связности, а не как большое расстояние, и
-    система читается как две частицы OH. Спин при этом обязателен: гомолитический разрыв даёт
-    два радикала, то есть открытую оболочку, и без неё расчёт либо не сходится, либо даёт
-    неверную энергию -- это измеренное свойство, см. следующий тест.
+    Bond breaking is seen as the DISAPPEARANCE of a bond from the connectivity, not as a
+    large distance, and the system is read as two OH particles. Spin is mandatory here:
+    homolytic cleavage produces two radicals, i.e. an open shell, and without it the
+    calculation either fails to converge or gives the wrong energy: that is a measured
+    property, see the next test.
     """
     st = from_symbols(["H", "O", "O", "H"], H2O2_GEOM, spin_multiplicity=3)
     axis = np.array([0.0, -1.0, 0.0])
@@ -90,26 +93,28 @@ def test_stretching_breaks_the_bond_in_the_connectivity():
     st.positions[3] += axis * 2.5
     res = GFN.compute(st)
     bonds = bonds_from_orders(res.extra["bond_orders"])
-    assert not [b for b in bonds if {b.i, b.j} == {1, 2}], "связь O-O при 3.9 Å всё ещё считается"
+    assert not [b for b in bonds if {b.i, b.j} == {1, 2}], "O-O bond at 3.9 Å is still counted as a bond"
     species = find_species(st.numbers, bonds, res.extra["charges"])
     assert len(species) == 2 and all(s.formula == "HO" for s in species), (
-        f"разорванная система прочитана как {[s.formula for s in species]}"
+        f"the broken-apart system was read as {[s.formula for s in species]}"
     )
 
 
 def test_dissociation_energy_dft_matches_experiment_and_gfn2_does_not():
     """
-    Измеренная граница применимости, названная числом, а не спрятанная.
+    A measured applicability limit, named as a number rather than hidden.
 
-    D(O-O) в H2O2 -> 2 OH: опыт 2.15 эВ. Наш опорный бэкенд (B3LYP/def2-SVP, НЕограниченный
-    для радикала) даёт около 2.5 эВ -- это согласие в пределах ожидаемого для такого базиса и
-    без поправки на нулевые колебания. Дешёвый GFN2 даёт около 5.4 эВ, то есть завышает более
-    чем вдвое: полуэмпирический сильносвязанный метод без спиновой поляризации плохо описывает
-    радикалы. Отсюда рабочее правило движка: GFN2 везёт динамику, но энергетику разрывов и
-    радикалов считает опорный метод.
+    D(O-O) in H2O2 -> 2 OH: experiment gives 2.15 eV. Our reference backend (B3LYP/def2-SVP,
+    UNrestricted for the radical) gives about 2.5 eV: agreement within what is expected for
+    this basis set and without a zero-point correction. The cheap GFN2 gives about 5.4 eV,
+    i.e. overshoots by more than a factor of two: a tightly-bound semiempirical method
+    without spin polarization describes radicals poorly. Hence the engine's working rule:
+    GFN2 carries the dynamics, but the reference method computes the energetics of bond
+    breaking and radicals.
 
-    Тест закрепляет ОБА утверждения. Если новая версия tblite починит радикалы, этот тест
-    упадёт -- и это правильно: правило разделения ролей надо будет пересмотреть по числам.
+    The test locks in BOTH claims. If a new tblite version fixes radicals, this test will
+    fail, and that is correct: the role-division rule will need to be revisited based on the
+    numbers.
     """
     dft = PySCF(method="b3lyp", basis="def2-svp", dispersion=False)
 
@@ -123,27 +128,28 @@ def test_dissociation_energy_dft_matches_experiment_and_gfn2_does_not():
     d_dft = dissociation(dft)
     d_gfn = dissociation(GFN)
     assert abs(d_dft - 2.15) / 2.15 < 0.25, (
-        f"опорный метод даёт D(O-O) = {d_dft:.3f} эВ против опытных 2.15"
+        f"reference method gives D(O-O) = {d_dft:.3f} eV vs the experimental 2.15"
     )
     assert d_gfn > 1.8 * d_dft, (
-        f"известное завышение GFN2 исчезло: GFN2 {d_gfn:.3f} эВ, опорный {d_dft:.3f} эВ -- "
-        "правило разделения ролей надо пересмотреть по числам"
+        f"the known GFN2 overestimate has disappeared: GFN2 {d_gfn:.3f} eV, reference {d_dft:.3f} eV -- "
+        "the role-division rule needs to be revisited based on the numbers"
     )
 
 
 @pytest.mark.slow
 def test_rare_event_needs_more_than_patience():
     """
-    Прямая динамика НЕ преодолевает высокий барьер, и это записано как измеренный факт, а не
-    как неудача: 2000 шагов при 6000 K на H2O2 не дают ни одного разрыва (замерено), потому
-    что при частоте попыток около одной на 27 фс и больцмановском множителе для 2.2 эВ
-    ожидаемое число событий меньше единицы. Ускоренная выборка в движке пока не реализована.
+    Direct dynamics does NOT overcome a high barrier, and this is recorded as a measured
+    fact rather than a failure: 2000 steps at 6000 K on H2O2 produce no dissociation at all
+    (measured), because with an attempt frequency of about one per 27 fs and the Boltzmann
+    factor for 2.2 eV, the expected number of events is less than one. Enhanced sampling is
+    not yet implemented in the engine.
     """
     st = from_symbols(["H", "O", "O", "H"], H2O2_GEOM)
     st.set_maxwell_boltzmann(6000.0, np.random.default_rng(4))
     res = run(st, GFN, steps=2000, dt_fs=0.25, temperature_k=6000.0,
               friction_per_fs=0.002, seed=4, sample_every=10)
     assert res.events == [], (
-        f"при 6000 K за 500 фс зафиксировано {len(res.events)} событий -- оценка редкости "
-        "события неверна и её надо пересчитать"
+        f"at 6000 K over 500 fs, {len(res.events)} events were recorded -- the rare-event "
+        "estimate is wrong and needs to be recomputed"
     )

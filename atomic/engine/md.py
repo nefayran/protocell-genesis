@@ -1,14 +1,16 @@
 """
-Ведущий цикл: молекулярная динамика с наблюдением за химией.
+Main loop: molecular dynamics with chemistry observation.
 
-Устройство простое и намеренно: цикл шагает интегратором, а после каждого шага (или реже,
-если задано) читает связность из электронной структуры и спрашивает наблюдателя, не
-случилось ли реакции. Реакции здесь не разрешают и не запрещают -- их регистрируют.
+The design is deliberately simple: the loop steps the integrator, and after every step
+(or less often, if configured) reads connectivity from the electronic structure and asks
+the observer whether a reaction happened. Reactions are neither allowed nor forbidden
+here, only recorded.
 
-Громкое падение вместо тихой порчи -- отдельное требование, взятое из истории этого проекта:
-шесть раз расчёт продолжался на испорченных числах и выглядел успешным. Поэтому нечисловое
-состояние, слишком большое смещение за шаг и несошедшийся SCF обрываются исключением с
-номером шага, а не пропускаются.
+A loud crash instead of silent corruption is a separate requirement, drawn from this
+project's history: six times a run continued on corrupted numbers and looked successful.
+That is why non-numeric state, a per-step displacement that is too large, and an
+unconverged SCF all abort with an exception carrying the step number, instead of being
+skipped.
 """
 from __future__ import annotations
 
@@ -24,7 +26,7 @@ from .state import AtomicState
 
 @dataclass
 class Frame:
-    """Что сохраняется об одном наблюдении. Координаты -- копия, а не ссылка."""
+    """What is stored about one observation. Coordinates are a copy, not a reference."""
 
     step: int
     time_fs: float
@@ -46,7 +48,7 @@ class TrajectoryResult:
 
     @property
     def energy_drift_ev(self) -> float:
-        """Разброс полной энергии по кадрам -- для NVE это мера качества интегрирования."""
+        """Spread of the total energy across frames: for NVE this is the integration quality measure."""
         if len(self.frames) < 2:
             return 0.0
         totals = np.array([f.total_ev for f in self.frames])
@@ -57,9 +59,10 @@ class TrajectoryResult:
         return self.steps_done / self.wall_seconds if self.wall_seconds > 0 else float("nan")
 
 
-# Максимальное смещение атома за один шаг, при котором расчёт ещё физичен. Значение не
-# подгонка: типичная амплитуда тепловых колебаний -- сотые доли ангстрема за фемтосекунду,
-# и смещение в половину ангстрема за шаг означает, что шаг велик или силы испорчены.
+# Maximum per-step atom displacement at which the run is still physical. The value is
+# not a fit: the typical amplitude of thermal vibrations is hundredths of an angstrom per
+# femtosecond, and a half-angstrom displacement per step means the step is too large or
+# the forces are corrupted.
 MAX_STEP_DISPLACEMENT_A = 0.5
 
 
@@ -78,12 +81,13 @@ def run(
     on_event=None,
 ) -> TrajectoryResult:
     """
-    `temperature_k=None` -> NVE (сохранение энергии, для проверки), иначе NVT по BAOAB.
+    `temperature_k=None` -> NVE (energy conservation, for validation), otherwise NVT via BAOAB.
 
-    `sample_every` управляет только ЗАПИСЬЮ и чтением химии, но не шагом интегрирования:
-    связность меняется на масштабе десятков фемтосекунд, а шаг -- полфемтосекунды, поэтому
-    читать её каждый шаг незачем. Наблюдатель дребезга при этом настроен на число
-    НАБЛЮДЕНИЙ, а не шагов, -- см. ReactionWatcher.
+    `sample_every` controls only the RECORDING and reading of chemistry, not the
+    integration step: connectivity changes on a scale of tens of femtoseconds, while the
+    step is half a femtosecond, so there is no need to read it every step. The debounce
+    observer is meanwhile tuned to the number of OBSERVATIONS, not steps: see
+    ReactionWatcher.
     """
     import time
 
@@ -103,12 +107,12 @@ def run(
 
         if diag.max_displacement_a > MAX_STEP_DISPLACEMENT_A:
             raise FloatingPointError(
-                f"шаг {step}: смещение {diag.max_displacement_a:.3f} Å за шаг превышает предел "
-                f"{MAX_STEP_DISPLACEMENT_A} Å -- шаг велик или силы испорчены"
+                f"step {step}: displacement {diag.max_displacement_a:.3f} Å per step exceeds the limit "
+                f"{MAX_STEP_DISPLACEMENT_A} Å (step too large or forces corrupted)"
             )
         if not np.all(np.isfinite(state.positions)) or not np.all(np.isfinite(state.velocities)):
             bad = int((~np.isfinite(state.positions)).sum() + (~np.isfinite(state.velocities)).sum())
-            raise FloatingPointError(f"шаг {step}: {bad} нечисловых компонент состояния")
+            raise FloatingPointError(f"step {step}: {bad} non-numeric state components")
 
         if step % sample_every == 0 or step == steps:
             species: tuple[str, ...] = ()

@@ -81,8 +81,8 @@ const sphericalMicelle = (b: Basis) => (((4 * Math.PI) / 3) * (b.t / 2) ** 3) / 
 const L_CAMPAIGN = 54
 const ARTIFACT = 'verify/out/acid-soap-arithmetic.json'
 
-describe('кислотно-мыльная пара: пол замыкания и дешевейший бескрайний конкурент, пересчитанные', () => {
-  it('печатает арифметику при каждой замеренной силе пары и даёт вердикт «стало ли замыкание дешевейшим»', () => {
+describe('acid-soap pair: the closure floor and the cheapest edge-free competitor, recomputed', () => {
+  it('prints the arithmetic at every measured pair strength and gives the verdict "has closure become the cheapest"', () => {
     const bs = bases()
     expect(bs.length).toBeGreaterThan(0)
     const rows: any[] = []
@@ -121,12 +121,12 @@ describe('кислотно-мыльная пара: пол замыкания и
       rows.push(row)
       console.log(
         `ACID-SOAP-ARITH ${row.name}\n` +
-          `  a=${row.a} t=${row.t} v=${row.v} -> пол замыкания=${row.closureFloor} амфифилов (=${row.floorInPairs} пар)\n` +
-          `  спанирующая мицелла при L=54: ${row.spanningMicelleAtL54} (${row.spanningPerSigma}/сигма) -> полоса ` +
-          `${row.bandVsSpanningEmpty ? 'ПУСТА, перевёрнута в ' + row.invertedVsSpanning + 'x' : 'ОТКРЫТА'}, L*=${row.lStarSigma} сигма\n` +
-          `  сферическая мицелла (шапочка нулевой длины, бескрайняя ПРИ ЛЮБОМ размере): ${row.sphericalMicelle} амфифилов ` +
-          `(=${row.sphericalMicelleInPairs} пар) -> полоса перевёрнута в ${row.invertedVsSphere}x\n` +
-          `  параметр упаковки p=v/(a0*lc)=${row.packingParameter} (тождественно 1 по построению, см. заголовок файла)`,
+          `  a=${row.a} t=${row.t} v=${row.v} -> closure floor=${row.closureFloor} amphiphiles (=${row.floorInPairs} pairs)\n` +
+          `  spanning micelle at L=54: ${row.spanningMicelleAtL54} (${row.spanningPerSigma}/sigma) -> band ` +
+          `${row.bandVsSpanningEmpty ? 'empty, inverted by ' + row.invertedVsSpanning + 'x' : 'open'}, L*=${row.lStarSigma} sigma\n` +
+          `  spherical micelle (a zero-length cap, edge-free at any size): ${row.sphericalMicelle} amphiphiles ` +
+          `(=${row.sphericalMicelleInPairs} pairs) -> band inverted by ${row.invertedVsSphere}x\n` +
+          `  packing parameter p=v/(a0*lc)=${row.packingParameter} (identically 1 by construction, see the file header)`,
       )
     }
 
@@ -135,11 +135,11 @@ describe('кислотно-мыльная пара: пол замыкания и
     const closureCheapest = rows.filter((r) => r.sphericalMicelle >= r.closureFloor)
     const best = rows.reduce((x, y) => (y.invertedVsSphere < x.invertedVsSphere ? y : x))
     console.log(
-      `ACID-SOAP-ARITH-VERDICT плеч=${rows.length} где замыкание дешевейшее=${closureCheapest.length} -> ` +
-        `${closureCheapest.length > 0 ? 'ЗАМЫКАНИЕ СТАЛО ДЕШЕВЕЙШИМ' : 'ЗАМЫКАНИЕ ПО-ПРЕЖНЕМУ НЕ ДЕШЕВЕЙШЕЕ'}; ` +
-        `наилучшее (наименее перевёрнутое) плечо: ${best.name} при ${best.invertedVsSphere}x против ` +
-        `сферической мицеллы и ${best.invertedVsSpanning}x против спанирующей при L=54; ` +
-        `наилучшее L*=${Math.min(...rows.map((r) => r.lStarSigma))} сигма`,
+      `ACID-SOAP-ARITH-VERDICT arms=${rows.length} where closure is cheapest=${closureCheapest.length} -> ` +
+        `${closureCheapest.length > 0 ? 'closure has become the cheapest' : 'closure is still not the cheapest'}; ` +
+        `best (least inverted) arm: ${best.name} at ${best.invertedVsSphere}x against the ` +
+        `spherical micelle and ${best.invertedVsSpanning}x against the spanning one at L=54; ` +
+        `best L*=${Math.min(...rows.map((r) => r.lStarSigma))} sigma`,
     )
 
     // COUNTING IN PAIRS CHANGES NOTHING -- asserted, because it is the first thing a reader will ask

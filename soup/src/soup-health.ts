@@ -55,9 +55,9 @@ export async function scanNonFinite(rt: SoupRuntime): Promise<NonFiniteCount> {
 export async function assertStateFinite(rt: SoupRuntime, sinceStep?: number): Promise<void> {
   const c = await scanNonFinite(rt)
   if (c.pos === 0 && c.vel === 0) return
-  const window = sinceStep !== undefined ? ` (появилось в интервале шагов ${sinceStep}..${rt.live.globalStep})` : ''
+  const window = sinceStep !== undefined ? ` (appeared in the step interval ${sinceStep}..${rt.live.globalStep})` : ''
   throw new Error(
-    `нефинитное состояние на шаге=${rt.live.globalStep}: нефинитных компонент позиций=${c.pos}, скоростей=${c.vel} ` +
-      `из ${rt.N * 3}${window} -- расчёт разошёлся (Inf/NaN), любые дальнейшие числа этого прогона бессмысленны`,
+    `non-finite state at step=${rt.live.globalStep}: non-finite components of positions=${c.pos}, velocities=${c.vel} ` +
+      `of ${rt.N * 3}${window} -- the computation diverged (Inf/NaN), any further numbers from this run are meaningless`,
   )
 }

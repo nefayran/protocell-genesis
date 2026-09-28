@@ -26,22 +26,22 @@ export interface ResolvedRule {
 export function slotRole(thisKind: string, otherKind: string): number {
   if (thisKind === 'carbon') return otherKind === 'carbon' ? 0 : 1
   if (thisKind === 'head') return 2
-  throw new Error(`soup/src/soup-plan.ts: правило связывает мономер вида "${thisKind}" — поддержаны только carbon и head`)
+  throw new Error(`soup/src/soup-plan.ts: a rule bonds a monomer of kind "${thisKind}", but only carbon and head are supported`)
 }
 
 export function resolveRules(soup: ReturnType<typeof loadSoup>): { rules: ResolvedRule[]; catalystKind: number } {
   const kindIndex = new Map(soup.monomers.map((m, idx) => [m.id, idx]))
   const catalystMonomer = soup.monomers.find((m) => m.kind === 'catalyst')
-  if (!catalystMonomer) throw new Error('data/soup.json: не найден мономер вида catalyst')
+  if (!catalystMonomer) throw new Error('data/soup.json: no monomer of kind catalyst found')
   const catalystKind = kindIndex.get(catalystMonomer.id)!
 
   const bondRules = soup.rules.filter((r) => r.kind === 'bond')
   const rules: ResolvedRule[] = bondRules.map((bond, ruleIdx) => {
     const brk = soup.rules.find((r) => r.kind === 'break' && r.a === bond.a && r.b === bond.b)
-    if (!brk) throw new Error(`data/soup.json: у правила ${bond.id} нет парного разрыва`)
+    if (!brk) throw new Error(`data/soup.json: rule ${bond.id} has no paired break`)
     const ma = soup.monomers.find((m) => m.id === bond.a)
     const mb = soup.monomers.find((m) => m.id === bond.b)
-    if (!ma || !mb) throw new Error(`data/soup.json: правило ${bond.id} ссылается на неописанный мономер`)
+    if (!ma || !mb) throw new Error(`data/soup.json: rule ${bond.id} refers to an undescribed monomer`)
     return {
       ruleIdx,
       bond,
@@ -53,7 +53,7 @@ export function resolveRules(soup: ReturnType<typeof loadSoup>): { rules: Resolv
     }
   })
   if (rules.length > 4) {
-    throw new Error(`soup/src/soup-plan.ts: ${rules.length} правил образования связи — BondParams вмещает не больше 4`)
+    throw new Error(`soup/src/soup-plan.ts: ${rules.length} bond formation rules, but BondParams holds at most 4`)
   }
   return { rules, catalystKind }
 }
@@ -191,8 +191,8 @@ export function deriveGridGeometry(soup: Soup, p: Params, kT: number): GridGeome
   const walkRadius = Math.ceil(interactionRange / cellSize)
   if (walkRadius * cellSize < interactionRange - 1e-6) {
     throw new Error(
-      `сетка соседей: walkRadius=${walkRadius} * cellSize=${cellSize.toFixed(6)} = ${(walkRadius * cellSize).toFixed(6)} ` +
-        `не покрывает interactionRange=${interactionRange.toFixed(6)} — гарантия полноты обхода нарушена`,
+      `neighbour grid: walkRadius=${walkRadius} * cellSize=${cellSize.toFixed(6)} = ${(walkRadius * cellSize).toFixed(6)} ` +
+        `does not cover interactionRange=${interactionRange.toFixed(6)}, so the traversal completeness guarantee is broken`,
     )
   }
 
@@ -208,8 +208,8 @@ export function deriveGridGeometry(soup: Soup, p: Params, kT: number): GridGeome
   const listBuildWalkRadius = Math.ceil(listRange / cellSize)
   if (listBuildWalkRadius * cellSize < listRange - 1e-6) {
     throw new Error(
-      `список Верле: listBuildWalkRadius=${listBuildWalkRadius} * cellSize=${cellSize.toFixed(6)} = ` +
-        `${(listBuildWalkRadius * cellSize).toFixed(6)} не покрывает listRange=${listRange.toFixed(6)} (interactionRange+skin) — гарантия полноты обхода нарушена`,
+      `Verlet list: listBuildWalkRadius=${listBuildWalkRadius} * cellSize=${cellSize.toFixed(6)} = ` +
+        `${(listBuildWalkRadius * cellSize).toFixed(6)} does not cover listRange=${listRange.toFixed(6)} (interactionRange+skin), so the traversal completeness guarantee is broken`,
     )
   }
   // Drift-safety condition (perf-report.md's own rejected-candidate-(a) analysis, generalised from
@@ -224,8 +224,8 @@ export function deriveGridGeometry(soup: Soup, p: Params, kT: number): GridGeome
     const driftBound = 2 * verlet.rebuildEvery * p.integrator.dt * vBound
     if (driftBound > verlet.skin) {
       throw new Error(
-        `список Верле: 2*rebuildEvery*dt*vBound=${driftBound.toFixed(4)} превышает skin=${verlet.skin} ` +
-          `при kT=${kT} — перестройка недостаточно частая (или skin недостаточен) для этой температуры`,
+        `Verlet list: 2*rebuildEvery*dt*vBound=${driftBound.toFixed(4)} exceeds skin=${verlet.skin} ` +
+          `at kT=${kT}: the rebuild is not frequent enough (or skin is too small) for this temperature`,
       )
     }
   }

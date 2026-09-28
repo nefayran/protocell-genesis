@@ -4,7 +4,7 @@ import { gpuPage, shutdownGpu } from './helpers/gpu'
 
 const d = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
 
-test('развёрнутая молекула сохраняет состав и длины связей', () => {
+test('an unfolded molecule keeps its composition and bond lengths', () => {
   const m = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 12, 0.8)
   const cs = m.atoms.filter((a) => a.element === 'C').map((a) => a.position)
   expect(cs.length).toBe(12)
@@ -13,7 +13,7 @@ test('развёрнутая молекула сохраняет состав и
   expect(m.bonds.length).toBeGreaterThan(cs.length)
 })
 
-test('ось молекулы совпадает с направлением голова-хвост', () => {
+test('the molecule axis coincides with the head-tail direction', () => {
   const m = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 12, 0.8)
   const cs = m.atoms.filter((a) => a.element === 'C').map((a) => a.position)
   const axis = [cs[cs.length - 1][0] - cs[0][0], cs[cs.length - 1][1] - cs[0][1], cs[cs.length - 1][2] - cs[0][2]]
@@ -21,14 +21,14 @@ test('ось молекулы совпадает с направлением г�
   expect(Math.abs(axis[2] / len)).toBeGreaterThan(0.9)
 })
 
-test('карбоксильная группа сидит на головном конце, а не на хвостовом', () => {
+test('the carboxyl group sits at the head end, not at the tail end', () => {
   const m = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 12, 0.8)
   const os = m.atoms.filter((a) => a.element === 'O').map((a) => a.position)
   const cs = m.atoms.filter((a) => a.element === 'C').map((a) => a.position)
   for (const o of os) expect(d(o, cs[0])).toBeLessThan(d(o, cs[cs.length - 1]))
 })
 
-test('масштаб бида в нанометры задаётся явно и меняет размер молекулы', () => {
+test('the bead-to-nanometre scale is set explicitly and changes the size of the molecule', () => {
   const a = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 12, 0.8)
   const b = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 16, 0.8)
   const span = (m: typeof a) => {
@@ -40,7 +40,7 @@ test('масштаб бида в нанометры задаётся явно и
 
 afterAll(shutdownGpu)
 
-test('сцена рисует молекулы атом за атомом и честно говорит об этом', () => {
+test('the scene draws molecules atom by atom and says so honestly', () => {
   return (async () => {
     const page = await gpuPage()
     await page.goto(new URL('/viewer/molecular.html', page.url()).href, { waitUntil: 'load' })
@@ -55,14 +55,14 @@ test('сцена рисует молекулы атом за атомом и ч�
     expect(state.frames).toBeGreaterThan(5)
     expect(state.atoms).toBeGreaterThan(state.molecules * 10)
     expect(state.bonds).toBeGreaterThan(state.atoms)
-    expect(state.badge.toLowerCase()).toContain('восстановлен')
+    expect(state.badge.toLowerCase()).toContain('reconstructed')
 
     const shot = await page.screenshot({ encoding: 'binary' })
     expect(shot.length).toBeGreaterThan(5000)
   })()
 })
 
-test('одноуглеродная кислота и совпавшие голова с хвостом не роняют разворачивание', () => {
+test('a one-carbon acid and a head coinciding with the tail do not crash the unfolding', () => {
   // A soup run really produces chains of length 1, and their chain axis is degenerate:
   // the last carbon IS the first. This used to throw inside vNormalize and silently killed
   // the whole run loop, leaving the UI showing "running" forever.

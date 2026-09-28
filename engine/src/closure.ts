@@ -60,8 +60,8 @@ export function dimsFor(box: [number, number, number], cell: number): Dims {
  * `radius` of any bead in `positions` (the engine's flat vec4-per-bead layout: x, y, z, type --
  * type is ignored, every bead counts). Walks only the cells in a bounding box around each bead
  * (reach = ceil(radius/cell) cells in every direction), never every cell against every bead, so
- * cost is O(beads * reach^3), not O(beads * ncells) -- the brief's "obход по ячейкам вокруг бида,
- * без полного перебора". x, y wrap periodically when measuring a cell's distance to a bead
+ * cost is O(beads * reach^3), not O(beads * ncells) -- the brief's "traversal of the cells around a bead,
+ * without brute force". x, y wrap periodically when measuring a cell's distance to a bead
  * (matching the box's own periodicity: a bead near x=0 also has physical reach into cells near
  * x=box.x); z does not (z is open throughout this engine, see sim.ts's wrapXY). */
 export function occupancy(
@@ -154,7 +154,7 @@ function floodOutside(occ: Uint8Array, dims: [number, number, number]): Uint8Arr
 export function enclosedVolume(occ: Uint8Array, dims: [number, number, number], cell: number): number {
   const [nx, ny, nz] = dims
   if (occ.length !== nx * ny * nz) {
-    throw new Error(`enclosedVolume: occ.length=${occ.length} не совпадает с dims=[${nx},${ny},${nz}]`)
+    throw new Error(`enclosedVolume: occ.length=${occ.length} does not match dims=[${nx},${ny},${nz}]`)
   }
   const visited = floodOutside(occ, dims)
   let unreached = 0
@@ -203,7 +203,7 @@ export function equivalentSphereRadius(volume: number): number {
 export function cavities(occ: Uint8Array, dims: Dims, cell: number): Cavity[] {
   const [nx, ny, nz] = dims
   if (occ.length !== nx * ny * nz) {
-    throw new Error(`cavities: occ.length=${occ.length} не совпадает с dims=[${nx},${ny},${nz}]`)
+    throw new Error(`cavities: occ.length=${occ.length} does not match dims=[${nx},${ny},${nz}]`)
   }
   const visited = floodOutside(occ, dims)
   const labelled = new Uint8Array(occ.length) // 1 once assigned to some cavity, to avoid a second visit

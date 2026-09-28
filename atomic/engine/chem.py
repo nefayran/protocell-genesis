@@ -1,17 +1,17 @@
 """
-Химия как НАБЛЮДЕНИЕ, а не как правило.
+Chemistry as an OBSERVATION, not a rule.
 
-Здесь нет ни одной реакции. Связь считается существующей, если её порядок по электронной
-структуре превышает порог; молекула -- это связная компонента графа связей; реакция -- это
-событие, при котором связность изменилась. Поэтому движок «воспроизводит любой процесс» не
-потому, что мы перечислили процессы, а потому, что не перечисляли: что произойдёт, решает
-гамильтониан, а этот файл лишь читает результат.
+There is not a single reaction defined here. A bond is considered to exist if its order
+from the electronic structure exceeds a threshold; a molecule is a connected component of
+the bond graph; a reaction is an event where connectivity changed. This is why the engine
+"reproduces any process" not because we enumerated the processes, but because we did not:
+what happens is decided by the Hamiltonian, and this file only reads the result.
 
-Порог по порядку связи -- единственное свободное число, и оно НЕ подгоняется под желаемый
-ответ. Проверка порога: на наборе молекул с известной структурой (вода, метан, этан, этен,
-этин, пероксид водорода, уксусная кислота) связность обязана совпасть с учебной, включая
-кратность. Если порог неверен, это видно как лишняя или потерянная связь в известной
-молекуле, а не как странный результат в конце прогона.
+The bond-order threshold is the single free number, and it is NOT tuned to the desired
+answer. Threshold check: on a set of molecules with known structure (water, methane,
+ethane, ethylene, acetylene, hydrogen peroxide, acetic acid), connectivity must match the
+textbook one, including bond multiplicity. If the threshold is wrong, that shows up as an
+extra or missing bond in a known molecule, not as a strange result at the end of a run.
 """
 from __future__ import annotations
 
@@ -20,15 +20,15 @@ from dataclasses import dataclass
 import numpy as np
 from ase.data import chemical_symbols
 
-# Порог существования связи по порядку связи. Значение выбрано так, чтобы на наборе
-# известных молекул (тест в atomic/validate/test_chem.py) связность совпадала с учебной:
-# заметно ниже одинарной связи (порядок около 1), заметно выше остаточного перекрытия
-# несвязанных пар (порядок около 0.05 и меньше).
+# Bond-existence threshold on bond order. The value is chosen so that on the set of known
+# molecules (test in atomic/validate/test_chem.py) connectivity matches the textbook one:
+# clearly below a single bond (order around 1), clearly above the residual overlap of
+# unbonded pairs (order around 0.05 or less).
 BOND_ORDER_THRESHOLD = 0.5
 
-# Порог кратности: связь считается двойной от 1.6 и тройной от 2.4. Это НЕ физические
-# константы, а границы для ЧТЕНИЯ порядка связи как целого числа, и они нужны только для
-# человекочитаемой подписи; вся динамика идёт по непрерывному порядку.
+# Multiplicity thresholds: a bond counts as double from 1.6 and triple from 2.4. These are
+# NOT physical constants but boundaries for READING the bond order as an integer, needed
+# only for a human-readable label; all the dynamics runs on the continuous order.
 DOUBLE_BOND_MIN = 1.6
 TRIPLE_BOND_MIN = 2.4
 
@@ -50,7 +50,7 @@ class Bond:
 
 @dataclass
 class Species:
-    """Молекула: набор атомов, брутто-формула, суммарный заряд по Малликену."""
+    """Molecule: a set of atoms, gross formula, total Mulliken charge."""
 
     atom_indices: tuple[int, ...]
     formula: str
@@ -64,27 +64,27 @@ class Species:
 def bonds_from_orders(
     bond_orders: np.ndarray, threshold: float = BOND_ORDER_THRESHOLD
 ) -> list[Bond]:
-    """Верхний треугольник матрицы порядков связей -> список связей."""
+    """Upper triangle of the bond-order matrix -> list of bonds."""
     bo = np.asarray(bond_orders, dtype=float)
-    # tblite отдаёт матрицу с ДОПОЛНИТЕЛЬНОЙ спиновой осью (N, N, n_spin): для системы с
-    # замкнутой оболочкой это (N, N, 1). Суммируем по спиновым каналам, а не берём первый:
-    # в системе с открытой оболочкой полный порядок связи -- это сумма по каналам, и взятие
-    # одного канала дало бы ровно вдвое меньший порядок и потерю половины связей.
+    # tblite returns the matrix with an EXTRA spin axis (N, N, n_spin): for a closed-shell
+    # system this is (N, N, 1). We sum over spin channels rather than take the first one:
+    # for an open-shell system the total bond order is the sum over channels, and taking
+    # a single channel would give exactly half the order and lose half the bonds.
     if bo.ndim == 3:
         bo = bo.sum(axis=2)
     if bo.ndim != 2 or bo.shape[0] != bo.shape[1]:
-        raise ValueError(f"матрица порядков связей должна быть квадратной, получено {bo.shape}")
+        raise ValueError(f"bond-order matrix must be square, got {bo.shape}")
     idx = np.argwhere(np.triu(bo, k=1) > threshold)
     return [Bond(int(i), int(j), float(bo[i, j])) for i, j in idx]
 
 
 def connectivity_key(bonds: list[Bond]) -> frozenset[tuple[int, int]]:
-    """Каноническое представление связности -- по нему сравниваются состояния до и после."""
+    """Canonical representation of connectivity: used to compare states before and after."""
     return frozenset((min(b.i, b.j), max(b.i, b.j)) for b in bonds)
 
 
 def find_species(numbers: np.ndarray, bonds: list[Bond], charges: np.ndarray | None = None) -> list[Species]:
-    """Связные компоненты графа связей = молекулы. Обход в ширину, без рекурсии."""
+    """Connected components of the bond graph = molecules. Iterative traversal, no recursion."""
     n = len(numbers)
     adjacency: dict[int, list[int]] = {i: [] for i in range(n)}
     for b in bonds:
@@ -108,7 +108,7 @@ def find_species(numbers: np.ndarray, bonds: list[Bond], charges: np.ndarray | N
                     stack.append(nb)
         members.sort()
         uniq, counts = np.unique(np.asarray(numbers)[members], return_counts=True)
-        # порядок Хилла: C, H, потом остальные по алфавиту -- как принято в химии
+        # Hill order: C, H, then the rest alphabetically, as is conventional in chemistry
         parts = {chemical_symbols[z]: int(c) for z, c in zip(uniq, counts)}
         formula = ""
         for sym in ("C", "H"):
@@ -124,7 +124,7 @@ def find_species(numbers: np.ndarray, bonds: list[Bond], charges: np.ndarray | N
 
 @dataclass
 class ReactionEvent:
-    """Изменение связности между двумя моментами времени."""
+    """Change in connectivity between two points in time."""
 
     step: int
     formed: tuple[tuple[int, int], ...]
@@ -135,17 +135,17 @@ class ReactionEvent:
     def __str__(self) -> str:
         left = " + ".join(self.species_before)
         right = " + ".join(self.species_after)
-        return f"шаг {self.step}: {left} -> {right} (связей образовано {len(self.formed)}, разорвано {len(self.broken)})"
+        return f"step {self.step}: {left} -> {right} (bonds formed {len(self.formed)}, broken {len(self.broken)})"
 
 
 class ReactionWatcher:
     """
-    Следит за связностью и сообщает о реакциях. Ничего не запрещает и не разрешает.
+    Watches connectivity and reports reactions. Neither forbids nor allows anything.
 
-    Событие фиксируется только если новая связность УДЕРЖАЛАСЬ `persistence` наблюдений:
-    порядок связи около порога дрожит от тепловых колебаний, и без этого условия одна и та
-    же пара будет «реагировать» туда-обратно каждый шаг. Это фильтр дребезга, а не физика,
-    и его значение видно в отчёте вместе с событиями.
+    An event is recorded only if the new connectivity HELD for `persistence` observations:
+    the bond order near the threshold jitters from thermal vibrations, and without this
+    condition the same pair would "react" back and forth every step. This is a debounce
+    filter, not physics, and its value is visible in the report alongside the events.
     """
 
     def __init__(self, numbers: np.ndarray, persistence: int = 3, threshold: float = BOND_ORDER_THRESHOLD) -> None:

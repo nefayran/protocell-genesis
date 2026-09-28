@@ -52,7 +52,7 @@ const N_LIPIDS = Number(process.env.ACID_SOAP_PH_LIPIDS ?? '300')
 const BOX = Number(process.env.ACID_SOAP_PH_BOX ?? '28')
 
 test(
-  'кислотно-мыльная пара: свип pH -- где появляются КОНЕЧНЫЕ бислой-способные объекты, а где нет',
+  'acid-soap pair: a pH sweep -- where finite bilayer-capable objects appear and where they do not',
   async () => {
     const page = await gpuPage()
     const rows: any[] = []
@@ -295,15 +295,15 @@ test(
       console.log(
         `ACID-SOAP-PH pH=${summary.pH} S=${summary.acidSoap} N=${summary.N} rho_amph=${summary.rhoAmph.toExponential(3)} ` +
           `alpha=${summary.alphaTail?.toFixed(4)} pKa_app=${summary.pKaAppTail?.toFixed(3)} ` +
-          `спаренных=${summary.pairedTail?.toFixed(4)} избыток=${summary.unlikeExcessTail?.toFixed(3)} | ` +
-          `агрегатов=${tail[tail.length - 1].aggregates} крупнейший=${summary.largestTail?.toFixed(1)}/${summary.nLipids} ` +
-          `плоскостность=${summary.flatnessTail?.toFixed(4)} (нужно <=${summary.thresholds.lamellarFlatnessRatio}) ` +
-          `симметрия=${summary.inPlaneTail?.toFixed(4)} (нужно >=${summary.thresholds.lamellarInPlaneSymmetryMin}) ` +
+          `paired=${summary.pairedTail?.toFixed(4)} excess=${summary.unlikeExcessTail?.toFixed(3)} | ` +
+          `aggregates=${tail[tail.length - 1].aggregates} largest=${summary.largestTail?.toFixed(1)}/${summary.nLipids} ` +
+          `flatness=${summary.flatnessTail?.toFixed(4)} (need <=${summary.thresholds.lamellarFlatnessRatio}) ` +
+          `symmetry=${summary.inPlaneTail?.toFixed(4)} (need >=${summary.thresholds.lamellarInPlaneSymmetryMin}) ` +
           `Rg/(L/2)=${summary.rgOverUniformTail?.toFixed(4)} ` +
-          `слоёв_голов radial=${tail[tail.length - 1].radialHeadShells} transverse=${tail[tail.length - 1].transverseHeadShells} | ` +
-          `БИСЛОЙ-СПОСОБНЫХ=${bilayerCompetent}/${tail.length} ` +
-          `форма_ламеллярна=${summary.lamellarShapeTail}/${tail.length} ` +
-          `throughput=${summary.stepsPerSec.toFixed(1)} шаг/с`,
+          `head_shells radial=${tail[tail.length - 1].radialHeadShells} transverse=${tail[tail.length - 1].transverseHeadShells} | ` +
+          `bilayer_capable=${bilayerCompetent}/${tail.length} ` +
+          `lamellar_shape=${summary.lamellarShapeTail}/${tail.length} ` +
+          `throughput=${summary.stepsPerSec.toFixed(1)} steps/s`,
       )
       console.log(
         `ACID-SOAP-PH-TRAJECTORY pH=${summary.pH} S=${summary.acidSoap}\n  ` +
@@ -335,7 +335,7 @@ test(
         2,
       ),
     )
-    console.log(`ACID-SOAP-PH WROTE ${ARTIFACT} (${keep.length + rows.length} плеч)`)
+    console.log(`ACID-SOAP-PH WROTE ${ARTIFACT} (${keep.length + rows.length} arms)`)
     expect(rows.length).toBe(PH_LIST.length)
     // The arms must be real measurements: amphiphiles recognised, charge live, aggregates found.
     for (const r of rows) {

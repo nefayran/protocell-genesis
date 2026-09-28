@@ -8,11 +8,11 @@ import {
   sumProfiles,
 } from '../engine/src/metrics'
 
-test('площадь на липид считается по половине числа липидов на слой', () => {
+test('area per lipid is computed from half the number of lipids per leaflet', () => {
   expect(areaPerLipid([20, 20, 30], 1000)).toBeCloseTo(0.8, 12)
 })
 
-test('толщина берётся как расстояние между пиками плотности голов', () => {
+test('thickness is taken as the distance between the head-density peaks', () => {
   const box: [number, number, number] = [10, 10, 20]
   const pos: number[] = []
   for (let i = 0; i < 200; i++) {
@@ -39,7 +39,7 @@ function gaussianHeads(centers: number[], box: [number, number, number], bins: n
   return new Float32Array(pos)
 }
 
-test('толщина находится точнее ширины бина: пики уточняются параболой по трём точкам', () => {
+test('thickness is found more precisely than the bin width: the peaks are refined by a three-point parabola', () => {
   const box: [number, number, number] = [26, 26, 40]
   const bins = 200 // dz = 0.2, i.e. bin centres land on ...,17.9,18.1,... — never on 17.93/21.07
   const truth = 21.07 - 17.93 // 3.14: deliberately not a multiple of dz, and not near a bin centre
@@ -51,21 +51,21 @@ test('толщина находится точнее ширины бина: пи
   expect(Math.abs(got / (box[2] / bins) - Math.round(got / (box[2] / bins)))).toBeGreaterThan(1e-6)
 })
 
-test('вылетевшая по z бусина — ошибка, а не молчаливый краевой бин', () => {
+test('a bead escaped along z is an error, not a silent edge bin', () => {
   const box: [number, number, number] = [10, 10, 20]
   const pos = new Float32Array([5, 5, 21, 0])
-  expect(() => densityProfileZ(pos, box, 200)).toThrow(/вне \[0, 20\)/)
+  expect(() => densityProfileZ(pos, box, 200)).toThrow(/outside \[0, 20\)/)
 })
 
-test('один пик вместо двух — ошибка, а не z[0] в качестве второго пика', () => {
+test('one peak instead of two is an error, not z[0] as the second peak', () => {
   const box: [number, number, number] = [10, 10, 20]
   const pos: number[] = []
   for (let i = 0; i < 100; i++) pos.push(0, 0, 10, 0)
   const profile = densityProfileZ(new Float32Array(pos), box, 200)
-  expect(() => bilayerThickness(profile)).toThrow(/второй пик не найден/)
+  expect(() => bilayerThickness(profile)).toThrow(/second peak not found/)
 })
 
-test('профили складываются по бинам и не смешивают разные сетки', () => {
+test('profiles are summed bin by bin and different grids are not mixed', () => {
   const box: [number, number, number] = [10, 10, 20]
   const a = densityProfileZ(new Float32Array([0, 0, 5, 0, 0, 0, 15, 1]), box, 20)
   const b = densityProfileZ(new Float32Array([0, 0, 5, 0]), box, 20)
@@ -74,10 +74,10 @@ test('профили складываются по бинам и не смеши
   expect(s.tail[15]).toBe(1)
   expect(s.z).toEqual(a.z)
   const coarse = densityProfileZ(new Float32Array([0, 0, 5, 0]), box, 10)
-  expect(() => sumProfiles([a, coarse])).toThrow(/разных сетках/)
+  expect(() => sumProfiles([a, coarse])).toThrow(/different grids/)
 })
 
-test('улетевшие по z бусины отбрасываются и пересчитываются, а не портят профиль', () => {
+test('beads escaped along z are dropped and counted again, not allowed to spoil the profile', () => {
   const box: [number, number, number] = [10, 10, 20]
   const pos = new Float32Array([0, 0, 5, 0, 0, 0, 25, 1, 0, 0, -1, 1, 0, 0, 15, 0])
   const { positions, escaped } = dropEscapedZ(pos, box)
@@ -88,7 +88,7 @@ test('улетевшие по z бусины отбрасываются и пе�
   expect(() => densityProfileZ(positions, box, 20)).not.toThrow()
 })
 
-test('центрирование по z сдвигает центр масс мембраны в середину бокса', () => {
+test('centring along z moves the membrane centre of mass to the middle of the box', () => {
   const box: [number, number, number] = [10, 10, 20]
   const pos = new Float32Array([0, 0, 5, 0, 0, 0, 7, 1, 0, 0, 9, 1])
   const centered = centerMembraneZ(pos, box)

@@ -165,7 +165,7 @@ export function recoverAlphaFromChainLengths(
     ys.push(Math.log(c))
   }
   if (xs.length < 2) {
-    throw new Error('recoverAlphaFromChainLengths: меньше двух различных длин с ненулевым count -- наклон не определён')
+    throw new Error('recoverAlphaFromChainLengths: fewer than two distinct lengths with nonzero count -- the slope is undefined')
   }
   const n = xs.length
   const xm = xs.reduce((a, b) => a + b, 0) / n

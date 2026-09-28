@@ -22,7 +22,7 @@ export function loadParams(): Params {
   const p = raw as unknown as Params
   for (const key of REQUIRED) {
     if ((p as unknown as Record<string, unknown>)[key] === undefined) {
-      throw new Error(`data/params.json: отсутствует поле ${key}`)
+      throw new Error(`data/params.json: missing field ${key}`)
     }
   }
   return p
@@ -32,7 +32,7 @@ export function wcaCutoff(b: number): number {
   return Math.pow(2, 1 / 6) * b
 }
 
-/** Плоский массив для униформ-буфера WGSL. Порядок обязан совпадать со struct Params в forces.wgsl. */
+/** A flat array for the WGSL uniform buffer. The order must match struct Params in forces.wgsl. */
 export function paramsToUniform(p: Params): Float32Array<ArrayBuffer> {
   return new Float32Array([
     p.sigma, p.epsilon,

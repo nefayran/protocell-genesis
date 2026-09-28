@@ -122,23 +122,23 @@ function literatureClosureMin(): number {
   const gates = (rawLiterature as { gates: Array<{ id: string; target: { min?: number } }> }).gates
   const gate = gates.find((g) => g.id === 'closure')
   if (!gate || gate.target.min === undefined) {
-    throw new Error('data/literature.json: отсутствует closure.target.min')
+    throw new Error('data/literature.json: missing closure.target.min')
   }
   return gate.target.min
 }
 
 export function loadStageThresholds(): StageThresholds {
   const t = (rawSoup as unknown as { stageThresholds?: StageThresholds }).stageThresholds
-  if (!t) throw new Error('data/soup.json: отсутствует поле stageThresholds')
+  if (!t) throw new Error('data/soup.json: missing field stageThresholds')
   const literatureMin = literatureClosureMin()
   if (t.enclosedVolume !== literatureMin) {
     // The whole point of tying these two numbers together (so the ladder and the gate agree) is
     // that an editor changing ONE of them without the other must fail loudly, not quietly let a
     // run's stage label and its own literature-gate verdict disagree about what counts as a vesicle.
     throw new Error(
-      `data/soup.json stageThresholds.enclosedVolume (${t.enclosedVolume}) не совпадает с ` +
-        `data/literature.json closure.target.min (${literatureMin}) -- лестница стадий и ворота ` +
-        `должны использовать один и тот же физически обоснованный минимум объёма полости`,
+      `data/soup.json stageThresholds.enclosedVolume (${t.enclosedVolume}) does not match ` +
+        `data/literature.json closure.target.min (${literatureMin}) -- the stage ladder and the gates ` +
+        `must use one and the same physically justified minimum cavity volume`,
     )
   }
   const derivedMin = derivedMinAmphiphilesPerAggregate()
@@ -150,9 +150,9 @@ export function loadStageThresholds(): StageThresholds {
     // data/params.json's sigma/carbon radiusSigma, or data/literature.json's area-per-lipid range,
     // without recomputing this threshold must fail loudly instead of silently drifting.
     throw new Error(
-      `data/soup.json stageThresholds.minAmphiphilesPerAggregate (${t.minAmphiphilesPerAggregate}) не ` +
-        `совпадает с производной формулой (${derivedMin}) -- см. derivedMinAmphiphilesPerAggregate() ` +
-        `в soup/src/aggregates.ts`,
+      `data/soup.json stageThresholds.minAmphiphilesPerAggregate (${t.minAmphiphilesPerAggregate}) does not ` +
+        `match the derived formula (${derivedMin}) -- see derivedMinAmphiphilesPerAggregate() ` +
+        `in soup/src/aggregates.ts`,
     )
   }
   return t

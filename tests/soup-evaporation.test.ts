@@ -92,12 +92,12 @@ test('evaporation: what leaves, what that concentrates, and what it refuses', ()
 
   // (6) THE REFUSAL that makes truncation safe: the solvent must be the last non-empty block, or
   // removing it would renumber organic particles and silently break the bond graph.
-  expect(() => planEvaporation(soup, p, BOX30, { ...START30, K: 10 })).toThrow(/ПОСЛЕДНИМ непустым блоком/)
+  expect(() => planEvaporation(soup, p, BOX30, { ...START30, K: 10 })).toThrow(/last non-empty block/)
   // And a residual fraction that removes nothing (rounds back to the whole pool) is refused rather
   // than run as a silent no-op.
   expect(() =>
     planEvaporation({ ...soup, dryWetCycle: { ...dwc, residualSolventFraction: 0.999999 } } as never, p, BOX30, START30),
-  ).toThrow(/обязана УБИРАТЬ растворитель/)
+  ).toThrow(/must remove the solvent/)
 
   // (7) Both ladders: monotone, uniform in ln L, and landing EXACTLY on their endpoints.
   const down = evaporationLadder(plan, dwc.targetDryDensity)

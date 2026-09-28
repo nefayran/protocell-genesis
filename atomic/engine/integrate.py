@@ -1,17 +1,19 @@
 """
-Интеграторы. Два, и оба нужны по разным причинам.
+Integrators. Two of them, and both are needed for different reasons.
 
-`velocity_verlet` -- NVE: он симплектический, то есть сохраняет энергию с ограниченной
-ошибкой, и именно на нём проверяется правильность сил. Если энергия уплывает -- виноваты
-силы или шаг, и это видно сразу.
+`velocity_verlet` is NVE: it is symplectic, meaning it conserves energy with a bounded
+error, and it is exactly the integrator used to check that the forces are correct. If
+the energy drifts, either the forces or the step size are at fault, and that shows up
+immediately.
 
-`langevin_baoab` -- NVT: схема BAOAB (Leimkuhler & Matthews 2013), у которой ошибка
-конфигурационных средних по шагу выше порядком, чем у наивного ланжевена. Термостат нужен,
-потому что реальная химия идёт при заданной температуре, а не при заданной энергии.
+`langevin_baoab` is NVT: the BAOAB scheme (Leimkuhler & Matthews 2013), whose error in
+configurational averages is a higher order in the step size than a naive Langevin
+scheme. A thermostat is needed because real chemistry runs at a given temperature, not
+at a given energy.
 
-Заморозка атомов делается ОБНУЛЕНИЕМ СИЛЫ И СКОРОСТИ, а не большой массой: большая масса
-оставляет атом медленно ползущим, и в этом проекте уже был случай, когда «неподвижная»
-поверхность на самом деле дрейфовала. Неподвижность обязана быть структурной.
+Freezing atoms is done by ZEROING FORCE AND VELOCITY, not with a large mass: a large
+mass leaves the atom slowly creeping, and this project already had a case where a
+"stationary" surface was in fact drifting. Immobility must be structural.
 """
 from __future__ import annotations
 
@@ -35,7 +37,7 @@ def _apply_frozen(state: AtomicState, forces: np.ndarray) -> np.ndarray:
 
 @dataclass
 class StepDiagnostics:
-    """То, что после шага можно измерить, не пересчитывая потенциал."""
+    """What can be measured after a step without recomputing the potential."""
 
     potential_ev: float
     kinetic_ev: float
@@ -65,9 +67,10 @@ def velocity_verlet(
     cached: PotentialResult | None = None,
 ) -> tuple[PotentialResult, StepDiagnostics]:
     """
-    Один шаг NVE. Возвращает результат потенциала В НОВОЙ точке, чтобы вызывающий код
-    передал его следующим шагом и не считал потенциал дважды: на квантовом бэкенде
-    вычисление силы -- это вся стоимость шага, и лишний вызов удваивает время прогона.
+    One NVE step. Returns the potential result AT THE NEW POINT, so the calling code can
+    pass it into the next step and not compute the potential twice: on a quantum
+    backend, computing the force is the entire cost of a step, and an extra call doubles
+    the run time.
     """
     res = cached if cached is not None else potential.compute(state)
     forces = _apply_frozen(state, res.forces_ev_per_a)
@@ -95,13 +98,13 @@ def langevin_baoab(
     cached: PotentialResult | None = None,
 ) -> tuple[PotentialResult, StepDiagnostics]:
     """
-    Шаг BAOAB: B (полтолчка) A (полперемещения) O (термостат) A (полперемещения) B (полтолчка).
+    BAOAB step: B (half kick) A (half move) O (thermostat) A (half move) B (half kick).
 
-    `friction_per_fs` -- обратное время затухания скорости, 1/фс. Значение НЕ подбирается
-    под результат: слишком большое трение подавляет реальную динамику (диффузию, скорость
-    встреч), слишком малое не термостатирует за разумное время, и правильная проверка --
-    измерить время автокорреляции скорости и убедиться, что оно не короче интересующего
-    процесса.
+    `friction_per_fs` is the inverse velocity-decay time, 1/fs. The value is NOT tuned to
+    the result: too much friction suppresses real dynamics (diffusion, encounter rate),
+    too little does not thermostat within a reasonable time, and the correct check is to
+    measure the velocity autocorrelation time and confirm it is not shorter than the
+    process of interest.
     """
     from .units import KB_EV_PER_K, AMU_A2_PER_FS2_IN_EV
 
@@ -113,10 +116,10 @@ def langevin_baoab(
     state.velocities += 0.5 * dt_fs * accelerations_a_per_fs2(forces, state.masses)
     # A
     state.positions += 0.5 * dt_fs * state.velocities
-    # O: точное решение уравнения Орнштейна-Уленбека на шаг dt
+    # O: exact solution of the Ornstein-Uhlenbeck equation over one step dt
     decay = np.exp(-friction_per_fs * dt_fs)
-    # sigma^2 = kB T / m в единицах (Å/фс)^2: kB T в эВ, делим на массу и на переводной
-    # множитель а.е.м.·Å²/фс² -> эВ. Это и есть равнораспределение, а не подгонка.
+    # sigma^2 = kB T / m in units of (Å/fs)^2: kB T in eV, divided by mass and by the
+    # amu*Å^2/fs^2 -> eV conversion factor. This is equipartition, not a fit.
     sigma = np.sqrt(KB_EV_PER_K * temperature_k / (state.masses * AMU_A2_PER_FS2_IN_EV))
     noise = rng.normal(size=state.velocities.shape)
     state.velocities = decay * state.velocities + np.sqrt(1.0 - decay**2) * sigma[:, None] * noise
@@ -141,12 +144,13 @@ def optimise_lbfgs(
     max_iterations: int = 400,
 ) -> tuple[PotentialResult, int]:
     """
-    Поиск равновесной геометрии квазиньютоновским L-BFGS-B по энергии с АНАЛИТИЧЕСКИМ
-    градиентом из того же потенциала. Аналитический градиент здесь не удобство, а условие
-    осмысленности: численный градиент на квантовом бэкенде стоил бы 6N расчётов на итерацию.
+    Equilibrium geometry search with quasi-Newton L-BFGS-B on the energy, using the
+    ANALYTICAL gradient from the same potential. The analytical gradient here is not a
+    convenience but a condition for feasibility: a numerical gradient on a quantum
+    backend would cost 6N calculations per iteration.
 
-    Замороженные атомы исключаются из переменных, а не удерживаются штрафом: штраф сдвигает
-    минимум, исключение -- нет.
+    Frozen atoms are excluded from the variables rather than held with a penalty: a
+    penalty shifts the minimum, exclusion does not.
     """
     from scipy.optimize import minimize
 
@@ -158,7 +162,7 @@ def optimise_lbfgs(
         state.positions[free] = x.reshape(-1, 3)
         res = potential.compute(state)
         calls["n"] += 1
-        # минимизируем энергию, значит градиент = -сила
+        # we minimize energy, so gradient = -force
         return res.energy_ev, (-res.forces_ev_per_a[free]).ravel()
 
     out = minimize(
@@ -180,10 +184,11 @@ def steepest_descent(
     force_tol_ev_per_a: float = 0.01,
 ) -> tuple[PotentialResult, int]:
     """
-    Спуск по силе с ограничением ДЛИНЫ шага, а не с фиксированным множителем: на первом
-    шаге из плохой геометрии сила может быть огромной, и множитель, разумный в минимуме,
-    отправит атомы в бесконечность. Ограничение по длине делает первый шаг безопасным без
-    подбора множителя. Останов -- по максимальной силе, а не по числу шагов.
+    Force descent with a LENGTH limit on the step rather than a fixed multiplier: on the
+    first step from a poor geometry the force can be huge, and a multiplier that is
+    reasonable at the minimum would send the atoms to infinity. Limiting the length
+    makes the first step safe without tuning a multiplier. Stopping is based on the
+    maximum force, not on the number of steps.
     """
     res = potential.compute(state)
     for step in range(max_steps):

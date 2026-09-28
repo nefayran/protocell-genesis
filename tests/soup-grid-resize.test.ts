@@ -16,7 +16,7 @@ afterAll(shutdownGpu)
 // grid-walk force kernel still agrees with the O(N^2) brute-force reference to floating-point
 // tolerance -- the SAME correctness gate tests/soup-forces.test.ts applies to the unresized grid,
 // now applied to a grid that has actually been reallocated and rebound mid-run.
-test('box, реально пересекающий границу числа ячеек, реаллоцирует сетку: частицы и силы (грид против brute-force) сохраняются', async () => {
+test('a box that really crosses a cell-count boundary reallocates the grid: particles and forces (grid vs brute force) are preserved', async () => {
   const { box, start, dryBox, dryDims, wetDims } = findBracketCrossingBox()
   expect(dryDims).not.toEqual(wetDims) // sanity: this run really exercises the reallocation branch
 
@@ -55,7 +55,7 @@ test('box, реально пересекающий границу числа я�
     return { before, after, boxAfter, phaseAfter, maxDiff, meanAbsRef: sumAbsRef / f.length, n: f.length, steps: sys.steps }
   }, box, start)
 
-  expect(consoleWarnings, `браузер сообщил об ошибке/предупреждении GPU во время теста:\n${consoleWarnings.join('\n')}`).toEqual([])
+  expect(consoleWarnings, `the browser reported a GPU error/warning during the test:\n${consoleWarnings.join('\n')}`).toEqual([])
   expect(r.phaseAfter).toBe('dry') // the transition this test exists to exercise really landed
   for (let i = 0; i < 3; i++) expect(r.boxAfter[i]).toBeCloseTo(dryBox[i], 6)
   // No particle created or destroyed by the box change/grid reallocation.

@@ -1,21 +1,23 @@
 """
-Настоящая химия: полуэмпирический сильносвязанный гамильтониан GFN2-xTB через tblite.
+Real chemistry: the semi-empirical tight-binding Hamiltonian GFN2-xTB via tblite.
 
-Почему именно он взят рабочей лошадкой движка. Во-первых, он покрывает элементы до Z=86,
-то есть «любые элементы» -- не обещание, а свойство параметризации, одной и той же для всей
-таблицы. Во-вторых, связи в нём не задаются: они получаются из электронной структуры, поэтому
-разрыв и образование связи происходят сами, без правил и без списка реакций -- ровно то, чего
-не было в предыдущем движке этого проекта, где химия сводилась к четырём придуманным правилам.
-В-третьих, он на несколько порядков дешевле DFT, и на нём реально идёт молекулярная динамика.
+Why this one was chosen as the engine's workhorse. First, it covers elements up to
+Z=86, so "any elements" is not a promise but a property of the parameterization, the
+same one across the whole table. Second, bonds are not specified in it: they emerge
+from the electronic structure, so bond breaking and formation happen on their own,
+without rules and without a list of reactions, exactly what was missing in this
+project's previous engine, where chemistry was reduced to four hand-written rules.
+Third, it is several orders of magnitude cheaper than DFT, and molecular dynamics
+actually runs on it.
 
-Чего он НЕ даёт, и это должно быть сказано здесь, а не обнаружено потом: точности связанных
-кластеров, барьеров с ошибкой в единицы кДж/моль, возбуждённых состояний, тяжёлых переходных
-металлов в сложных спиновых состояниях. Для чисел, на которые опирается вывод, есть второй
-бэкенд (pyscf, настоящий DFT/HF) -- и правило простое: GFN2 считает динамику, DFT проверяет
-энергетику на характерных точках.
+What it does NOT give, and this should be stated here rather than discovered later: the
+accuracy of coupled-cluster methods, barriers accurate to a few kJ/mol, excited states,
+heavy transition metals in complex spin states. For the numbers a conclusion relies on,
+there is a second backend (pyscf, real DFT/HF), and the rule is simple: GFN2 carries the
+dynamics, DFT validates the energetics at characteristic points.
 
-Ссылки: Bannwarth, Ehlert, Grimme, JCTC 15 (2019) 1652 (GFN2-xTB);
-Ehlert et al., JOSS 5 (2020) 2569 (tblite/simple-dftd3 стек).
+References: Bannwarth, Ehlert, Grimme, JCTC 15 (2019) 1652 (GFN2-xTB);
+Ehlert et al., JOSS 5 (2020) 2569 (the tblite/simple-dftd3 stack).
 """
 from __future__ import annotations
 
@@ -28,11 +30,12 @@ from ..units import BOHR_IN_ANGSTROM, HARTREE_IN_EV
 
 class GFN2:
     """
-    Обёртка над tblite.interface.Calculator.
+    Wrapper around tblite.interface.Calculator.
 
-    Калькулятор пересоздаётся, когда меняется число или сорт атомов, и ПЕРЕИСПОЛЬЗУЕТСЯ,
-    когда меняются только координаты: у tblite есть `update`, и он на порядок дешевле, чем
-    новая инициализация. Это единственная оптимизация здесь -- всё остальное отдано tblite.
+    The calculator is recreated when the number or species of atoms changes, and
+    REUSED when only the coordinates change: tblite has `update`, and it is an order of
+    magnitude cheaper than a fresh initialization. This is the only optimization here;
+    everything else is left to tblite.
     """
 
     name = "gfn2-xtb"
@@ -53,8 +56,8 @@ class GFN2:
         if state.cell is not None and any(state.pbc):
             if not all(state.pbc):
                 raise NotImplementedError(
-                    "GFN2 через tblite поддерживает либо полностью периодическую ячейку, "
-                    "либо полностью непериодическую; смешанная периодичность здесь не заявлена"
+                    "GFN2 via tblite supports either a fully periodic cell or a fully "
+                    "non-periodic one; mixed periodicity is not supported here"
                 )
             lattice = state.cell / BOHR_IN_ANGSTROM
             periodic = np.array([True, True, True])
@@ -75,7 +78,7 @@ class GFN2:
                 state.numbers,
                 pos_bohr,
                 charge=float(state.charge),
-                # tblite ждёт число НЕСПАРЕННЫХ электронов, а не 2S+1
+                # tblite expects the number of UNPAIRED electrons, not 2S+1
                 uhf=int(state.spin_multiplicity - 1),
                 **kwargs,
             )
@@ -83,7 +86,7 @@ class GFN2:
             self._calc.set("accuracy", self.accuracy)
             self._calc.set("max-iter", self.max_iterations)
             if self.electronic_temperature_k is not None:
-                # электронная температура задаётся в Hartree (kT), а не в кельвинах
+                # electronic temperature is set in Hartree (kT), not in kelvin
                 self._calc.set(
                     "temperature", self.electronic_temperature_k * 3.166811563e-6
                 )
@@ -97,13 +100,13 @@ class GFN2:
         res = calc.singlepoint()
 
         energy_ev = float(res.get("energy")) * HARTREE_IN_EV
-        # градиент в Hartree/Bohr -> сила в эВ/Å, со знаком минус
+        # gradient in Hartree/Bohr -> force in eV/Å, with a minus sign
         grad = np.asarray(res.get("gradient"), dtype=float)
         forces = -grad * (HARTREE_IN_EV / BOHR_IN_ANGSTROM)
 
         extra = {
-            # порядки связей Малликена-подобные: из НИХ определяется связность, а не из
-            # порогов по расстоянию -- см. atomic/engine/chem.py
+            # Mulliken-like bond orders: connectivity is determined FROM THEM, not from
+            # distance thresholds; see atomic/engine/chem.py
             "bond_orders": np.asarray(res.get("bond-orders"), dtype=float),
             "charges": np.asarray(res.get("charges"), dtype=float),
             "dipole_au": np.asarray(res.get("dipole"), dtype=float),

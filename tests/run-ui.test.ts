@@ -14,14 +14,14 @@ afterAll(shutdownGpu)
 // was previewing a medium no current gate is measured in. Measured cost of the change, not
 // estimated: 2155-2158 steps/s at 3938 particles against 2086-2302 at the old ~13100-particle
 // "default" preset, i.e. this test still costs seconds.
-test('управление прогоном: старт держит счёт, пауза останавливает его, стоп останавливает навсегда', async () => {
+test('run control: start keeps the count going, pause stops it, stop stops it for good', async () => {
   const page = await gpuPage()
   await page.goto(new URL('/viewer/run.html', page.url()).href, { waitUntil: 'load' })
 
   // Controls exist.
   for (const id of ['size-select', 'stage-select', 'step-cap', 'start-btn', 'pause-btn', 'stop-btn']) {
     const handle = await page.$(`#${id}`)
-    expect(handle, `#${id} должен существовать`).not.toBeNull()
+    expect(handle, `#${id} must exist`).not.toBeNull()
   }
 
   // window.runUI exposes the required shape before anything has started.
@@ -97,7 +97,7 @@ test('управление прогоном: старт держит счёт, �
 // SoupSystem.dispose() (soup/src/sim.ts) plus viewer/run.ts calling it on every run-ending path
 // (finishRun/failRun) and defensively before starting a new one is the fix this guards. Kept tiny
 // (the page's own default "tiny" preset, a low step cap) so this costs seconds, not minutes.
-test('второй прогон на той же странице: счёт шагов продвигается дальше одного STEP_BATCH', async () => {
+test('a second run on the same page: the step count advances past one STEP_BATCH', async () => {
   const page = await gpuPage()
   await page.goto(new URL('/viewer/run.html', page.url()).href, { waitUntil: 'load' })
 
@@ -143,7 +143,7 @@ test('второй прогон на той же странице: счёт ша
 
 // --- 2026-08 UI-fixes task: regressions for the four user-reported problems -----------------------
 
-// Item 1a: the run crashed with `densityProfileZ: бусина с z=... вне [0, ...)` because
+// Item 1a: the run crashed with `densityProfileZ: bead with z=... outside [0, ...)` because
 // computeHeadPeaks (soup/src/stages.ts) fed densityProfileZ a raw, unfiltered snapshot, and a soup
 // particle can legitimately read back with z outside [0, box[2]) on a live snapshot (see that
 // function's own updated doc comment). Two things are checked here, both through page.evaluate on
@@ -154,7 +154,7 @@ test('второй прогон на той же странице: счёт ша
 //  (b) a real run, through the actual UI, advancing a materially larger number of steps than any
 //      other committed run-ui test -- every sampled tick calls this exact code path, so this is the
 //      best available defense-in-depth check that nothing in it can still kill the run loop.
-test('прогон переживает бусину, улетевшую за коробку по z, и не рушится дольше обычного (item 1a)', async () => {
+test('the run survives a bead that escaped the box along z and does not crash for longer than usual (item 1a)', async () => {
   const page = await gpuPage()
   await page.goto(new URL('/viewer/run.html', page.url()).href, { waitUntil: 'load' })
 
@@ -218,7 +218,7 @@ test('прогон переживает бусину, улетевшую за к
 // pixels at EVERY one, not just a single eyeballed shot. Confirmed against a real regression: with
 // frustumCulled reverted to its (unset, so three.js default `true`) behaviour, the (d=0.4,
 // theta=180, phi=120) pose below reads back EXACTLY 0 -- this is not a made-up threshold.
-test('сцена не пропадает при развороте камеры по нескольким дистанциям и углам (item 2)', async () => {
+test('the scene does not disappear when the camera turns over several distances and angles (item 2)', async () => {
   const page = await gpuPage()
   await page.goto(new URL('/viewer/run.html', page.url()).href, { waitUntil: 'load' })
   await page.click('#start-btn')
@@ -249,7 +249,7 @@ test('сцена не пропадает при развороте камеры 
   await page.click('#stop-btn')
 
   for (const r of results) {
-    expect(r.frac, `d=${r.d} theta=${r.theta} phi=${r.phi} дал долю ${r.frac}`).toBeGreaterThan(0.0001)
+    expect(r.frac, `d=${r.d} theta=${r.theta} phi=${r.phi} gave fraction ${r.frac}`).toBeGreaterThan(0.0001)
   }
 })
 
@@ -259,7 +259,7 @@ test('сцена не пропадает при развороте камеры 
 // createSoup is even called (validateSizeSelection() in viewer/run.ts, reusing soup/src/sim.ts's own
 // exported planSoupGrid rather than a second copy) -- a violating choice must refuse with a visible
 // message and leave the run 'idle', never crash and never silently start anyway.
-test('слишком малый бокс отклоняется с понятным сообщением, а не рушит прогон (item 3)', async () => {
+test('a box that is too small is rejected with a clear message instead of crashing the run (item 3)', async () => {
   const page = await gpuPage()
   const consoleErrors: string[] = []
   page.on('console', (msg) => {
@@ -317,13 +317,13 @@ test('слишком малый бокс отклоняется с понятн�
 // (b) an invalid composition (a negative head count) is refused with a clear message, the same
 // "refuse, don't crash" discipline item 3's box-size guard above already established, rather than
 // falling through to createSoup()'s own much less specific throw.
-test('состав: число голов задаётся напрямую, видно в предпросмотре и реально уменьшает бульон (item "composition")', async () => {
+test('composition: the head count is set directly, is visible in the preview and really reduces the broth (item "composition")', async () => {
   const page = await gpuPage()
   await page.goto(new URL('/viewer/run.html', page.url()).href, { waitUntil: 'load' })
 
   for (const id of ['head-count-input']) {
     const handle = await page.$(`#${id}`)
-    expect(handle, `#${id} должен существовать`).not.toBeNull()
+    expect(handle, `#${id} must exist`).not.toBeNull()
   }
 
   // Default (tiny preset, its own default composition) shows O:50 in the preview, per the task's
@@ -362,7 +362,7 @@ test('состав: число голов задаётся напрямую, в�
   expect(final.steps).toBe(500)
 })
 
-test('состав: отрицательное число голов отклоняется с понятным сообщением, а не рушит прогон (item "composition")', async () => {
+test('composition: a negative head count is rejected with a clear message instead of crashing the run (item "composition")', async () => {
   const page = await gpuPage()
   const consoleErrors: string[] = []
   page.on('console', (msg) => {
@@ -417,14 +417,14 @@ test('состав: отрицательное число голов откло�
 // frame-rate measurement), and every honesty note (#honesty-note, #cavity-honesty inside #cavity,
 // #atom-badge) is still present in the DOM -- only the background/material styling changed, never
 // their text or existence. A screenshot proves something real (not a blank canvas) is on screen.
-test('океанский фон: прогон стартует и рисует кадры, заметки честности на месте, скриншот нетривиален (ocean-look)', async () => {
+test('ocean background: the run starts and draws frames, the honesty notes are in place, the screenshot is non-trivial (ocean-look)', async () => {
   const page = await gpuPage()
   await page.goto(new URL('/viewer/run.html', page.url()).href, { waitUntil: 'load' })
 
   // Honesty notes still exist in the DOM, unchanged by the new background/material styling.
   for (const id of ['honesty-note', 'cavity-honesty', 'atom-badge']) {
     const handle = await page.$(`#${id}`)
-    expect(handle, `#${id} должен существовать`).not.toBeNull()
+    expect(handle, `#${id} must exist`).not.toBeNull()
   }
 
   // Task 'consolidation' (2026-08-20): the buttons must actually RECEIVE their own clicks. The
@@ -443,7 +443,7 @@ test('океанский фон: прогон стартует и рисует �
     }),
   )
   console.log(`RUN-UI CLICKTARGET ${JSON.stringify(hitTargets)}`)
-  for (const t of hitTargets) expect(t.hitId, `клик по #${t.id} должен попадать в саму кнопку`).toBe(t.id)
+  for (const t of hitTargets) expect(t.hitId, `a click on #${t.id} must land on the button itself`).toBe(t.id)
 
   await page.$eval('#step-cap', (el) => {
     ;(el as HTMLInputElement).value = '500'
@@ -462,9 +462,9 @@ test('океанский фон: прогон стартует и рисует �
   // writes, so this is the platelet's own instances, not a pixel guess.
   const instances = await page.evaluate(() => (window as any).sceneDebug.instanceCounts())
   console.log(`RUN-UI INSTANCES ${JSON.stringify(instances)}`)
-  expect(instances.K.visible, 'пластина глины должна быть видимой').toBe(true)
-  expect(instances.K.count, 'у пластины глины должны быть нарисованные экземпляры').toBeGreaterThan(0)
-  expect(instances.W.visible, 'растворитель по умолчанию не рисуется').toBe(false)
+  expect(instances.K.visible, 'the clay sheet must be visible').toBe(true)
+  expect(instances.K.count, 'the clay sheet must have drawn instances').toBeGreaterThan(0)
+  expect(instances.W.visible, 'the solvent is not drawn by default').toBe(false)
   // Read AFTER a real frame has been drawn, deliberately: instanceCounts() reports what the last
   // draw() wrote, so asking before the first frame reports 0 for every species -- measured, an
   // earlier version of this assertion sat right after `steps > 0` and failed for exactly that

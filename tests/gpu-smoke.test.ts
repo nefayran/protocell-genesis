@@ -3,7 +3,7 @@ import { gpuPage, shutdownGpu } from './helpers/gpu'
 
 afterAll(shutdownGpu)
 
-test('headless Chrome отдаёт адаптер WebGPU и исполняет compute-проход', async () => {
+test('headless Chrome provides a WebGPU adapter and runs a compute pass', async () => {
   const page = await gpuPage()
   const info = await page.evaluate(() => (window as any).api.gpuSmoke())
   // NOT a hardcoded 'apple': this test's only job is proving a real WebGPU adapter answered and a

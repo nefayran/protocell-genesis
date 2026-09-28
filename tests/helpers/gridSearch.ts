@@ -4,8 +4,8 @@ import { loadSoup } from '../../soup/src/rules'
 /** Task 'grid-rebuild': the smallest (side, start-count) pair whose dry-wet box change moves the
  * neighbour grid's cell count into a DIFFERENT bracket -- exactly the class of change
  * wet-dry-cycle-report.md measured failing outright at full scale (box 46, targetDryDensity=0.6:
- * wet dims=[15,15,15] -> dry dims=[14,14,14], "этот механизм переписывает только box-униформ, не
- * перестраивает буферы сетки"). Searches for the pair rather than hardcoding one, so this stays
+ * wet dims=[15,15,15] -> dry dims=[14,14,14], "this mechanism rewrites only the box uniform, it does
+ * not rebuild the grid buffers"). Searches for the pair rather than hardcoding one, so this stays
  * correct if data/soup.json's species/neighborGrid/verletList settings (which set the ABSOLUTE
  * cellSize every candidate box is measured against) ever change -- a hardcoded box could silently
  * stop crossing a bracket and this fixture would then test nothing. Both
@@ -58,7 +58,7 @@ export function findBracketCrossingBox(): {
     if (changed) return { box, start, N, dryBox, wetDims: wetPlan.dims, dryDims: dryPlan.dims }
   }
   throw new Error(
-    'findBracketCrossingBox: не нашлось маленькой пары wet/dry box (side 12..30), меняющей число ' +
-      'ячеек сетки соседей -- data/soup.json-параметры сетки (cellSize/effectiveWalkRadius) изменились?',
+    'findBracketCrossingBox: found no small wet/dry box pair (side 12..30) that changes the number of ' +
+      'neighbour-grid cells -- have the data/soup.json grid parameters (cellSize/effectiveWalkRadius) changed?',
   )
 }

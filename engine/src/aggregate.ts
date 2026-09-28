@@ -160,7 +160,7 @@ export function largestClusterCenter(
   cutoff: number,
 ): [number, number, number] {
   const { uf, n } = buildClusterUnionFind(positions, box, cutoff)
-  if (n === 0) throw new Error('largestClusterCenter: пустой набор бидов')
+  if (n === 0) throw new Error('largestClusterCenter: empty set of beads')
 
   const sizeByRoot = new Map<number, number>()
   for (let i = 0; i < n; i++) {
@@ -349,7 +349,7 @@ export interface ShapeMetrics {
  * already one coherent local frame. */
 export function shapeOf(positions: Float32Array): ShapeMetrics {
   const n = positions.length / 4
-  if (n === 0) throw new Error('shapeOf: пустой набор частиц')
+  if (n === 0) throw new Error('shapeOf: empty set of particles')
   let cx = 0, cy = 0, cz = 0
   for (let i = 0; i < n; i++) {
     cx += positions[i * 4]

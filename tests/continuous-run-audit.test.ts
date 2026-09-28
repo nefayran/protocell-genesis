@@ -356,7 +356,7 @@ test('continuous-run checkpoints: invariants hold and the stage ladder is reprod
   const tetherViolations = artifact
     .map((r) => r as { step: number; tether?: { longest: number; rInf: number; overRInf: number } })
     .filter((r) => r.tether !== undefined && r.tether.overRInf > 0)
-    .map((r) => `step=${r.step} перетянутых=${r.tether!.overRInf} самая_длинная=${r.tether!.longest} r_inf=${r.tether!.rInf}`)
+    .map((r) => `step=${r.step} overstretched=${r.tether!.overRInf} longest=${r.tether!.longest} r_inf=${r.tether!.rInf}`)
 
   artifact.sort((a, b) => (a as { step: number }).step - (b as { step: number }).step)
   mkdirSync('verify/out', { recursive: true })
@@ -364,8 +364,8 @@ test('continuous-run checkpoints: invariants hold and the stage ladder is reprod
   console.log(`RUN-AUDIT artifact written: ${ARTIFACT} (${artifact.length} checkpoints)`)
   // Asserted only after the artifact exists, so the number that proves or refutes the defect is on
   // disk either way.
-  console.log(`RUN-AUDIT-TETHER нарушений=${tetherViolations.length}${tetherViolations.length ? ': ' + tetherViolations.join(' | ') : ''}`)
-  expect(tetherViolations, 'привязка адсорбции перетянута за FENE r_inf -- за этой границей сила меняет ЗНАК и расходится').toEqual([])
+  console.log(`RUN-AUDIT-TETHER violations=${tetherViolations.length}${tetherViolations.length ? ': ' + tetherViolations.join(' | ') : ''}`)
+  expect(tetherViolations, 'an adsorption tether is stretched past FENE r_inf -- beyond that bound the force changes sign and diverges').toEqual([])
 
   // The monomers-only start, from the run's OWN trace rather than by assumption: the earliest
   // checkpoint on disk must carry zero bonds, zero amphiphiles and zero bond events.

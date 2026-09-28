@@ -193,8 +193,8 @@ async function runClosureScenario(): Promise<ClosureScenarioResult> {
   return {
     volume,
     label:
-      `объём полости синтетической проверочной оболочки детектора (радиус ${RADIUS}σ, толщина ${THICKNESS}σ, ` +
-      `${COUNT} бидов, seed ${SEED}) = ${volume.toFixed(3)} σ³`,
+      `cavity volume of the detector's synthetic test shell (radius ${RADIUS}σ, thickness ${THICKNESS}σ, ` +
+      `${COUNT} beads, seed ${SEED}) = ${volume.toFixed(3)} σ³`,
   }
 }
 
@@ -404,7 +404,7 @@ async function main() {
     stepsPerSecond: throughput.stepsPerSecond,
     beads: throughput.beads,
     neighborBuildMs: throughput.neighborBuildMs,
-    scenario: 'lipids=1200 (3600 бидов), box=[28,28,28], layout=bilayer, 20000 шагов',
+    scenario: 'lipids=1200 (3600 beads), box=[28,28,28], layout=bilayer, 20000 steps',
   }
 
   const gatesJson = {

@@ -32,8 +32,8 @@ export function densityProfileZ(positions: Float32Array, box: [number, number, n
     // or has a real problem to report.
     if (!(z >= 0 && z < box[2])) {
       throw new Error(
-        `densityProfileZ: бусина с z=${z} вне [0, ${box[2]}) — профиль по z не определён для ` +
-          `вылетевших бусин (z не периодичен), клампить их в краевой бин нельзя: это создаёт ложный пик`,
+        `densityProfileZ: bead with z=${z} outside [0, ${box[2]}): the z profile is undefined for ` +
+          `escaped beads (z is not periodic), and clamping them into the edge bin is not allowed: it creates a false peak`,
       )
     }
     const b = Math.min(bins - 1, Math.floor(z / dz))
@@ -50,13 +50,13 @@ export function densityProfileZ(positions: Float32Array, box: [number, number, n
  * frame; summing many independent configurations first shrinks that scatter as 1/sqrt(samples)
  * instead of asking one frame to carry the whole answer. */
 export function sumProfiles(profiles: ZProfile[]): ZProfile {
-  if (profiles.length === 0) throw new Error('sumProfiles: пустой список профилей')
+  if (profiles.length === 0) throw new Error('sumProfiles: empty list of profiles')
   const bins = profiles[0].z.length
   const head = new Array(bins).fill(0)
   const tail = new Array(bins).fill(0)
   for (const pr of profiles) {
     if (pr.z.length !== bins || pr.z[0] !== profiles[0].z[0]) {
-      throw new Error('sumProfiles: профили построены на разных сетках по z — суммировать нельзя')
+      throw new Error('sumProfiles: the profiles are built on different grids in z, so they cannot be summed')
     }
     for (let i = 0; i < bins; i++) {
       head[i] += pr.head[i]
@@ -121,7 +121,7 @@ export function bilayerPeaks(profile: ZProfile): { lower: number; upper: number 
   // least this far apart to count as two leaflets rather than one peak and its own shoulder.
   let a = 0
   for (let i = 1; i < head.length; i++) if (head[i] > head[a]) a = i
-  if (head[a] === 0) throw new Error('bilayerPeaks: профиль голов пуст — пиков нет')
+  if (head[a] === 0) throw new Error('bilayerPeaks: the head profile is empty, there are no peaks')
   const masked = head.map((v, i) => (Math.abs(z[i] - z[a]) <= minSeparation ? 0 : v))
   let b = 0
   for (let i = 1; i < masked.length; i++) if (masked[i] > masked[b]) b = i
@@ -131,8 +131,8 @@ export function bilayerPeaks(profile: ZProfile): { lower: number; upper: number 
   // thickness instead of a failure.
   if (masked[b] === 0) {
     throw new Error(
-      `bilayerPeaks: второй пик не найден — все головы лежат в пределах ${minSeparation} от ` +
-        `максимума при z=${z[a]}; это не бислой`,
+      `bilayerPeaks: second peak not found: all heads lie within ${minSeparation} of the ` +
+        `maximum at z=${z[a]}; this is not a bilayer`,
     )
   }
   const za = subBinPeak(head, z, a)

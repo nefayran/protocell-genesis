@@ -116,7 +116,7 @@ function fillBoxExcluding(
   const out: number[][] = []
   let guard = 0
   while (out.length < count) {
-    if (++guard > count * 1000) throw new Error('fillBoxExcluding: слишком много отказов -- excludeRadius сопоставим с box?')
+    if (++guard > count * 1000) throw new Error('fillBoxExcluding: too many rejections -- is excludeRadius comparable to box?')
     const p: [number, number, number] = [rng() * box[0], rng() * box[1], rng() * box[2]]
     const dx = mi1(p[0] - centre[0], box[0])
     const dy = mi1(p[1] - centre[1], box[1])

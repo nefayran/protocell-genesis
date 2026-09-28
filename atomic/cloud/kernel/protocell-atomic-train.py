@@ -1,20 +1,25 @@
 """
-Ядро Kaggle, версия 2: ускоренный конвейер обучения своего потенциала.
+Kaggle kernel, version 2: accelerated training pipeline for our own potential.
 
-Что изменилось против версии 1 и ПОЧЕМУ -- каждое по замеру, а не по идее:
+What changed compared to version 1 and WHY, each point backed by a measurement, not a
+hunch:
 
-1. КОНФИГУРАЦИИ отвязаны от динамики. В версии 1 кадры получались молекулярной динамикой, а она
-   последовательна: каждый шаг требует силы в предыдущей точке, и пакетом её не собрать. Отсюда
-   547 кадров за 301 секунду и простой карты. Случайная выборка даёт 4000 кадров в секунду.
-2. РАЗМЕТКА пакетная, через внутренний интерфейс MACE. Замер версии 1 на этой же карте: 22-92
-   атом-расчёта в секунду против 460 на нашем процессоре -- карта простаивала, потому что на
-   системе из 3-96 атомов накладные расходы больше счёта. Размер пакета здесь ЗАМЕРЯЕТСЯ.
-3. ДЕСКРИПТОРЫ и ОБУЧЕНИЕ векторизованы. Дескрипторы: 58.5x при совпадении с прямой версией до
-   1e-14. Обучение: пакетами по группам одного размера, с накоплением градиента по всем группам
-   (без накопления шаг смещён в сторону одного размера -- замер 548 против 246 мэВ/атом).
+1. CONFIGURATIONS are decoupled from dynamics. In version 1 frames came from molecular
+   dynamics, which is sequential: each step needs the force at the previous point, so it
+   cannot be batched. That gave 547 frames in 301 seconds and an idle GPU. Random sampling
+   yields 4000 frames per second.
+2. LABELING is batched through MACE's internal interface. Version 1's measurement on the
+   same GPU: 22-92 atom-calcs per second versus 460 on our CPU. The GPU was idling because
+   for systems of 3-96 atoms the overhead outweighs the actual computation. Batch size here
+   is MEASURED.
+3. DESCRIPTORS and TRAINING are vectorized. Descriptors: 58.5x speedup while matching the
+   direct version to 1e-14. Training: batched by groups of equal size, with gradient
+   accumulation across all groups (without accumulation, the step is biased toward one
+   size, measured 548 versus 246 meV/atom).
 
-Защиты из скилла kaggle-offload все на месте: карта проверяется вычислением ДО расходов, груз
-ищется обходом, наложение кода проверяется assert-ом, результат пишется по ходу.
+The safeguards from the kaggle-offload skill are all in place: the GPU is verified by
+computation BEFORE any spend, the payload is located by walking the tree, code overlay is
+checked with an assert, and results are written as we go.
 """
 import json
 import os
@@ -38,17 +43,17 @@ def save_json(name, obj):
         json.dump(obj, fh, ensure_ascii=False, indent=1, default=str)
 
 
-log("=== вычислитель ===")
+log("=== compute device ===")
 try:
     print(subprocess.run(["nvidia-smi"], capture_output=True, text=True).stdout, flush=True)
 except Exception as exc:
-    log(f"nvidia-smi недоступен: {exc}")
+    log(f"nvidia-smi unavailable: {exc}")
 
-log("=== установка зависимостей ===")
+log("=== installing dependencies ===")
 import torch as _torch_pre
 
 TORCH_PIN = _torch_pre.__version__.split("+")[0]
-log(f"предустановленный torch {_torch_pre.__version__}, фиксируем {TORCH_PIN}")
+log(f"preinstalled torch {_torch_pre.__version__}, pinning to {TORCH_PIN}")
 with open("/tmp/constraints.txt", "w") as fh:
     fh.write(f"torch=={TORCH_PIN}\n")
 subprocess.run(
@@ -65,12 +70,12 @@ if torch.cuda.is_available():
         torch.cuda.synchronize()
         _ = float(probe)
         DEVICE = "cuda"
-        log(f"карта работает: {torch.cuda.get_device_name(0)}, способность {torch.cuda.get_device_capability(0)}")
+        log(f"GPU works: {torch.cuda.get_device_name(0)}, capability {torch.cuda.get_device_capability(0)}")
     except Exception as exc:
-        log(f"КАРТА НЕ СЧИТАЕТ ({type(exc).__name__}: {str(exc)[:120]}) -- переходим на CPU")
-log(f"вычислитель: {DEVICE}")
+        log(f"GPU DOES NOT COMPUTE ({type(exc).__name__}: {str(exc)[:120]}) -- falling back to CPU")
+log(f"compute device: {DEVICE}")
 
-log("=== груз ===")
+log("=== payload ===")
 payload_pack = marker_src = None
 for base, dirs, files in os.walk("/kaggle/input"):
     if base.count(os.sep) - "/kaggle/input".count(os.sep) > 3:
@@ -82,17 +87,17 @@ for base, dirs, files in os.walk("/kaggle/input"):
         if f == "CODE_MARKER":
             marker_src = os.path.join(base, f)
 if payload_pack is None:
-    raise SystemExit("груз atomic_code.payloadpack не найден -- проверить датасет")
-log(f"груз: {payload_pack} ({os.path.getsize(payload_pack) / 1e6:.1f} МБ)")
+    raise SystemExit("payload atomic_code.payloadpack not found -- check the dataset")
+log(f"payload: {payload_pack} ({os.path.getsize(payload_pack) / 1e6:.1f} MB)")
 if marker_src:
-    log("маркер: " + open(marker_src).read().strip())
+    log("marker: " + open(marker_src).read().strip())
 os.makedirs(ROOT, exist_ok=True)
 with tarfile.open(payload_pack) as tf:
     tf.extractall(ROOT)
 for must in ("train/sampling.py", "train/batched_teacher.py", "train/descriptors_fast.py",
              "train/fast_train.py", "models/MACE-OFF23_medium.model"):
-    assert os.path.exists(os.path.join(ROOT, must)), f"груз развернулся неполно: нет {must}"
-log("состав груза проверен -- код свежий")
+    assert os.path.exists(os.path.join(ROOT, must)), f"payload extracted incompletely: missing {must}"
+log("payload contents verified -- code is fresh")
 sys.path.insert(0, ROOT)
 
 from engine.state import from_symbols                                       # noqa: E402
@@ -109,9 +114,10 @@ CONFIG = {
     "holdout_md_frames": 120,
     "descriptor_radial": 8,
     "teacher_dtype": "float32",
-    # Перебор сокращён до двух вариантов: замер прошлого прогона показал, что ёмкость сети
-    # почти не влияет (силы 85.4 против 83.8 мэВ/Å при росте сети втрое), а ограничивают ДАННЫЕ.
-    # Поэтому кадров теперь в 13 раз больше, а вариантов меньше -- время идёт туда, где эффект.
+    # The sweep is trimmed down to two variants: a measurement from the previous run showed
+    # that network capacity has almost no effect (forces 85.4 versus 83.8 meV/Å when the
+    # network is tripled in size), and it's the DATA that's the limiting factor. So there
+    # are now 13x more frames and fewer variants -- time goes where it actually matters.
     "sweep": [
         {"hidden": (96, 96), "force_weight": 30.0, "lr": 2e-3, "epochs": 4000},
         {"hidden": (128, 128, 64), "force_weight": 50.0, "lr": 2e-3, "epochs": 4000},
@@ -119,35 +125,35 @@ CONFIG = {
 }
 save_json("config.json", CONFIG)
 
-log("=== учитель: замер размера пакета ===")
+log("=== teacher: batch size benchmark ===")
 teacher = BatchedMACE(os.path.join(ROOT, "models/MACE-OFF23_medium.model"), device=DEVICE,
                       dtype=CONFIG["teacher_dtype"])
 rng = np.random.default_rng(20260821)
 probe_states = clusters(rng, 160, sizes=(8,))
 bench = teacher.benchmark(probe_states, batch_sizes=(1, 8, 32, 128))
 for bs, r in bench.items():
-    log(f"пакет {bs:4d}: {r['frames_per_second']:8.2f} кадр/с, {r['atom_calcs_per_second']:9.0f} атом-расчёт/с")
+    log(f"batch {bs:4d}: {r['frames_per_second']:8.2f} frame/s, {r['atom_calcs_per_second']:9.0f} atom-calc/s")
 save_json("teacher_batch_bench.json", bench)
 best_batch = max(bench, key=lambda bs: bench[bs]["atom_calcs_per_second"])
-log(f"лучший пакет по замеру: {best_batch} "
-    f"({bench[best_batch]['atom_calcs_per_second']:.0f} атом-расчёт/с против 460 на нашем CPU)")
+log(f"best batch size measured: {best_batch} "
+    f"({bench[best_batch]['atom_calcs_per_second']:.0f} atom-calc/s versus 460 on our CPU)")
 
-log("=== конфигурации ===")
+log("=== configurations ===")
 t0 = time.perf_counter()
 states = build_sampled_states(rng, CONFIG["n_monomers"], CONFIG["n_dimers"], CONFIG["n_clusters"])
 dt = max(time.perf_counter() - t0, 1e-9)
-log(f"{len(states)} конфигураций за {dt:.2f} с ({len(states) / dt:.0f} кадров/с)")
+log(f"{len(states)} configurations in {dt:.2f} s ({len(states) / dt:.0f} frames/s)")
 
-log("=== разметка пакетом ===")
+log("=== batch labeling ===")
 frames = []
 t0 = time.perf_counter()
 for start in range(0, len(states), 500):
     frames += teacher.label(states[start : start + 500], batch_size=best_batch)
     done = time.perf_counter() - t0
-    log(f"  размечено {len(frames)}/{len(states)} за {done:.0f} с ({len(frames) / done:.1f} кадр/с)")
+    log(f"  labeled {len(frames)}/{len(states)} in {done:.0f} s ({len(frames) / done:.1f} frame/s)")
     save_json("dataset_progress.json", {"labelled": len(frames), "of": len(states), "seconds": done})
 
-log("=== отложенная выборка ИЗ ДИНАМИКИ ===")
+log("=== holdout sample FROM DYNAMICS ===")
 from engine.backends.mlip import ASECalculatorPotential    # noqa: E402
 from engine.md import run                                   # noqa: E402
 from mace.calculators import MACECalculator                 # noqa: E402
@@ -166,12 +172,12 @@ for _ in range(CONFIG["holdout_md_frames"]):
             seed=int(rng.integers(1 << 30)), sample_every=10, watch_chemistry=False)
         md_states.append(st.copy())
     except FloatingPointError as exc:
-        log(f"  динамика оборвалась: {exc}")
+        log(f"  dynamics broke off: {exc}")
         break
 md_frames = teacher.label(md_states, batch_size=best_batch) if md_states else []
-log(f"отложенных кадров из динамики: {len(md_frames)}")
+log(f"holdout frames from dynamics: {len(md_frames)}")
 
-log("=== дескрипторы (векторные) ===")
+log("=== descriptors (vectorized) ===")
 SPECIES = (1, 8)
 spec = DescriptorSpec(n_radial=CONFIG["descriptor_radial"])
 log(f"D = {descriptor_length(spec, SPECIES)}")
@@ -185,13 +191,13 @@ def descriptors_for(batch, label):
                                             np.asarray(fr["numbers"], dtype=int),
                                             spec, SPECIES, cell=fr.get("cell")))
         if (k + 1) % 1000 == 0:
-            log(f"  {label}: {k + 1}/{len(batch)} за {time.perf_counter() - t:.0f} с")
-    log(f"  {label}: готово за {time.perf_counter() - t:.0f} с")
+            log(f"  {label}: {k + 1}/{len(batch)} in {time.perf_counter() - t:.0f} s")
+    log(f"  {label}: done in {time.perf_counter() - t:.0f} s")
     return out
 
 
-pre = descriptors_for(frames, "набор")
-pre_md = descriptors_for(md_frames, "динамика") if md_frames else []
+pre = descriptors_for(frames, "dataset")
+pre_md = descriptors_for(md_frames, "dynamics") if md_frames else []
 
 order = np.random.default_rng(1).permutation(len(frames))
 n_test = int(0.1 * len(frames))
@@ -199,9 +205,9 @@ test = [frames[i] for i in order[:n_test]]
 pre_test = [pre[i] for i in order[:n_test]]
 train_frames = [frames[i] for i in order[n_test:]]
 pre_train = [pre[i] for i in order[n_test:]]
-log(f"обучающих {len(train_frames)}, случайных отложенных {len(test)}, из динамики {len(md_frames)}")
+log(f"training {len(train_frames)}, random holdout {len(test)}, from dynamics {len(md_frames)}")
 
-log("=== обучение ===")
+log("=== training ===")
 results, best = [], None
 for variant in CONFIG["sweep"]:
     cfg = FastTrainingConfig(
@@ -209,7 +215,7 @@ for variant in CONFIG["sweep"]:
         epochs=variant["epochs"], learning_rate=variant["lr"], seed=0,
         memory_budget_mb=1024.0, dtype="float32", lr_final_fraction=0.05,
     )
-    log(f"вариант {variant}")
+    log(f"variant {variant}")
     t0 = time.perf_counter()
     model = train_fast(train_frames, spec, SPECIES, cfg, pre_train, device=DEVICE, verbose=True)
     took = time.perf_counter() - t0
@@ -221,11 +227,11 @@ for variant in CONFIG["sweep"]:
         "n_train": len(train_frames),
     }
     results.append(metrics)
-    log(f"  случайные:  E {metrics['test_random']['energy_mae_mev_per_atom']:.2f} мэВ/атом, "
-        f"F {metrics['test_random']['force_mae_mev_per_a']:.1f} мэВ/Å")
+    log(f"  random:     E {metrics['test_random']['energy_mae_mev_per_atom']:.2f} meV/atom, "
+        f"F {metrics['test_random']['force_mae_mev_per_a']:.1f} meV/Å")
     if metrics["test_md"]:
-        log(f"  динамика:   E {metrics['test_md']['energy_mae_mev_per_atom']:.2f} мэВ/атом, "
-            f"F {metrics['test_md']['force_mae_mev_per_a']:.1f} мэВ/Å   ({took:.0f} с)")
+        log(f"  dynamics:   E {metrics['test_md']['energy_mae_mev_per_atom']:.2f} meV/atom, "
+            f"F {metrics['test_md']['force_mae_mev_per_a']:.1f} meV/Å   ({took:.0f} s)")
     save_json("training_results.json", results)
     score = (metrics["test_md"] or metrics["test_random"])["force_mae_mev_per_a"]
     if best is None or score < best[0]:
@@ -236,4 +242,4 @@ for variant in CONFIG["sweep"]:
                  **{f"{z}_{k}": v for z, sd in model["net"].state_dict().items() for k, v in sd.items()})
         save_json("best_variant.json", {"force_mae_mev_per_a": best[0], "variant": variant})
 
-log(f"=== готово. лучший: {best}")
+log(f"=== done. best: {best}")

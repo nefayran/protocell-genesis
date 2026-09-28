@@ -40,7 +40,7 @@ afterAll(shutdownGpu)
 // far beyond the 2.947 sigma interaction range, so EVERY pair force is exactly zero (measured, not
 // assumed: minPairSep is asserted) and the force the GPU reports is the wall force alone.
 // ------------------------------------------------------------------------------------------------
-test('стенка: сила на GPU совпадает с ЧИСЛЕННЫМ градиентом своего потенциала, и внутри парцеллы строго ноль', async () => {
+test('wall: the GPU force matches the numerical gradient of its own potential, and inside the parcel it is exactly zero', async () => {
   const page = await gpuPage()
   const consoleWarnings: string[] = []
   page.on('console', (msg) => {
@@ -152,19 +152,19 @@ test('стенка: сила на GPU совпадает с ЧИСЛЕННЫМ �
     sys.dispose()
     return { rows, maxErrAnalytic, maxRelAnalytic, maxErrNumeric, maxRelNumeric, maxErrNumericAtKink, maxInsideForce, maxGridVsBrute, minSep, conf, R, K, h }
   })
-  expect(consoleWarnings, `браузер сообщил об ошибке/предупреждении GPU:\n${consoleWarnings.join('\n')}`).toEqual([])
+  expect(consoleWarnings, `the browser reported a GPU error/warning:\n${consoleWarnings.join('\n')}`).toEqual([])
   console.log(
     `WALL-GRADIENT R=${r.R} k=${r.K} minPairSep=${r.minSep.toFixed(3)} (interactionRange=2.947)\n` +
       r.rows
         .map(
           (x: any) =>
-            `  s=${x.s.toFixed(4)} F_r(GPU)=${x.gpuRadial.toFixed(6)} F_r(численный)=${x.numericRadial.toFixed(6)} F_r(аналит)=${x.analytic.toFixed(6)}`,
+            `  s=${x.s.toFixed(4)} F_r(GPU)=${x.gpuRadial.toFixed(6)} F_r(numeric)=${x.numericRadial.toFixed(6)} F_r(analytic)=${x.analytic.toFixed(6)}`,
         )
         .join('\n') +
-      `\nWALL-GRADIENT max|GPU-аналит|=${r.maxErrAnalytic.toExponential(4)} (относит. ${r.maxRelAnalytic.toExponential(4)}) ` +
-      `max|GPU-численный|=${r.maxErrNumeric.toExponential(4)} (относит. ${r.maxRelNumeric.toExponential(4)}) ` +
-      `на_изломе(s=R)|GPU-численный|=${r.maxErrNumericAtKink.toExponential(4)} (граница шаблона k*h/4=${((r.K * r.h) / 4).toExponential(4)}) ` +
-      `max|F| внутри=${r.maxInsideForce.toExponential(4)} max|сетка-перебор|=${r.maxGridVsBrute.toExponential(4)}`,
+      `\nWALL-GRADIENT max|GPU-analytic|=${r.maxErrAnalytic.toExponential(4)} (rel. ${r.maxRelAnalytic.toExponential(4)}) ` +
+      `max|GPU-numeric|=${r.maxErrNumeric.toExponential(4)} (rel. ${r.maxRelNumeric.toExponential(4)}) ` +
+      `at_kink(s=R)|GPU-numeric|=${r.maxErrNumericAtKink.toExponential(4)} (stencil bound k*h/4=${((r.K * r.h) / 4).toExponential(4)}) ` +
+      `max|F| inside=${r.maxInsideForce.toExponential(4)} max|grid-brute|=${r.maxGridVsBrute.toExponential(4)}`,
   )
   expect(r.minSep).toBeGreaterThan(3)
   expect(r.maxInsideForce).toBe(0)
@@ -182,7 +182,7 @@ test('стенка: сила на GPU совпадает с ЧИСЛЕННЫМ �
 // ------------------------------------------------------------------------------------------------
 // 2 + 3. NO WRAP (with the instrument's own positive control) AND THE SETUP CHECK.
 // ------------------------------------------------------------------------------------------------
-test('удержание: минимальный образ ТОЖДЕСТВЕН, обёртка не срабатывает, и осей обёртки 0 из 3', async () => {
+test('confinement: the minimum image is the identity, wrapping never fires, and wrapping axes are 0 of 3', async () => {
   const page = await gpuPage()
   const BOX = 100
   const R = 20
@@ -265,16 +265,16 @@ test('удержание: минимальный образ ТОЖДЕСТВЕН
   const wrapsAll = ([0, 1, 2] as const).map((a) => wrapsOnAxis(pos, [BOX, BOX, BOX], cutoff, a))
 
   console.log(
-    `NO-WRAP box=${BOX} R=${R} N=${n} maxR=${ws.maxRadius.toFixed(4)} продавливание=${ws.penetration.toFixed(4)} ` +
-      `зазор_до_грани=${ws.faceClearance.toFixed(4)} (наибольший радиус взаимодействия ${Number(file.conf.cutMax).toFixed(4)}) ` +
-      `maxПара=${ws.maxPairSeparation.toFixed(3)} L/2=${ws.halfBox.toFixed(3)} сильное=${ws.strongNoWrap}\n` +
-      `NO-WRAP склеек_при_реальном_боксе=${atRealBox.folded}/${atRealBox.pairs * 3} maxDelta=${atRealBox.maxDelta} | ` +
-      `КОНТРОЛЬ при боксе ${2 * R}: склеек=${atShrunkBox.folded}/${atShrunkBox.pairs * 3} maxDelta=${atShrunkBox.maxDelta.toFixed(3)}\n` +
-      `NO-WRAP max|сдвиг обёртки позиции|=${maxWrapShift} осей_обёртки(вся система)=${wrapsAll.filter(Boolean).length}/3 ${JSON.stringify(wrapsAll)}\n` +
-      `WALL-SHELL оболочка=${ws.shell} доля_равномерная=${ws.species[0].uniformFraction.toFixed(4)} ` +
-      `обогащение=${JSON.stringify(ws.species.map((s) => [s.id, Number(s.enrichment.toFixed(3))]))} ` +
-      `обогащение_к_воде=${JSON.stringify(ws.species.map((s) => [s.id, Number(s.enrichmentVsSolvent.toFixed(4))]))} ` +
-      `в_оболочке=${JSON.stringify(ws.species.map((s) => [s.id, s.inShell]))}`,
+    `NO-WRAP box=${BOX} R=${R} N=${n} maxR=${ws.maxRadius.toFixed(4)} penetration=${ws.penetration.toFixed(4)} ` +
+      `face_clearance=${ws.faceClearance.toFixed(4)} (largest interaction radius ${Number(file.conf.cutMax).toFixed(4)}) ` +
+      `maxPair=${ws.maxPairSeparation.toFixed(3)} L/2=${ws.halfBox.toFixed(3)} strong=${ws.strongNoWrap}\n` +
+      `NO-WRAP folds_at_real_box=${atRealBox.folded}/${atRealBox.pairs * 3} maxDelta=${atRealBox.maxDelta} | ` +
+      `control at box ${2 * R}: folds=${atShrunkBox.folded}/${atShrunkBox.pairs * 3} maxDelta=${atShrunkBox.maxDelta.toFixed(3)}\n` +
+      `NO-WRAP max|wrap shift of position|=${maxWrapShift} wrapping_axes(whole system)=${wrapsAll.filter(Boolean).length}/3 ${JSON.stringify(wrapsAll)}\n` +
+      `WALL-SHELL shell=${ws.shell} uniform_fraction=${ws.species[0].uniformFraction.toFixed(4)} ` +
+      `enrichment=${JSON.stringify(ws.species.map((s) => [s.id, Number(s.enrichment.toFixed(3))]))} ` +
+      `enrichment_vs_water=${JSON.stringify(ws.species.map((s) => [s.id, Number(s.enrichmentVsSolvent.toFixed(4))]))} ` +
+      `in_shell=${JSON.stringify(ws.species.map((s) => [s.id, s.inShell]))}`,
   )
   // (a) the geometry holds by measurement, not by intent
   expect(ws.faceClearance).toBeGreaterThan(Number(file.conf.cutMax))
@@ -297,7 +297,7 @@ test('удержание: минимальный образ ТОЖДЕСТВЕН
   // competing-sink question is judged against for the rest of the task.
   for (const sp of ws.species) {
     if (sp.count === 0) continue
-    expect(Math.abs(sp.enrichmentVsSolvent - 1), `вид ${sp.id}: обогащение к воде ${sp.enrichmentVsSolvent}`).toBeLessThan(0.3)
+    expect(Math.abs(sp.enrichmentVsSolvent - 1), `species ${sp.id}: enrichment vs water ${sp.enrichmentVsSolvent}`).toBeLessThan(0.3)
   }
   // (g) the confinement round-tripped through the checkpoint's own config
   expect(file.cp.config.confine).toEqual({ radiusSigma: R, stiffness: 100 })
@@ -306,7 +306,7 @@ test('удержание: минимальный образ ТОЖДЕСТВЕН
 // ------------------------------------------------------------------------------------------------
 // 4. THE REFUSALS. Each would otherwise produce a number that does not mean what its name says.
 // ------------------------------------------------------------------------------------------------
-test('удержание: тесный бокс, пластина глины и MC-ход по площади ОТКАЗЫВАЮТ, а не считают молча', async () => {
+test('confinement: a tight box, a clay sheet and the MC area move refuse instead of computing silently', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api
@@ -314,28 +314,28 @@ test('удержание: тесный бокс, пластина глины и 
     const start = { C: 300, O: 100, H: 300, M: 10, W: 2000 }
     try {
       await api.createSoup({ box: [42, 42, 42], seed: 1, kT: 1.1, clay: false, start, confine: { radiusSigma: 20, stiffness: 100 } })
-      out.tightBox = 'НЕ БРОСИЛ'
+      out.tightBox = 'did not throw'
     } catch (e: any) {
       out.tightBox = e.message
     }
     try {
       await api.createSoup({ box: [100, 100, 100], seed: 1, kT: 1.1, clay: true, start, confine: { radiusSigma: 20, stiffness: 100 } })
-      out.clay = 'НЕ БРОСИЛ'
+      out.clay = 'did not throw'
     } catch (e: any) {
       out.clay = e.message
     }
     const sys = await api.createSoup({ box: [100, 100, 100], seed: 1, kT: 1.1, clay: false, start, confine: { radiusSigma: 20, stiffness: 100 } })
     try {
       await sys.areaMove(1)
-      out.areaMove = 'НЕ БРОСИЛ'
+      out.areaMove = 'did not throw'
     } catch (e: any) {
       out.areaMove = e.message
     }
     sys.dispose()
     return out
   })
-  console.log(`CONFINE-REFUSALS\n  тесный бокс: ${r.tightBox}\n  глина: ${r.clay}\n  areaMove: ${r.areaMove}`)
-  expect(r.tightBox).toContain('зазор до грани бокса')
-  expect(r.clay).toContain('несовместимо с минеральной пластиной')
-  expect(r.areaMove).toContain('не имеет смысла в удерживаемой парцелле')
+  console.log(`CONFINE-REFUSALS\n  tight box: ${r.tightBox}\n  clay: ${r.clay}\n  areaMove: ${r.areaMove}`)
+  expect(r.tightBox).toContain('clearance to the box face')
+  expect(r.clay).toContain('incompatible with a mineral sheet')
+  expect(r.areaMove).toContain('makes no sense in a confined parcel')
 })

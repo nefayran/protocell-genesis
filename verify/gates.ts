@@ -43,7 +43,7 @@ export interface GateResult {
    *  from `verdict` so the rank-D convention never hides an out-of-window number. */
   corridor: GateCorridor
   source: string
-  /** Not in the brief's minimal Interfaces list, but the report table needs a "условия" column and
+  /** Not in the brief's minimal Interfaces list, but the report table needs a "conditions" column and
    * data/literature.json already carries one per gate -- attaching it here is a superset, not a
    * departure from the contract (every field the four tests check is present and typed as given). */
   conditions: string

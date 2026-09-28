@@ -46,14 +46,14 @@ export async function totalEnergy(rt: EngineRuntime): Promise<number> {
 export function setLiveParams(rt: EngineRuntime, overrides: { kT?: number; wc?: number }): void {
   if (overrides.wc !== undefined && overrides.wc > rt.builtForWc) {
     throw new Error(
-      `setLiveParams: wc=${overrides.wc} превышает значение, под которое построена сетка соседей ` +
-        `(builtForWc=${rt.builtForWc}, cellSize=${rt.cellSize.toFixed(4)}) — пересоздайте систему с ` +
-        `опцией maxWc>=${overrides.wc}, иначе силы будут молча теряться`,
+      `setLiveParams: wc=${overrides.wc} exceeds the value the neighbour grid was built for ` +
+        `(builtForWc=${rt.builtForWc}, cellSize=${rt.cellSize.toFixed(4)}); recreate the system with ` +
+        `the option maxWc>=${overrides.wc}, otherwise forces will be silently lost`,
     )
   }
   if (overrides.kT !== undefined && (overrides.kT < rt.p.kTRange[0] || overrides.kT > rt.p.kTRange[1])) {
     throw new Error(
-      `setLiveParams: kT=${overrides.kT} вне data/params.json kTRange=[${rt.p.kTRange[0]},${rt.p.kTRange[1]}]`,
+      `setLiveParams: kT=${overrides.kT} outside data/params.json kTRange=[${rt.p.kTRange[0]},${rt.p.kTRange[1]}]`,
     )
   }
   rt.livep = {

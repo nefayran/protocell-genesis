@@ -5,7 +5,7 @@ import { computeHeadPeaks, emptyAggregateAnalysis, loadStageThresholds, stageFro
 
 const P = (xs: number[][]) => new Float32Array(xs.flat())
 
-test('цепь с одной полярной головой распознаётся как амфифил', () => {
+test('a chain with one polar head is recognised as an amphiphile', () => {
   const parts = P([[0,0,0,1],[1,0,0,0],[2,0,0,0],[3,0,0,0]])
   const bonds = new Uint32Array([0,1, 1,2, 2,3])
   const a = findAmphiphiles(parts, bonds, loadSoup().monomers)
@@ -13,7 +13,7 @@ test('цепь с одной полярной головой распознаё�
   expect(a[0].length).toBe(3)
 })
 
-test('цепь без головы и цепь с двумя головами амфифилами не считаются', () => {
+test('a chain without a head and a chain with two heads are not counted as amphiphiles', () => {
   const m = loadSoup().monomers
   const noHead = findAmphiphiles(P([[0,0,0,0],[1,0,0,0],[2,0,0,0]]), new Uint32Array([0,1, 1,2]), m)
   expect(noHead.length).toBe(0)
@@ -27,7 +27,7 @@ test('цепь без головы и цепь с двумя головами а
 // is a carbon carrying 2 chain bonds + 1 head bond, degree 3) -- these last two are exactly the
 // configurations the recogniser's per-particle degree check exists to keep out.
 
-test('голова с двумя хвостами (Y, точка ветвления — сама голова) распознаётся как один амфифил', () => {
+test('a head with two tails (Y, the branch point is the head itself) is recognised as one amphiphile', () => {
   const m = loadSoup().monomers
   // O(0) bonded to C(1) and C(2); C(1) further bonded to C(3) -- a 2-carbon tail and a 1-carbon
   // tail hanging off the same head, the two-tailed amphiphile's own topology.
@@ -41,7 +41,7 @@ test('голова с двумя хвостами (Y, точка ветвлен�
   expect(new Set(a[0].chain)).toEqual(new Set([1, 2, 3])) // both tails' particles, for aggregate membership
 })
 
-test('ветвящийся хвост (T-развилка НЕ на голове) амфифилом не считается', () => {
+test('a branching tail (a T-junction not at the head) is not counted as an amphiphile', () => {
   const m = loadSoup().monomers
   // O(0)-C(1)-C(2), then C(2) branches into C(3) AND C(4) -- a genuine T-branch on a tail carbon,
   // nothing to do with the head, which still sits cleanly at one end (degree 1).
@@ -50,7 +50,7 @@ test('ветвящийся хвост (T-развилка НЕ на голове
   expect(findAmphiphiles(parts, bonds, m).length).toBe(0)
 })
 
-test('голова, зарытая в середине цепи (степень 3 у углерода), амфифилом не считается', () => {
+test('a head buried in the middle of a chain (degree 3 at the carbon) is not counted as an amphiphile', () => {
   const m = loadSoup().monomers
   // C(0)-C(1)-C(2)-C(3), with the head O(4) attached to C(1) -- a carbon in the MIDDLE of the
   // chain, already holding 2 chain bonds, also carrying the head: degree 3, not a chain end.
@@ -59,7 +59,7 @@ test('голова, зарытая в середине цепи (степень 
   expect(findAmphiphiles(parts, bonds, m).length).toBe(0)
 })
 
-test('гистограмма длин считает цепи по числу углеродов', () => {
+test('the length histogram counts chains by the number of carbons', () => {
   const m = loadSoup().monomers
   const parts = P([[0,0,0,1],[1,0,0,0],[2,0,0,0], [10,0,0,1],[11,0,0,0]])
   const bonds = new Uint32Array([0,1, 1,2, 3,4])
@@ -82,7 +82,7 @@ test('гистограмма длин считает цепи по числу у
 // threshold) but no aggregate has yet cleared the per-aggregate qualifying bar (an empty
 // AggregateAnalysis, e.g. amphiphile-member particles have not yet found each other) -- the stage
 // must read `amphiphiles`, not jump ahead on any other number.
-test('амфифилы есть, агрегаты ещё не сложились — стадия amphiphiles (дефект 1, лестница)', () => {
+test('amphiphiles exist, aggregates have not formed yet: stage amphiphiles (defect 1, ladder)', () => {
   const thresholds = loadStageThresholds()
   const evidence = {
     amphiphileFraction: thresholds.amphiphileFraction + 0.01,
@@ -99,7 +99,7 @@ test('амфифилы есть, агрегаты ещё не сложились
 // cavity) must still not be read as `micelles`/`bilayer`/`vesicle` when NO amphiphiles were
 // recognised at all -- the ladder makes every later stage structurally require the amphiphile
 // condition first, regardless of how saturated the aggregate analysis alone looks.
-test('насыщенный анализ агрегатов без единого распознанного амфифила НЕ считается micelles (дефект 1, лестница)', () => {
+test('a saturated aggregate analysis without a single recognised amphiphile is not counted as micelles (defect 1, ladder)', () => {
   const thresholds = loadStageThresholds()
   const saturatedAnalysis = {
     aggregateCount: 3,
@@ -125,7 +125,7 @@ test('насыщенный анализ агрегатов без единого
 // of manufacturing a peak count out of Poisson noise. Second guard, same test: even well above the
 // per-bin floor, two maxima sitting near opposite box faces (separation far outside the plausible
 // headPeakSeparationMin/Max band) must not be trusted as a bilayer either.
-test('шумовой профиль голов не даёт достоверных двух пиков (дефект 2)', () => {
+test('a noisy head profile does not give two reliable peaks (defect 2)', () => {
   const thresholds = loadStageThresholds()
   const monomers = loadSoup().monomers
   const box: [number, number, number] = [20, 20, 20]
@@ -153,7 +153,7 @@ test('шумовой профиль голов не даёт достоверн�
 // Defect 2's positive case: two well-separated, well-populated slabs (7 sigma apart, inside the
 // plausible headPeakSeparationMin/Max band, well above minHeadsPerBin) must still be trusted as a
 // real two-peak (bilayer-candidate) reading -- the guards must not make headPeaks=2 unreachable.
-test('настоящий двухслойный профиль голов даёт достоверные два пика (дефект 2)', () => {
+test('a real two-leaflet head profile gives two reliable peaks (defect 2)', () => {
   const thresholds = loadStageThresholds()
   const monomers = loadSoup().monomers
   const box: [number, number, number] = [20, 20, 20]
@@ -166,7 +166,7 @@ test('настоящий двухслойный профиль голов даё
   expect(computeHeadPeaks(parts, box, monomers, thresholds)).toBe(2)
 })
 
-// Item 1a (2026-08 crash report): a live run died mid-loop with `densityProfileZ: бусина с z=... вне
+// Item 1a (2026-08 crash report): a live run died mid-loop with `densityProfileZ: bead with z=... outside
 // [0, ...)` -- computeHeadPeaks was handing densityProfileZ a raw, unfiltered snapshot, and a soup
 // particle can legitimately read back with z outside [0, box[2]) on a live snapshot (see
 // computeHeadPeaks's own updated doc comment for why: soup/wgsl/step.wgsl's float32 wrap can round
@@ -176,7 +176,7 @@ test('настоящий двухслойный профиль голов даё
 // (the float32-rounding case) and a second bumped further out (z > box[2], the "genuinely escaped"
 // case) -- computeHeadPeaks must not throw, and with only 2 of 700 heads dropped the remaining
 // signal is still well above every guard, so the real two-peak reading must survive unharmed.
-test('улетевшая за коробку бусина не рушит computeHeadPeaks (item 1a)', () => {
+test('a bead that escaped the box does not crash computeHeadPeaks (item 1a)', () => {
   const thresholds = loadStageThresholds()
   const monomers = loadSoup().monomers
   const box: [number, number, number] = [20, 20, 20]
@@ -195,7 +195,7 @@ test('улетевшая за коробку бусина не рушит comput
 // The all-escaped extreme: if every polar head has left the box, there is nothing left to profile
 // at all -- must report 'unavailable' (an honest "can't say"), not throw and not silently invent a
 // peak count from an empty profile.
-test('все головы улетели за коробку — computeHeadPeaks сообщает н/д, не рушится (item 1a)', () => {
+test('all heads escaped the box: computeHeadPeaks reports n/a and does not crash (item 1a)', () => {
   const thresholds = loadStageThresholds()
   const monomers = loadSoup().monomers
   const box: [number, number, number] = [20, 20, 20]

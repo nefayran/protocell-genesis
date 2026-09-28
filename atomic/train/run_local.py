@@ -1,16 +1,16 @@
 """
-Полный прогон обучения на этой машине.
+A full training run on this machine.
 
-Почему здесь, а не в облаке -- по замеру, а не по удобству: учитель на нашем процессоре даёт
-460 атом-расчётов в секунду против 103 на процессоре Kaggle и 22-92 на облачной Tesla P100.
-Для систем из 3-96 атомов накладные расходы больше самого счёта, поэтому облачная карта
-простаивает, а слабый облачный процессор просто медленнее. Плюс здесь 48 ГБ памяти против
-облачного предела, на котором прошлый прогон и был убит: производные дескрипторов для 7000
-кадров занимают 14.5 ГБ в двойной точности и 7.26 ГБ в одинарной.
+Why here, and not in the cloud, by measurement, not convenience: the teacher on our CPU
+gives 460 atom-calcs per second against 103 on Kaggle's CPU and 22-92 on a cloud Tesla
+P100. For systems of 3-96 atoms, overhead exceeds the computation itself, so the cloud
+GPU sits idle, while the weak cloud CPU is simply slower. Plus, here there is 48 GB of
+memory against the cloud limit that killed the previous run: descriptor derivatives for
+7000 frames take 14.5 GB in double precision and 7.26 GB in single precision.
 
-Хранение переведено в ОДИНАРНУЮ точность умышленно: это не потеря физики, потому что обучение
-и так идёт в одинарной, а проверка дескрипторов на совпадение с прямой реализацией (1e-14)
-делается отдельно и в двойной.
+Storage was deliberately switched to SINGLE precision: this is not a loss of physics,
+because training runs in single precision anyway, and checking descriptors for agreement
+with the direct implementation (1e-14) is done separately and in double precision.
 """
 import json
 import os
@@ -36,11 +36,12 @@ SPECIES = (1, 8)
 CONFIG = {
     "n_monomers": 900, "n_dimers": 1500, "n_clusters": 4600,
     "holdout_md_frames": 120, "label_batch": 8,
-    # РАЗРЕШЕНИЕ БАЗИСА проверено отдельным опытом на одних и тех же данных (models/
-    # resolution_test.json): удвоение радиальных функций при радиусе 5 Å дало силы 109.1 -> 71.5
-    # мэВ/Å, а увеличение радиуса до 6 Å их УХУДШИЛО (71.5 -> 90.6) -- больше окружения при той
-    # же ёмкости и тех же данных размазывает модель. Поэтому радиус остаётся 5 Å, а перебор идёт
-    # по числу радиальных функций; стоимость дескрипторов при этом почти не растёт (27-31 с).
+    # BASIS RESOLUTION was checked with a separate experiment on the same data (models/
+    # resolution_test.json): doubling the radial functions at a radius of 5 Å improved
+    # forces from 109.1 to 71.5 meV/Å, while increasing the radius to 6 Å made them WORSE
+    # (71.5 -> 90.6): more environment at the same capacity and the same data smears out
+    # the model. So the radius stays at 5 Å, and the sweep goes over the number of radial
+    # functions; the cost of descriptors barely grows because of this (27-31 s).
     "sweep": [
         {"radial": 16, "hidden": (128, 128, 64), "force_weight": 50.0, "lr": 2e-3, "epochs": 4000},
         {"radial": 24, "hidden": (128, 128, 64), "force_weight": 50.0, "lr": 2e-3, "epochs": 4000},
@@ -59,29 +60,29 @@ def save(name, obj):
 
 def main():
     rng = np.random.default_rng(20260821)
-    log("=== конфигурации ===")
+    log("=== configurations ===")
     t0 = time.perf_counter()
     states = build_sampled_states(rng, CONFIG["n_monomers"], CONFIG["n_dimers"], CONFIG["n_clusters"])
-    log(f"{len(states)} конфигураций за {time.perf_counter() - t0:.1f} с")
+    log(f"{len(states)} configurations in {time.perf_counter() - t0:.1f} s")
 
-    log("=== разметка ===")
+    log("=== labeling ===")
     teacher = BatchedMACE(MODEL, device="cpu", dtype="float32")
     frames, t0 = [], time.perf_counter()
     for start in range(0, len(states), 500):
         frames += teacher.label(states[start : start + 500], batch_size=CONFIG["label_batch"])
         done = time.perf_counter() - t0
-        log(f"  {len(frames)}/{len(states)} за {done:.0f} с ({len(frames) / done:.1f} кадр/с)")
+        log(f"  {len(frames)}/{len(states)} in {done:.0f} s ({len(frames) / done:.1f} frames/s)")
         save("progress.json", {"labelled": len(frames), "seconds": done})
 
-    # вторая линия защиты: геометрия проверена при выборке, но силу знает только учитель
+    # second line of defense: geometry was checked at sampling time, but only the teacher knows the force
     kept, dropped = filter_outliers(frames)
-    log(f"отбраковка по силе: оставлено {len(kept)}, выброшено {len(dropped)} "
+    log(f"force-based filtering: kept {len(kept)}, dropped {len(dropped)} "
         f"({100 * len(dropped) / max(len(frames), 1):.2f}%)")
     save("filtering.json", {"kept": len(kept), "dropped": len(dropped),
                             "worst_kept_force": max((float(abs(f["forces"]).max()) for f in kept), default=0.0)})
     frames = kept
 
-    log("=== отложенная выборка из динамики ===")
+    log("=== held-out set from dynamics ===")
     single = ASECalculatorPotential(
         __import__("mace.calculators", fromlist=["MACECalculator"]).MACECalculator(
             model_paths=MODEL, device="cpu", default_dtype="float32"),
@@ -95,12 +96,12 @@ def main():
                    seed=int(rng.integers(1 << 30)), sample_every=10, watch_chemistry=False)
             md_states.append(st.copy())
         except FloatingPointError as exc:
-            log(f"  динамика оборвалась: {exc}")
+            log(f"  dynamics crashed: {exc}")
             break
     md_frames = teacher.label(md_states, batch_size=CONFIG["label_batch"]) if md_states else []
-    log(f"кадров из динамики: {len(md_frames)}")
+    log(f"frames from dynamics: {len(md_frames)}")
 
-    log("=== дескрипторы считаются внутри перебора: у каждого варианта свой базис ===")
+    log("=== descriptors are computed inside the sweep: each variant has its own basis ===")
 
     def descriptors(batch, label, spec):
         t = time.perf_counter()
@@ -109,11 +110,11 @@ def main():
             g, dg = compute_descriptors_fast(np.asarray(fr["positions"]),
                                              np.asarray(fr["numbers"], dtype=int),
                                              spec, SPECIES, cell=fr.get("cell"))
-            # хранение в одинарной точности: 7.26 ГБ вместо 14.5 на 7000 кадров
+            # storage in single precision: 7.26 GB instead of 14.5 for 7000 frames
             out.append((g.astype(np.float32), dg.astype(np.float32)))
             if (k + 1) % 1000 == 0:
-                log(f"  {label}: {k + 1}/{len(batch)} за {time.perf_counter() - t:.0f} с")
-        log(f"  {label}: готово за {time.perf_counter() - t:.0f} с")
+                log(f"  {label}: {k + 1}/{len(batch)} in {time.perf_counter() - t:.0f} s")
+        log(f"  {label}: done in {time.perf_counter() - t:.0f} s")
         return out
 
     order = np.random.default_rng(1).permutation(len(frames))
@@ -121,21 +122,21 @@ def main():
     test_idx, train_idx = order[:n_test], order[n_test:]
     test = [frames[i] for i in test_idx]
     train_frames = [frames[i] for i in train_idx]
-    log(f"обучающих {len(train_frames)}, случайных отложенных {len(test)}, из динамики {len(md_frames)}")
+    log(f"train {len(train_frames)}, random held-out {len(test)}, from dynamics {len(md_frames)}")
 
-    log("=== обучение ===")
+    log("=== training ===")
     results, best = [], None
     for variant in CONFIG["sweep"]:
         spec = DescriptorSpec(n_radial=variant["radial"], cutoff=5.0)
-        log(f"базис: {variant['radial']} радиальных, радиус 5.0 Å, D = {descriptor_length(spec, SPECIES)}")
-        pre_all = descriptors(frames, f"набор/D{descriptor_length(spec, SPECIES)}", spec)
-        pre_md = descriptors(md_frames, "динамика", spec) if md_frames else []
+        log(f"basis: {variant['radial']} radial, radius 5.0 Å, D = {descriptor_length(spec, SPECIES)}")
+        pre_all = descriptors(frames, f"dataset/D{descriptor_length(spec, SPECIES)}", spec)
+        pre_md = descriptors(md_frames, "dynamics", spec) if md_frames else []
         pre_test = [pre_all[i] for i in test_idx]
         pre_train = [pre_all[i] for i in train_idx]
         cfg = FastTrainingConfig(hidden=tuple(variant["hidden"]), force_weight=variant["force_weight"],
                                  epochs=variant["epochs"], learning_rate=variant["lr"], seed=0,
                                  memory_budget_mb=256.0, dtype="float32", lr_final_fraction=0.05)
-        log(f"вариант {variant}")
+        log(f"variant {variant}")
         t0 = time.perf_counter()
         model = train_fast(train_frames, spec, SPECIES, cfg, pre_train, device="cpu", verbose=True)
         took = time.perf_counter() - t0
@@ -146,11 +147,11 @@ def main():
             "seconds": took, "n_train": len(train_frames),
         }
         results.append(metrics)
-        log(f"  случайные: E {metrics['test_random']['energy_mae_mev_per_atom']:.2f} мэВ/атом, "
-            f"F {metrics['test_random']['force_mae_mev_per_a']:.1f} мэВ/Å")
+        log(f"  random:   E {metrics['test_random']['energy_mae_mev_per_atom']:.2f} meV/atom, "
+            f"F {metrics['test_random']['force_mae_mev_per_a']:.1f} meV/Å")
         if metrics["test_md"]:
-            log(f"  динамика:  E {metrics['test_md']['energy_mae_mev_per_atom']:.2f} мэВ/атом, "
-                f"F {metrics['test_md']['force_mae_mev_per_a']:.1f} мэВ/Å  ({took:.0f} с)")
+            log(f"  dynamics: E {metrics['test_md']['energy_mae_mev_per_atom']:.2f} meV/atom, "
+                f"F {metrics['test_md']['force_mae_mev_per_a']:.1f} meV/Å  ({took:.0f} s)")
         save("training_results.json", results)
         score = (metrics["test_md"] or metrics["test_random"])["force_mae_mev_per_a"]
         if best is None or score < best[0]:
@@ -160,7 +161,7 @@ def main():
                      species=np.array(SPECIES), n_radial=variant["radial"], cutoff=5.0,
                      **{f"{z}_{k}": v for z, sd in model["net"].state_dict().items() for k, v in sd.items()})
             save("best_variant.json", {"force_mae_mev_per_a": best[0], "variant": variant})
-    log(f"=== готово. лучший: {best}")
+    log(f"=== done. best: {best}")
 
 
 if __name__ == "__main__":

@@ -1,18 +1,19 @@
 """
-Обучающий набор: конфигурации плюс разметка учителем.
+Training dataset: configurations plus teacher labeling.
 
-Что попадает в набор -- решение не менее важное, чем вид модели. Модель воспроизведёт только
-то, что видела: если показать ей лишь равновесную воду, она не будет знать ни сжатых
-контактов, ни растянутых связей, и в динамике сорвётся именно там. Поэтому набор строится
-намеренно РАЗНООБРАЗНЫМ:
+What goes into the dataset is a decision no less important than the model's form. The
+model will only reproduce what it has seen: if it is shown only equilibrium water, it will
+not know either compressed contacts or stretched bonds, and in dynamics it will fail
+exactly there. So the dataset is built deliberately DIVERSE:
 
-  1. искажённые мономеры -- растяжение связей и изменение угла вокруг равновесия;
-  2. димеры на разных расстояниях и поворотах -- водородная связь во всём диапазоне;
-  3. срезы траекторий при разных температурах и плотностях -- то, что реально встречается
-     в динамике, включая редкие тесные контакты.
+  1. distorted monomers: bond stretching and angle change around equilibrium;
+  2. dimers at various distances and orientations: hydrogen bonding across the whole range;
+  3. trajectory slices at various temperatures and densities: what actually occurs
+     in dynamics, including rare close contacts.
 
-Разметка -- энергия и силы от учителя. Силы дают 3N уравнений на конфигурацию против одного
-от энергии, поэтому они и есть основная ценность каждой дорогой разметки.
+Labeling is energy and forces from the teacher. Forces give 3N equations per
+configuration against one from energy, which is why they are the main value of every
+expensive labeling run.
 """
 from __future__ import annotations
 
@@ -25,7 +26,7 @@ WATER_GEOM = np.array([[0.0, 0.0, 0.0], [0.0, -0.7575, 0.5865], [0.0, 0.7575, 0.
 
 
 def water_molecule(rng: np.random.Generator, distortion: float = 0.0) -> tuple[list[str], np.ndarray]:
-    """Молекула воды со случайным искажением связей и угла."""
+    """A water molecule with random distortion of bonds and angle."""
     pos = WATER_GEOM.copy()
     if distortion > 0:
         pos[1:] += rng.normal(scale=distortion, size=(2, 3))
@@ -34,11 +35,12 @@ def water_molecule(rng: np.random.Generator, distortion: float = 0.0) -> tuple[l
 
 def water_cluster(n_molecules: int, rng: np.random.Generator, density: float = 0.0334):
     """
-    Кластер молекул воды в кубе с плотностью жидкой воды (0.0334 молекул/Å³ при 300 K).
+    A cluster of water molecules in a cube at the density of liquid water (0.0334
+    molecules/Å³ at 300 K).
 
-    Молекулы ставятся на решётку и поворачиваются случайно, потом решётка возмущается: без
-    поворотов набор был бы вырожден по ориентациям, и модель не увидела бы разных взаимных
-    положений водородных связей.
+    Molecules are placed on a lattice and rotated randomly, then the lattice is perturbed:
+    without the rotations, the dataset would be degenerate in orientation, and the model
+    would not see the various relative arrangements of hydrogen bonds.
     """
     from scipy.spatial.transform import Rotation
 
@@ -63,7 +65,7 @@ def water_cluster(n_molecules: int, rng: np.random.Generator, density: float = 0
 
 
 def label_frames(states, teacher) -> list[dict]:
-    """Разметка списка состояний учителем: энергия и силы."""
+    """Labels a list of states with the teacher: energy and forces."""
     frames = []
     for st in states:
         res = teacher.compute(st)
@@ -90,9 +92,10 @@ def build_water_dataset(
     md_steps_between: int = 20,
 ) -> list[dict]:
     """
-    Полный набор для воды. Температура срезов взята ВЫШЕ рабочей (400 K против 300 K)
-    умышленно: набор должен покрывать более широкий диапазон, чем прогон, иначе модель будет
-    работать на границе своей области определения там, где динамика зайдёт чуть дальше.
+    Full dataset for water. The slice temperature is deliberately set ABOVE the working
+    one (400 K against 300 K): the dataset must cover a wider range than the run, otherwise
+    the model would be operating at the edge of its domain wherever the dynamics goes a
+    bit further.
     """
     states = []
 
@@ -111,7 +114,7 @@ def build_water_dataset(
 
     frames = label_frames(states, teacher)
 
-    # --- срезы траекторий: то, что реально встречается в динамике --------------------
+    # --- trajectory slices: what actually occurs in dynamics -------------------------
     for n_mol in cluster_sizes:
         sym, pos, cell = water_cluster(n_mol, rng)
         st = from_symbols(sym, pos, cell=cell, pbc=(True, True, True))

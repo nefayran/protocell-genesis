@@ -59,7 +59,7 @@ test('does the largest aggregate wrap the box on any axis?', () => {
   const cutoff = wcaCutoff(p.sigma * Math.max(...memberRadii)) + p.attraction.wc
   const out: unknown[] = []
   for (const f of FILES) {
-    if (!existsSync(f)) throw new Error(`PERC: нет файла ${f}`)
+    if (!existsSync(f)) throw new Error(`PERC: no file ${f}`)
     const r = decodeCheckpointResume(JSON.parse(readFileSync(f, 'utf8')))
     const pos = r.positions
     const box = r.liveBox as [number, number, number]

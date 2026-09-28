@@ -179,14 +179,14 @@ export function makeSoupAreaMove(deps: SoupAreaMoveDeps): (trials: number, opts?
     // one-body contribution. There is no zero-tension area to quote inside a parcel.
     if (rt.confine) {
       throw new Error(
-        'areaMove: MC-ход по площади не имеет смысла в удерживаемой парцелле -- объём задаёт стенка, а не бокс, ' +
-          'стенка совершает работу над системой при изменении бокса, и soupPotential не содержит её вклада. ' +
-          'Нулевое натяжение измеряется в периодическом боксе (CreateSoupOpts.confine отсутствует)',
+        'areaMove: an MC area move makes no sense in a confined parcel -- the volume is set by the wall, not the box, ' +
+          'the wall does work on the system when the box changes, and soupPotential does not include its contribution. ' +
+          'Zero tension is measured in a periodic box (CreateSoupOpts.confine absent)',
       )
     }
     const am = soup.areaMove
     if (am === undefined) {
-      throw new Error("data/soup.json: нет секции areaMove — MC-ход по площади не настроен (см. soup/src/soup-area-move.ts)")
+      throw new Error("data/soup.json: no areaMove section, so the MC area move is not configured (see soup/src/soup-area-move.ts)")
     }
     const mode: AreaMoveMode = opts?.mode ?? am.mode
     if (basis === null) {

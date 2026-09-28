@@ -42,10 +42,10 @@ writeFileSync(
       generatedAt: new Date().toISOString(),
       arm: 'confined parcel (soft neutral spherical wall, R_wet = 36 sigma in a box of 160 sigma)',
       note:
-        'ОТДЕЛЬНАЯ строка, не замена периодической. Коридоры в data/literature.json установлены в ' +
-        'ПЕРИОДИЧЕСКОМ боксе; удержание -- другой опыт, а не поправка к нему. Ворота бислоя в воде ' +
-        'здесь читаются из того же артефакта, что и в опубликованной таблице (они измеряются в ' +
-        'периодическом патче и от удержания не зависят) -- приведены только для полноты строки.',
+        'A separate row, not a replacement for the periodic one. The corridors in data/literature.json were set in a ' +
+        'periodic box; confinement is a different experiment, not a correction to it. The water-bilayer gates ' +
+        'are read here from the same artifact as in the published table (they are measured in a ' +
+        'periodic patch and do not depend on confinement) and are shown only to complete the row.',
       trace: TRACE,
       percolation: PERC,
       gates: rows,

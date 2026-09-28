@@ -11,7 +11,7 @@ import { findBracketCrossingBox } from './helpers/gridSearch'
 // Task 'wet-dry-cycle': pure, GPU-free checks that a box change (the dry-wet cycle's own mechanism)
 // preserves every intramolecular distance exactly -- the discipline this project's engine/src/sim.ts
 // already established for the membrane's fixed 3-bead lipids (tests/sim.test.ts's own
-// "карта area move сохраняет все внутримолекулярные расстояния точно"), reused here for the soup's
+// "the area move map preserves all intramolecular distances exactly"), reused here for the soup's
 // dynamic bond-graph topology (variable-size connected components, including unbonded singletons).
 
 function mi(d: number, box: number): number {
@@ -62,7 +62,7 @@ function allBondDistances(positions: Float32Array, box: [number, number, number]
   return out
 }
 
-test('scaleMoleculesRigid сохраняет все внутримолекулярные (по ковалентным связям) расстояния точно, включая ветвление, свободные мономеры и связь через границу', () => {
+test('scaleMoleculesRigid preserves all intramolecular (along covalent bonds) distances exactly, including branching, free monomers and a bond across the boundary', () => {
   const { positions, bonds, box } = buildFixture()
   const before = allBondDistances(positions, box, bonds)
 
@@ -78,7 +78,7 @@ test('scaleMoleculesRigid сохраняет все внутримолекуля
   }
 })
 
-test('scaleMoleculesRigid — инволюция: сжатие затем растяжение назад восстанавливает исходные позиции', () => {
+test('scaleMoleculesRigid is an involution: compression then stretching back restores the original positions', () => {
   const { positions, bonds, box } = buildFixture()
   const newBox: [number, number, number] = [box[0] * 0.929, box[1] * 0.929, box[2] * 0.929]
   const mid = scaleMoleculesRigid(positions, bonds, box, newBox)
@@ -90,7 +90,7 @@ test('scaleMoleculesRigid — инволюция: сжатие затем рас
   }
 })
 
-test('scaleMoleculesRigid реально меняет ИНТЕРмолекулярные (не связанные) расстояния — иначе это не "плотность выросла", а бесполезный no-op', () => {
+test('scaleMoleculesRigid really changes intermolecular (unbonded) distances; otherwise this is not "the density went up" but a useless no-op', () => {
   const { positions, bonds, box } = buildFixture()
   const newBox: [number, number, number] = [box[0] * 0.929, box[1] * 0.929, box[2] * 0.929]
   const after = scaleMoleculesRigid(positions, bonds, box, newBox)
@@ -113,7 +113,7 @@ function wrap1(v: number, box: number): number {
 // smallest fixture that reproduces it: any single fixed reference more than box/2 away from a distant
 // member computes a wrong offset for that member, while a hop-by-hop bond-graph walk (this function's
 // actual implementation) cannot, since every individual bond is ~1 sigma -- always far under box/2.
-test('scaleMoleculesRigid: длинная цепь, обёрнутая через границу несколько раз (span > box/2), не искажает связи', () => {
+test('scaleMoleculesRigid: a long chain wrapped across the boundary several times (span > box/2) does not distort its bonds', () => {
   const box: [number, number, number] = [10, 10, 10]
   const beadCount = 24
   const positions = new Float32Array(beadCount * 4)
@@ -147,7 +147,7 @@ test('scaleMoleculesRigid: длинная цепь, обёрнутая чере�
   }
 })
 
-test('computeDryBox: плотность после сжатия равна targetDryDensity, изотропно по всем трём осям', () => {
+test('computeDryBox: the density after compression equals targetDryDensity, isotropically along all three axes', () => {
   const box: [number, number, number] = [20, 20, 20]
   const N = 3839
   const dryBox = computeDryBox(box, N, 0.6)
@@ -159,7 +159,7 @@ test('computeDryBox: плотность после сжатия равна targe
   expect(dryBox[0]).toBeLessThan(box[0]) // a HIGHER target density must CONTRACT the box
 })
 
-test('cyclePhaseAt/nextCycleTransition: расписание wet-first-then-dry по циклам, settle wet после последнего', () => {
+test('cyclePhaseAt/nextCycleTransition: a wet-first-then-dry schedule over cycles, settle wet after the last one', () => {
   const cfg: CycleSchedule = { periodSteps: 50000, dryFraction: 0.5, cycles: 5 }
   // step 0: already wet (the system's own creation box), cycle 1.
   expect(cyclePhaseAt(0, cfg)).toEqual({ phase: 'wet', cycleIndex: 1 })
@@ -188,7 +188,7 @@ test('cyclePhaseAt/nextCycleTransition: расписание wet-first-then-dry 
 // scaleMoleculesRigid itself is grid-agnostic (a pure coordinate map -- it never reads dims/ncells),
 // so this test's job is only to confirm a REAL bracket-crossing pair exists and that the guarantee
 // holds across it, not to re-derive scaleMoleculesRigid's own correctness a second time.
-test('box, реально меняющий число ячеек сетки соседей (findBracketCrossingBox), не портит внутримолекулярные расстояния и число частиц', () => {
+test('a box that really changes the number of neighbour-grid cells (findBracketCrossingBox) does not spoil intramolecular distances or the particle count', () => {
   const { box, dryBox, wetDims, dryDims } = findBracketCrossingBox()
   // Sanity: this really is a bracket crossing, not a vacuous case that would let a broken fixture
   // pass silently.

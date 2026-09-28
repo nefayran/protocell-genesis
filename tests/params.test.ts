@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { loadParams, wcaCutoff } from '../engine/src/params'
 
-test('параметры совпадают с опубликованными значениями Cooke & Deserno 2005', () => {
+test('the parameters match the published values of Cooke & Deserno 2005', () => {
   const p = loadParams()
   expect(p.beadSizes.head_head).toBe(0.95)
   expect(p.beadSizes.head_tail).toBe(0.95)
@@ -18,12 +18,12 @@ test('параметры совпадают с опубликованными з
   expect(p.integrator.dt).toBe(0.01)
 })
 
-test('обрезка WCA равна 2^(1/6)·b', () => {
+test('the WCA cutoff equals 2^(1/6)·b', () => {
   expect(wcaCutoff(1)).toBeCloseTo(1.1224620483, 9)
   expect(wcaCutoff(0.95)).toBeCloseTo(0.95 * 2 ** (1 / 6), 9)
 })
 
-test('в движке нет вписанных констант модели', () => {
+test('the engine has no hardcoded model constants', () => {
   // Forbidden literals with word-boundary regexes to avoid false positives
   // E.g., 31.5 contains 1.5 as substring, but regex requires no adjacent digit/dot
   const forbidden = [

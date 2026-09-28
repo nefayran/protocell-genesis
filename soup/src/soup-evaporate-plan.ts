@@ -58,30 +58,30 @@ export function planEvaporation(
 ): EvaporationPlan {
   const dwc = soup.dryWetCycle
   if (dwc.residualSolventFraction === undefined || dwc.evaporationRampSteps === undefined || dwc.insertionMinSeparationSigma === undefined) {
-    throw new Error('data/soup.json: испарение растворителя запрошено, но dryWetCycle не содержит его полей (residualSolventFraction / evaporationRampSteps / insertionMinSeparationSigma)')
+    throw new Error('data/soup.json: solvent evaporation requested, but dryWetCycle does not contain its fields (residualSolventFraction / evaporationRampSteps / insertionMinSeparationSigma)')
   }
   const solventKind = soup.monomers.findIndex((m) => m.id === soup.solvent.waterId)
-  if (solventKind < 0) throw new Error(`data/soup.json: solvent.waterId=${soup.solvent.waterId} не найден среди monomers`)
+  if (solventKind < 0) throw new Error(`data/soup.json: solvent.waterId=${soup.solvent.waterId} not found among monomers`)
   const counts = soup.monomers.map((m) => startCounts[m.id] ?? 0)
   // Precondition (see this file's header): the solvent must be the LAST non-empty block, or
   // truncating it would renumber non-solvent particles and silently corrupt the bond graph.
   for (let k = solventKind + 1; k < counts.length; k++) {
     if (counts[k] > 0) {
       throw new Error(
-        `испарение растворителя: блок растворителя (${soup.solvent.waterId}, вид ${solventKind}) обязан быть ПОСЛЕДНИМ непустым блоком состава, ` +
-          `но вид ${soup.monomers[k].id} имеет ${counts[k]} частиц -- усечение сдвинуло бы индексы неводных частиц и порвало бы граф связей`,
+        `solvent evaporation: the solvent block (${soup.solvent.waterId}, kind ${solventKind}) must be the last non-empty block of the composition, ` +
+          `but kind ${soup.monomers[k].id} has ${counts[k]} particles -- truncation would shift the indices of non-water particles and break the bond graph`,
       )
     }
   }
   const wetSolventCount = counts[solventKind]
-  if (wetSolventCount <= 0) throw new Error('испарение растворителя: в составе нет растворителя')
+  if (wetSolventCount <= 0) throw new Error('solvent evaporation: the composition contains no solvent')
   const solventBlockStart = counts.slice(0, solventKind).reduce((a, b) => a + b, 0)
   const organicCount = solventBlockStart
   const drySolventCount = Math.round(wetSolventCount * dwc.residualSolventFraction)
   if (drySolventCount >= wetSolventCount) {
     throw new Error(
-      `испарение растворителя: residualSolventFraction=${dwc.residualSolventFraction} не убирает ни одного бида ` +
-        `(влажно ${wetSolventCount}, сухо ${drySolventCount}) -- сухая фаза обязана УБИРАТЬ растворитель`,
+      `solvent evaporation: residualSolventFraction=${dwc.residualSolventFraction} removes not a single bead ` +
+        `(wet ${wetSolventCount}, dry ${drySolventCount}) -- the dry phase must remove the solvent`,
     )
   }
   const dryBox = computeDryBox(box, organicCount + drySolventCount, dwc.targetDryDensity, occupiedVolumeOf)

@@ -1,18 +1,20 @@
 """
-Пакетная разметка учителем: много конфигураций одним вызовом модели.
+Batched labeling by the teacher: many configurations in a single model call.
 
-Зачем. Разметка -- главная стоимость обучения, и она шла по одному кадру за вызов через
-интерфейс ASE. Замер показал, во что это обходится: на облачной Tesla P100 учитель дал
-22-92 атом-расчёта в секунду против 460 на нашем процессоре, то есть карта оказалась В РАЗЫ
-МЕДЛЕННЕЕ. Причина не в карте: на системе из 3-96 атомов накладные расходы на запуск ядра и
-перегонку данных больше самого счёта, и карта простаивает. Лечится это не выбором железа, а
-пакетом: если за один вызов идёт сто конфигураций, работа наконец заполняет карту.
+Why. Labeling is the main cost of training, and it ran one frame per call through the ASE
+interface. A measurement showed what this costs: on a cloud Tesla P100 the teacher gave
+22-92 atom-calcs per second against 460 on our CPU, i.e. the GPU turned out to be MANY TIMES
+SLOWER. The cause is not the GPU: for systems of 3-96 atoms, kernel-launch and data-transfer
+overhead exceeds the computation itself, and the GPU sits idle. The fix is not a hardware
+choice but batching: if a hundred configurations go in a single call, the work finally
+fills the GPU.
 
-Здесь берётся внутренний интерфейс MACE (mace.data.AtomicData + собственный загрузчик
-пакетов), а не ASE: ASE по устройству однокадровый и пакет через него не выразить.
+Here the internal MACE interface is used (mace.data.AtomicData plus its own batch loader)
+rather than ASE: ASE's calculator is single-frame by design and a batch cannot be expressed
+through it.
 
-Побочная выгода, не менее важная: пакет одинаково ускоряет и процессор -- меньше вызовов
-питона на кадр, лучше используется многопоточность в матричных операциях.
+A side benefit, no less important: batching speeds up the CPU too, in the same way, fewer
+Python calls per frame, better use of multithreading in matrix operations.
 """
 from __future__ import annotations
 
@@ -23,19 +25,19 @@ import numpy as np
 
 class BatchedMACE:
     """
-    Учитель, размечающий пакетами. Возвращает энергии в эВ и силы в эВ/Å -- те же единицы,
-    что у остального движка, без пересчёта.
+    A teacher that labels in batches. Returns energies in eV and forces in eV/Å, the same
+    units as the rest of the engine, without conversion.
 
-    `batch_size` подбирается ЗАМЕРОМ (см. `benchmark`), а не назначается: слишком большой
-    пакет упирается в память карты, слишком малый не заполняет её работой.
+    `batch_size` is chosen by MEASUREMENT (see `benchmark`), not assigned arbitrarily: too
+    large a batch runs into GPU memory limits, too small a one does not fill it with work.
     """
 
     def __init__(self, model_path: str, device: str = "cpu", dtype: str = "float64") -> None:
         import torch
         from mace.calculators import MACECalculator
 
-        # калькулятор ASE нужен только как загрузчик модели и таблицы сортов: сама разметка
-        # идёт мимо него
+        # the ASE calculator is only used to load the model and the species table; the
+        # actual labeling bypasses it
         self._calc = MACECalculator(model_paths=model_path, device=device, default_dtype=dtype)
         self.model = self._calc.models[0]
         self.z_table = self._calc.z_table
@@ -59,10 +61,11 @@ class BatchedMACE:
 
     def label(self, states, batch_size: int = 64):
         """
-        Размечает список состояний (у каждого positions/numbers/cell) пакетами.
+        Labels a list of states (each with positions/numbers/cell) in batches.
 
-        Возвращает список словарей в том же виде, что ждёт обучение. Кадры РАЗНОГО размера в
-        одном пакете допустимы: представление графовое, число атомов в пакет не входит.
+        Returns a list of dicts in the same shape that training expects. Frames of
+        DIFFERENT sizes within one batch are allowed: the representation is graph-based,
+        the number of atoms is not part of the batch's shape.
         """
         import torch
         from mace.tools.torch_geometric import DataLoader
@@ -79,7 +82,7 @@ class BatchedMACE:
                 result = self.model(batch.to_dict(), compute_force=True)
                 energies = result["energy"].detach().cpu().numpy()
                 forces = result["forces"].detach().cpu().numpy()
-                # силы приходят одним массивом на весь пакет -- разрезаем по числу атомов
+                # forces come as one array for the whole batch; slice them by atom count
                 offset = 0
                 for st, energy in zip(chunk, energies):
                     n = st.n_atoms
@@ -94,16 +97,17 @@ class BatchedMACE:
                     )
                     offset += n
                 assert offset == sum(st.n_atoms for st in chunk), (
-                    f"силы разрезаны неверно: использовано {offset} строк из {len(forces)}"
+                    f"forces sliced incorrectly: used {offset} rows out of {len(forces)}"
                 )
         return out
 
     def benchmark(self, states, batch_sizes=(1, 8, 32, 128)) -> dict:
         """
-        Замер: сколько атом-расчётов в секунду даёт каждый размер пакета.
+        Measures how many atom-calcs per second each batch size gives.
 
-        Первый вызов прогревается и в замер не идёт: на карте первый запуск ядра включает
-        компиляцию, и без прогрева пакет 1 выглядел бы намного хуже, чем он есть.
+        The first call is a warm-up and is not part of the measurement: on the GPU the
+        first kernel launch includes compilation, and without warm-up, batch size 1 would
+        look much worse than it actually is.
         """
         self.label(states[: min(4, len(states))], batch_size=2)
         report = {}

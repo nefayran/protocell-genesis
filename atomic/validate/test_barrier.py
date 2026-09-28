@@ -1,14 +1,14 @@
 """
-Барьеры: сначала против точного ответа, потом против опыта.
+Barriers: first against the exact answer, then against experiment.
 
-Порядок проверок тот же, что и во всём движке: аналитическая задача, где ответ известен
-буквально, ловит ошибку метода; настоящая химия против справочной величины ловит ошибку
-применения. Обе нужны — если пройдёт только вторая, невозможно понять, сошлось ли по существу
-или числа случайно совпали.
+The order of checks is the same as throughout the engine: an analytical problem where the
+answer is known exactly catches a method error; real chemistry against a reference value
+catches an application error. Both are needed: if only the second one passes, there is no
+way to tell whether it converged for the right reason or the numbers just happened to match.
 
-Опытные величины:
-  барьер инверсии аммиака = 5.80 ккал/моль = 0.2515 эВ
-  (Swalen & Ibers, JCP 36 (1962) 1914 -- микроволновая спектроскопия расщепления инверсии)
+Experimental values:
+  ammonia inversion barrier = 5.80 kcal/mol = 0.2515 eV
+  (Swalen & Ibers, JCP 36 (1962) 1914 -- microwave spectroscopy of the inversion splitting)
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from engine.units import EV_IN_KCAL_PER_MOL
 
 
 class DoubleWell:
-    """U(x) = h(x²−1)² по оси x плюс жёсткая привязка по y и z: барьер РОВНО h, минимумы в ±1."""
+    """U(x) = h(x²−1)² along the x axis plus a stiff restraint along y and z: the barrier is EXACTLY h, minima at ±1."""
 
     name = "double-well"
 
@@ -41,22 +41,23 @@ class DoubleWell:
 
 @pytest.mark.parametrize("height", [0.3, 1.0])
 def test_barrier_matches_analytic_double_well(height):
-    """Барьер обязан совпасть с h до четвёртого знака, а реакция быть термонейтральной."""
+    """The barrier must match h to the fourth digit, and the reaction must be thermoneutral."""
     a = from_symbols(["H"], [[-1.0, 0.0, 0.0]])
     b = from_symbols(["H"], [[1.0, 0.0, 0.0]])
     r = find_barrier(a, b, DoubleWell(height), n_images=11, max_iterations=400,
                      climbing_after=30, step_a=0.03, force_tol_ev_per_a=1e-3)
-    assert r.converged, f"лента не сошлась за {r.iterations} итераций"
-    assert abs(r.forward_barrier_ev - height) < 1e-3, f"барьер {r.forward_barrier_ev:.5f} против {height}"
-    assert abs(r.reaction_energy_ev) < 1e-6, "симметричная реакция обязана быть термонейтральной"
-    assert r.peak_index == 5, f"вершина симметричного пути обязана быть посередине, а не {r.peak_index}"
+    assert r.converged, f"band did not converge in {r.iterations} iterations"
+    assert abs(r.forward_barrier_ev - height) < 1e-3, f"barrier {r.forward_barrier_ev:.5f} vs {height}"
+    assert abs(r.reaction_energy_ev) < 1e-6, "a symmetric reaction must be thermoneutral"
+    assert r.peak_index == 5, f"the peak of a symmetric path must be in the middle, not {r.peak_index}"
 
 
 def test_rate_spans_the_range_direct_dynamics_cannot_reach():
     """
-    Смысл всего слоя, выраженный числом: при 300 K барьер 0.3 эВ даёт события на наносекундной
-    шкале (динамика их видит), а 1.0 эВ -- раз в часы. Второе прямой динамикой недостижимо ни
-    на каком железе, а через барьер считается за минуты.
+    The point of this whole layer, expressed as a number: at 300 K a 0.3 eV barrier gives
+    events on the nanosecond scale (dynamics can see them), while 1.0 eV gives one every few
+    hours. The latter is unreachable by direct dynamics on any hardware, but computing it via
+    the barrier takes minutes.
     """
     a = from_symbols(["H"], [[-1.0, 0.0, 0.0]])
     b = from_symbols(["H"], [[1.0, 0.0, 0.0]])
@@ -66,18 +67,19 @@ def test_rate_spans_the_range_direct_dynamics_cannot_reach():
                         climbing_after=30, step_a=0.03, force_tol_ev_per_a=1e-3)
     k_fast = fast.rate_per_second(300.0)
     k_slow = slow.rate_per_second(300.0)
-    assert k_fast > 1e6, f"частота при барьере 0.3 эВ вышла {k_fast:.2e} 1/с"
-    assert k_slow < 1e-2, f"частота при барьере 1.0 эВ вышла {k_slow:.2e} 1/с"
-    assert k_fast / k_slow > 1e9, "разрыв шкал меньше девяти порядков -- проверить формулу"
+    assert k_fast > 1e6, f"rate at a 0.3 eV barrier came out to {k_fast:.2e} 1/s"
+    assert k_slow < 1e-2, f"rate at a 1.0 eV barrier came out to {k_slow:.2e} 1/s"
+    assert k_fast / k_slow > 1e9, "the gap between scales is less than nine orders of magnitude -- check the formula"
 
 
 @pytest.mark.slow
 def test_ammonia_inversion_barrier_against_experiment():
     """
-    Инверсия аммиака дешёвым бэкендом: 6.11 ккал/моль против опытных 5.80 (замер 2026-08-21,
-    FIRE, сошлось за 39 итераций). Допуск 25 % задан известной точностью полуэмпирического
-    метода на барьерах, а не подогнан под результат; профиль обязан быть симметричным, и это
-    проверка независимая от величины -- у симметричной реакции вершина строго посередине.
+    Ammonia inversion with the cheap backend: 6.11 kcal/mol against the experimental 5.80
+    (measured 2026-08-21, FIRE, converged in 39 iterations). The 25% tolerance is set by the
+    known accuracy of the semiempirical method on barriers, not fitted to the result; the
+    profile must be symmetric, and this check is independent of the magnitude: a symmetric
+    reaction has its peak exactly in the middle.
     """
     from engine.backends.gfn2 import GFN2
     from engine.integrate import optimise_lbfgs
@@ -92,8 +94,8 @@ def test_ammonia_inversion_barrier_against_experiment():
     r = find_barrier(a, b, pot, n_images=7, max_iterations=150, climbing_after=15,
                      step_a=0.03, force_tol_ev_per_a=0.03)
     kcal = r.forward_barrier_ev * EV_IN_KCAL_PER_MOL
-    assert r.converged, f"лента не сошлась: перпендикулярная сила {r.max_perpendicular_force:.3f} эВ/Å"
-    assert abs(kcal - 5.80) / 5.80 < 0.25, f"барьер {kcal:.2f} ккал/моль против опытных 5.80"
-    assert r.peak_index == 3, f"вершина симметричной инверсии обязана быть посередине, а не {r.peak_index}"
+    assert r.converged, f"band did not converge: perpendicular force {r.max_perpendicular_force:.3f} eV/Å"
+    assert abs(kcal - 5.80) / 5.80 < 0.25, f"barrier {kcal:.2f} kcal/mol vs the experimental 5.80"
+    assert r.peak_index == 3, f"the peak of a symmetric inversion must be in the middle, not {r.peak_index}"
     profile = r.energies_ev - r.energies_ev[0]
-    assert abs(profile[1] - profile[-2]) < 0.01, f"профиль несимметричен: {np.round(profile, 4)}"
+    assert abs(profile[1] - profile[-2]) < 0.01, f"profile is asymmetric: {np.round(profile, 4)}"

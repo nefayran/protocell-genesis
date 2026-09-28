@@ -84,7 +84,7 @@ async function setActiveCount(rt: SoupRuntime, newN: number, newBox: [number, nu
  * ramp of its own -- the ramp exists for the BOX change that accompanies it. */
 export async function evaporateSolventTo(rt: SoupRuntime, plan: EvaporationPlan, targetSolvent: number, newBox: [number, number, number]): Promise<void> {
   if (targetSolvent > rt.N - plan.solventBlockStart) {
-    throw new Error(`испарение: запрошено ${targetSolvent} бидов растворителя, а живых сейчас ${rt.N - plan.solventBlockStart}`)
+    throw new Error(`evaporation: ${targetSolvent} solvent beads requested, but ${rt.N - plan.solventBlockStart} are live now`)
   }
   await setActiveCount(rt, plan.solventBlockStart + targetSolvent, newBox)
 }
@@ -140,11 +140,11 @@ export async function rehydrateSolventTo(
   seed: number,
 ): Promise<RehydrationReport> {
   if (rt.frozenCount > 0) {
-    throw new Error(`регидратация: система несёт ${rt.frozenCount} неподвижных бидов -- цикл с испарением требует clay=false/frozenBulkCatalysts=0`)
+    throw new Error(`rehydration: the system carries ${rt.frozenCount} immobile beads -- a cycle with evaporation requires clay=false/frozenBulkCatalysts=0`)
   }
   const liveSolvent = rt.N - plan.solventBlockStart
   const count = targetSolvent - liveSolvent
-  if (count < 0) throw new Error(`регидратация: цель ${targetSolvent} меньше живых ${liveSolvent}`)
+  if (count < 0) throw new Error(`rehydration: the target ${targetSolvent} is less than the live ${liveSolvent}`)
   const insertStart = rt.N
   if (count === 0) {
     await setActiveCount(rt, rt.N, newBox)

@@ -63,8 +63,8 @@ export async function createSystem(opts: CreateSystemOpts): Promise<System> {
   const dims = computeDims(box, cellSize)
   if (!gridInvariantsHold(box, dims, p.bend.r0)) {
     throw new Error(
-      `сетка соседей: box=[${box[0]},${box[1]},${box[2]}] даёт cellSize=${cellSize.toFixed(4)}, dims=[${dims[0]},${dims[1]},${dims[2]}] ` +
-        `и min(box.x,box.y)/2=${(Math.min(box[0], box[1]) / 2).toFixed(4)} — нужно dims>=3 на осях x,y и min(box.x,box.y)/2 > bend.r0=${p.bend.r0}`,
+      `neighbour grid: box=[${box[0]},${box[1]},${box[2]}] gives cellSize=${cellSize.toFixed(4)}, dims=[${dims[0]},${dims[1]},${dims[2]}] ` +
+        `and min(box.x,box.y)/2=${(Math.min(box[0], box[1]) / 2).toFixed(4)}; need dims>=3 on the x,y axes and min(box.x,box.y)/2 > bend.r0=${p.bend.r0}`,
     )
   }
   const ncells = dims[0] * dims[1] * dims[2]

@@ -93,7 +93,7 @@ function covalentComponents(bondSlots: Uint32Array, idx: readonly number[]): num
 }
 
 
-test('электростатика: протонирование, кислотно-мыльная пара, ковалентная связность, обмен и деления', () => {
+test('electrostatics: protonation, the acid-soap pair, covalent connectivity, exchange and divisions', () => {
   const raw = process.env.ES_AUDIT_CHECKPOINTS
   if (!raw || raw.trim().length === 0) {
     console.log('ES-AUDIT skipped: ES_AUDIT_CHECKPOINTS unset (measurement harness, not a gate)')
@@ -229,6 +229,6 @@ test('электростатика: протонирование, кислотн
 
   mkdirSync(dirname(artifactPath), { recursive: true })
   writeFileSync(artifactPath, JSON.stringify(artifact, null, 2))
-  console.log(`ES-AUDIT записано ${artifact.length} записей в ${artifactPath}`)
+  console.log(`ES-AUDIT wrote ${artifact.length} records to ${artifactPath}`)
   expect(artifact.length).toBeGreaterThan(0)
 })

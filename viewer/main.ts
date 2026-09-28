@@ -106,9 +106,9 @@ async function main(): Promise<void> {
   function renderBadge(): string {
     const tau = sys.steps * params.integrator.dt
     return (
-      `шаг интегрирования δt = ${params.integrator.dt}τ · показано ${tau.toFixed(1)}τ приведённого ` +
-      `времени · ЭТО КОАРС-ГРЕЙН БИДЫ (3 на липид: голова + 2 хвоста), НЕ АТОМЫ — масштаб модельный, ` +
-      `не физический`
+      `integration step δt = ${params.integrator.dt}τ · shown ${tau.toFixed(1)}τ of reduced ` +
+      `time · these are coarse-grained beads (3 per lipid: head + 2 tails), not atoms; the scale is the model's, ` +
+      `not physical`
     )
   }
 
@@ -163,7 +163,7 @@ async function main(): Promise<void> {
     viewer.frames++
     viewer.timeScaleBadge = renderBadge()
     badgeEl.textContent = viewer.timeScaleBadge
-    framesEl.textContent = `кадр ${viewer.frames}`
+    framesEl.textContent = `frame ${viewer.frames}`
     requestAnimationFrame(() => {
       frame()
     })

@@ -73,7 +73,7 @@ const SAMPLE_SPACING = 200 // MD steps between energy samples -- same order of m
 const OUT_DIR = 'verify/out'
 const OUT_FILE = `${OUT_DIR}/line-tension.json`
 
-test('линейное натяжение края бислоя (lambda): patch со свободным краем против периодической ссылки, две площадки', async () => {
+test('line tension of the bilayer edge (lambda): a patch with a free edge against a periodic reference, two areas', async () => {
   const page = await gpuPage()
   page.on('console', (msg) => console.log(`[page] ${msg.text()}`))
 

@@ -77,7 +77,7 @@ function stageFor(particlesArr: number[], bondsArr: number[], box: [number, numb
 // dominant aggregate) -- three well-separated small spheres (heads on a shell, tails pointing
 // inward, exactly the micelle shape the task's own evidence describes) must read `micelles`, not
 // get stuck at `amphiphiles` for lacking a single big aggregate.
-test('несколько маленьких сферических мицелл читаются как micelles', () => {
+test('several small spherical micelles read as micelles', () => {
   const particles: number[] = []
   const bonds: number[] = []
   const centers: [number, number, number][] = [[20, 20, 20], [70, 20, 20], [20, 70, 20]]
@@ -114,7 +114,7 @@ test('несколько маленьких сферических мицелл 
 // centred flat sheet (radialHeadShells folds them onto one peak), so only the signed, along-the-
 // flat-axis transverse profile can see the two layers. A square patch (not a stretched rectangle) is
 // used so BOTH shape gates (flatnessRatio and inPlaneSymmetry) pass on the same aggregate.
-test('один плоский слой читается как bilayer (по поперечному профилю голов)', () => {
+test('a single flat layer reads as bilayer (from the transverse head profile)', () => {
   const particles: number[] = []
   const bonds: number[] = []
   const NX = 13
@@ -156,7 +156,7 @@ test('один плоский слой читается как bilayer (по п�
 // detector's own bead reach), and the flood punched straight through it -- reproducing that failure
 // here would be silent (a smaller-but-nonzero cavity, not an error), so this construction is
 // deliberate, not incidental.
-test('полая оболочка с большой внутренней полостью читается как vesicle', () => {
+test('a hollow shell with a large inner cavity reads as vesicle', () => {
   const particles: number[] = []
   const bonds: number[] = []
   const R_IN = 8
@@ -201,7 +201,7 @@ test('полая оболочка с большой внутренней пол�
 // big alone. Deterministic dense cubic-lattice fill of a ball (guaranteed one connected component,
 // no randomness needed) -- amphiphiles scattered with no shell/flat organisation at all, so it also
 // must not accidentally read as bilayer/vesicle.
-test('единственный крупный перколирующий агрегат НЕ читается как micelles просто за счёт размера', () => {
+test('a single large percolating aggregate does not read as micelles merely because of its size', () => {
   const particles: number[] = []
   const bonds: number[] = []
   const centre: [number, number, number] = [30, 30, 30]

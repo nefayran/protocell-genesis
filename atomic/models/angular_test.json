@@ -1,6 +1,6 @@
 [
  {
-  "name": "база: 3 кратности, 2 ширины",
+  "name": "base: 3 multiplicities, 2 widths",
   "D": 132,
   "metrics": {
    "energy_mae_mev_per_atom": 27.65357216359108,
@@ -12,7 +12,7 @@
   "t_train": 793.8266042909818
  },
  {
-  "name": "5 кратностей, 2 ширины",
+  "name": "5 multiplicities, 2 widths",
   "D": 156,
   "metrics": {
    "energy_mae_mev_per_atom": 36.73224282921284,
@@ -24,7 +24,7 @@
   "t_train": 867.8409442920238
  },
  {
-  "name": "3 кратности, 4 ширины",
+  "name": "3 multiplicities, 4 widths",
   "D": 168,
   "metrics": {
    "energy_mae_mev_per_atom": 28.09955121074381,
@@ -36,7 +36,7 @@
   "t_train": 950.2895915830159
  },
  {
-  "name": "5 кратностей, 4 ширины",
+  "name": "5 multiplicities, 4 widths",
   "D": 216,
   "metrics": {
    "energy_mae_mev_per_atom": 33.42198600531547,

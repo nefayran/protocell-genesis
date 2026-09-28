@@ -21,7 +21,7 @@ export async function velocities(rt: SoupRuntime): Promise<Float32Array> {
 }
 
 // perf2-report.md correctness gate: mirrors engine/src/sim.ts's forces()/forcesBruteForce() pair
-// (checked by tests/sim.test.ts's "сетка соседей даёт те же силы, что и полный перебор") for the
+// (checked by tests/sim.test.ts's "the neighbour grid gives the same forces as brute force") for the
 // soup's own dynamic-topology force kernel. forces() rebuilds fresh for the CURRENT positions
 // first -- when verlet.enabled, a FULL Verlet rebuild (never relying on a possibly-stale list
 // from whatever step count the caller happens to be at) then the list-based force kernel;

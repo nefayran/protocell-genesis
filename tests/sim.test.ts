@@ -6,7 +6,7 @@ import { scaleLateralRigid } from '../engine/src/sim'
 afterAll(shutdownGpu)
 const p = loadParams()
 
-test('сетка соседей даёт те же силы, что и полный перебор', async () => {
+test('the neighbour grid gives the same forces as brute force', async () => {
   const page = await gpuPage()
   const diff = await page.evaluate(async () => {
     const api = (window as any).api
@@ -20,7 +20,7 @@ test('сетка соседей даёт те же силы, что и полн�
   expect(diff).toBeLessThan(1e-4)
 })
 
-test('термостат выводит систему на заданную температуру', async () => {
+test('the thermostat brings the system to the set temperature', async () => {
   const page = await gpuPage()
   const kT = await page.evaluate(async () => {
     const api = (window as any).api
@@ -75,7 +75,7 @@ async function gpuFixture(beads: number[][], box: number[]) {
   )
 }
 
-test('силы и полная энергия для фиксированной конфигурации совпадают с независимым CPU-эталоном', async () => {
+test('forces and total energy for a fixed configuration match an independent CPU reference', async () => {
   // Three lipids, fixed coordinates, no RNG. Layout, in reduced units (sigma=b=1 for tail-tail):
   //   A: head(0,0,10) - tail1(0,0,9.05) - tail2(0,0,8.05)   [straight rod along -z]
   //   B: head(1.5,0,10) - tail1(1.5,0,9.05) - tail2(1.5,0,8.05)  [same rod, offset +1.5 in x]
@@ -106,7 +106,7 @@ test('силы и полная энергия для фиксированной 
   expectMatchesReference(result)
 })
 
-test('сжатая конфигурация: WCA работает и на паре 1-3 (голова-хвост2)', async () => {
+test('compressed configuration: WCA also acts on the 1-3 pair (head-tail2)', async () => {
   // The exact branch the WCA ruling reversed — WCA between the head and tail2 of ONE lipid — is
   // only live when that pair sits below its own cutoff, 2^(1/6)*b_ht = 1.0665. The fixture above
   // never gets there (1.95). Here lipid A is strongly bent so head-tail2 = 1.0500 < 1.0665 while
@@ -313,7 +313,7 @@ function intramolecularDistances(pos: Float32Array, box: [number, number, number
   return out
 }
 
-test('карта area move сохраняет все внутримолекулярные расстояния точно', () => {
+test('the area move map preserves all intramolecular distances exactly', () => {
   const { positions, lipids, box } = buildAreaMoveFixture()
   const before = intramolecularDistances(positions, box, lipids)
 
@@ -333,7 +333,7 @@ test('карта area move сохраняет все внутримолекул�
   }
 })
 
-test('карта area move — инволюция: +u затем -u возвращает исходные позиции', () => {
+test('the area move map is an involution: +u then -u restores the original positions', () => {
   const { positions, lipids, box } = buildAreaMoveFixture()
 
   const newBox: [number, number, number] = [box[0] * 0.82, box[1] * 0.82, box[2]]
@@ -345,7 +345,7 @@ test('карта area move — инволюция: +u затем -u возвра
   }
 })
 
-test('без трения полная энергия дрейфует слабо', async () => {
+test('without friction the total energy drifts only weakly', async () => {
   const page = await gpuPage()
   const drift = await page.evaluate(async () => {
     const api = (window as any).api
@@ -358,7 +358,7 @@ test('без трения полная энергия дрейфует слаб�
   expect(drift).toBeLessThan(0.02)
 })
 
-test('setLiveParams бросает при wc выше значения, под которое построена сетка, и при kT вне kTRange', async () => {
+test('setLiveParams throws for wc above the value the grid was built for, and for kT outside kTRange', async () => {
   const page = await gpuPage()
   const result = await page.evaluate(async () => {
     const api = (window as any).api
@@ -379,7 +379,7 @@ test('setLiveParams бросает при wc выше значения, под �
     }
     return { wcMessage, ktMessage }
   })
-  expect(result.wcMessage).toContain('превышает')
+  expect(result.wcMessage).toContain('exceeds')
   expect(result.wcMessage).toContain('builtForWc=1.8')
   expect(result.ktMessage).toContain('kTRange=[0.6,1.1]')
 })

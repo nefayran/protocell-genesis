@@ -12,7 +12,7 @@ afterAll(shutdownGpu)
 // The project's answer to this test's question is no (docs/verdict.md): no campaign closed a vesicle,
 // so the test is expected to fail, after a run of about 90 minutes. It is kept as the statement of the
 // goal and runs only when asked for with RUN_GOAL_TEST=1.
-test.skipIf(!process.env.RUN_GOAL_TEST)('из бульона без готовых амфифилов возникает замкнутая везикула', async () => {
+test.skipIf(!process.env.RUN_GOAL_TEST)('a closed vesicle arises from a broth without ready-made amphiphiles', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api

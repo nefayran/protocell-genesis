@@ -330,8 +330,8 @@ export function deriveCycleConfig(
     const wetDensity = N / wetVolume
     if (dwc.targetDryDensity <= wetDensity) {
       throw new Error(
-        `data/soup.json: dryWetCycle.targetDryDensity=${dwc.targetDryDensity} не превышает текущую ` +
-          `плотность бульона ${wetDensity.toFixed(4)} (N=${N}, box=[${box}]) -- сухая фаза обязана концентрировать, не разбавлять`,
+        `data/soup.json: dryWetCycle.targetDryDensity=${dwc.targetDryDensity} does not exceed the current ` +
+          `broth density ${wetDensity.toFixed(4)} (N=${N}, box=[${box}]) -- the dry phase must concentrate, not dilute`,
       )
     }
     dryBox = dryBoxOverride ?? computeDryBox(box, N, dwc.targetDryDensity, occupiedVolumeOf)
@@ -353,7 +353,7 @@ export function deriveCycleConfig(
     // periodSteps, dryFraction, targetDryDensity and both ramps still come from the file only.
     const cycles = opts.dryWetCycles ?? dwc.cycles
     if (!Number.isInteger(cycles) || cycles < 1) {
-      throw new Error(`число циклов сухо-влажного цикла должно быть целым >= 1, получено ${cycles}`)
+      throw new Error(`the number of dry-wet cycles must be an integer >= 1, got ${cycles}`)
     }
     cycleCfg = { periodSteps: dwc.periodSteps, dryFraction: dwc.dryFraction, cycles }
   }

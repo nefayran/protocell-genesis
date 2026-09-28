@@ -8,11 +8,11 @@ afterAll(shutdownGpu)
 // .superpowers/sdd/2026-08-16-soup-to-vesicle/broth-composition-report.md for the full measurement
 // trail this file's assertions are drawn from.
 
-test('стартовый состав содержит явную воду и не содержит готового амфифила', () => {
+test('the starting composition contains explicit water and no ready-made amphiphile', () => {
   const s = loadSoup()
-  expect(s.start.W).toBeGreaterThan(0) // the medium the user asked for -- "естественный бульон"
+  expect(s.start.W).toBeGreaterThan(0) // the medium the user asked for -- "a natural broth"
   // Every start id is a monomer, not a pre-assembled chain -- already covered by
-  // tests/soup-rules.test.ts's own "только мономеры" test; this test adds the water-specific check
+  // tests/soup-rules.test.ts's own "only monomers" test; this test adds the water-specific check
   // that test predates.
   const ids = new Set(s.monomers.map((m) => m.id))
   for (const k of Object.keys(s.start)) expect(ids.has(k)).toBe(true)
@@ -21,7 +21,7 @@ test('стартовый состав содержит явную воду и н
 // Task 'electrostatics' (2026-08-20) made salt and pH representable (screened Coulomb between heads
 // and a constant-pH protonation equilibrium) and moved data/soup.json's saltPhLimitation.represented
 // from false to true on purpose, rewriting its basis to say why. This test still expected false.
-test('соль/pH: после задачи electrostatics файл объявляет их представимыми и называет основание', () => {
+test('salt/pH: after task electrostatics the file declares them representable and names the basis', () => {
   const s = loadSoup()
   expect(s.saltPhLimitation).toBeDefined()
   expect(s.saltPhLimitation!.represented).toBe(true)
@@ -41,7 +41,7 @@ test('соль/pH: после задачи electrostatics файл объявл�
 // silently loosened. IT DID FAIL, on 2026-08-19, and NOT by a rate recalibration -- see the
 // before/after measurement and the mechanism in the test body below.
 test(
-  'находка ОБНОВЛЕНА: после возврата дисперсии неполярное-неполярное рост ЗАКРЫВАЕТ цепи головой (co_bond > 0)',
+  'finding updated: after the apolar-apolar dispersion is restored, growth caps chains with a head (co_bond > 0)',
   async () => {
     const page = await gpuPage()
     const r = await page.evaluate(async (kT: number, steps: number) => {

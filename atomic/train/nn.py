@@ -1,22 +1,23 @@
 """
-Маленькая сеть поверх тех же дескрипторов -- потенциал Белера-Паринелло.
+A small network on top of the same descriptors: a Behler-Parrinello potential.
 
-Почему сеть, а не линейная модель: линейная подгонка по этим дескрипторам измерена и даёт
-350-900 мэВ/атом при цели 5 (см. отчёт). При этом синтетическая проверка показала, что матрица
-задачи верна и линейно представимые данные восстанавливаются с точностью 4e-6 мэВ/атом --
-значит дело не в обвязке, а в том, что энергия воды не линейна в этом базисе. Нелинейный
-считыватель поверх ТЕХ ЖЕ дескрипторов -- стандартное решение (Behler & Parrinello 2007), и
-оно сохраняет главное свойство затеи: стоимость на атом остаётся единицами тысяч операций,
-потому что сеть крошечная и одинаковая для всех атомов одного сорта.
+Why a network and not a linear model: a linear fit on these descriptors was measured and
+gives 350-900 meV/atom against a target of 5 (see the report). At the same time a synthetic
+check showed that the task matrix is correct and linearly representable data is recovered
+with an accuracy of 4e-6 meV/atom, so the problem is not in the plumbing but in the fact
+that the energy of water is not linear in this basis. A nonlinear readout on top of the
+SAME descriptors is the standard fix (Behler & Parrinello 2007), and it keeps the main
+property of the scheme: the cost per atom stays at thousands of operations, because the
+network is tiny and identical for all atoms of a given species.
 
-Устройство: своя сеть на каждый сорт атома, два скрытых слоя, гладкая нелинейность. Гладкость
-обязательна: сила -- это производная энергии, поэтому изломы нелинейности (как у ReLU) дают
-разрывную силу и портят сохранение энергии. Взят softplus.
+Design: a separate network per atomic species, two hidden layers, a smooth nonlinearity.
+Smoothness is mandatory: force is a derivative of energy, so kinks in the nonlinearity
+(like ReLU) produce a discontinuous force and break energy conservation. Softplus is used.
 
-Обучение идёт по энергиям И силам. Силы получаются автоматическим дифференцированием ПО
-ДЕСКРИПТОРАМ с последующим умножением на аналитические производные дескрипторов -- то есть
-цепное правило разрывается на две части, и тяжёлая геометрическая часть считается один раз
-заранее, а не на каждом шаге обучения.
+Training runs on energies AND forces. Forces are obtained by automatic differentiation
+WITH RESPECT TO DESCRIPTORS, followed by multiplication by the analytic derivatives of the
+descriptors, i.e. the chain rule is split into two parts, and the expensive geometric part
+is computed once in advance rather than at every training step.
 """
 from __future__ import annotations
 
@@ -28,7 +29,7 @@ import numpy as np
 @dataclass
 class TrainingConfig:
     hidden: tuple[int, ...] = (32, 32)
-    force_weight: float = 10.0     # силы важнее: их 3N против 1 на кадр
+    force_weight: float = 10.0     # forces matter more: 3N of them against 1 per frame
     epochs: int = 400
     batch_frames: int = 16
     learning_rate: float = 3e-3
@@ -42,7 +43,7 @@ def _torch():
 
 
 class SpeciesNetwork:
-    """Набор маленьких сетей: по одной на сорт атома."""
+    """A set of small networks: one per atomic species."""
 
     def __init__(self, n_features: int, species: tuple[int, ...], hidden=(32, 32), seed: int = 0):
         torch = _torch()
@@ -64,7 +65,7 @@ class SpeciesNetwork:
             yield from net.parameters()
 
     def atom_energies(self, features, numbers):
-        """Энергии атомов: (N,) из (N, D) и сортов."""
+        """Atomic energies: (N,) from (N, D) and species."""
         torch = _torch()
         out = torch.zeros(len(numbers), dtype=features.dtype)
         for z, net in self.nets.items():
@@ -84,12 +85,13 @@ class SpeciesNetwork:
 
 def standardise(frames_features: list[np.ndarray]):
     """
-    Стандартизация дескрипторов по обучающему набору: среднее ноль, разброс единица.
+    Standardisation of descriptors over the training set: zero mean, unit spread.
 
-    Это не косметика. Дескрипторы различаются по величине на порядки (радиальные суммы против
-    угловых), и без приведения к одному масштабу обучение идёт по самому крупному признаку, а
-    остальные фактически не участвуют. Множители сохраняются вместе с моделью и применяются в
-    расчёте -- иначе перенос в WGSL даст другие числа.
+    This is not cosmetic. Descriptors differ in magnitude by orders of magnitude (radial
+    sums against angular ones), and without bringing them to a common scale, training is
+    dominated by the largest feature while the rest effectively do not participate. The
+    scaling factors are saved with the model and applied at inference time; otherwise a
+    port to WGSL would give different numbers.
     """
     stacked = np.vstack(frames_features)
     mean = stacked.mean(axis=0)
@@ -100,13 +102,14 @@ def standardise(frames_features: list[np.ndarray]):
 
 def fit_atomic_baseline(frames, species: tuple[int, ...]) -> np.ndarray:
     """
-    Атомные отсчёты по составу: E ≈ sum_Z n_Z · e0(Z), решается наименьшими квадратами.
+    Atomic baselines from composition: E ≈ sum_Z n_Z · e0(Z), solved by least squares.
 
-    Без этого шага обучение проваливается, и это ИЗМЕРЕНО, а не предположено: у учителя в
-    полной энергии сидит около -700 эВ на атом атомного отсчёта, и сеть со случайной
-    инициализацией сначала тратит всю ёмкость на воспроизведение этой постоянной. Замер:
-    сеть без вычитания основы дала 11570 мэВ/атом против 350 у линейной модели со свободным
-    членом. После вычитания сеть учит только взаимодействие -- величину порядка единиц эВ.
+    Without this step training fails, and this was MEASURED, not assumed: the teacher's
+    total energy carries about -700 eV per atom of atomic baseline, and a network with a
+    random initialization first spends all of its capacity reproducing that constant.
+    Measured: a network without subtracting the baseline gave 11570 meV/atom against 350
+    for a linear model with a free constant term. After subtraction, the network only
+    learns the interaction, a quantity of the order of a few eV.
     """
     a = np.zeros((len(frames), len(species)))
     b = np.zeros(len(frames))
@@ -126,8 +129,9 @@ def baseline_energy(baseline: np.ndarray, numbers, species: tuple[int, ...]) -> 
 
 def train(frames, spec, species, cfg: TrainingConfig, precomputed=None, verbose=True):
     """
-    Обучение по энергиям и силам. `precomputed` -- список (G, dG) на кадр, чтобы не считать
-    дескрипторы заново на каждой эпохе (они не зависят от параметров сети).
+    Training on energies and forces. `precomputed` is a list of (G, dG) per frame, so the
+    descriptors are not recomputed at every epoch (they do not depend on the network's
+    parameters).
     """
     torch = _torch()
     from .descriptors import compute_descriptors, descriptor_length
@@ -147,7 +151,7 @@ def train(frames, spec, species, cfg: TrainingConfig, precomputed=None, verbose=
     net = SpeciesNetwork(d, species, cfg.hidden, cfg.seed)
     opt = torch.optim.Adam(net.parameters(), lr=cfg.learning_rate, weight_decay=cfg.weight_decay)
 
-    # заранее готовим тензоры: (G-mean)/std и dG/std
+    # pre-build the tensors: (G-mean)/std and dG/std
     prepared = []
     for (g, dg), fr in zip(precomputed, frames):
         gt = torch.tensor((g - mean) / std, requires_grad=True)
@@ -157,7 +161,8 @@ def train(frames, spec, species, cfg: TrainingConfig, precomputed=None, verbose=
                 "g": gt,
                 "dg": dgt,
                 "numbers": torch.tensor(np.asarray(fr["numbers"], dtype=int)),
-                # цель сети -- ОСТАТОК после вычитания атомной основы, см. fit_atomic_baseline
+                # the network's target is the RESIDUAL after subtracting the atomic baseline,
+                # see fit_atomic_baseline
                 "energy": torch.tensor(
                     float(fr["energy"]) - baseline_energy(baseline, fr["numbers"], species),
                     dtype=torch.float64,
@@ -179,7 +184,7 @@ def train(frames, spec, species, cfg: TrainingConfig, precomputed=None, verbose=
                 g = item["g"].detach().clone().requires_grad_(True)
                 atom_e = net.atom_energies(g, item["numbers"])
                 energy = atom_e.sum()
-                # dE/dG -- производная по дескрипторам, а геометрия уже в dG
+                # dE/dG is the derivative with respect to descriptors; the geometry is already in dG
                 (de_dg,) = torch.autograd.grad(energy, g, create_graph=True)
                 forces = -torch.einsum("id,idka->ka", de_dg, item["dg"])
                 loss = loss + ((energy - item["energy"]) / item["n"]) ** 2
@@ -188,7 +193,7 @@ def train(frames, spec, species, cfg: TrainingConfig, precomputed=None, verbose=
             opt.step()
         if verbose and (epoch + 1) % max(1, cfg.epochs // 8) == 0:
             history.append(float(loss.item()) / max(1, len(batch)))
-            print(f"    эпоха {epoch + 1:4d}/{cfg.epochs}: невязка {history[-1]:.5f}", flush=True)
+            print(f"    epoch {epoch + 1:4d}/{cfg.epochs}: loss {history[-1]:.5f}", flush=True)
 
     return {
         "net": net,
@@ -201,7 +206,7 @@ def train(frames, spec, species, cfg: TrainingConfig, precomputed=None, verbose=
 
 
 def predict(model: dict, positions, numbers, cell=None):
-    """Энергия и силы обученной моделью."""
+    """Energy and forces from the trained model."""
     torch = _torch()
     from .descriptors import compute_descriptors
 

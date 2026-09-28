@@ -41,7 +41,7 @@ const OUT_DIR = 'verify/out'
 // pass/fail contract and artifact are unaffected -- only where it lands changed.
 const OUT_FILE = `${OUT_DIR}/kappa-test-run.json`
 
-test('модуль изгиба бислоя: валидированное окно -> κ в 5-50 kT, иначе самоописывающийся BLOCKED', async () => {
+test('bilayer bending modulus: a validated window -> κ in 5-50 kT, otherwise a self-describing BLOCKED', async () => {
   const page = await gpuPage()
   page.on('console', (msg) => console.log(`[page] ${msg.text()}`))
 

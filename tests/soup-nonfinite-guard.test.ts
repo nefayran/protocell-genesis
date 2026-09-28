@@ -26,7 +26,7 @@ const OVERLAP_PAIRS = 20
 const OVERLAP_SEPARATION = 1e-4
 
 test(
-  'нефинитное состояние ОСТАНАВЛИВАЕТ прогон с сообщением, называющим шаг и количество',
+  'a non-finite state stops the run with a message that names the step and the count',
   async () => {
     const page = await gpuPage()
     const consoleWarnings: string[] = []
@@ -175,22 +175,22 @@ test(
     expect(result.threw).not.toBeNull()
     // It must be the FINITENESS guard that spoke, not the drift guard: that distinction is the whole
     // point -- the drift guard was running, and silent, in all three historical divergences.
-    expect(result.threw).toMatch(/нефинитное состояние/)
-    expect(result.threw).not.toMatch(/список Верле/)
+    expect(result.threw).toMatch(/non-finite state/)
+    expect(result.threw).not.toMatch(/Verlet list/)
     // Names the step...
-    expect(result.threw).toMatch(/шаге=1\b/)
-    expect(result.threw).toMatch(/интервале шагов 0\.\.1/)
+    expect(result.threw).toMatch(/at step=1\b/)
+    expect(result.threw).toMatch(/step interval 0\.\.1/)
     // ...and names a nonzero count for BOTH arrays, with the totals it is out of.
-    const posCount = Number(/позиций=(\d+)/.exec(result.threw!)![1])
-    const velCount = Number(/скоростей=(\d+)/.exec(result.threw!)![1])
+    const posCount = Number(/positions=(\d+)/.exec(result.threw!)![1])
+    const velCount = Number(/velocities=(\d+)/.exec(result.threw!)![1])
     expect(posCount).toBeGreaterThan(0)
     expect(velCount).toBeGreaterThan(0)
-    expect(result.threw).toMatch(new RegExp(`из ${result.n * 3}\\b`))
+    expect(result.threw).toMatch(new RegExp(`of ${result.n * 3}\\b`))
     // The state really is non-finite (the throw is not a false alarm) and the run really did stop.
     expect(result.badAfter.pos).toBeGreaterThan(0)
     expect(result.badSteps).toBe(1)
 
-    expect(consoleWarnings, `браузер сообщил об ошибке/предупреждении GPU во время теста:\n${consoleWarnings.join('\n')}`).toEqual([])
+    expect(consoleWarnings, `the browser reported a GPU error/warning during the test:\n${consoleWarnings.join('\n')}`).toEqual([])
   },
   300_000,
 )

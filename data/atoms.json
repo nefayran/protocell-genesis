@@ -1,5 +1,5 @@
 {
-  "source": "массы IUPAC 2021; радиусы Ван-дер-Ваальса Bondi 1964; цвета CPK",
+  "source": "IUPAC 2021 masses; Bondi 1964 van der Waals radii; CPK colours",
   "rank": "A",
   "elements": {
     "H":  { "mass": 1.008,  "vdw": 0.120, "covalent": 0.031, "color": "#ffffff" },

@@ -36,7 +36,7 @@ afterAll(shutdownGpu)
 const p = loadParams()
 const soup = loadSoup()
 
-test('электростатика: сила есть -dU/dr, и обе величины непрерывно обращаются в ноль на обрезке', () => {
+test('electrostatics: the force is -dU/dr, and both quantities go continuously to zero at the cutoff', () => {
   const b = makeEsBasis(soup, p, { enabled: true, pH: 7 })
   const h = 1e-6
   let worstRel = 0
@@ -65,7 +65,7 @@ test('электростатика: сила есть -dU/dr, и обе вели
     `ES-GRADIENT rc=${b.cutoff.toFixed(7)} A=${b.coeffA.toFixed(7)} kappa=${b.kappa.toFixed(7)} ` +
       `shiftU=${b.shiftU.toExponential(6)} shiftF=${b.shiftF.toExponential(6)}\n  ` +
       rows.join('\n  ') +
-      `\n  худшая относительная невязка ${worstRel.toExponential(3)} при r=${worstAt}` +
+      `\n  worst relative residual ${worstRel.toExponential(3)} at r=${worstAt}` +
       `\n  U(rc-1e-7)=${uJust.toExponential(6)} F(rc-1e-7)=${fJust.toExponential(6)} ` +
       `U(rc)=${esPairEnergy(b.cutoff, 1, b)} F(rc)=${esPairForceMag(b.cutoff, 1, b)} ` +
       `U(rc+0.1)=${esPairEnergy(b.cutoff + 0.1, 1, b)}`,
@@ -91,7 +91,7 @@ test('электростатика: сила есть -dU/dr, и обе вели
     worstSplit = Math.max(worstSplit, Math.abs(near + far - whole))
   }
   console.log(
-    `ES-SPLIT splitRadius=${b.splitRadius.toFixed(7)} худшее |near+far-whole|=${worstSplit.toExponential(3)} ` +
+    `ES-SPLIT splitRadius=${b.splitRadius.toFixed(7)} worst |near+far-whole|=${worstSplit.toExponential(3)} ` +
       `F(split-)=${esPairForceMag(b.splitRadius - 1e-9, 1, b).toExponential(6)} ` +
       `F(split+)=${esPairForceMag(b.splitRadius + 1e-9, 1, b).toExponential(6)}`,
   )
@@ -121,7 +121,7 @@ test('электростатика: сила есть -dU/dr, и обе вели
   expect(esPairForceMag(0.95, 1, off)).toBe(0)
 })
 
-test('электростатика: диапазон отображения sigma->нм несётся через силу взаимодействия', () => {
+test('electrostatics: the sigma->nm mapping range is carried through the interaction force', () => {
   const [lo, hi] = soup.electrostatics!.sigmaToNmRange
   const mk = (sigmaNm: number) => {
     const patched = { ...soup, electrostatics: { ...soup.electrostatics!, sigmaToNm: sigmaNm } }
@@ -140,13 +140,13 @@ test('электростатика: диапазон отображения sigm
   console.log(
     `ES-SIGMA-RANGE ` +
       rows.map((r) => `sigma=${r.sigmaNm}nm A=${r.A.toFixed(6)} lambdaD=${r.debyeSigma.toFixed(5)}sig U(0.95)=${r.contactKT.toFixed(4)}kT`).join(' | ') +
-      ` фактор_между_концами=${factor.toFixed(3)}`,
+      ` factor_between_ends=${factor.toFixed(3)}`,
   )
   // The range is a real spread, not a rounding: it must move the contact repulsion by more than 50 %.
   expect(factor).toBeGreaterThan(1.5)
 })
 
-test('протонирование: при нулевой электростатической работе MC даёт ровно Гендерсона-Хассельбальха', () => {
+test('protonation: with zero electrostatic work, MC gives exactly Henderson-Hasselbalch', () => {
   // Two heads 100 sigma apart in a huge box: no pair is ever inside the cutoff, so dU_es is
   // identically zero and the ONLY thing the acceptance test sees is the pH term. That makes this a
   // check of the sampling, isolated from the interaction.
@@ -169,14 +169,14 @@ test('протонирование: при нулевой электростат
     const expected = hendersonAlpha(pH, b.pKaIntrinsic)
     // Binomial standard error of the mean of `sweeps*2` correlated-but-fast-mixing samples; 4 sigma.
     const se = Math.sqrt((expected * (1 - expected)) / (sweeps * 2))
-    rows.push(`pH=${pH} alpha_измер=${measured.toFixed(5)} alpha_HH=${expected.toFixed(5)} откл=${(measured - expected).toExponential(2)} 4se=${(4 * se).toExponential(2)}`)
+    rows.push(`pH=${pH} alpha_meas=${measured.toFixed(5)} alpha_HH=${expected.toFixed(5)} dev=${(measured - expected).toExponential(2)} 4se=${(4 * se).toExponential(2)}`)
     worst = Math.max(worst, Math.abs(measured - expected))
   }
   console.log(`ES-HENDERSON pKa_intrinsic=${soup.electrostatics!.pKaIntrinsic}\n  ` + rows.join('\n  '))
   expect(worst).toBeLessThan(0.01)
 })
 
-test('протонирование: детальный баланс против ТОЧНЫХ больцмановских весов системы из двух голов', () => {
+test('protonation: detailed balance against the exact Boltzmann weights of a two-head system', () => {
   // Two heads at a FIXED separation inside the cutoff. The state space is 4 configurations
   // (neither/first/second/both charged) whose exact statistical weights are enumerable by hand:
   //   w(n charged) = exp(-n * dG_intr / kT) * exp(-U_es(config) / kT)
@@ -225,23 +225,23 @@ test('протонирование: детальный баланс против
     Math.abs(measured[3] - exact[3]),
   )
   console.log(
-    `ES-DETAILED-BALANCE r=${r} U_es(оба)=${uBoth.toFixed(6)}eps=${(uBoth / b.kT).toFixed(4)}kT ` +
-      `U_пары(одна)=${uPairOne.toFixed(6)}eps=${(uPairOne / b.kT).toFixed(4)}kT (глубина=${b.acidSoap.scale}) ` +
+    `ES-DETAILED-BALANCE r=${r} U_es(both)=${uBoth.toFixed(6)}eps=${(uBoth / b.kT).toFixed(4)}kT ` +
+      `U_pair(one)=${uPairOne.toFixed(6)}eps=${(uPairOne / b.kT).toFixed(4)}kT (depth=${b.acidSoap.scale}) ` +
       `dG_intr=${dGintr.toFixed(6)}eps\n` +
-      `  состояние      ни одна      первая      вторая      обе\n` +
-      `  точно      ${exact.map((x) => x.toFixed(5)).join('   ')}\n` +
-      `  измерено   ${measured.map((x) => x.toFixed(5)).join('   ')}\n` +
-      `  подметаний=${sweeps} худшее отклонение=${worst.toExponential(3)}`,
+      `  state      none      first     second    both\n` +
+      `  exact      ${exact.map((x) => x.toFixed(5)).join('   ')}\n` +
+      `  measured   ${measured.map((x) => x.toFixed(5)).join('   ')}\n` +
+      `  sweeps=${sweeps} worst deviation=${worst.toExponential(3)}`,
   )
   expect(worst).toBeLessThan(5e-3)
   // And the interaction is genuinely in play: the "both charged" state must be SUPPRESSED relative
   // to what the pH term alone would give, or this test would be checking nothing electrostatic.
   const noEs = Math.exp(-2 * dGintr / b.kT) / (1 + 2 * Math.exp(-dGintr / b.kT) + Math.exp(-2 * dGintr / b.kT))
   expect(exact[3]).toBeLessThan(noEs)
-  console.log(`ES-DETAILED-BALANCE подавление состояния «обе»: ${exact[3].toFixed(5)} против ${noEs.toFixed(5)} без dU_es`)
+  console.log(`ES-DETAILED-BALANCE suppression of the "both" state: ${exact[3].toFixed(5)} vs ${noEs.toFixed(5)} without dU_es`)
 })
 
-test('электростатика: полная сила GPU есть -grad полного потенциала CPU при включённом заряде', async () => {
+test('electrostatics: the full GPU force is -grad of the full CPU potential with charge enabled', async () => {
   const page = await gpuPage()
   const warnings: string[] = []
   page.on('console', (msg) => {
@@ -343,7 +343,7 @@ test('электростатика: полная сила GPU есть -grad п�
     sysOff.dispose()
     return { rows, rowsOff, picks, chargedBeads, es: sys.electrostatics() }
   })
-  expect(warnings, `GPU-предупреждение:\n${warnings.join('\n')}`).toEqual([])
+  expect(warnings, `GPU warning:\n${warnings.join('\n')}`).toEqual([])
   const rel = (rows: { num: number; numNominal: number; ana: number }[]): { worst: number; worstNominal: number; meanAbs: number } => {
     let worst = 0
     let worstNominal = 0
@@ -358,18 +358,18 @@ test('электростатика: полная сила GPU есть -grad п�
   const on = rel(r.rows)
   const off = rel(r.rowsOff)
   console.log(
-    `ES-FULL-GRADIENT заряженных=${r.chargedBeads} проверено_частиц=${r.picks.length} компонент=${r.rows.length}\n` +
-      `  С ЗАРЯДОМ:  худшая отн. невязка=${on.worst.toExponential(3)} (при номинальном шаге 2h: ${on.worstNominal.toExponential(3)}) при mean|F|=${on.meanAbs.toFixed(4)}\n` +
-      `  БЕЗ ЗАРЯДА (контроль): худшая отн. невязка=${off.worst.toExponential(3)} (при номинальном шаге 2h: ${off.worstNominal.toExponential(3)}) при mean|F|=${off.meanAbs.toFixed(4)}\n` +
-      `  первые три компоненты с зарядом: ` +
+    `ES-FULL-GRADIENT charged=${r.chargedBeads} particles_checked=${r.picks.length} components=${r.rows.length}\n` +
+      `  with charge:  worst rel. residual=${on.worst.toExponential(3)} (at nominal step 2h: ${on.worstNominal.toExponential(3)}) at mean|F|=${on.meanAbs.toFixed(4)}\n` +
+      `  without charge (control): worst rel. residual=${off.worst.toExponential(3)} (at nominal step 2h: ${off.worstNominal.toExponential(3)}) at mean|F|=${off.meanAbs.toFixed(4)}\n` +
+      `  first three components with charge: ` +
       r.rows
         .slice(0, 3)
-        .map((x) => `i=${x.i} ось=${x.axis} F_num=${x.num.toFixed(5)} F_gpu=${x.ana.toFixed(5)}`)
+        .map((x) => `i=${x.i} axis=${x.axis} F_num=${x.num.toFixed(5)} F_gpu=${x.ana.toFixed(5)}`)
         .join(' | ') +
-      `\n  первые три компоненты БЕЗ заряда: ` +
+      `\n  first three components without charge: ` +
       r.rowsOff
         .slice(0, 3)
-        .map((x) => `i=${x.i} ось=${x.axis} F_num=${x.num.toFixed(5)} F_gpu=${x.ana.toFixed(5)} U+=${x.u.toFixed(4)} U-=${x.d.toFixed(4)}`)
+        .map((x) => `i=${x.i} axis=${x.axis} F_num=${x.num.toFixed(5)} F_gpu=${x.ana.toFixed(5)} U+=${x.u.toFixed(4)} U-=${x.d.toFixed(4)}`)
         .join(' | '),
   )
   // Tolerance: the finite-difference step is 2e-3 sigma against a WCA core that can be very stiff, so
@@ -379,7 +379,7 @@ test('электростатика: полная сила GPU есть -grad п�
   expect(off.worst).toBeLessThan(2e-2)
 })
 
-test('электростатика: состояние протонирования проходит контрольную точку без изменений', async () => {
+test('electrostatics: the protonation state passes through a checkpoint unchanged', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api
@@ -445,9 +445,9 @@ test('электростатика: состояние протонирован�
     }
   })
   console.log(
-    `ES-CHECKPOINT N=${r.n} заряженных=${r.chargedBefore} подметаний=${r.sweeps} несовпадений_после_резюме=${r.mismatches} ` +
-      `RNG_до=${r.rngBefore} RNG_после=${r.rngAfter} chargesB64=${r.hasField} длина=${r.b64Len} ` +
-      `отличий_у_перерисованного(без поля)=${r.redrawnDiff}`,
+    `ES-CHECKPOINT N=${r.n} charged=${r.chargedBefore} sweeps=${r.sweeps} mismatches_after_resume=${r.mismatches} ` +
+      `RNG_before=${r.rngBefore} RNG_after=${r.rngAfter} chargesB64=${r.hasField} length=${r.b64Len} ` +
+      `differences_in_redrawn(without field)=${r.redrawnDiff}`,
   )
   expect(r.hasField).toBe(true)
   expect(r.mismatches).toBe(0)
@@ -457,7 +457,7 @@ test('электростатика: состояние протонирован�
   expect(r.redrawnDiff).toBeGreaterThan(0)
 })
 
-test('электростатика: кажущаяся pKa читается обратным Гендерсоном-Хассельбальхом', () => {
+test('electrostatics: the apparent pKa is read by inverse Henderson-Hasselbalch', () => {
   // A pure-arithmetic pin on the inversion used to report the interfacial shift, so a sign error
   // there cannot be mistaken for physics.
   for (const [alpha, pH] of [
@@ -506,7 +506,7 @@ test('электростатика: кажущаяся pKa читается об
 // every charged head, at both ionic strengths, in float64 with nothing else in the sum to cancel
 // against. A wrong shift constant, a wrong sign, a missed pair beyond the split radius or a
 // double-counted one at it all show up here directly, and the number is not diluted by WCA.
-test('дальнодействие: -grad(esTotalEnergy) по ВСЕМУ полю совпадает с аналитической силой', () => {
+test('long range: -grad(esTotalEnergy) over the whole field matches the analytic force', () => {
   // A deterministic pseudo-configuration: a fixed lattice of the titratable kind plus filler, jittered
   // by the module's own PCG so it is a real disordered configuration rather than a symmetric lattice
   // (where every force would cancel and the test would pass on nothing).
@@ -577,8 +577,8 @@ test('дальнодействие: -grad(esTotalEnergy) по ВСЕМУ пол�
       }
     }
     lines.push(
-      `  I=${I} rc_es=${b.cutoff.toFixed(4)} (=${b.debyeLengthsSpanned.toFixed(3)} lambdaD) заряженных=${charged} ` +
-        `компонент=${checked} худшая_абс=${worstAbs.toExponential(3)} худшая_отн=${worstRel.toExponential(3)} ` +
+      `  I=${I} rc_es=${b.cutoff.toFixed(4)} (=${b.debyeLengthsSpanned.toFixed(3)} lambdaD) charged=${charged} ` +
+        `components=${checked} worst_abs=${worstAbs.toExponential(3)} worst_rel=${worstRel.toExponential(3)} ` +
         `mean|F_es|=${(sumAbs / checked).toFixed(6)}`,
     )
     expect(worstAbs).toBeLessThan(1e-6)
