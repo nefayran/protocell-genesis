@@ -11,7 +11,7 @@ criteria before running it, and got a negative answer with a measured cause.
 
 [Snapshot gallery](https://nefayran.github.io/protocell-genesis/viewer/gallery.html) (WebGL, any
 current browser) · [Live simulation](https://nefayran.github.io/protocell-genesis/viewer/run.html)
-(WebGPU) · [Gate report](https://nefayran.github.io/protocell-genesis/verify/out/report.html) (Russian) ·
+(WebGPU) · [Gate report](https://nefayran.github.io/protocell-genesis/verify/out/report.html) ·
 [Full verdict](docs/verdict.md)
 
 ## Result
@@ -144,13 +144,13 @@ import.
 
 ## Documents
 
-- [`docs/verdict.md`](docs/verdict.md): the verdict in English, with the mechanism, the defects found
-  and what to change next.
-- [`docs/soup-to-vesicle-verdict.md`](docs/soup-to-vesicle-verdict.md): the full closing document
-  (Russian), which names the artifact behind every number.
+- [`docs/verdict.md`](docs/verdict.md): the verdict in short, with the mechanism, the defects found and
+  what to change next.
+- [`docs/soup-to-vesicle-verdict.md`](docs/soup-to-vesicle-verdict.md): the full closing document, which
+  names the artifact behind every number.
 - [`atomic/README.md`](atomic/README.md): the atomic engine and the learned potential.
 - `.superpowers/sdd/2026-08-16-soup-to-vesicle/`: the working reports behind each step.
-- `CLAUDE.md`: working rules for the coding agent used on the project (Russian).
+- `CLAUDE.md`: working rules for the coding agent used on the project.
 
 ## License
 

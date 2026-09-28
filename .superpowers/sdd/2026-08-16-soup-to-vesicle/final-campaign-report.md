@@ -354,7 +354,7 @@ moving tail length, and this arm moves both.
 - **Evaporation plan, derived and then realised exactly:** W_residual = round(125 971/1400) = **90**,
   N_dry = 65 897, dryBox = (65 897/1.34)^(1/3) = **36.6370 σ**, grid 36.6370/2.94695 = 12.43 → **12
   cells** against minCells = 5 (VALID), concentration factor **3.2020×**. Realised: `box=36.6370`,
-  `растворителя=90`, `N=65897` — to the digit.
+  `solvent=90`, `N=65897`, to the digit.
 - **The evaporating ramp needed no minimiser at all.** Across all 18 drying and all 18 rehydration
   increments the guard fired **0 of 36** times, per-increment `max|F|` = **2.7e2–6.5e2** against the
   σ/(13·dt²) = 769 trigger. That is the decisive report's §2.3 finding reproducing at a composition
@@ -408,7 +408,7 @@ non-finite velocities **0**, all six valence/placement counters **0**
 `headNotTerminal`). Census matches the run's own `activeCounts` exactly and every non-solvent count
 matches `config.start` exactly at every checkpoint including the four dry ones carrying `W: 90`:
 `{C:27894, O:9296, H:27894, M:723}`. Events at the end
-`{cc_bond:16895, cc_break:0, co_bond:5594, co_break:288}`. `RUN-AUDIT-TETHER нарушений=0` — 0 tethers
+`{cc_bond:16895, cc_break:0, co_bond:5594, co_break:288}`. `RUN-AUDIT-TETHER violations=0`, 0 tethers
 over `r_inf` = 1.5 σ at any checkpoint.
 
 ### 5.1 Was the curve still rising when it stopped? No — and the cavity was the one to watch
@@ -706,11 +706,11 @@ first two rungs.
 | `tests/water-closure.test.ts` | **3 passed** | unchanged — the soup's own periodic never-unwrap flood |
 | `tests/periodic-measurement.test.ts` | **5 passed** | **moved by design**: `aggregateCount` on the box-58 lineage **8 → 3**, **10 → 5**, **7 → …**; `amphiphileCount` of the largest 1327 → **1328**, 1313 → … . Reason: that lineage's dominant aggregate is comparable to its own box, so the z-open rule was splitting it and inventing extra objects. Every assertion in the file still passes; the artifact `verify/out/periodic-measurement.json` is updated in place with the corrected numbers. |
 | `tests/shell-pore-check.test.ts` | **1 passed** | **moved by design**: `aggregateCount 8 → 3`; r_g of the largest 30.9901 → **30.9909** (+0.003 %). Reason: the same box-58 aggregate; joining its z-halves changes the count a great deal and its shape almost not at all, because the halves were adjacent. |
-| `tests/rim-lambda-insitu.test.ts` | **1 passed, 2 FAILED — PRE-EXISTING, proven by stash** | the analysis half passes and its numbers moved by design (`aggregateCount 5 → 3`, largest 1282 → **1284** amphiphiles / 11 685 → **11 688** particles, r_g 30.39977 → **30.39922**). The two failures are the GPU-page tests, and they fail with `createSoup: резюме содержит 7 частиц, а состав этого вызова даёт N=10707 -- checkpoint не соответствует конфигурации` — a construction mismatch inside those tests, in a code path that calls no clustering function at all. **Proven not mine**: `git stash push -- tests/rim-lambda-insitu.test.ts` and re-run gives the identical error, then `git stash pop`. See §11. |
-| `tests/soup-grid-resize.test.ts` | **1 FAILED — PRE-EXISTING** | `измеренный дрейф 4587793.1347` against `skin/2=0.7500`. Inside the 4.4e2–3.4e7 band two predecessors measured for this same test on unchanged code, on both sides of a stash. It measures Verlet drift across a box change; this task's diff is clustering only and cannot reach it. **No bound was widened.** |
+| `tests/rim-lambda-insitu.test.ts` | **1 passed, 2 FAILED — PRE-EXISTING, proven by stash** | the analysis half passes and its numbers moved by design (`aggregateCount 5 → 3`, largest 1282 → **1284** amphiphiles / 11 685 → **11 688** particles, r_g 30.39977 → **30.39922**). The two failures are the GPU-page tests, and they fail with `createSoup: summary contains 7 particles, but this call's composition gives N=10707 -- checkpoint does not match the configuration` — a construction mismatch inside those tests, in a code path that calls no clustering function at all. **Proven not mine**: `git stash push -- tests/rim-lambda-insitu.test.ts` and re-run gives the identical error, then `git stash pop`. See §11. |
+| `tests/soup-grid-resize.test.ts` | **1 FAILED — PRE-EXISTING** | `measured drift 4587793.1347` against `skin/2=0.7500`. Inside the 4.4e2–3.4e7 band two predecessors measured for this same test on unchanged code, on both sides of a stash. It measures Verlet drift across a box change; this task's diff is clustering only and cannot reach it. **No bound was widened.** |
 | **`tests/coalescence-mechanism-pin.test.ts`** | **5 passed** (was 3) | see §1.3 |
 | **`tests/percolation-check.test.ts`** (NEW) | **1 passed** | see §6; its own control (a one-slab subset must not wrap) passes at every checkpoint |
-| `tests/continuous-run-audit.test.ts` | **1 passed × 4 invocations** | 19 + 10 + 8 + 20 checkpoints audited with `expect()` on every invariant, plus the tether assertion; `RUN-AUDIT-TETHER нарушений=0` every time |
+| `tests/continuous-run-audit.test.ts` | **1 passed × 4 invocations** | 19 + 10 + 8 + 20 checkpoints audited with `expect()` on every invariant, plus the tether assertion; `RUN-AUDIT-TETHER violations=0` every time |
 
 **No tolerance was changed, no corridor widened, no assertion relaxed, no threshold moved.** The only
 assertions added are new ones (§1.3, §6), and they are strict.
@@ -787,7 +787,7 @@ The stash probe's verbatim pair, which is the whole attribution of §10's rim-λ
 $ git stash push -m "zfix-rim-probe" -- tests/rim-lambda-insitu.test.ts
 Saved working directory and index state On stage-a-atoms: zfix-rim-probe
 $ nice -n 15 npx vitest run tests/rim-lambda-insitu.test.ts --no-file-parallelism -t "formula validation"
-Error: createSoup: резюме содержит 7 частиц, а состав этого вызова даёт N=10707 -- checkpoint не соответствует конфигурации
+Error: createSoup: summary contains 7 particles, but this call's composition gives N=10707 -- checkpoint does not match the configuration
  Test Files  1 failed (1)
       Tests  1 failed | 2 skipped (3)
 $ git stash pop
@@ -797,21 +797,21 @@ Dropped refs/stash@{0}
 The campaign's own transition lines, verbatim, since they carry §4.2's claims:
 
 ```
-[evaporation] испарение приращение=18/18 box=36.6370 растворителя=90 N=65897 max|F|=6.460e+2
-              итераций_минимизации=0 max|F|_после=6.460e+2 перетянутых_привязок=0 самая_длинная=1.1126 порог=1.4680
-[campaign] шаг=24000/24000 stage=amphiphiles агрегатов=1 крупнейший=2097 headShells=1 cavityVolume=25.125
-           фаза=dry/1 box=36.6370 связей=11454 census={"C":27894,"O":9296,"H":27894,"M":723,"W":90,"K":0}
-[evaporation] регидратация приращение=18/18 box=54.0000 растворителя=125971 N=191778 max|F|=5.405e+1
-              итераций_минимизации=0 max|F|_после=5.405e+1 перетянутых_привязок=0 самая_длинная=1.0972 порог=1.4680
-[evaporation] регидратация: вставлено=125881 ниже_порога=6017 минимальное_расстояние=0.6237
-              итераций_минимизации=29 max|F| 2.0427e+4 -> 5.4046e+1 смещение_прежних rms=0.2105 max=0.8488 граница=1.5000
-[campaign] шаг=41400/38000 stage=amphiphiles агрегатов=2 крупнейший=2211 headShells=1 cavityVolume=19.500
-           фаза=wet/0 box=54.0000 связей=15328 census={"C":27894,"O":9296,"H":27894,"M":723,"W":125971,"K":0}
-[campaign] шаг=176400/176400 stage=amphiphiles агрегатов=2 крупнейший=2077 headShells=1 cavityVolume=53.250
-           фаза=wet/0 box=54.0000 связей=22201 census={"C":27894,"O":9296,"H":27894,"M":723,"W":125971,"K":0}
+[evaporation] evaporation increment=18/18 box=36.6370 solvent=90 N=65897 max|F|=6.460e+2
+              minimization_iterations=0 max|F|_after=6.460e+2 overstretched_tethers=0 longest=1.1126 threshold=1.4680
+[campaign] step=24000/24000 stage=amphiphiles aggregates=1 largest=2097 headShells=1 cavityVolume=25.125
+           phase=dry/1 box=36.6370 bonds=11454 census={"C":27894,"O":9296,"H":27894,"M":723,"W":90,"K":0}
+[evaporation] rehydration increment=18/18 box=54.0000 solvent=125971 N=191778 max|F|=5.405e+1
+              minimization_iterations=0 max|F|_after=5.405e+1 overstretched_tethers=0 longest=1.0972 threshold=1.4680
+[evaporation] rehydration: inserted=125881 below_threshold=6017 minimum_distance=0.6237
+              minimization_iterations=29 max|F| 2.0427e+4 -> 5.4046e+1 prior_displacement rms=0.2105 max=0.8488 boundary=1.5000
+[campaign] step=41400/38000 stage=amphiphiles aggregates=2 largest=2211 headShells=1 cavityVolume=19.500
+           phase=wet/0 box=54.0000 bonds=15328 census={"C":27894,"O":9296,"H":27894,"M":723,"W":125971,"K":0}
+[campaign] step=176400/176400 stage=amphiphiles aggregates=2 largest=2077 headShells=1 cavityVolume=53.250
+           phase=wet/0 box=54.0000 bonds=22201 census={"C":27894,"O":9296,"H":27894,"M":723,"W":125971,"K":0}
 ```
 
-*(`агрегатов=2 крупнейший=2077` there is already the FIXED, fully-periodic count — this is the first
+*(`aggregates=2 largest=2077` there is already the FIXED, fully-periodic count — this is the first
 campaign in the project whose live log is not carrying the z-open defect.)*
 
 ---

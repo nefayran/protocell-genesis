@@ -1,854 +1,858 @@
-# «Бульон → везикула»: что проверяли, что измерили, чем кончилось
+# Soup to vesicle: what was tested, what was measured, how it ended
 
-Итоговая сводка проекта **protocell-genesis**, ветка `stage-a-atoms`, состояние на **2026-08-21**
-(задача `confined-parcel` — последняя в проекте). Написана для человека, которого здесь не было: читать её
-достаточно, чтобы понять результат, его границы и то, что делать дальше. Все числа — измеренные,
-каждое со ссылкой на артефакт или отчёт, где его можно перепроверить. Полные протоколы — 51 отчёт в
-`.superpowers/sdd/2026-08-16-soup-to-vesicle/` (каталог в `.gitignore`, коммитится через `git add -f`);
-читать по порядку последние пять: `long-range-electrostatics-report.md` → `supply-window-report.md` →
+Final summary of the **protocell-genesis** project, branch `stage-a-atoms`, state as of **2026-08-21**
+(task `confined-parcel` is the last one in the project). Written for someone who was not here: reading it
+should be enough to understand the result, its boundaries, and what to do next. All numbers are measured,
+each with a reference to the artifact or report where it can be rechecked. The full protocols, 51 reports, live in
+`.superpowers/sdd/2026-08-16-soup-to-vesicle/` (a directory in `.gitignore`, committed via `git add -f`);
+read the last five in order: `long-range-electrostatics-report.md` → `supply-window-report.md` →
 `big-box-report.md` → `closeout-report.md` → **`confined-parcel-report.md`**.
 
-Машиночитаемая версия таблицы ворот — `verify/out/gates.json`, человекочитаемая —
-`verify/out/report.html`. Оба пересобираются командой `npm run verify` и **никогда не правятся
-руками**.
+The machine-readable version of the gate table is `verify/out/gates.json`, the human-readable one is
+`verify/out/report.html`. Both are rebuilt by the `npm run verify` command and are **never edited by
+hand**.
 
-> **Что изменилось в этом документе 2026-08-21.** Предыдущая редакция была написана ДО электростатики
-> и утверждала «электростатики нет вовсе» (её пункт 11) — это больше не так: заряд, экранирование
-> Дебая и протонационное равновесие в модели есть, и именно там лежит единственная **независимая**
-> валидация в проекте (сдвиг кажущейся pKa по соли **+0.709** против литературных ≈0.7). Добавлены:
-> механизм провала в его нынешнем виде (спанирующая цилиндрическая мицелла и порог L\*), снятие
-> потолка памяти, два новых дефекта, шестой класс молчаливых отказов и ответ на вопрос
-> «полость или лумен».
+> **What changed in this document on 2026-08-21.** The previous revision was written BEFORE electrostatics
+> and claimed "there is no electrostatics at all" (its item 11), which is no longer true: charge, Debye
+> screening and a protonation equilibrium are in the model, and that is exactly where the project's only
+> **independent** validation lives (a salt-dependent apparent pKa shift of **+0.709** against a literature
+> value of ≈0.7). Added: the mechanism of the failure in its current form (the spanning cylindrical micelle
+> and the L\* threshold), the lifting of the memory ceiling, two new defects, a sixth class of silent
+> failures, and an answer to the "cavity or lumen" question.
 >
-> **Что изменилось ПОЗЖЕ в тот же день (задача `confined-parcel`).** Пункт 3 списка §9 —
-> «непериодическая область, это и есть корень» — **проверен и ОПРОВЕРГНУТ как корень**: система
-> запущена в конечной парцелле воды с мягкой нейтральной стенкой, обёртывающих осей стало **0 из 3
-> вместо 3 из 3** (ворота `aggregate-percolation` **впервые в проекте прошли**), а замыкания
-> по-прежнему нет — `encapsulatedWater` РОВНО 0 на 19 из 19 снимков при пороге 312.67–314.87.
-> Периодическая граница была СЛЕДСТВИЕМ, а не причиной. Новая §11 — весь опыт; §5.2 и §9.3 помечены
-> тем, что из них теперь снято. Опубликованная таблица ворот осталась ПЕРИОДИЧЕСКОЙ (её коридоры
-> установлены в периодическом боксе), а удерживаемое плечо опубликовано ОТДЕЛЬНОЙ строкой в
-> `verify/out/gates-confined.json` — оба результата важны.
+> **What changed LATER the same day (task `confined-parcel`).** Item 3 of the §9 list, "the aperiodic
+> region is the root cause", has been **tested and REFUTED as the root cause**: the system was run in a
+> finite parcel of water with a soft neutral wall, the number of wrapping axes went to **0 of 3 instead of
+> 3 of 3** (the `aggregate-percolation` gate **passed for the first time in the project**), and closure is
+> still absent: `encapsulatedWater` is EXACTLY 0 on 19 of 19 snapshots against a threshold of
+> 312.67-314.87. The periodic boundary was a CONSEQUENCE, not the cause. A new §11 covers the whole
+> experiment; §5.2 and §9.3 are marked with what has now been lifted from them. The published gate table
+> remains the PERIODIC one (its corridors were set in the periodic box), and the confined arm is published
+> as a SEPARATE line in `verify/out/gates-confined.json`; both results matter.
 
 ---
 
-## 1. Что проверяли
+## 1. What was tested
 
-Один вопрос: **соберётся ли из огрублённого «бульона» мономеров самособранная ЗАМКНУТАЯ везикула** —
-объект, у которого есть внутренность, недоступная снаружи, и стенка-бислой вокруг неё.
+One question: **will a self-assembled CLOSED vesicle form out of a coarse-grained "soup" of monomers**,
+that is, an object that has an interior inaccessible from outside and a bilayer wall around it.
 
-Правила проекта, которые определяли, что считается ответом:
+Project rules that determined what counts as an answer:
 
-- **Ворота — это утверждение с числом модели, литературным интервалом, вердиктом и рангом довода**
-  (спецификация `docs/superpowers/specs/2026-08-15-protocell-genesis-design.md`, раздел 8). Ворота
-  публикуются как **пройдены / провалены / недоказаны** и **никогда не расширяются**, чтобы пройти.
-- **Ранги довода** (спецификация, раздел 3): **A** — измерено (ссылка, условия, погрешность);
-  **B** — посчитано; **C** — ограничено термодинамикой / отношения взяты из независимого источника;
-  **D** — оценка, и **ворота, опирающиеся только на D, выходят недоказанными по определению**.
-- В `engine/` не должно быть ни одной вписанной руками химической константы: движок читает `data/`.
-- Гидрофобность обязана быть **эмерджентной** (из вытеснения водой), а не заданной прямым
-  притяжением хвостов.
-- `co_bond.attemptRate` не подкручивается. За проект его просили девять раз и девять раз отказано.
+- **A gate is a statement with a model number, a literature interval, a verdict, and an evidence rank**
+  (spec `docs/superpowers/specs/2026-08-15-protocell-genesis-design.md`, section 8). Gates are published
+  as **passed / failed / unproven** and **are never widened** to make them pass.
+- **Evidence ranks** (spec, section 3): **A**, measured (reference, conditions, error bar);
+  **B**, computed; **C**, bounded by thermodynamics / ratios taken from an independent source;
+  **D**, an estimate, and **a gate resting only on D comes out unproven by definition**.
+- `engine/` must contain not a single hand-entered chemical constant: the engine reads `data/`.
+- Hydrophobicity must be **emergent** (from water exclusion), not set by direct tail-tail attraction.
+- `co_bond.attemptRate` is not tuned. Over the project's lifetime it was requested nine times and refused
+  nine times.
 
-**Одной честной фразой, что построено и чем кончилось.** Построен работающий огрублённый движок на
-WebGPU с эмерджентной гидрофобностью, растущей на катализаторе химией цепей, испарением растворителя,
-явной жидкой водой, зарядом с протонационным равновесием и полным набором приборов для распознавания
-замкнутости — и он **устойчиво собирает не везикулу, а одну перколирующую сетку**, которая протянута
-через периодический бокс по всем трём осям при каждом замере каждой кампании. Проект отвечает на
-свой вопрос отрицательно и, что важнее, называет измеренную причину.
+**In one honest sentence, what was built and how it ended.** A working coarse-grained WebGPU engine was
+built, with emergent hydrophobicity, catalyst-grown chain chemistry, solvent evaporation, explicit liquid
+water, charge with a protonation equilibrium, and a full set of instruments for detecting closure, and it
+**consistently assembles not a vesicle but a single percolating network** that spans the periodic box along
+all three axes at every measurement of every campaign. The project answers its own question in the
+negative and, more importantly, names the measured cause.
 
 ---
 
-## 2. Что построено
+## 2. What was built
 
-| слой | что это | где |
+| layer | what it is | where |
 |---|---|---|
-| «бульон» | химия связей на GPU: рост цепи C–C на катализаторе, терминация головой (C–O), валентность, дегидратация/регидратация, испарение растворителя, глиняная пластина | `soup/` |
-| явная вода | вода как отдельный вид бидов; притяжение по КЛАССАМ (растворитель/полярный/аполярный), отношения глубин — из `martini_v2.1.itp` | `soup/wgsl/step.wgsl`, `data/soup.json` |
-| **электростатика** | экранированный кулон (Дебай–Хюккель) между головами; заряд — **динамическая переменная**, выбираемая MC при постоянном pH; свой радиус обрезания в единицах собственной длины экранирования (4 λ_D) и свой список соседей | `soup/src/electrostatics.ts`, `soup/wgsl/es-*.wgsl`, `data/soup.json` §`electrostatics` |
-| измерения | распознавание амфифилов, покомпонентный разбор агрегатов, формы (тензор инерции), слои голов, полость, инкапсулированная вода, обёртывание бокса | `soup/src/aggregates.ts`, `soup/src/water-closure.ts`, `tests/percolation-check.test.ts` |
-| ворота | `data/literature.json` (определения) → `verify/gates.ts` (правила вердикта) → `verify/run.ts` (прогон) → `verify/out/gates.json` + `report.html` | `verify/` |
-| просмотрщик | страница прогона: старт/пауза/стоп, живой замер, лестница стадий, разбор агрегатов, подсветка полости, заметки честности | `viewer/run.html` + `viewer/run-*.ts` |
-| длинные прогоны | CLI с чекпойнтами и возобновлением: кампания идёт десятками отдельных вызовов, каждый под 500 с | `soup/cli/campaign.ts` |
+| "soup" | GPU bond chemistry: C-C chain growth on a catalyst, head termination (C-O), valence, dehydration/rehydration, solvent evaporation, a clay plate | `soup/` |
+| explicit water | water as a separate bead species; attraction by CLASS (solvent/polar/apolar), depth ratios taken from `martini_v2.1.itp` | `soup/wgsl/step.wgsl`, `data/soup.json` |
+| **electrostatics** | screened Coulomb (Debye-Huckel) between heads; charge is a **dynamic variable**, chosen by MC at fixed pH; its own cutoff radius in units of its own screening length (4 λ_D) and its own neighbor list | `soup/src/electrostatics.ts`, `soup/wgsl/es-*.wgsl`, `data/soup.json` §`electrostatics` |
+| measurements | amphiphile recognition, per-component aggregate breakdown, shapes (inertia tensor), head layers, cavity, encapsulated water, box wrapping | `soup/src/aggregates.ts`, `soup/src/water-closure.ts`, `tests/percolation-check.test.ts` |
+| gates | `data/literature.json` (definitions) → `verify/gates.ts` (verdict rules) → `verify/run.ts` (run) → `verify/out/gates.json` + `report.html` | `verify/` |
+| viewer | run page: start/pause/stop, live measurement, stage ladder, aggregate breakdown, cavity highlighting, honesty notes | `viewer/run.html` + `viewer/run-*.ts` |
+| long runs | CLI with checkpoints and resume: a campaign proceeds as dozens of separate calls, each under 500 s | `soup/cli/campaign.ts` |
 
-Атомистическая детализация в кадре — **реконструкция** по справочной геометрии поверх огрублённых
-координат, а не полноатомная динамика. Это подписано на самой странице.
+Atomistic detail in a frame is a **reconstruction** from reference geometry laid over the coarse-grained
+coordinates, not full-atom dynamics. This is stated on the page itself.
 
 ---
 
-## 3. Что измерено — опубликованные ворота
+## 3. What was measured: the published gates
 
-Регенерировано `npm run verify` **2026-08-20T23:23:30Z** (задача `closeout`). Ранг и вердикт — из
-`verify/out/gates.json`; поле `provenance` каждой строки называет артефакт и время его замера.
-**Опубликованный блок кампании — прогон бокса 76 (`bbB76`), 148 200 шагов** (см. §6): читатель,
-сравнивающий эти строки с числами более старых отчётов, найдёт другой бокс и в 2.9 раза большую
-подачу.
+Regenerated by `npm run verify` at **2026-08-20T23:23:30Z** (task `closeout`). Rank and verdict are from
+`verify/out/gates.json`; the `provenance` field of each row names the artifact and the time it was
+measured. **The published campaign block is box-76 run (`bbB76`), 148,200 steps** (see §6): a reader
+comparing these rows against numbers from older reports will find a different box and 2.9 times more feed.
 
-| ворота | значение | коридор | ранг | вердикт |
+| gate | value | corridor | rank | verdict |
 |---|---|---|---|---|
-| площадь на липид (без растворителя) | **1.2005 σ²** | 1.1–1.5 | A | **пройдено** (внутри) |
-| толщина бислоя (без растворителя) | **4.4308 σ** | 4–6 | A | **пройдено** (внутри) |
-| модуль изгиба κ | — | 5–50 kT | A | **недоказано** (окно подгонки невалидно) |
-| площадь на липид **В ЯВНОЙ ВОДЕ** | **1.1607 σ²** [1.1519, 1.1674] | 1.1–1.5 | C | **пройдено** (внутри) |
-| толщина бислоя **В ЯВНОЙ ВОДЕ** | **4.6871 σ** | 4–6 | C | **пройдено** (внутри) |
-| **замкнутость: инкапсулированная вода / порог** | **0** (0 бидов против 315.409) | ≥ 1 | B | **ПРОВАЛЕНО** (вне) |
-| **крупнейший агрегат конечен** | **3 оси из 3** (слоёв 27/27/27 из 27) | ≤ 0 | B | **ПРОВАЛЕНО** (вне) |
-| **ИТОГ: самособранная замкнутая везикула** | **0 агрегатов** | ≥ 1 | A | **ПРОВАЛЕНО** (вне) |
-| согласие с ASF (ворота 2 спецификации) | расхождение **0.1594** | — | D | недоказано (нет коридора) |
-| среднее число бидов на хвост | **3.419** | 2–3 | D | недоказано (вне) |
-| полость детектора (синтетическая оболочка) | 1284.875 σ³ | ≥ 370.8656 | D | недоказано (внутри) |
-| соответствие «атомы углерода → биды» | 3 | — | D | недоказано |
+| area per lipid (solvent-free) | **1.2005 σ²** | 1.1-1.5 | A | **passed** (inside) |
+| bilayer thickness (solvent-free) | **4.4308 σ** | 4-6 | A | **passed** (inside) |
+| bending modulus κ | - | 5-50 kT | A | **unproven** (fit window invalid) |
+| area per lipid **IN EXPLICIT WATER** | **1.1607 σ²** [1.1519, 1.1674] | 1.1-1.5 | C | **passed** (inside) |
+| bilayer thickness **IN EXPLICIT WATER** | **4.6871 σ** | 4-6 | C | **passed** (inside) |
+| **closure: encapsulated water / threshold** | **0** (0 beads against 315.409) | ≥ 1 | B | **FAILED** (outside) |
+| **largest aggregate is finite** | **3 of 3 axes** (27/27/27 of 27 shells) | ≤ 0 | B | **FAILED** (outside) |
+| **RESULT: self-assembled closed vesicle** | **0 aggregates** | ≥ 1 | A | **FAILED** (outside) |
+| agreement with ASF (spec gate 2) | discrepancy **0.1594** | - | D | unproven (no corridor) |
+| mean beads per tail | **3.419** | 2-3 | D | unproven (outside) |
+| detector cavity (synthetic shell) | 1284.875 σ³ | ≥ 370.8656 | D | unproven (inside) |
+| carbon-atom-to-bead mapping | 3 | - | D | unproven |
 
-`mean-tail-length` = **3.419** — это финальная строка кампании `bbB76` этой задачи, и она же
-доказательство, что ворота прочитали именно её трассу, а не старую;
-`aggregate-percolation` = 3 собрано из **23** строк с `role:"campaign"`.
+`mean-tail-length` = **3.419** is the final row of the `bbB76` campaign for this task, and it is also
+proof that the gates read exactly that trace and not an old one;
+`aggregate-percolation` = 3, collected from **23** rows with `role:"campaign"`.
 
-### 3.1 Бислой в жидкой воде — настоящий результат, и как его добывали
+### 3.1 A bilayer in liquid water: a real result, and how it was obtained
 
-Бислой **в жидкой явной воде 0.8 σ⁻³** держит и площадь, и толщину: **1.1607 σ² / 4.6871 σ**, ядро
-сухое (33 водяных бида из 4500 внутри), доля закопанных голов **0.0656**, кластер 1.0000, площадь
-**осела** (дрейф ln A 3.70e−5 за отсчёт, t = 1.40 на 300 отсчётах). Площадь здесь **измерена** ходом
-по площади при нулевом натяжении, а не задана построением.
+A bilayer **in liquid explicit water at 0.8 σ⁻³** holds both area and thickness: **1.1607 σ² / 4.6871 σ**,
+a dry core (33 water beads out of 4500 inside), a buried-head fraction of **0.0656**, a cluster fraction of
+1.0000, and settled area (ln A drift of 3.70e-5 per sample, t = 1.40 over 300 samples). Area here is
+**measured** via an area-move step at zero tension, not fixed by construction.
 
-Это важно потому, что до задачи `hydrophobic-asymmetry` (2026-08-19) та же заплатка в воде давала
-**12.2–12.4 σ** при коридоре 4–6 и площадь была допущением 1.3 σ²
-(`broth-composition-report.md` §4). Механизм провала нашла задача `water-calibration`: не проникновение
-воды в ядро (ядро было сухим) и не отсутствие ядра, а **закапывание голов** — 40–49 % головных бидов
-сидели внутри гидрофобной зоны, потому что удаление старого члена «хвост–хвост» оставило листок вообще
-без латеральной когезии. Исправление — не подгонка, а **отношения глубин пар из MARTINI 2.1**
-(`martini_v2.1.itp`, `[nonbond_params]`, ε = C6²/(4·C12)): вода–вода 5.0, вода–голова 4.0,
-хвост–хвост 3.5 (эталон, множитель ровно 1.0), вода–хвост 2.0 кДж/моль. Обменная (флори-хаггинсовская)
-энергия при этом положительна: 5.0 + 3.5 − 2·2.0 = **+4.5 кДж/моль**, то есть смешение по-прежнему
-невыгодно и гидрофобность осталась эмерджентной. Абсолютная глубина не перефитировалась: хвост–хвост
-бит-в-бит равен ранг-A ε из `data/params.json`.
+This matters because before the task `hydrophobic-asymmetry` (2026-08-19) the same patch in water gave
+**12.2-12.4 σ** against a 4-6 corridor, and area was an assumption of 1.3 σ²
+(`broth-composition-report.md` §4). The task `water-calibration` found the failure mechanism: not water
+penetrating the core (the core was dry) and not the absence of a core, but **buried heads**: 40-49% of head
+beads sat inside the hydrophobic zone, because removing the old "tail-tail" term left the leaflet with no
+lateral cohesion at all. The fix is not tuning but **pair depth ratios from MARTINI 2.1**
+(`martini_v2.1.itp`, `[nonbond_params]`, ε = C6²/(4·C12)): water-water 5.0, water-head 4.0,
+tail-tail 3.5 (the reference, multiplier exactly 1.0), water-tail 2.0 kJ/mol. The exchange
+(Flory-Huggins) energy is then positive: 5.0 + 3.5 - 2·2.0 = **+4.5 kJ/mol**, meaning mixing is still
+unfavorable and hydrophobicity remains emergent. The absolute depth was not refit: tail-tail matches
+bit-for-bit the rank-A ε from `data/params.json`.
 
-Ранг **C**, а не A: коридор литературный (ранг A), но число получено в среде, чьи отношения глубин
-взяты из чужого силового поля и на этом дереве не калиброваны, а `epsilonScale = 1.0` несёт ранг D.
+Rank **C**, not A: the corridor is literature-derived (rank A), but the number was obtained in an
+environment whose depth ratios were taken from someone else's force field and are not calibrated on this
+tree, and `epsilonScale = 1.0` carries rank D.
 
-### 3.2 Статистика длин цепей (Флори / Андерсон–Шульц–Флори)
+### 3.2 Chain-length statistics (Flory / Anderson-Schulz-Flory)
 
-На последнем снимке кампании `bbB76`: событийное **α_ev = cc_bond/(cc_bond+co_bond)**, ASF-среднее
-`1/(1−α_ev)` против измеренного среднего на хвост **3.419** — расхождение **0.1594**. Независимая
-оценка того же α из самой гистограммы длин сходится с событийной с точностью нескольких процентов, и
-форма распределения геометрическая, что и есть подпись Андерсона–Шульца–Флори
-(van der Laan & Beenackers, *Catal. Rev. Sci. Eng.* **41** (1999) 255–318).
+On the final snapshot of the `bbB76` campaign: event-based **α_ev = cc_bond/(cc_bond+co_bond)**, the
+ASF mean `1/(1-α_ev)` against a measured mean tail length of **3.419**, a discrepancy of **0.1594**. An
+independent estimate of the same α from the length histogram itself converges with the event-based one to
+within a few percent, and the shape of the distribution is geometric, which is the signature of
+Anderson-Schulz-Flory
+(van der Laan & Beenackers, *Catal. Rev. Sci. Eng.* **41** (1999) 255-318).
 
-Ворота всё равно **недоказаны**, и причина названа прямо: спецификация формулирует критерий как
-«расхождение гистограмм», не давая числового коридора, а независимого литературного коридора для α
-именно этой системы не существует. Придумать коридор здесь означало бы подогнать ворота под результат.
+The gate is still **unproven**, and the reason is stated directly: the spec defines the criterion as
+"histogram discrepancy" without giving a numerical corridor, and no independent literature corridor for α
+exists for this specific system. Inventing a corridor here would mean fitting the gate to the result.
 
-Длина хвоста **3.419** лежит ВЫШЕ окна 2–3, которое подразумевает наше собственное отображение
-«C8 → 2, C12 → 3, C16 → 4» (спецификация, раздел 4). Отображение несёт ранг D и принимается только
-через ворота площади и толщины, поэтому эти ворота выходят недоказанными, а не проваленными. Честное
-замечание: если бы отображение имело независимый коридор, это было бы **провалом**. И длина хвоста
-здесь не одно число, а **тренд внутри одного прогона при неизменном составе**: 2.158 → 2.911 → 3.207
-→ **3.419** по ходу `bbB76`. Молекула продолжает расти, когда структура уже стоит на плато.
+The tail length **3.419** sits ABOVE the 2-3 window implied by our own mapping
+"C8 → 2, C12 → 3, C16 → 4" (spec, section 4). The mapping carries rank D and is only accepted through the
+area and thickness gates, so this gate comes out unproven rather than failed. An honest caveat: if the
+mapping had an independent corridor, this would be a **failure**. And tail length here is not a single
+number but a **trend within one run at constant composition**: 2.158 → 2.911 → 3.207
+→ **3.419** over the course of `bbB76`. The molecule keeps growing after the structure has already
+plateaued.
 
-### 3.3 Испарение: коэффициент концентрирования, а не термодинамика
+### 3.3 Evaporation: a concentration factor, not thermodynamics
 
-Испарение здесь — **удаление растворителя**, а не фазовый переход. Коэффициент концентрирования,
-который модель реально проходит, — **3.20×** против **1400×** у литературного цикла сушки-намокания
-(16.07 % от него по логарифму), а углеродный пул к тому же обогащён **~691×** против самого щедрого
-литературного пруда (~15 мМ декановой кислоты, ACS Earth Space Chem. 2023, PMC9869395). Сухо-влажный
-цикл при этом **реально работает** и это измерено: выход в 1.68–1.80 раза, связи в 1.76–1.93 раза,
-крупнейший агрегат в 8.1–8.4 раза (эти числа — уже ПОСЛЕ исправления дефекта §7.3, до него
-публиковались завышенные 12.5–14.5 раза).
+Evaporation here is **solvent removal**, not a phase transition. The concentration factor that the model
+actually achieves is **3.20×** against **1400×** for a literature dry-wet cycle (16.07% of it on a log
+scale), and the carbon pool is on top of that enriched **~691×** against the most generous literature pool
+(~15 mM decanoic acid, ACS Earth Space Chem. 2023, PMC9869395). The dry-wet cycle does **actually work**,
+and this is measured: yield up 1.68-1.80×, bonds up 1.76-1.93×, the largest aggregate up 8.1-8.4×
+(these numbers are AFTER fixing the defect in §7.3; before the fix, inflated numbers of 12.5-14.5× were
+published).
 
-### 3.4 Электростатика — то, чего в предыдущей редакции этого документа не было вовсе
+### 3.4 Electrostatics: what was entirely absent from the previous revision of this document
 
-Заряд на голове, экранированный кулон (Дебай–Хюккель) и **протонационное равновесие**: заряд каждой
-головы — динамическая переменная, выбираемая дискретным MC при постоянном pH из
-ΔG = kT·ln10·(pKa_intr − pH) + ΔU_es. Ионная сила и pH — настоящие параметры,
-λ_D = 0.304 нм/√(I[M]). `data/soup.json`'s `saltPhLimitation.represented` переведён **false → true**,
-и это единственное поле, которое поменяло значение.
+Head charge, screened Coulomb (Debye-Huckel), and a **protonation equilibrium**: the charge of each head is
+a dynamic variable, chosen by discrete MC at fixed pH from
+ΔG = kT·ln10·(pKa_intr − pH) + ΔU_es. Ionic strength and pH are real parameters,
+λ_D = 0.304 nm/√(I[M]). `data/soup.json`'s `saltPhLimitation.represented` was flipped **false → true**,
+and this is the only field that changed value.
 
-**Сила проверена против численного градиента дважды.** На уровне пары худший относительный остаток
-**5.145e−9** на r ∈ [0.6, 2.7] σ; по всему полю сила GPU против −∇ потенциала CPU — **1.736e−5** при
-mean|F| = 0.0470, против контроля с выключенным зарядом **1.303e−3** при mean|F| = 81.31 на том же
-допуске.
+**The force was checked against a numerical gradient twice.** At the pair level, the worst relative
+residual is **5.145e-9** over r ∈ [0.6, 2.7] σ; over the whole field, GPU force against the CPU −∇ of the
+potential is **1.736e-5** at mean|F| = 0.0470, against a control with charge disabled of **1.303e-3** at
+mean|F| = 81.31 on the same tolerance.
 
-**Выборка протонирования проверена против чего-то независимого.** При ΔU_es = 0 измеренная α
-воспроизводит Гендерсона–Хассельбальха до **≤ 2.08e−3** на пяти значениях pH (каждое отклонение
-внутри 4 биномиальных стандартных ошибок). При включённом ΔU_es четыре заселённости системы из двух
-голов совпадают с **точными перечисленными весами Больцмана** до **3.140e−3** на 200 000 подметаний,
-и взаимодействие действительно в игре (состояние «оба заряжены» подавлено 0.21049 против 0.25000).
+**The protonation sampling was checked against something independent.** At ΔU_es = 0, the measured α
+reproduces the Henderson-Hasselbalch relation to within **≤ 2.08e-3** at five pH values (each deviation
+within 4 binomial standard errors). With ΔU_es included, the four occupancies of a two-head system match
+the **exact enumerated Boltzmann weights** to within **3.140e-3** over 200,000 sweeps, and the interaction
+is indeed active (the "both charged" state is suppressed at 0.21049 against 0.25000).
 
-**И вот единственная независимая валидация в проекте.** Сдвиг кажущейся pKa между 10 и 100 мМ соли,
-литература ≈ **0.7**:
+**And here is the project's only independent validation.** The apparent-pKa shift between 10 and 100 mM
+salt, literature ≈ **0.7**:
 
-| попытка | радиус обрезания заряда | измеренный сдвиг pKa по соли | доля отброшенного взаимодействия |
+| attempt | charge cutoff radius | measured salt-dependent pKa shift | fraction of interaction dropped |
 |---|---|---|---|
-| первая (`electrostatics`) | общий с ЛД, 2.7224620 σ | **+0.124** (в 5.6 раза мал) | 0.8385 при 10 мМ против 0.3389 при 100 мМ — **несимметрично** |
-| вторая (`long-range-electrostatics`) | **свой, 4 λ_D = 15.2000 σ** | **+0.709** | **0.0916 в ОБОИХ плечах** |
+| first (`electrostatics`) | shared with LJ, 2.7224620 σ | **+0.124** (5.6× too small) | 0.8385 at 10 mM against 0.3389 at 100 mM: **asymmetric** |
+| second (`long-range-electrostatics`) | **own, 4 λ_D = 15.2000 σ** | **+0.709** | **0.0916 on BOTH sides** |
 
-То есть первая попытка ошибалась не в физике, а в диапазоне: обрезание, выраженное в единицах
-собственной длины экранирования, делает отброшенную долю exp(−x)(1+x) одинаковой в каждом плече, и
-сдвиг сам садится на литературное значение. Ни одна константа под это не подгонялась.
-**Кажущаяся pKa как таковая тоже эмерджентна**: модели дана только мономерная pKa 4.9, а межфазный
-сдвиг измеряется **+0.08 / +0.32 / +0.67 / +0.97** при pH 4/5/6/7, монотонно по α.
+That is, the first attempt was wrong not in the physics but in the range: a cutoff expressed in units of
+its own screening length makes the dropped fraction exp(−x)(1+x) the same on each side, and the shift
+naturally lands on the literature value. No constant was tuned for this.
+**The apparent pKa itself is also emergent**: the model is given only a monomer pKa of 4.9, and the
+interfacial shift measured is **+0.08 / +0.32 / +0.67 / +0.97** at pH 4/5/6/7, monotonic in α.
 
-**Кислотно-мыльная пара появилась** — как корреляция чередования заряда, а не как димер: доля
-спаренных 0.058–0.080, отношение избытка неодинаковых контактов 1.23–1.37 против случайного нуля.
-Водородная связь при этом НЕ добавлялась (`polarPolar` остался 0). Доля выживания пар растёт
-монотонно **0.033 → 0.244** — пары становятся долгоживущими, и это не сигнал замкнутости.
+**An acid-soap pair has appeared**, as a correlation of alternating charge, not as a dimer: the paired
+fraction is 0.058-0.080, the ratio of excess unlike contacts is 1.23-1.37 against a random null of zero.
+Hydrogen bonding was NOT added in the process (`polarPolar` remains 0). The pair survival fraction grows
+monotonically **0.033 → 0.244**: pairs become long-lived, and this is not a closure signal.
 
-**Чего электростатика НЕ сделала: она не разорвала сетку. Ни при каком pH от 4 до 9.** Прибор
-обёртывания говорит 3 оси из 3 на всех шести плечах бокса 30 (нейтральный контроль и пять заряженных,
-α от 0.110 до 1.000 неразличимы), на кампании бокса 54 и на кампании бокса 76. При этом отталкивание
-голова–голова доведено до **0.7215 kT** против 0.909 kT аполярного контакта — **всего в 1.26 раза
-слабее** (а на сильном конце диапазона σ→нм оно аполярный контакт ПРЕВОСХОДИТ), на 16.2 % бидов.
-Это и есть опровержение энергетического объяснения: **разрыв в энергии закрыт с 2.86× до 1.26×, а
-число обёртывающих осей сдвинулось РОВНО НА НОЛЬ.**
+**What electrostatics did NOT do: it did not break the network. At any pH from 4 to 9.** The wrapping
+instrument reports 3 of 3 axes on all six arms of box 30 (a neutral control and five charged arms, α from
+0.110 to 1.000, indistinguishable), on the box-54 campaign, and on the box-76 campaign. Meanwhile
+head-head repulsion was brought up to **0.7215 kT** against 0.909 kT of an apolar contact: **only 1.26×
+weaker** (and at the strong end of the σ→nm range it actually EXCEEDS the apolar contact), over 16.2% of
+beads. This is the refutation of the energetic explanation: **the energy gap closed from 2.86× to 1.26×,
+and the number of wrapping axes moved by EXACTLY ZERO.**
 
 ---
 
-## 4. Вердикт
+## 4. Verdict
 
-**ЗАМКНУТОЙ ВЕЗИКУЛЫ НЕТ. Ни на одном снимке ни одной кампании за весь проект.**
-`hasVesicleAggregate` = false, `closed` = false, `encapsulatedWater` = 0 — везде и всегда.
+**THERE IS NO CLOSED VESICLE. Not on a single snapshot of any campaign across the entire project.**
+`hasVesicleAggregate` = false, `closed` = false, `encapsulatedWater` = 0, everywhere, always.
 
-Последняя и самая крупная кампания (`bbB76`, задачи `big-box` + `closeout`): бокс **76 σ**,
-**N = 483 268**, жидкая вода ρ_W = 351 181/438 976 = **0.8000005**, ρ_org = 0.3008980, состав
-O:C = **0.333265**, сид 19, kT 1.1, заряд включён при pH 7.0 / I = 0.01 M, одно событие высушивания,
-**148 200 шагов**, из которых **111 800 осевших влажных**. Начало — решётка одних мономеров на своём
-шаге 0 (270 агрегатов, крупнейший из 4 амфифилов), ничего готового.
+The last and largest campaign (`bbB76`, tasks `big-box` + `closeout`): box **76 σ**,
+**N = 483,268**, liquid water ρ_W = 351181/438976 = **0.8000005**, ρ_org = 0.3008980, composition
+O:C = **0.333265**, seed 19, kT 1.1, charge on at pH 7.0 / I = 0.01 M, one drying event,
+**148,200 steps**, of which **111,800 were settled wet steps**. Start: a lattice of monomers alone at its
+own step 0 (270 aggregates, largest of 4 amphiphiles), nothing pre-built.
 
-| величина | измерено | нужно | вердикт |
+| quantity | measured | needed | verdict |
 |---|---|---|---|
-| подача амфифилов | **4519.5 ± 5.2** (0.11 % на последних четырёх) | ~930–955 | **в 4.73 раза НАД порогом — снято** |
-| размер крупнейшего агрегата | тот же объект, 99.93 % подачи | ~930–955 | **снято** |
-| краевая энергия на молекулу | 0.583 kT при N = 2087 (замер кампании бокса 54) | ≲ 1 kT | **снято** |
-| **связность: обёртывающих осей** | **3 из 3**, слоёв 27/27, на **23 из 23** влажных снимков | **0** | **СВЯЗЫВАЮЩЕЕ ОГРАНИЧЕНИЕ** |
-| инкапсулированная вода | **0** на всех 23 | ≥ 315.4 бида | ниже по течению |
-| радиальных слоёв голов | **1–2**, дрожит | 2 (стенка бислоя) | ниже по течению |
-| полость | **139.25 σ³, ВСЁ ЕЩЁ РАСТЁТ** | ≥ 370.8656 σ³ | в 2.66 раза меньше (самое благоприятное чтение) |
-| плоскостность λ₁/λ₃ | 0.7571 | ≤ 0.35 | в 2.16 раза больше |
-| симметрия в плоскости λ₂/λ₃ | 0.9742 | ≥ 0.50 | пройдено |
-| обмен мономерами, деления, слияния | **0, 0, 0** на всех 22 интервалах | ненулевые | **не проверено этой моделью** |
+| amphiphile feed | **4519.5 ± 5.2** (0.11% over the last four) | ~930-955 | **4.73× OVER the threshold: cleared** |
+| largest-aggregate size | the same object, 99.93% of feed | ~930-955 | **cleared** |
+| rim energy per molecule | 0.583 kT at N = 2087 (measured on the box-54 campaign) | ≲ 1 kT | **cleared** |
+| **connectivity: wrapping axes** | **3 of 3**, shells 27/27, on **23 of 23** wet snapshots | **0** | **BINDING CONSTRAINT** |
+| encapsulated water | **0** on all 23 | ≥ 315.4 beads | downstream |
+| radial head shells | **1-2**, oscillating | 2 (bilayer wall) | downstream |
+| cavity | **139.25 σ³, STILL GROWING** | ≥ 370.8656 σ³ | 2.66× short (the most favorable reading) |
+| flatness λ₁/λ₃ | 0.7571 | ≤ 0.35 | 2.16× too large |
+| in-plane symmetry λ₂/λ₃ | 0.9742 | ≥ 0.50 | passed |
+| monomer exchange, fissions, fusions | **0, 0, 0** on all 22 intervals | nonzero | **not tested by this model** |
 
-**Радиус инерции 37.43 σ против 38.000 σ для равномерно заполненного бокса 76 σ (98.5 %).** Объект
-настолько же заполняет бокс, насколько его заполнял объект в боксе 54.
+**Radius of gyration 37.43 σ against 38.000 σ for a uniformly filled box of 76 σ (98.5%).** The object
+fills the box just as fully as the object in box 54 filled its box.
 
 ---
 
-## 5. МЕХАНИЗМ, как он понят сейчас
+## 5. The MECHANISM, as it is understood now
 
-Предыдущая редакция этого документа объясняла провал так: «при той доле двухвостых голов, при которой
-бислой становится предпочтительной формой, концентрация амфифилов ставит систему выше её собственного
-порога гелеобразования». Это верно как описание, но **три конкурирующих объяснения того ЖЕ факта были
-после этого проверены и сняты замером**, и осталось одно, у которого есть арифметика.
+The previous revision of this document explained the failure this way: "at the two-tailed-head fraction
+where a bilayer becomes the preferred shape, amphiphile concentration puts the system above its own
+gelation threshold." That holds as a description, but **three competing explanations of the SAME fact were
+subsequently tested and ruled out by measurement**, and one remains, which has arithmetic behind it.
 
-### 5.1 Что снято
+### 5.1 What was ruled out
 
-| объяснение | как проверялось | результат |
+| explanation | how it was tested | result |
 |---|---|---|
-| **подача**: материала слишком много, и он сливается в одно | подача уменьшена до 1.50× порога (`supply-window`), потом увеличена до 4.82× (`big-box`) | **3 оси из 3 оба раза.** Снято |
-| **краевая энергия**: конечному объекту слишком дорог край | 0.583 kT/молекула при N = 2087 против ≲1 kT | Снято |
-| **энергия пар**: головы слишком слабо отталкиваются | разрыв закрыт 2.86× → **1.26×** (см. §3.4) | **Число обёртывающих осей сдвинулось на 0.** ОПРОВЕРГНУТО измерением |
-| **размер бокса**: бокс мал, конечному объекту негде уместиться | объём бокса увеличен в **2.79 раза** при неизменной плотности (54 → 76 σ) | **3 оси из 3, 27/27 слоёв, на всех 23 снимках.** Опровергнуто в пределах, куда достаёт движок |
+| **feed**: too much material, and it merges into one | feed reduced to 1.50× the threshold (`supply-window`), then increased to 4.82× (`big-box`) | **3 of 3 axes both times.** Ruled out |
+| **rim energy**: too costly for a finite object to have an edge | 0.583 kT/molecule at N = 2087, against ≲1 kT | Ruled out |
+| **pair energy**: heads repel too weakly | gap closed from 2.86× → **1.26×** (see §3.4) | **The number of wrapping axes moved by 0.** REFUTED by measurement |
+| **box size**: box too small, finite object has nowhere to fit | box volume increased by **2.79×** at constant density (54 → 76 σ) | **3 of 3 axes, 27/27 shells, on all 23 snapshots.** Refuted within the engine's reach |
 
-### 5.2 Что осталось: спанирующая цилиндрическая мицелла дешевле замкнутой везикулы
+### 5.2 What remained: a spanning cylindrical micelle is cheaper than a closed vesicle
 
-Утверждение заказчика было такое: в полностью периодическом боксе объект, протянутый через бокс, не
-имеет края вообще, поэтому он выигрывает у замкнутой везикулы, которой приходится платить кривизну.
-Значит, везикула предпочтительна только когда материала ХВАТАЕТ на замкнутую оболочку и НЕ ХВАТАЕТ на
-самый дешёвый спанирующий объект. Механизм верен, и он превращает вопрос в арифметику.
+The project owner's claim was this: in a fully periodic box, an object spanning the box has no
+edge at all, so it beats a closed vesicle, which has to pay for curvature. Therefore a vesicle is preferred
+only when there is ENOUGH material for a closed shell but NOT ENOUGH for the cheapest spanning object. The
+mechanism is correct, and it turns the question into arithmetic.
 
-**Арифметика была проверена и оказалась неверна в выборе конкурента.** Самый дешёвый бескраевой
-спанирующий объект этого амфифила — не бислойная труба радиусом ≈4 σ, а **цилиндрическая мицелла
-радиусом в толщину листка** (t/2). Опознана не рассуждением: обращение измеренных радиусов инерции
-через измеренный объём даёт 151-молекулярному стержню физический радиус **2.353–2.560 σ** против
-t/2 = **2.229–2.484 σ** — то, что проект измерял всю дорогу, И ЕСТЬ цилиндрическая мицелла.
+**The arithmetic was tested and turned out wrong in its choice of competitor.** The cheapest edgeless
+spanning object for this amphiphile is not a bilayer tube of radius ≈4 σ, but a **cylindrical micelle with
+radius equal to the leaflet thickness** (t/2). This was identified not by argument but by measurement:
+inverting the measured radii of gyration through the measured volume gives a 151-molecule rod a physical
+radius of **2.353-2.560 σ**, against t/2 = **2.229-2.484 σ**: what the project has been measuring all
+along IS a cylindrical micelle.
 
-| объект | стоимость в амфифилах | зависит от L? |
+| object | cost, in amphiphiles | depends on L? |
 |---|---|---|
-| замкнутая везикула минимального объёма (порог 370.8656 σ³) | **930–1030** | **НЕТ**, box-independent |
-| цилиндрическая мицелла, протянутая через бокс | **(5.806–6.635)·L** | да, линейно |
+| closed vesicle of minimum volume (threshold 370.8656 σ³) | **930-1030** | **NO**, box-independent |
+| cylindrical micelle spanning the box | **(5.806-6.635)·L** | yes, linearly |
 
-Полоса [порог замкнутости, стоимость спанирующего] **ПУСТА и ИНВЕРТИРОВАНА** при любом боксе, который
-может посчитать этот движок: при L = 54 спанирующий стоит 314–358 против порога 932–1030; при L = 76 —
-440–450 против 930–955 (инверсия в 2.07–2.17 раза). Полоса открывается только при
+The band [closure threshold, spanning cost] is **EMPTY and INVERTED** at any box this engine can compute:
+at L = 54 the spanning object costs 314-358 against a threshold of 932-1030; at L = 76 it costs
+440-450 against 930-955 (an inversion of 2.07-2.17×). The band only opens at
 
-**L\* = 160.6–161.3 σ** (из собственных ворот задачи `big-box`; независимый пин
-`tests/supply-window.test.ts` даёт [157.4, 164.4] σ и скобит это значение),
+**L\* = 160.6-161.3 σ** (from the `big-box` task's own gates; an independent pin,
+`tests/supply-window.test.ts`, gives [157.4, 164.4] σ and brackets this value),
 
-то есть **при 3.29e6 частиц**. Ниже L\* спанирующая мицелла — основное состояние, и никакое количество
-материала, никакая энергия отталкивания и никакой размер бокса внутри доступного диапазона этого не
-меняют. Это и есть механизм.
+that is, at **3.29e6 particles**. Below L\*, the spanning micelle is the ground state, and no amount of
+material, no repulsion energy, and no box size within the reachable range changes that. This is the
+mechanism.
 
-> **ПОСЛЕДУЮЩАЯ ПРОВЕРКА (задача `confined-parcel`, §11).** Вывод этого раздела — «остаётся одно
-> ограничение, которое нечем двигать: топология периодического бокса ниже L\*» — **проверен прямым
-> опытом и не подтвердился как ПРИЧИНА**. Топологию убрали (конечная парцелла, обёртывающих осей 0 из
-> 3 на 20 снимках из 20), и замыкание не наступило. Арифметика этого раздела верна и остаётся в силе
-> для периодического бокса; неверным оказался ВЫВОД, что снятие спанирующего конкурента достаточно.
-> Причина в том, что в конечной области дешевейший объект БЕЗ КРАЯ — не спанирующая мицелла, а
-> цилиндрическая мицелла С ШАПОЧКАМИ, стоящая 17.5–21.3 амфифила и не имеющая нижней границы,
-> связанной с размером области: полоса [пол замыкания 937–1014, дешевейший бескрайний объект 17.5–21.3]
-> перевёрнута в **44–58 раз** и в парцелле. Периодический бокс давал не бескрайность как таковую, а
-> бескрайность ПРИ ЛЮБОМ РАЗМЕРЕ — а мицелла с шапочками бескрайна при любом размере и в парцелле.
+> **SUBSEQUENT TEST (task `confined-parcel`, §11).** This section's conclusion, "one constraint remains
+> that nothing can move: the topology of the periodic box below L\*", **was tested by direct experiment and
+> did not hold up as the CAUSE**. The topology was removed (a finite parcel, wrapping axes 0 of 3 on 20 of
+> 20 snapshots), and closure still did not occur. The arithmetic of this section is correct and remains
+> valid for the periodic box; what was wrong was the CONCLUSION that removing the spanning competitor is
+> sufficient. The reason is that in a finite region the cheapest edgeless object is not a spanning micelle
+> but a **cylindrical micelle WITH END CAPS**, costing 17.5-21.3 amphiphiles, with no lower bound tied to
+> region size: the band [closure floor 937-1014, cheapest edgeless object 17.5-21.3] is inverted by
+> **44-58×** even inside the parcel. The periodic box was not providing edgelessness as such but
+> edgelessness AT ANY SIZE, and a capped micelle is edgeless at any size, including inside the parcel.
 
-### 5.3 Почему L\* недостижим — и это структурно, а не «нужна машина побольше»
+### 5.3 Why L\* is unreachable, and why that is structural, not "need a bigger machine"
 
-Потолок частиц был **одним неизмеренным числом**: `verletList.listCapacity = 2500` в
-`data/soup.json` не был замером, он был «с запасом». Замер (восемь конфигураций,
-`soup/cli/measure-neighbours.ts`) даёт максимум соседей **866**, и связывающая конфигурация —
-не сухая фаза (749, плотная но однородная), а **осевший перколирующий агрегат** (866, локальная
-плотность в 1.94 раза выше средней по боксу). Ёмкость теперь выводится из плотности, которую система
-реально достигает:
+The particle ceiling was **one unmeasured number**: `verletList.listCapacity = 2500` in
+`data/soup.json` was not a measurement, it was "with headroom." A measurement (eight configurations,
+`soup/cli/measure-neighbours.ts`) gives a maximum neighbor count of **866**, and the binding configuration
+is not the dry phase (749, dense but uniform) but a **settled percolating aggregate** (866, local density
+1.94× the box average). Capacity is now derived from the density the system actually reaches:
 
-| потолок | основание | частиц | бокс при ρ_W = 0.8 |
+| ceiling | basis | particles | box at ρ_W = 0.8 |
 |---|---|---|---|
-| 2500 | старая догадка | 429 496 | 81.27 σ |
-| **1126** | выведено, пол связывает | **953 589** | **106.03 σ** |
-| 866 | **нулевой запас** — самое большое, что вообще измерено | 1 239 886 | 115.73 σ |
+| 2500 | old guess | 429,496 | 81.27 σ |
+| **1126** | derived, floor-binding | **953,589** | **106.03 σ** |
+| 866 | **zero headroom**, the largest measured value at all | 1,239,886 | 115.73 σ |
 
-**И даже при нулевом запасе бокс останавливается на 115.73 σ, короче L\* в 1.39 раза.** Причина
-структурная: плоский список на частицу стоит `N · capacity · 4 = (ρ_wet L³)·(f·(4π/3)R³·ρ_dry)·4`, то
-есть **L³ умножить на КВАДРАТ плотности** — ёмкость, которую требует физика, растёт вместе с числом
-частиц, которое требует бокс, и обменять одно на другое нельзя.
+**And even at zero headroom the box tops out at 115.73 σ, 1.39× short of L\*.** The reason is structural:
+a flat per-particle list costs `N · capacity · 4 = (ρ_wet L³)·(f·(4π/3)R³·ρ_dry)·4`, meaning **L³ times the
+SQUARE of density**: the capacity that physics demands grows together with the number of particles the box
+demands, and one cannot be traded for the other.
 
-**Честная альтернатива без массива на частицу** (обход ячеек, O(N) памяти, потолок ~2.7e8 частиц)
-измерена на том же осевшем состоянии и **отвергнута замером: 122.28 мс/шаг против 17.47** — в 7.00
-раза медленнее. Правильный размер списка сам дал ускорение в 1.34 раза (23.47 → 17.47 мс/шаг).
+**An honest alternative without a per-particle array** (cell traversal, O(N) memory, ceiling
+~2.7e8 particles) was measured on the same settled state and **rejected by measurement: 122.28 ms/step
+against 17.47**: 7.00× slower. Sizing the list correctly gave a 1.34× speedup on its own (23.47 → 17.47
+ms/step).
 
-**После снятия потолка памяти связывающим стало ВРЕМЯ.** Измерено ms/шаг ∝ N^1.35; при L\* это
-≈1013 мс/шаг, кампания формы предшественника — **41 час = 296 вызовов по 500 с**. Итого позиция на
-конец проекта: **память коротка в 3.45 раза, время — примерно в 15 раз**. Строгая гипотеза в этом
-движке непроверяема, и причина названа, а не заметена.
+**After lifting the memory ceiling, TIME became the binding constraint.** Measured ms/step ∝ N^1.35;
+at L\* this is ≈1013 ms/step, and a campaign of the predecessor's shape would take **41 hours = 296 calls
+of 500 s**. Overall position at the end of the project: **memory is short by 3.45×, time by roughly 15×.**
+The strong hypothesis is untestable in this engine, and the reason has been named, not swept aside.
 
-### 5.4 Последовательность отставаний: чем кончилась каждая ступень
+### 5.4 A sequence of shortfalls: how each stage ended
 
-Опубликованные отставания размера крупнейшего агрегата от порога замкнутости, в порядке появления:
+Published shortfalls of the largest aggregate's size from the closure threshold, in order of appearance:
 
 **80× → 8.9× → 3.36× → 33.4× → 6.76× → 6.75× → 0.48× → 0.42× → 0.67× → 0.21× → 0.45×**
 
-- **80× → 8.9×** — ранние бульоны: снята «химия не идёт вовсе» (нуклеация, §7.1) и подача сырья.
-- **3.36×** — **это число неверно**: под исправлением нулевого ГПСЧ (§7.2) оно 1.85×.
-- **33.4×** — плечо, где состав уводил в конечные стержни; снята гипотеза «нужен только объём».
-- **6.76× → 6.75×** — решающий прогон; под исправлением двойного счёта по z (§7.5) — **6.02×**.
-- **0.48×** — двухвостая кампания бокса 54 (в 2.08 раза НАД порогом): **впервые в проекте снят
-  РАЗМЕР агрегата как связывающее ограничение**, и обнажилась перколяция.
-- **0.42×** — кампания с зарядом (2.36× над): снято «заряда нет в модели», начато опровержение
-  энергетического объяснения.
-- **0.67×** — `supply-window` (1.50× над, подача НАМЕРЕННО уменьшена): **снято объяснение через
-  бюджет материала** — подачу побеждали и при 2.36×, и при 1.50×, обёртывающих осей 3 оба раза.
-- **0.21×** — `big-box` + `closeout` (4.73–4.82× над, бокс 76): **снято объяснение через размер
-  бокса** в пределах достижимого диапазона.
-- **0.45×** — `confined-parcel` (2.06–2.23× над, конечная парцелла R = 36 σ с мягкой нейтральной
-  стенкой в боксе 160 σ): **снята ТОПОЛОГИЯ периодического бокса** — обёртывающих осей 3 из 3 → **0 из
-  3** на 20 снимках из 20, ворота `aggregate-percolation` **впервые в проекте прошли** — и замыкание
-  всё равно не наступило (`encapsulatedWater` ровно 0 на 19 из 19 при пороге 312.67–314.87). Подача
-  намеренно взята на том же множителе, что у плеч 0.42× и 0.48×, чтобы двигалась ровно одна ось.
+- **80× → 8.9×**: early soups; "chemistry does not run at all" (nucleation, §7.1) and feed were ruled out.
+- **3.36×**: **this number is wrong**: under the zero-RNG-seed fix (§7.2) it is 1.85×.
+- **33.4×**: an arm where composition drifted into finite rods; the "only volume is needed" hypothesis was ruled out.
+- **6.76× → 6.75×**: the decisive run; under the z-axis double-counting fix (§7.5), **6.02×**.
+- **0.48×**: the two-tailed box-54 campaign (2.08× OVER the threshold): **for the first time in the
+  project, aggregate SIZE was ruled out as the binding constraint**, and percolation was exposed.
+- **0.42×**: the charge campaign (2.36× over): "there is no charge in the model" was ruled out, and
+  refutation of the energetic explanation began.
+- **0.67×**: `supply-window` (1.50× over, feed DELIBERATELY reduced): **the explanation via material
+  budget was ruled out**: feed was beaten at both 2.36× and 1.50×, wrapping axes at 3 both times.
+- **0.21×**: `big-box` + `closeout` (4.73-4.82× over, box 76): **the explanation via box size was ruled
+  out** within the reachable range.
+- **0.45×**: `confined-parcel` (2.06-2.23× over, finite parcel R = 36 σ with a soft neutral wall in a box
+  of 160 σ): **the TOPOLOGY of the periodic box was ruled out**: wrapping axes 3 of 3 → **0 of
+  3** on 20 of 20 snapshots, the `aggregate-percolation` gate **passed for the first time in the
+  project**, and closure still did not occur (`encapsulatedWater` exactly 0 on 19 of 19 against a threshold
+  of 312.67-314.87). Feed was deliberately kept at the same multiplier as arms 0.42× and 0.48×, so that
+  exactly one axis moved.
 
-Последние шесть ступеней лежат ЗА концом последовательности (порог перекрыт, а не недостигнут). То
-есть проект последовательно снял все ограничения, которые умел двигать — включая последнее, топологию
-периодического бокса (`confined-parcel`, §11). После этого не осталось ни одного объяснения через
-ГРАНИЧНЫЕ УСЛОВИЯ или через БЮДЖЕТ МАТЕРИАЛА. Выжило ровно одно, и оно про молекулу, а не про коробку:
-**упаковочный параметр a/t этого амфифила** (§9 пункт 1).
+The last six stages lie PAST the end of the sequence (the threshold is exceeded, not unreached). That is,
+the project sequentially ruled out every constraint it was able to move, including the last one, the
+topology of the periodic box (`confined-parcel`, §11). After that, no explanation via BOUNDARY CONDITIONS
+or MATERIAL BUDGET remains. Exactly one survived, and it concerns the molecule, not the box:
+**this amphiphile's packing parameter a/t** (§9, item 1).
 
 ---
 
-## 6. Полость или лумен — ответ задачи `closeout`
+## 6. Cavity or lumen: the answer from task `closeout`
 
-Кампания `big-box` оставила полость на **97.16 ± 7.54 σ³** против порога 370.8656 σ³ и сама
-предупредила, что это **не плато, а нижняя граница**: полость росла на каждом из последних четырёх
-снимков. Задача `closeout` возобновила ту же кампанию с её чекпойнтов (**гарантия — тот же
-АНСАМБЛЬ, а не та же траектория**: границы чанков режут ланжевеновский шум в других местах) и добавила
-**13 вызовов, 61 700 шагов**: 86 500 → **148 200**, осевших влажных 50 100 → **111 800 = в 2.23 раза
-больше**.
+The `big-box` campaign left a cavity at **97.16 ± 7.54 σ³** against a threshold of 370.8656 σ³ and itself
+warned that this was **not a plateau but a lower bound**: the cavity grew on each of the last four
+snapshots. The task `closeout` resumed the same campaign from its checkpoints (**the guarantee is the same
+ENSEMBLE, not the same trajectory**: chunk boundaries cut Langevin noise at different points) and added
+**13 calls, 61,700 steps**: 86,500 → **148,200**, settled wet steps 50,100 → **111,800 = 2.23× more**.
 
-**Полость по чекпойнтам (σ³):** 48.1 → 64.6 → 79.1 → 74.9 → 80.0 → 91.9 → 87.6 → 94.9 → 101.5 →
+**Cavity by checkpoint (σ³):** 48.1 → 64.6 → 79.1 → 74.9 → 80.0 → 91.9 → 87.6 → 94.9 → 101.5 →
 104.6 → **101.3 → 109.3 → 111.4 → 111.9 → 111.8 → 121.5 → 121.8 → 118.5 → 128.8 → 125.3 → 136.0 →
-130.1 → 139.3** (жирным — 13 новых).
+130.1 → 139.3** (bold: 13 new ones).
 
-**Плато НЕ достигнуто, и это утверждение количественное.** Стандарт плато в этом проекте — 0.25 % на
-десятках тысяч шагов (так снимали размер). Полость:
+**A plateau has NOT been reached, and this is a quantitative statement.** This project's plateau standard
+is 0.25% over tens of thousands of steps (that is how size was measured). Cavity:
 
-| окно | среднее | sd | наклон |
+| window | mean | sd | slope |
 |---|---|---|---|
-| все 23 осевших влажных (41 100–148 200) | 104.08 | 23.62 (**22.7 %**) | **+0.695 σ³/1000 шагов** |
-| только 13 новых (91 500–148 200) | 120.51 | 11.23 (**9.3 %**) | **+0.586 σ³/1000 шагов** |
-| последние 4 (129 400–148 200) | 132.66 | 6.22 (**4.7 %**) | +0.769 σ³/1000 шагов |
+| all 23 settled wet steps (41,100-148,200) | 104.08 | 23.62 (**22.7%**) | **+0.695 σ³/1000 steps** |
+| only the 13 new ones (91,500-148,200) | 120.51 | 11.23 (**9.3%**) | **+0.586 σ³/1000 steps** |
+| last 4 (129,400-148,200) | 132.66 | 6.22 (**4.7%**) | +0.769 σ³/1000 steps |
 
-Удвоение длины осевшего прогона **не изменило наклон**: 0.586 против 0.695 — та же прямая, а не
-выход на насыщение. Для сравнения, на том же окне **размер вышел на плато жёстче, чем когда-либо:
-4519.5 ± 5.2 = 0.11 %**, и плоскостность 0.7541 ± 0.0059 = 0.78 %. То есть структура стоит, а полость
-идёт. При наблюдаемом наклоне до порога 370.8656 нужно ещё **≈333 000 шагов ≈ 71 вызов ≈ 8.5 часа**, и
-это линейная экстраполяция величины, у которой нет причины быть линейной.
+Doubling the settled-run length **did not change the slope**: 0.586 against 0.695, the same straight line,
+not saturation. For comparison, over the same window **size settled to a plateau harder than ever:
+4519.5 ± 5.2 = 0.11%**, and flatness 0.7541 ± 0.0059 = 0.78%. That is, the structure stands still while the
+cavity keeps going. At the observed slope, reaching the threshold of 370.8656 would need another
+**≈333,000 steps ≈ 71 calls ≈ 8.5 hours**, and this is a linear extrapolation of a quantity with no reason
+to be linear.
 
-**А теперь то, из-за чего вопрос вообще стоял.** Пока полость выросла **в 2.90 раза** (48.1 → 139.3),
-инкапсулированная вода оставалась **РОВНО НУЛЬ на всех 23 влажных снимках**, `closed` = false на всех
-23, слоёв голов 1–2 (дрожит: 2 → 1 → 2, без тренда), обёртывающих осей **3 из 3 на всех 23**.
+**And now the reason the question was even asked.** While the cavity grew **2.90×** (48.1 → 139.3),
+encapsulated water stayed **EXACTLY ZERO on all 23 wet snapshots**, `closed` = false on all
+23, head shells 1-2 (oscillating: 2 → 1 → 2, no trend), wrapping axes **3 of 3 on all 23**.
 
-**ОТВЕТ: растущая полость внутри перколирующего объекта НЕ становится луменом.** Это две
-несвязанные величины, и здесь они разошлись на измерении, а не в рассуждении: рост полости в 2.9 раза
-не сдвинул замкнутость ни на один бид. `cavityVolume` — заливка междоузлий внутри собственной
-ограничивающей области объекта; у сетки междоузельная пустота **не является внутренностью
-протовезикулы**. Поэтому цитировать «139.25 против 370.8656, коротко в 2.66 раза» как отставание
-замкнутости — **щедро** к модели, а не сурово. Объект есть **сетка с полостями, а не замкнутый
-компартмент**, и после удвоения длины прогона это утверждение стоит на 23 замерах вместо 11.
+**ANSWER: a growing cavity inside a percolating object does NOT become a lumen.** These are two
+unrelated quantities, and here they diverge by measurement, not by argument: a 2.9× growth in cavity did
+not move closure by a single bead. `cavityVolume` is a fill of interstitial voids within the object's own
+bounding region; for a network the interstitial void **is not the interior of a protovesicle**. So citing
+"139.25 against 370.8656, 2.66× short" as the closure shortfall is **generous** to the model, not strict.
+The object is a **network with cavities, not a closed compartment**, and after doubling the run length
+this statement now rests on 23 measurements instead of 11.
 
-**И контекст, без которого число нельзя подавать как заголовок.** Бокс 76 σ — это **0.47 от**
-L\* = 160.6–161.3 σ, ниже порога, где замкнутость становится термодинамически предпочтительной. Если
-бы здесь что-то замкнулось, это потребовало бы именно такого объяснения, а не заголовка. Ничего не
-замкнулось.
+**And the context without which the number cannot be presented as a headline.** A box of 76 σ is **0.47
+of** L\* = 160.6-161.3 σ, below the threshold where closure becomes thermodynamically preferred. If
+something had closed here, it would need exactly that explanation, not a headline. Nothing closed.
 
 ---
 
-## 7. Настоящие дефекты, найденные по дороге, и какие опубликованные числа они сдвинули
+## 7. Actual defects found along the way, and which published numbers they shifted
 
-Это не косметика: каждый делал опубликованное число неверным, и каждый исправлен с пришпиливающим
-тестом, который упадёт, если дефект вернётся.
+This is not cosmetic: each of these made a published number wrong, and each has been fixed with a pinning
+test that fails if the defect returns.
 
-### 7.1 Выбор кончика цепи при нуклеации — `soup/wgsl/bond-adsorption.wgsl`
+### 7.1 Chain-end selection during nucleation: `soup/wgsl/bond-adsorption.wgsl`
 
-Нуклеация цепи на катализаторе требовала **замкнутого треугольника**: контакт голого углерода `i` с
-`j`, контакт катализатора с `i` И контакт катализатора с `j`. Но `bondFormWalk` к этому моменту уже
-установил контакт катализатора именно с `i`, а ветка нуклеации объявляла кончиком `j` и требовала
-контакт ДРУГОГО углерода. Диагноз — не рассуждение, а счётчик (`verify/center-nucleation.ts`, чистый
-CPU): число подходящих троек падало **393 → 3 → 0** к шагу 120 000 и оставалось нулём до шага 300 000,
-при 5125 свободных голых углеродах и 1021 свободном катализаторе. Химия останавливалась не потому, что
-кончалось сырьё, а потому, что геометрическое условие старта было невыполнимым.
-**Сдвинутые числа** (бокс 30, сид 20): нуклеаций **117 → 192**, амфифилов **56 → 129**,
-непрореагировавшего голого углерода **133 → 33 из 779**. Отчёт:
+Chain nucleation on the catalyst required a **closed triangle**: contact between bare carbon `i` and `j`,
+catalyst contact with `i`, AND catalyst contact with `j`. But by that point `bondFormWalk` had already
+established a catalyst contact with `i` specifically, while the nucleation branch declared `j` the endpoint
+and required a contact with a DIFFERENT carbon. The diagnosis came not from reasoning but from a counter
+(`verify/center-nucleation.ts`, pure CPU): the number of eligible triples dropped **393 → 3 → 0** by step
+120,000 and stayed at zero through step 300,000, with 5125 free bare carbons and 1021 free catalysts.
+Chemistry was not stalling for lack of raw material, it was stalling because the geometric starting
+condition was unsatisfiable.
+**Shifted numbers** (box 30, seed 20): nucleations **117 → 192**, amphiphiles **56 → 129**,
+unreacted bare carbon **133 → 33 of 779**. Report:
 `catalyst-turnover-and-window-report.md`.
 
-### 7.2 Чекпойнты с нулевым ГПСЧ — `soup/src/checkpoint.ts` / `readBack`
+### 7.2 Checkpoints with a zero RNG: `soup/src/checkpoint.ts` / `readBack`
 
-У буферов `bondRngBuf` / `thermoRngBuf` не было флага `COPY_SRC`, поэтому копирование при чтении было
-ошибкой валидации, отправка команд — пустышкой, и наружу возвращался **нулями инициализированный
-промежуточный буфер**. Все **72 чекпойнта на диске** содержали 100 % нулевых байт ГПСЧ: каждый
-возобновлённый прогон в истории проекта получал зерно 0 для ВСЕХ N частиц, то есть одинаковый шум
-Ланжевена на каждой частице. Система при этом двигалась жёстко целиком (измеренное MSD 62.32 σ²,
-одинаковое для всех семи классов видов), и **относительная** диффузия была уничтожена — поэтому
-агрегаты не могли сливаться.
-**Сдвинутые числа** (бокс 54, тот же состав/сид/шаги, изменён один параметр): крупнейший агрегат на
-шаге 90 000 **268 → 588** (в 2.19 раза), и вместо плато «271, замороженное со шага 135 000 до 315 000»
-получился рост 232 → 281 → 333 → 588; замкнутый объём крупнейшего агрегата
-**6.25–6.75 → 17.125 σ³** (в 2.74 раза). Отставание по размеру в опубликованной последовательности
-оказалось не «в 3.36 раза», а **в 1.85 раза**. `readBack` теперь БРОСАЕТ исключение на буфере без
-`COPY_SRC`. Отчёты: `loud-failure-and-liquid-water-report.md`, `evaporation-report.md` §7.
+The `bondRngBuf` / `thermoRngBuf` buffers lacked the `COPY_SRC` flag, so read-back copies were a validation
+error, command submission was a no-op, and a **zero-initialized staging buffer** was returned instead. All
+**72 checkpoints on disk** contained 100% zero RNG bytes: every resumed run in the project's history got
+seed 0 for ALL N particles, meaning identical Langevin noise on every particle. The system consequently
+translated rigidly as a whole (measured MSD 62.32 σ², the same for all seven species classes), and
+**relative** diffusion was destroyed, which is why aggregates could not merge.
+**Shifted numbers** (box 54, same composition/seed/steps, one parameter changed): largest aggregate at
+step 90,000 **268 → 588** (2.19×), and instead of a plateau of "271, frozen from step 135,000 to
+315,000" the result was growth of 232 → 281 → 333 → 588; the enclosed volume of the largest aggregate
+**6.25-6.75 → 17.125 σ³** (2.74×). The published sequence's size shortfall turned out to be not
+"3.36×" but **1.85×**. `readBack` now THROWS on a buffer without `COPY_SRC`. Reports:
+`loud-failure-and-liquid-water-report.md`, `evaporation-report.md` §7.
 
-### 7.3 Устаревшая F(x) после смены размера бокса — `applyBoxScaleOnce`
+### 7.3 Stale F(x) after a box-size change: `applyBoxScaleOnce`
 
-Смена бокса (высушивание/регидратация) перестраивала сетку соседей и список Верле — и на этом
-останавливалась, поэтому `kick_drift_wrap` брал в качестве F(xₙ) силу, посчитанную ДО
-перемасштабирования координат. Пришпилено в обе стороны (`tests/soup-stale-force.test.ts`): с
-исправлением резидентный буфер согласуется со свежим расчётом до 1.5e−4 при масштабе силы 513; без
-исправления он бит-в-бит равен старой силе и **ошибается на 313.7**.
-**Сдвинутые числа** (бокс 30, шаг 36 800, n = 3 с каждой стороны): крупнейший агрегат
-**249.3 [210, 273] → 109.3 [71, 154]** — сжатие в **2.28 раза** с неперекрывающимися диапазонами, при
-том что выход (0.1516 → 0.1525) и число связей (1436 → 1392) не двинулись. Честный эффект
-циклирования — выход в 1.68–1.80 раза, связи в 1.76–1.93 раза, крупнейший агрегат в 8.1–8.4 раза, а
-**не опубликованные 12.5–14.5 раза**. Побочно: страж рампы, срабатывавший 9 раз из 216, был
-проявлением этого же дефекта, а не физики — после исправления **0 из 36**. Отчёт:
+A box change (drying/rehydration) rebuilt the neighbor grid and the Verlet list, and stopped there, so
+`kick_drift_wrap` used as F(xₙ) a force computed BEFORE the coordinate rescaling. Pinned in both directions
+(`tests/soup-stale-force.test.ts`): with the fix, the resident buffer agrees with a fresh calculation to
+within 1.5e-4 at a force scale of 513; without the fix it is bit-for-bit equal to the old force and is
+**off by 313.7**.
+**Shifted numbers** (box 30, step 36,800, n = 3 on each side): largest aggregate
+**249.3 [210, 273] → 109.3 [71, 154]**, a **2.28×** contraction with non-overlapping ranges, while
+yield (0.1516 → 0.1525) and bond count (1436 → 1392) did not move. The honest effect of cycling is
+a 1.68-1.80× yield increase, a 1.76-1.93× bond increase, an 8.1-8.4× largest-aggregate increase, not
+the **published 12.5-14.5×**. Incidentally, the ramp guard that fired 9 times out of 216 was a symptom of
+this same defect, not physics: after the fix, **0 of 36**. Report:
 `decisive-run-report.md` §2.3.
 
-### 7.4 Молчаливая расходимость — `soup/wgsl/health.wgsl`
+### 7.4 Silent divergence: `soup/wgsl/health.wgsl`
 
-Страж `assertVerletSafety` сравнивал `sqrt(maxDriftSq) > skin/2`, а **любое** сравнение с NaN ложно:
-как только позиции становились NaN, дрейф читался как NaN и проверка проходила **навсегда**. Страж
-работал и был слеп по построению. Добавлено сканирование экспонент IEEE-754 за O(N) на том же такте,
-**перед** старой проверкой. Стоимость замерена: **0.212 мс против 331.68 мс на чанк в 1000 шагов =
-0.064 %**. На том составе, который расходился молча (ρ_tot 0.75, бокс 30), он теперь БРОСАЕТ
-исключение на шаге 1000, называя **6957 нефинитных компонент из 60 750**. Отчёт:
+The `assertVerletSafety` guard compared `sqrt(maxDriftSq) > skin/2`, and **any** comparison against NaN is
+false: as soon as positions became NaN, the drift read as NaN and the check passed **forever**. The guard
+was running and was blind by construction. An O(N) scan of IEEE-754 exponents was added on the same tick,
+**before** the old check. The cost was measured: **0.212 ms against 331.68 ms per chunk of 1000 steps =
+0.064%**. On the composition that had been diverging silently (ρ_tot 0.75, box 30), it now THROWS at step
+1000, naming **6957 non-finite components out of 60,750**. Report:
 `loud-failure-and-liquid-water-report.md`.
 
-### 7.5 Двойной счёт на границе по z — `engine/src/aggregate.ts`
+### 7.5 Double counting across the z boundary: `engine/src/aggregate.ts`
 
-`buildClusterUnionFind`, через который проходит **каждое определение стадии в этом проекте**, считал
-ось z открытой (верно для мембранного движка: заплатка бислоя в вакууме действительно не имеет образа
-через z) — но «бульон» оборачивает все три оси каждый шаг. Любой агрегат, пересекающий границу по z,
-разрезался и считался дважды. Исправление — флаг `periodicZ` со значением по умолчанию `false`, так
-что мембранный движок бит-в-бит не изменился, и `true` во всех вызовах «бульона».
-**Сдвинутые числа** (перезамерено на чекпойнтах, уже лежащих на диске, тем же аудитором):
+`buildClusterUnionFind`, through which **every stage definition in this project** passes, treated the z
+axis as open (correct for the membrane engine: a bilayer patch in vacuum indeed has no image through z),
+but the "soup" wraps all three axes every step. Any aggregate crossing the z boundary was cut in two and
+counted twice. The fix is a `periodicZ` flag defaulting to `false`, so the membrane engine is bit-for-bit
+unchanged, and `true` in every "soup" call.
+**Shifted numbers** (remeasured on checkpoints already on disk, by the same auditor):
 
-| опубликованное число | было | стало | сдвиг |
+| published number | was | became | shift |
 |---|---|---|---|
-| крупнейший агрегат решающего прогона, финал | 135 | **151** | +11.9 % |
-| он же, первый осевший влажный снимок | 153 | **200** | +30.7 % |
-| заголовочное число связывающего ограничения | 136.2 | **152.8** | +12.2 % |
-| отставание по размеру агрегата | в 6.75 раза | **в 6.02 раза** | −10.8 % |
-| крупнейший агрегат, циклированные плечи бокса 30 | 109.3 | **136.3** | +24.7 % |
-| число агрегатов, решающий прогон, финал | 34 | **25** | −26.5 % (**завышено**) |
-| радиальных слоёв голов у крупнейшего | 2 | **1** | опубликованное «пройдено» стало провалом |
+| decisive run's largest aggregate, final | 135 | **151** | +11.9% |
+| same, first settled wet snapshot | 153 | **200** | +30.7% |
+| headline number of the binding constraint | 136.2 | **152.8** | +12.2% |
+| aggregate-size shortfall | 6.75× | **6.02×** | -10.8% |
+| largest aggregate, cycled arms of box 30 | 109.3 | **136.3** | +24.7% |
+| number of aggregates, decisive run, final | 34 | **25** | -26.5% (**had been inflated**) |
+| radial head shells of the largest aggregate | 2 | **1** | a published "passed" became a failure |
 
-Два следствия читать внимательно. **Числа агрегатов были ЗАВЫШЕНЫ** (разрез изготавливал лишние
-объекты), а размеры — занижены. И **`radialHeadShells` = 2 было артефактом**: решающий отчёт читал два
-слоя голов на 4 из 5 последних снимков и записывал строку как пройденную — под исправлением там **1**,
-то есть стенки бислоя не было вовсе. Отчёт: `final-campaign-report.md` §1–2.
+Two consequences deserve close reading. **Aggregate counts had been INFLATED** (the cut manufactured extra
+objects), while sizes were understated. And **`radialHeadShells` = 2 was an artifact**: the decisive report
+read two head layers on 4 of the last 5 snapshots and recorded the row as passing; under the fix it is
+**1**, meaning there was no bilayer wall at all. Report: `final-campaign-report.md` §1-2.
 
-### 7.6 Ворота перколяции опознавали свой вход по МЕТКЕ прогона — `verify/campaign-gates.ts`
+### 7.6 Percolation gates recognized their own input by run LABEL: `verify/campaign-gates.ts`
 
-Метка кампании (`zfB54`) была вписана в код, и первая же кампания с другой меткой молча перевела
-ворота в `unproven`. Исправлено: строки несут собственное поле `role`, подстрока оставлена
-фоллбэком. **Класс важнее случая: конвейер ворот, который опознаёт свои входы по МЕТКЕ прогона,
-замолкает ровно в тот момент, когда кто-то запускает новый эксперимент** — то есть когда он нужнее
-всего. Цена в тот раз — 2 лишних вызова и одна неверная опубликованная таблица.
+The campaign label (`zfB54`) was hardcoded, and the very first campaign with a different label silently
+flipped the gate to `unproven`. Fixed: rows carry their own `role` field, with the substring left as a
+fallback. **The class matters more than the instance: a gate pipeline that recognizes its inputs by run
+LABEL goes silent exactly when someone runs a new experiment**, that is, exactly when it is needed most.
+The cost that time was 2 wasted calls and one incorrect published table.
 
-### 7.7 Раскладка страницы молча съедала клик по СТАРТУ — `viewer/run.html`
+### 7.7 Page layout silently swallowed the START click: `viewer/run.html`
 
-Первый безголовый прогон страницы после её роста с одной строки до трёх **никогда не начинался**:
-`POLL 0…39 state=idle steps=0 err=-`, ни ошибки, ни исключения. Правда, если спросить прямо:
-`CLICKTARGET [{"id":"start-btn","hitId":"visibility-note"}, …]` — нижняя заметка, растянутая на всю
-ширину, при безголовом окне 800×600 села ровно на кнопки. Собственный CSS-комментарий страницы
-фиксирует, что этот класс отказа встречался **дважды до** и дважды выкупался ещё одной строкой отступа.
-Исправлено на уровне класса: три нижние заметки уехали на `left: 288px`, полностью в стороне от
-колонки управления шириной 260 px, и сложены в один flex-столбец вместо трёх поддерживаемых руками
-смещений.
+The first headless run of the page after it grew from one row to three **never started**:
+`POLL 0…39 state=idle steps=0 err=-`, no error, no exception. Asking directly, though, revealed:
+`CLICKTARGET [{"id":"start-btn","hitId":"visibility-note"}, …]`, the bottom note, stretched full width,
+sat exactly on top of the buttons at a headless window of 800×600. The page's own CSS comment records that
+this failure class had occurred **twice before** and had been bought off twice with one more line of
+padding. Fixed at the class level: the three bottom notes moved to `left: 288px`, entirely clear of the
+260 px control column, and stacked into a single flex column instead of three hand-maintained offsets.
 
-### 7.8 ШЕСТЬ классов молчаливых отказов — то, что стоит читать, даже если остальное забыть
+### 7.8 SIX classes of silent failure: worth reading even if everything else is forgotten
 
-Каждый выглядел как успех. Это главный технический урок проекта.
+Each looked like success. This is the project's main technical lesson.
 
-1. **`readBack` буфера без `COPY_SRC`** отдаёт нулями инициализированный staging-буфер (72 чекпойнта
-   с нулевым ГПСЧ, §7.2). Теперь — throw.
-2. **Сравнение с NaN всегда ложно**, поэтому страж расходимости проходил навсегда (§7.4). Теперь —
-   явное сканирование экспонент перед проверкой.
-3. **`requestDevice()` без `requiredLimits`** молча срезает каждый конвейер до дефолтных лимитов
-   хранилищ (устройство поддерживает до 10, дефолт меньше). Теперь запрашивается явно и throw, если
-   не дали.
-4. **Устаревшая F(x)** после смены бокса — не нули, а тихо неверное число, ошибка 313.7 при масштабе
-   513 (§7.3).
-5. **Ворота, опознающие вход по метке прогона**, замолкают на новом эксперименте (§7.6).
-6. **НОВЫЙ, самый неприятный. Отказ по лимиту устройства возвращает нули со скоростью 0.04 мс/шаг и
-   выглядит как блестящий успех.** Запрос буфера на 5 484 474 528 байт при боксе 85 **не поднял ни
-   одной ошибки JS**: WebGPU сообщает о провале валидации `createBuffer` предупреждением в консоль,
-   каждый последующий dispatch по этой bind-group становится пустой операцией, и прогон вернул
-   `max|F| = 0.0000e+0`, `nonFinite = 0`, соседей `max = 0`, **0.0405 мс/шаг** — ускорение в 500 раз и
-   идеально чистая справка о здоровье. Теперь `createSoup` проверяет каждый масштабируемый по N буфер
-   против лимитов самого устройства и называет байты, в которых было бы отказано.
+1. **`readBack` on a buffer without `COPY_SRC`** returns a zero-initialized staging buffer (72
+   checkpoints with a zero RNG, §7.2). Now throws.
+2. **A comparison against NaN is always false**, so the divergence guard passed forever (§7.4). Now, an
+   explicit exponent scan runs before the check.
+3. **`requestDevice()` without `requiredLimits`** silently caps every pipeline to default storage limits
+   (the device supports up to 10, the default is lower). Now requested explicitly, and it throws if not
+   granted.
+4. **Stale F(x)** after a box change: not zeros, but a quietly wrong number, an error of 313.7 at a force
+   scale of 513 (§7.3).
+5. **A gate recognizing its input by run label** goes silent on a new experiment (§7.6).
+6. **NEW, the nastiest one. A device-limit failure returns zeros at 0.04 ms/step and looks like a
+   brilliant success.** A buffer request for 5,484,474,528 bytes at box 85 **raised not a single JS
+   error**: WebGPU reports the `createBuffer` validation failure as a console warning, every subsequent
+   dispatch against that bind group becomes a no-op, and the run returned
+   `max|F| = 0.0000e+0`, `nonFinite = 0`, `neighbors max = 0`, **0.0405 ms/step**: a 500× speedup and a
+   perfectly clean health report. `createSoup` now checks every N-scaled buffer against the device's own
+   limits and names the byte count that would have been refused.
 
-**Седьмой, найденный уже в задаче `closeout` и записанный здесь, потому что он того же класса.**
-Прибор «страница рисует», написанный как чтение WebGPU-канваса через `drawImage` в 2d-контекст,
-вернул **угол [0,0,0] и 0 отличающихся пикселей из 30 000** на странице, которая в этот момент
-демонстративно рисовала (119 кадров, 661 нарисованный экземпляр). Инструмент был неверен, а не
-страница. Заменён на счётчики самой сцены (`sceneDebug.instanceCounts()`) плюс настоящий
-`page.screenshot()` — то, чем это измеряет `tests/run-ui.test.ts`. Мораль ровно та же: **нули от
-прибора — это в первую очередь показание о приборе.**
-
----
-
-## 8. Что остаётся недоказанным, спорным или измеренным одним сидом
-
-1. **Все кампании — ОДИН сид** (19). Плато внутренне согласовано (0.11 % на 4519.5 через 111 800
-   шагов), а главный вывод — обёртывание по 3 осям из 3 — топологическая двоичная величина, а не
-   число рядом с порогом. Но «4519.5» как число — это одна линия, и движок не воспроизводим побитово.
-2. **Полость НЕ осела** — единственная величина, которую задача `closeout` бралась досчитать и не
-   досчитала: наклон +0.586 σ³/1000 шагов после удвоения длины прогона. Опубликованное «в 2.66 раза
-   коротко» — **самое благоприятное чтение, а не результат**.
-3. **`cavityVolume` на перколирующей сетке — не лумен**, и теперь это не оговорка, а измерение (§6).
-4. **`radialHeadShells` дрожит между 1 и 2** и делал это весь проект. 2 появлялось после регидратации
-   и не выживало; в новых 13 снимках 2 встречается на 4 из 13 без тренда. Стенки бислоя нет.
-5. **Модуль изгиба κ так и не измерен** (ранг A, недоказано): окно подгонки спектра ундуляций
-   невалидно, наклон log-log −1.056 против теоретических −4. Разброс κ между прогонами 24.6 ε при
-   среднем 79.07 и не уменьшался с числом прогонов.
-6. **Обмен мономерами, деления и слияния РОВНО НУЛЬ** на всех 22 интервалах кампании, свободная доля
-   0 … 6.6e−4. То есть настоящей растворимости мономера / CMC эта модель не проверяла вовсе.
-   Цитировать как снятое нельзя.
-7. **Двухвостость и длину хвоста в этой модели нельзя развести составом** — голова здесь И ЕСТЬ
-   терминатор цепи. Длина на хвост росла 2.158 → 3.419 ВНУТРИ одного прогона при неизменном составе.
-   Кто считает, что перколяция вызвана длиной хвоста, а не вторым хвостом, имеет право сказать, что
-   эти кампании их не различают.
-8. **Между O:C = 4 и O:C = 1 не измерено ничего.** Если компактно-но-крупный режим существует, он в
-   этой щели.
-9. **Тест на перколяцию не прогонялся на СПЕЦИАЛЬНО ПОСТРОЕННОМ объекте известной топологии.** Его
-   защиты: он воспроизводит «не перколирует» на трёх независимых системах (0 осей, 7–13 слоёв из 19),
-   его внутренний контроль не обёртывает ни на одном снимке, он согласуется с двумя независимыми
-   сигналами, написанными не для этого, и он не залипает на новом числе слоёв (27 при боксе 76, 19 при
-   54). Но синтетической проверки у него нет.
-10. **`centre-untrusted` — НЕ вердикт об обёртывании**, и предыдущие отчёты читали его неверно. Это
-    **тест Рэлея на круговую однородность по каждой оси** (`trusted = R ≥ √(−ln α / n)`, α = 1e−6):
-    он спрашивает, достаточно ли распределение массы далеко от однородного, чтобы круговое среднее
-    было осмысленным центром — то есть НАСКОЛЬКО РОВНО объект заполняет бокс, а не обёртывает ли он
-    его. Кампания бокса 76 — самая чистая демонстрация: **22 из 23 влажных снимков отдают ЧИСЛО**
-    (`encapsulatedWater` 0 из 315.4) **при 3 обёртывающих осях из 3**. Исправление опубликовано и в
-    `long-range-electrostatics-report.md`, где ошибка была сделана.
-11. **Одна несогласованность оставлена в дереве осознанно**: три теста `water-bilayer*` кластеризуют с
-    открытой z внутри движка «бульона», который z оборачивает. Её размер ограничен 0.26 % их же
-    собственным напечатанным `clusterFraction`, а переключение сдвинуло бы три опубликованные строки
-    ворот без измеримой пользы.
-12. **Известная нестабильность тестов, доказанно не наша**: `tests/soup-grid-resize.test.ts` падает на
-    неизменном коде (доказано дважды через `git stash`, а в задаче `closeout` — тем, что ни один файл
-    в `soup/`, `engine/` и `data/` не менялся вовсе); 2 из 3 тестов `rim-lambda-insitu` падали до нас;
-    `tests/soup-drywet-cycling.test.ts` падает и проходит на идентичных повторах — история его
-    событийного отношения 0.7143, 0.4978, 0.7171, 0.6961, 0.5941, 0.7116, разброс 0.43× на неизменном
-    коде. Ни одна граница не расширена; лечить надо увеличением ВЫБОРКИ, а не порога.
-13. **`npx tsc --noEmit` даёт 21 ошибку**, все одного предсуществующего класса
-    `ArrayBufferLike`/`SharedArrayBuffer`. Число не менялось за последние задачи и здесь тоже.
-14. **`capacitySafetyFactor` 2.6 и `capacityFloor` 1126 — ранг D и суждение о ХВОСТЕ, не о среднем.**
-    Риск — состав, чья локальная плотность в конденсате превысит 866/368.35 = 2.351 σ⁻³. Последствие —
-    громкий throw, а не испорченная физика, но throw стоит прогона, и кто-нибудь его встретит.
-15. **Показатель пропускной способности 1.35 измерен всего на 3.9-кратном диапазоне N** и шумен на
-    верхнем конце (1.39 / 1.56 / 0.65 по участкам). Проекция 1013 мс/шаг при L\* экстраполирует в 6.8
-    раза дальше самой большой измеренной точки и читается как порядок величины. Вывод, который она
-    поддерживает («время коротко примерно в 15 раз, а не маргинально»), от третьей цифры не зависит.
-16. **Решение о структуре соседей верно для ЭТОГО устройства.** 7-кратный проигрыш обхода ячеек —
-    число apple/metal-3, вызванное поведением памяти в его ядре обхода; на железе, где обход
-    коалесцируется лучше, или с параллельным префиксным суммированием вместо серийного
-    `@workgroup_size(1)` в `engine/wgsl/neighbor.wgsl`, сравнение может перевернуться. Перед портом
-    перемерить.
-17. **Глиняная пластина не участвовала ни в одном опубликованном замере** — все плечи всех кампаний
-    шли с `clay: false`. На странице прогона она теперь отдельный переключатель с этой же надписью, а
-    не молчаливое умолчание.
+**A seventh, found already in the `closeout` task and recorded here because it is the same class.**
+The "page is drawing" instrument, written as a WebGPU-canvas read via `drawImage` into a 2d context,
+returned **an angle of [0,0,0] and 0 differing pixels out of 30,000** on a page that at that moment was
+demonstrably drawing (119 frames, 661 drawn instances). The instrument was wrong, not the page. It was
+replaced with the scene's own counters (`sceneDebug.instanceCounts()`) plus a real
+`page.screenshot()`, which is what `tests/run-ui.test.ts` now measures. The moral is exactly the same:
+**zeros from an instrument are, first and foremost, a reading about the instrument.**
 
 ---
 
-## 9. Что нужно менять следующей модели
+## 8. What remains unproven, disputed, or measured from a single seed
 
-Список конкретный, из этих чисел, а не из общих соображений. Порядок — по ожидаемой отдаче.
-
-1. **Двухвостый амфифил ПО ПОСТРОЕНИЮ (по топологии), при фиксированно КОРОТКОМ хвосте.** Чтобы
-   загнать упаковочный параметр Израелашвили p = v/(a₀·l_c) в полосу ½–1 составом, потребовалось
-   O:C = 0.333, а это одновременно поднимает длину на хвост 2.158 → 3.419 и вместе с ней — связность
-   органической фазы. Фиксированная двухвостая топология при фиксированно коротком хвосте (геометрия
-   Cooke & Deserno, чей устойчивый бислой у проекта уже есть) даёт нужное p, **не** повышая число
-   ковалентных соседей на молекулу, а перколирует именно оно. Это изменение молекулы, а не константы.
-2. **Ось разбавления, НЕЗАВИСИМАЯ от химии.** Порог перколяции — функция ρ_org, а ρ_org приколочен
-   высоко потому, что `co_bond` не срабатывает при пребиотически честном разбавлении (0 событий за
-   150 000 шагов при обогащении 691×). Эта модель структурно не может отделить «достаточно химии» от
-   «выше точки гелеобразования». Нужна либо химия, работающая при низком ρ_org (настоящая
-   каталитическая скорость, а не коэффициент обогащения), либо **готовые** амфифилы, которые можно
-   свободно разбавлять — и второе дешевле.
-3. ~~**Непериодическая или достаточно БОЛЬШАЯ область, чтобы спанирующий объект не был основным
-   состоянием.** Это, по нынешнему пониманию, и есть корень (§5.2).~~ **СДЕЛАНО И СНЯТО (§11):** путь
-   (а) пройден — конечная парцелла с мягкой нейтральной стенкой, обёртывающих осей 0 из 3 на 20 из 20,
-   ворота `aggregate-percolation` впервые прошли — и замыкание НЕ наступило. Это больше не корень.
-   Остаётся пункт 1 (упаковочный параметр молекулы), который теперь единственное выжившее объяснение.
-   Исходная формулировка сохранена ниже как то, что было проверено: Два пути: (а) уйти от
-   периодичности по одной или всем осям (капля в вакууме, стенки, резервуар) — тогда у спанирующей
-   мицеллы появляется край и её преимущество исчезает; (б) перейти L\* = 160.6–161.3 σ, что требует
-   3.29e6 частиц против потолка 953 589 и структуры соседей, не стоящей L³ρ². Путь (а) дешевле на
-   порядки и меняет постановку, а не машину.
-4. **Настоящее испарение за пределы 3.20×.** Литературный цикл концентрирует в 1400 раз; модель
-   проходит 3.20 и добирает остальное коэффициентом обогащения пула (~691×), что не то же самое.
-5. **Обмен мономерами / равновесие растворимости.** Обмен, деления и слияния РОВНО НУЛЬ на всех 22
-   интервалах — канал не ограничивался, он просто не работает. Без него нет ни CMC, ни созревания
-   Оствальда, ни настоящего слияния, то есть нет ровно тех процессов, которыми настоящая везикула
-   растёт и замыкается.
-6. **Смеси с ко-сурфактантом.** Все кампании — один химический вид с одним типом головы. Реальные
-   пребиотические везикулы жирных кислот устойчивы в узком окне pH именно потому, что там сосуществуют
-   кислота и мыло; кислотно-мыльная корреляция в модели уже появилась сама (§3.4), но как корреляция
-   заряда, а не как смесь двух видов с разной геометрией.
-
-**Самый дешёвый следующий замер, полностью специфицированный.** Готовые двухвостые липиды (та же
-конструкция `tests/water-bilayer-*`, которая уже держит устойчивый бислой при ρ_W = 0.8), без химии,
-без испарения, при четырёх плотностях амфифилов, охватывающих порог перколяции: ρ_amph = 1.34e−2
-(нынешний прогон), 6.7e−3, 3.3e−3, 1.7e−3 σ⁻³ на боксе 54, с `tests/percolation-check.test.ts` как
-показанием и замкнутостью как конечной точкой. Это ровно тот вопрос, который данная модель никогда не
-могла задать: существует ли при двухвостой топологии плотность НИЖЕ точки гелеобразования и ВЫШЕ
-порога по числу молекул? Порог на боксе 54 — ~1000 амфифилов = ρ_amph 6.4e−3 σ⁻³, то есть окно, если
-оно есть, узкое, и арифметика говорит, что оно между первыми двумя ступенями. **И его надо ставить
-в непериодической или заведомо большой области — иначе пункт 3 съест результат так же, как съел
-этот проект.**
+1. **Every campaign is a SINGLE seed** (19). The plateau is internally consistent (0.11% at 4519.5 over
+   111,800 steps), and the main conclusion, wrapping along all 3 of 3 axes, is a topological binary rather
+   than a number near a threshold. But "4519.5" as a number is one trajectory, and the engine is not
+   bit-reproducible.
+2. **The cavity did NOT settle**, the one quantity task `closeout` set out to finish measuring and did not
+   finish: slope +0.586 σ³/1000 steps after doubling the run length. The published "2.66× short" is the
+   **most favorable reading, not the result**.
+3. **`cavityVolume` on a percolating network is not a lumen**, and this is no longer a caveat but a
+   measurement (§6).
+4. **`radialHeadShells` oscillates between 1 and 2** and did so throughout the project. 2 appeared after
+   rehydration and did not survive; in the new 13 snapshots, 2 occurs on 4 of 13 with no trend. There is
+   no bilayer wall.
+5. **The bending modulus κ was never measured** (rank A, unproven): the undulation-spectrum fit window is
+   invalid, log-log slope -1.056 against a theoretical -4. Spread of κ between runs is 24.6 ε at a mean of
+   79.07 and did not shrink with more runs.
+6. **Monomer exchange, fission, and fusion are EXACTLY ZERO** over all 22 intervals of the campaign,
+   free fraction 0 … 6.6e-4. That is, this model never tested real monomer solubility / CMC at all. It
+   cannot be cited as ruled out.
+7. **Two-tailedness and tail length cannot be separated by composition in this model**: the head IS the
+   chain terminator. Length per tail grew 2.158 → 3.419 WITHIN a single run at fixed composition. Anyone
+   who believes percolation is caused by tail length rather than by two tails is entitled to say these
+   campaigns do not distinguish the two.
+8. **Nothing was measured between O:C = 4 and O:C = 1.** If a compact-but-large regime exists, it lives
+   in that gap.
+9. **The percolation test was never run against a SYNTHETICALLY BUILT object of known topology.** Its
+   defenses: it reproduces "does not percolate" on three independent systems (0 axes, 7-13 of 19 shells),
+   its own internal control never wraps on a single snapshot, it agrees with two independent signals that
+   were not written for this purpose, and it does not lock onto a new shell count (27 at box 76, 19 at
+   54). But it has no synthetic check.
+10. **`centre-untrusted` is NOT a verdict about wrapping**, and earlier reports read it wrong. It is a
+    **Rayleigh test for circular uniformity on each axis** (`trusted = R ≥ √(−ln α / n)`, α = 1e-6): it
+    asks whether the mass distribution is far enough from uniform for a circular mean to be a meaningful
+    center, that is, HOW EVENLY the object fills the box, not whether it wraps the box. The box-76
+    campaign is the cleanest demonstration: **22 of 23 wet snapshots yield a NUMBER**
+    (`encapsulatedWater` 0 of 315.4) **with 3 of 3 wrapping axes**. The correction is published in
+    `long-range-electrostatics-report.md`, where the error was made.
+11. **One inconsistency has been left in the tree deliberately**: three `water-bilayer*` tests cluster with
+    z open inside the "soup" engine, which wraps z. Its size is bounded by their own printed
+    `clusterFraction` at 0.26%, and switching it would shift three published gate rows with no measurable
+    benefit.
+12. **Known test flakiness, proven not ours**: `tests/soup-grid-resize.test.ts` fails on unchanged code
+    (proven twice via `git stash`, and in the `closeout` task by the fact that no file in
+    `soup/`, `engine/`, or `data/` had changed at all); 2 of 3 `rim-lambda-insitu` tests were failing before
+    us; `tests/soup-drywet-cycling.test.ts` fails and passes on identical repeats: the history of its
+    event ratio is 0.7143, 0.4978, 0.7171, 0.6961, 0.5941, 0.7116, a spread of 0.43× on unchanged
+    code. No bound has been widened; the fix should be a larger SAMPLE, not a looser threshold.
+13. **`npx tsc --noEmit` gives 21 errors**, all of one pre-existing class,
+    `ArrayBufferLike`/`SharedArrayBuffer`. The count has not changed across the last few tasks and is the
+    same here.
+14. **`capacitySafetyFactor` 2.6 and `capacityFloor` 1126 are rank D and a judgment about the TAIL, not the
+    mean.** The risk is a composition whose local condensate density exceeds 866/368.35 = 2.351 σ⁻³. The
+    consequence is a loud throw, not corrupted physics, but the throw costs a run, and someone will hit it.
+15. **The throughput exponent of 1.35 was measured over only a 3.9-fold range of N** and is noisy at the
+    top end (1.39 / 1.56 / 0.65 by segment). The projection of 1013 ms/step at L\* extrapolates 6.8×
+    beyond the largest measured point and reads as an order-of-magnitude figure. The conclusion it
+    supports ("time is short by roughly 15×, not marginally") does not depend on the third digit.
+16. **The neighbor-structure decision is correct for THIS device.** The 7× loss of cell traversal is a
+    number specific to apple/metal-3, driven by memory behavior in its traversal kernel; on hardware where
+    traversal coalesces better, or with a parallel prefix sum instead of the serial
+    `@workgroup_size(1)` in `engine/wgsl/neighbor.wgsl`, the comparison could reverse. Remeasure before
+    porting.
+17. **The clay plate did not appear in a single published measurement**: every arm of every campaign ran
+    with `clay: false`. On the run page it is now a separate toggle with that same label, not a silent
+    default.
 
 ---
 
-## 10. Как это перепроверить
+## 9. What the next model needs to change
+
+A concrete list, drawn from these numbers, not from general considerations. Ordered by expected payoff.
+
+1. **A two-tailed amphiphile BY CONSTRUCTION (by topology), with a fixed SHORT tail.** Getting the
+   Israelachvili packing parameter p = v/(a₀·l_c) into the ½-1 band by composition required
+   O:C = 0.333, which simultaneously raises the mean tail length 2.158 → 3.419 and, along with it, the
+   connectivity of the organic phase. A fixed two-tailed topology at a fixed short tail (the Cooke &
+   Deserno geometry, whose stable bilayer the project already has) gives the needed p **without** raising
+   the number of covalent neighbors per molecule, and it is exactly that count which percolates. This is a
+   change to the molecule, not to a constant.
+2. **A dilution axis, INDEPENDENT of chemistry.** The percolation threshold is a function of ρ_org, and
+   ρ_org is pinned high because `co_bond` does not fire at a prebiotically honest dilution (0 events over
+   150,000 steps at a 691× enrichment). This model is structurally unable to separate "enough chemistry"
+   from "above the gelation point." What is needed is either chemistry that works at low ρ_org (a real
+   catalytic rate, not an enrichment coefficient), or **pre-built** amphiphiles that can be freely diluted,
+   and the latter is cheaper.
+3. ~~**An aperiodic or sufficiently LARGE region, so that the spanning object is not the ground state.**
+   By current understanding, this is the root cause (§5.2).~~ **DONE AND RULED OUT (§11):** path
+   (a) was carried out, a finite parcel with a soft neutral wall, wrapping axes 0 of 3 on 20 of 20, the
+   `aggregate-percolation` gate passed for the first time, and closure did NOT occur. This is no longer the
+   root cause. What remains is item 1 (the molecule's packing parameter), now the sole surviving
+   explanation. The original wording is kept below as what was tested: Two paths: (a) leave periodicity
+   behind, on one axis or all (a droplet in vacuum, walls, a reservoir), which gives the spanning micelle
+   an edge and erases its advantage; (b) cross L\* = 160.6-161.3 σ, which requires
+   3.29e6 particles against a ceiling of 953,589 and a neighbor structure that does not cost L³ρ². Path
+   (a) is cheaper by orders of magnitude and changes the setup, not the machine.
+4. **Real evaporation beyond 3.20×.** The literature cycle concentrates 1400-fold; the model achieves
+   3.20 and makes up the rest with a pool-enrichment coefficient (~691×), which is not the same thing.
+5. **Monomer exchange / solubility equilibrium.** Exchange, fission, and fusion are EXACTLY ZERO on all 22
+   intervals: the channel is not being limited, it simply does not work. Without it there is no CMC, no
+   Ostwald ripening, and no real fusion, that is, none of the processes by which a real vesicle grows and
+   closes.
+6. **Co-surfactant mixtures.** Every campaign is a single chemical species with a single head type. Real
+   prebiotic fatty-acid vesicles are stable in a narrow pH window precisely because acid and soap coexist
+   there; an acid-soap correlation has already appeared on its own in the model (§3.4), but as a charge
+   correlation, not as a mixture of two species with different geometry.
+
+**The cheapest next measurement, fully specified.** Pre-built two-tailed lipids (the same construction as
+`tests/water-bilayer-*`, which already holds a stable bilayer at ρ_W = 0.8), without chemistry, without
+evaporation, at four amphiphile densities spanning the percolation threshold: ρ_amph = 1.34e-2
+(the current run), 6.7e-3, 3.3e-3, 1.7e-3 σ⁻³ on box 54, with `tests/percolation-check.test.ts` as the
+readout and closure as the endpoint. This is exactly the question this model could never ask: does there
+exist, at two-tailed topology, a density BELOW the gelation point and ABOVE the threshold molecule count?
+The threshold on box 54 is ~1000 amphiphiles = ρ_amph 6.4e-3 σ⁻³, meaning the window, if it exists, is
+narrow, and the arithmetic says it lies between the first two steps. **And it needs to be run in an
+aperiodic or provably large region, or else item 3 will eat the result the same way it ate this project.**
+
+---
+
+## 10. How to recheck this
 
 ```
-# таблица ворот целиком (около 3 минут) -- пишет verify/out/gates.json и report.html
+# the full gate table (about 3 minutes) -- writes verify/out/gates.json and report.html
 npm run verify
 
-# входные артефакты, которые npm run verify прочитает, но не может пересчитать сам:
-nice -n 15 npx vitest run tests/water-bilayer-area-move.test.ts --no-file-parallelism   # ~135 c
+# input artifacts that npm run verify reads but cannot recompute itself:
+nice -n 15 npx vitest run tests/water-bilayer-area-move.test.ts --no-file-parallelism   # ~135 s
 
 CONTINUOUS_RUN_PREFIX=bbB76-step CONTINUOUS_RUN_DIRS=data/checkpoints/bbB76 \
   CONTINUOUS_RUN_ARTIFACT=verify/out/gates-campaign-trace.json \
-  nice -n 15 npx vitest run tests/continuous-run-audit.test.ts --no-file-parallelism    # 34 c на 29 снимков
-PERC_CAMPAIGN_LABEL=bbB76 PERC_CHECKPOINTS="<23 влажных bbB76 + контроли dec54/swB54>" \
+  nice -n 15 npx vitest run tests/continuous-run-audit.test.ts --no-file-parallelism    # 34 s over 29 snapshots
+PERC_CAMPAIGN_LABEL=bbB76 PERC_CHECKPOINTS="<23 wet bbB76 + controls dec54/swB54>" \
   PERC_ARTIFACT=verify/out/gates-percolation.json \
-  nice -n 15 npx vitest run tests/percolation-check.test.ts --no-file-parallelism       # 16 c
-# всё off-GPU, по чекпойнтам, уже лежащим на диске. Кампанию заново прогонять НЕ надо и не следует.
+  nice -n 15 npx vitest run tests/percolation-check.test.ts --no-file-parallelism       # 16 s
+# all off-GPU, from checkpoints already on disk. There is no need, and no reason, to rerun the campaign.
 
-# продолжить кампанию (тот же АНСАМБЛЬ, не та же траектория -- границы чанков режут шум иначе):
+# continue a campaign (the same ENSEMBLE, not the same trajectory -- chunk boundaries cut noise differently):
 nice -n 15 npx tsx soup/cli/campaign.ts --label bbB76 --box 76 \
   --start '{"C":55988,"O":18659,"H":55988,"M":1452,"W":351181}' --seed 19 --kT 1.1 \
   --relax --cycle --evaporate --cycles 1 --charge --pH 7.0 --ionicStrength 0.01 \
-  --steps 4700 --every 4700 --dir data/checkpoints/bbB76        # ~405 c за вызов при N = 483 268
+  --steps 4700 --every 4700 --dir data/checkpoints/bbB76        # ~405 s per call at N = 483,268
 
-# страница живьём, безголово: прогон продвигается и рисует
+# the page live, headless: the run advances and draws
 nice -n 15 npx tsx verify/viewer-smoke.ts
 ```
 
-Если входного артефакта нет, соответствующие ворота выходят **недоказанными с причиной** — старое
-число не подставляется. Это правило живёт в `verify/campaign-gates.ts` и пришпилено тестом в
+If an input artifact is missing, the corresponding gate comes out **unproven, with a reason**: the old
+number is not substituted in. This rule lives in `verify/campaign-gates.ts` and is pinned by a test in
 `tests/gates.test.ts`.
 
-Посмотреть своими глазами: `npm run dev`, страница `viewer/run.html`. Заготовка «малый» — 3938 частиц
-(470 органики + 3277 воды при измеренной жидкой плотности 0.8 σ⁻³ + пластина глины 191), измеренная
-скорость **2049–2257 шагов/с**, 119 кадров за прогон в 8000 шагов. Заготовка «стандартный» —
-25 904 частицы, и в её названии стоит слово ДОРОГО. Вода по умолчанию не рисуется (её больше всех, она
-прячет химию и стоит кадров); пластина глины рисуется плитами, а не шарами, и её можно выключить.
+To see it with your own eyes: `npm run dev`, page `viewer/run.html`. The "small" preset has 3938 particles
+(470 organic + 3277 water at a measured liquid density of 0.8 σ⁻³, plus a clay plate of 191), a measured
+speed of **2049-2257 steps/s**, 119 frames over an 8000-step run. The "standard" preset has
+25,904 particles, and its name carries the word EXPENSIVE. Water is not drawn by default (it outnumbers
+everything else, it hides the chemistry, and it costs frames); the clay plate is drawn as tiles, not
+spheres, and can be turned off.
 
 ---
 
-## 11. Конечная парцелла воды — «как в океане» (задача `confined-parcel`, 2026-08-21)
+## 11. A finite water parcel: "like in the ocean" (task `confined-parcel`, 2026-08-21)
 
-Последняя задача проекта. Постановка заказчика: «так сделай как в океане, в этом и цель». Проверялся
-пункт 3 списка §9 — единственный, который этот проект назвал КОРНЕМ: что замыкания нет из-за
-**топологии периодического бокса**, в котором объект, спанирующий коробку, замыкается сам на себя
-через границу и потому не имеет края вовсе, а везикула обязана платить кривизну.
+The project's last task. The project owner's framing: "make it like in the ocean, that is the goal." Item 3 of the §9 list was tested, the only one this project had called the ROOT CAUSE: that
+closure is absent because of the **topology of the periodic box**, in which an object spanning the box
+wraps onto itself across the boundary and so has no edge at all, whereas a vesicle must pay for curvature.
 
-### 11.1 Что построено
+### 11.1 What was built
 
-Система удерживается в **шаре радиуса R** мягкой **нейтральной** отталкивающей стенкой:
-U(s) = ½k(s−R)² при s > R, ноль внутри; k = 100 ε/σ² (ω·dt = 0.10, тепловое продавливание
-√(2kT/k) = 0.148 σ). Стенка **не читает вид частицы вовсе** — одинакова для воды, голов, хвостов,
-катализатора и минерала: ни смещения по радиусу бида, ни глубины, ни притяжения. Это КОНТЕЙНЕР, а не
-поверхность раздела. Гидрофильная стенка вела бы себя как минеральная (§ про глину), гидрофобная
-нуклеировала бы плёнку; нейтральная — единственный вариант, который **проверяет** замыкание, а не
-подстраивает его.
+The system is confined inside a **sphere of radius R** by a soft **neutral** repulsive wall:
+U(s) = ½k(s−R)² for s > R, zero inside; k = 100 ε/σ² (ω·dt = 0.10, thermal penetration
+√(2kT/k) = 0.148 σ). The wall **does not read particle species at all**: it is identical for water, heads,
+tails, catalyst, and mineral: no offset by bead radius, no depth, no attraction. This is a CONTAINER, not
+an interface. A hydrophilic wall would behave like the mineral one (see the clay section), a hydrophobic
+one would nucleate a film; neutral is the only choice that **tests** closure rather than biasing it.
 
-**Периодичность снята не флагом, а геометрией.** В движке одиннадцать мест применяют соглашение
-минимального образа или обёртку координат; добавить в каждое ветку — ровно тот класс молчаливой ошибки,
-на котором проект горел семь раз. Вместо этого парцелла помещена в куб со стороной **L ≥ 4R**, и тогда:
-(1) ни одна частица не приближается к грани ближе чем на L/2 − R − δ, поэтому обёртка позиции —
-тождество; (2) любое расстояние между ЛЮБОЙ парой не превосходит 2(R+δ) < L/2, поэтому минимальный
-образ — тождество для **каждой** пары, а не только для взаимодействующих. Оба условия **проверяются
-броском при создании** и **замеряются на каждом снимке**: зазор до грани 26.53–44.53 против наибольшего
-радиуса взаимодействия 16.70; наибольшая пара 44.55–72.77 против L/2 = 48.66 (сухо) / 80 (влажно);
-продавливание стенки 0.055–0.416 σ. Инструмент проверен положительным контролем: на ТЕХ ЖЕ координатах
-при боксе 2R он находит 1140 склеек из 12777, при реальном — **0 из 12777**.
+**Periodicity was removed by geometry, not by a flag.** Eleven places in the engine apply the minimum-image
+convention or coordinate wrapping; adding a branch to each is exactly the class of silent bug this project
+has been burned by seven times. Instead, the parcel was placed inside a cube of side **L ≥ 4R**, so that:
+(1) no particle comes closer to a face than L/2 − R − δ, so the position wrap is the identity; (2) no
+distance between ANY pair exceeds 2(R+δ) < L/2, so the minimum image is the identity for **every** pair,
+not just the interacting ones. Both conditions are **checked with a throw at creation** and **measured at
+every snapshot**: gap to the face 26.53-44.53 against the largest interaction radius of 16.70; largest pair
+44.55-72.77 against L/2 = 48.66 (dry) / 80 (wet); wall penetration 0.055-0.416 σ. The instrument was
+checked against a positive control: on the SAME coordinates at box 2R it finds 1140 splices out of 12,777,
+against the real setting, **0 of 12,777**.
 
-**Испарение стало физическим.** Убрали воду — парцелла сжалась: R_live = R_wet · L_live/L_wet, то есть
-буквально высыхающая капля, на существующей машинерии сухо-влажного цикла. Замерено: вода
-156 346 → 112, парцелла 36 → 21.895 σ, плотность 1.1009 → 1.34 σ⁻³ по 18 ступеням.
+**Evaporation became physical.** Removing water shrinks the parcel: R_live = R_wet · L_live/L_wet, that is,
+literally a drying droplet, on the existing dry-wet cycling machinery. Measured: water
+156,346 → 112, parcel 36 → 21.895 σ, density 1.1009 → 1.34 σ⁻³ over 18 steps.
 
-**Стенка совершает работу над системой.** Термостат ланжевеновский и локальный, он эту работу
-поглощает так же, как работу любой другой силы; никакого утверждения о сохранении энергии здесь нет.
-**Никакая величина вида давления не публикуется**: MC-ход по площади при нулевом натяжении
-**ОТКАЗЫВАЕТ** в удерживаемом прогоне (объём задаёт стенка, а не бокс; `soupPotential` вклада стенки не
-несёт) — внутри парцеллы нулевого натяжения не существует. Ворота `area-per-lipid-water` были и
-остаются измерением в периодическом боксе.
+**The wall does work on the system.** The thermostat is Langevin and local, and it absorbs that work just
+like the work of any other force; no energy-conservation claim is made here. **No quantity of the
+pressure kind is published**: an area MC move at zero tension **FAILS** in the confined run (volume is set
+by the wall, not the box; `soupPotential` carries no wall-contribution term): zero tension does not exist
+inside the parcel. The `area-per-lipid-water` gate was, and remains, a measurement in the periodic box.
 
-### 11.2 Четыре дефекта «бокс — это не объём», и какие опубликованные числа они задели: НИКАКИЕ
+### 11.2 Four "box is not volume" defects, and which published numbers they touched: NONE
 
-В полностью периодическом боксе объём один — бокс. Поэтому все плотности в движке написаны как
-`N / box³`, и **в периодическом боксе каждое из этих выражений верно**. Парцелла ломает это тождество:
-материал занимает 195 432 σ³ при боксе 4 096 000 σ³, отношение **20.959**. Четыре места прочли
-плотность в 20.959 раза ниже:
+In a fully periodic box there is one volume, the box. So every density in the engine is written as
+`N / box³`, and **in a periodic box every such expression is correct**. The parcel breaks this identity:
+material occupies 195,432 σ³ within a box of 4,096,000 σ³, a ratio of **20.959**. Four places read a
+density **20.959× too low**:
 
-| место | что выводит | что стало бы |
+| place | what it drives | what would have happened |
 |---|---|---|
-| `densestDensityOf` | ёмкость списка Верле | недооценка списка = **молча потерянный сосед** (здесь спас `capacityFloor`, но случайно) |
-| `makeEsBasis` | ёмкость дальнего списка по головам | плотность голов **в 21.0 раза** ниже → ёмкость **281 вместо 5898**: молча отброшенное взаимодействие — ровно тот дефект, который убирала задача о дальнодействии |
-| `encapsulatedWaterVolume` | `bulkWaterDensity` и порог замкнутости | **порог был бы РАСШИРЕН в 21 раз** (313 → ~15 бидов) по бухгалтерской случайности |
-| `evaporationLadder` | плотность, от которой идёт рампа сушки | **поймано ГРОМКО**: парцелла дошла до 2.32 σ⁻³, 614 769 из 645 453 компонент стали нефинитными на шагах 12 800…13 000, страж финитности сработал с указанием интервала |
+| `densestDensityOf` | Verlet-list capacity | underestimated list = **a silently lost neighbor** (rescued here by `capacityFloor`, but by accident) |
+| `makeEsBasis` | far-list capacity for heads | head density **21.0× too low** → capacity **281 instead of 5898**: a silently dropped interaction, exactly the defect the long-range task had removed |
+| `encapsulatedWaterVolume` | `bulkWaterDensity` and the closure threshold | **the threshold would have been WIDENED 21×** (313 → ~15 beads) by bookkeeping accident |
+| `evaporationLadder` | the density that drives the drying ramp | **caught LOUDLY**: the parcel reached 2.32 σ⁻³, 614,769 of 645,453 components went non-finite over steps 12,800…13,000, the finiteness guard fired naming the interval |
 
-**Ни одно ранее опубликованное число не считалось по неверной плотности.** Все четыре выражения были
-верны для каждого прогона, который этот проект публиковал, потому что все они шли в полностью
-периодическом боксе, где объём бокса И ЕСТЬ занятый объём. Дефекты **латентные**, а не
-бывшие-неверными: их включает только система, чей материал занимает меньше своего бокса, а такой до
-этой задачи не существовало. В частности `encapsulatedWater` = **ровно 0 на 23 из 23** влажных снимков
-кампании бокса 76 не затронут ни в одну сторону: сам счёт — результат заливки и плотности не использует,
-а порог 312.64–315.41 выведен по плотности, замеренной в боксе, который И БЫЛ системой. Каждая
-починка — **необязательный параметр со значением по умолчанию = прежнее поведение**, поэтому
-периодический путь не «доказуемо не изменился», а не изменился по построению.
+**Not a single previously published number was computed from a wrong density.** All four expressions were
+correct for every run this project has published, because they all ran in a fully periodic box, where the
+box volume IS the occupied volume. The defects are **latent**, not previously wrong: only a system whose
+material occupies less than its box triggers them, and no such system existed before this task. In
+particular, `encapsulatedWater` = **exactly 0 on 23 of 23** wet snapshots of the box-76 campaign is
+unaffected either way: the count itself does not use fill or density, and its threshold of 312.64-315.41
+was derived from a density measured in a box that WAS the system. Every fix is an **optional parameter
+defaulting to the previous behavior**, so the periodic path did not "provably not change", it did not
+change, by construction.
 
-Переносимый вывод: **`N / box³` — это не плотность, это плотность И ДОПУЩЕНИЕ.** Допущение держалось
-всю историю проекта и нигде не было записано — потому его нарушение сломало сразу четыре места, а не
-одно.
+The portable lesson: **`N / box³` is not a density, it is a density AND an assumption.** The assumption
+held throughout the project's history and was never written down, which is why breaking it broke four
+places at once, not one.
 
-### 11.3 Конкурирующая ловушка: амфифилы НЕ облепляют контейнер
+### 11.3 The competing trap: amphiphiles do NOT plaster the container
 
-Так этот опыт мог провалиться правдоподобнее всего, и это замерено на каждом снимке — в наружной
-оболочке толщиной 4.687 σ (измеренная толщина бислоя, то есть в точности глубина, которую занимала бы
-налипшая плёнка), против двух нулевых гипотез: равномерного шара и — главное — **занятости той же
-оболочки РАСТВОРИТЕЛЕМ**, что сокращает геометрический множитель, одинаковый для всех видов.
+This is the most plausible way this experiment could have failed, and it is measured on every snapshot: in
+an outer shell of thickness 4.687 σ (the measured bilayer thickness, precisely the depth an adhering film
+would occupy), against two null hypotheses: a uniform sphere and, most importantly, **the same shell being
+occupied by SOLVENT**, which cancels the geometric factor common to every species.
 
-- До агрегации (шаг 2000): обогащение к воде **C 0.985, O 1.013, H 0.981, M 0.959** — стенка
-  нейтральна, замерено, а не объявлено.
-- В осевшей влажной фазе: **1 углерод из 24 926 и 0 водородов из 24 926** в оболочке — обогащение к
-  воде **1e-4** и **0.000**, на 18 снимках из 18, при радиусе инерции агрегата **19.54–19.78 σ внутри
-  парцеллы радиуса 36**.
+- Before aggregation (step 2000): enrichment relative to water is **C 0.985, O 1.013, H 0.981, M 0.959**:
+  the wall is neutral, measured, not asserted.
+- In the settled wet phase: **1 carbon out of 24,926 and 0 hydrogens out of 24,926** in the shell, an
+  enrichment relative to water of **1e-4** and **0.000**, on 18 of 18 snapshots, at an aggregate radius of
+  gyration of **19.54-19.78 σ inside a parcel of radius 36**.
 
-Материал схлопнулся ВНУТРЬ, в компактный объект, стоящий далеко от стенки, и оставался там 188 000
-шагов. Следствия оба несущие: **положительный результат здесь нельзя было бы списать на плёнку,
-налипшую на стенку, а этот отрицательный нельзя списать на то, что стенка съела подачу.**
+The material collapsed INWARD, into a compact object sitting far from the wall, and stayed there for
+188,000 steps. Both implications carry weight: **a positive result here could not have been dismissed as
+a film stuck to the wall, and this negative result cannot be dismissed as the wall having eaten the feed.**
 
-### 11.4 Что замерено: 0 из 3 осей — и замыкания всё равно нет
+### 11.4 What was measured: 0 of 3 axes, and closure is still absent
 
-Кампания: R = 36 σ в боксе 160 σ, состав кампании бокса 76, пересчитанный на объём парцеллы
-(`{C:24926, O:8307, H:24926, M:646, W:156346}`, N = **215 151**, ρ = 1.1009, вода **ровно 0.8000 σ⁻³**),
-сид 19, kT 1.1, pH 7.0, I = 0.01 М, заряд на калиброванных **4.000 λ_D (rc_es = 15.2000, отброшено
-0.0916 — те же числа, что в периодической кампании)**, одно событие сушки, из МОНОМЕРОВ.
-**225 200 шагов, из них 188 000 осевших влажных.**
+Campaign: R = 36 σ in a box of 160 σ, box-76 campaign composition rescaled to the parcel's volume
+(`{C:24926, O:8307, H:24926, M:646, W:156346}`, N = **215,151**, ρ = 1.1009, water exactly **0.8000 σ⁻³**),
+seed 19, kT 1.1, pH 7.0, I = 0.01 M, charge at a calibrated **4.000 λ_D (rc_es = 15.2000, dropped fraction
+0.0916, the same numbers as in the periodic campaign)**, one drying event, starting from MONOMERS.
+**225,200 steps, of which 188,000 were settled wet steps.**
 
-| что | периодический бокс 76 (кампания `closeout`) | **конечная парцелла R = 36** |
+| what | periodic box 76 (`closeout` campaign) | **finite parcel R = 36** |
 |---|---|---|
-| обёртывающих осей | **3 из 3** на 23 из 23 | **0 из 3 на 20 из 20** |
-| ворота `aggregate-percolation` | 3 — **failed** | **0 — PASSED** (впервые в проекте) |
-| агрегатов / крупнейший | 4 / 4512 | 1 / **2092** |
-| подача над полом замыкания | 4.73–4.82× | 2.06–2.23× |
-| `encapsulatedWater` | **ровно 0** на 23 из 23 | **ровно 0 на 19 из 19** |
-| порог замкнутости | 312.64–315.41 | **312.67–314.87** |
+| wrapping axes | **3 of 3** on 23 of 23 | **0 of 3 on 20 of 20** |
+| `aggregate-percolation` gate | 3, **failed** | **0, PASSED** (first time in the project) |
+| aggregates / largest | 4 / 4512 | 1 / **2092** |
+| feed over closure floor | 4.73-4.82× | 2.06-2.23× |
+| `encapsulatedWater` | **exactly 0** on 23 of 23 | **exactly 0 on 19 of 19** |
+| closure threshold | 312.64-315.41 | **312.67-314.87** |
 | `closed` / `hasVesicleAggregate` | false / false | **false / false** |
-| плоскостность (нужно ≤ 0.35) | 0.7277–0.7610 | **0.8303–0.8552** |
-| `radialHeadShells` | колеблется 1↔2 | **2 → 1** и осталась 1 (в СТОРОНУ ОТ везикулы) |
-| полость σ³ против 370.8656 | 139.25, наклон **не падал** (+0.586/1000) | **69.5**, наклон **сменил знак** (+0.172 → −0.264/1000) |
-| плато размера (последние четыре) | 0.11 % | **0.062 %** — самое плотное в проекте |
-| слияний / делений / обмена | 0 / 0 / 0 | **0 / 0 / 0** |
-| крупнейшая ковалентная компонента | 35 из 30 361 | **35 из 13 239** (`covalentSpanFraction` 0.00264) |
+| flatness (need ≤ 0.35) | 0.7277-0.7610 | **0.8303-0.8552** |
+| `radialHeadShells` | oscillates 1↔2 | **2 → 1** and stayed at 1 (moving AWAY from a vesicle) |
+| cavity σ³ against 370.8656 | 139.25, slope **did not drop** (+0.586/1000) | **69.5**, slope **changed sign** (+0.172 → −0.264/1000) |
+| size plateau (last four) | 0.11% | **0.062%**, the tightest in the project |
+| fusions / fissions / exchange | 0 / 0 / 0 | **0 / 0 / 0** |
+| largest covalent component | 35 of 30,361 | **35 of 13,239** (`covalentSpanFraction` 0.00264) |
 
-**Порог 312.67–314.87 против периодических 312.64–315.41 — это перекрёстная проверка починки §11.2:**
-оба есть 370.8656 σ³ × плотность настоящей жидкой воды (0.843–0.849 здесь, ~0.85 там). Без починки
-опубликовалось бы **~15**.
+**Threshold 312.67-314.87 against periodic 312.64-315.41: this is a cross-check of the §11.2 fix**: both
+are 370.8656 σ³ × the density of real liquid water (0.843-0.849 here, ~0.85 there). Without the fix,
+**~15** would have been published.
 
-### 11.5 Вердикт и его честная рамка
+### 11.5 Verdict and its honest frame
 
-**Замыкания нет.** `encapsulatedWater` **ровно 0 на 19 из 19** измеримых снимков против порога
-312.67–314.87; `closed` false; `hasVesicleAggregate` false на всех 21; ворота
-`vesicle-closure-water` = 0 (ранг B, failed) и `vesicle-verdict` = 0 (ранг A, failed). Судится по
-заранее заданному критерию и НИКОГДА по форме (форма говорит то же: плоскостность 0.8379 против ≤ 0.35).
+**There is no closure.** `encapsulatedWater` **exactly 0 on 19 of 19** measurable snapshots against a
+threshold of 312.67-314.87; `closed` false; `hasVesicleAggregate` false on all 21; gates
+`vesicle-closure-water` = 0 (rank B, failed) and `vesicle-verdict` = 0 (rank A, failed). Judged by a
+pre-set criterion and NEVER by shape (shape says the same thing: flatness 0.8379 against ≤ 0.35).
 
-**Провалилась первая из трёх названных гипотез: обёртки нет, а замыкания тоже нет.** Не плёнка на
-стенке — §11.3 замерил 1 углерод из 24 926, так что это объяснение исключено измерением, а не
-рассуждением. **И провалилась гипотеза самого опыта — та, что этот документ называл корнем: что
-замыкание не наступает из-за топологии периодического бокса.** Топологии больше нет, а замыкания
-по-прежнему нет. Периодическая граница была **следствием, а не причиной**.
+**The first of three named hypotheses failed: there is no wrapping, and there is still no closure.** Not a
+film on the wall: §11.3 measured 1 carbon out of 24,926, so this explanation is excluded by measurement,
+not by argument. **And the hypothesis of the experiment itself failed, the one this document had called
+the root cause: that closure fails to occur because of the topology of the periodic box.** The topology is
+gone, and closure is still absent. The periodic boundary was a **consequence, not a cause**.
 
-Почему, арифметикой, а не вздохом: в конечной области дешевейший объект БЕЗ КРАЯ — не спанирующая
-мицелла, а **цилиндрическая мицелла с шапочками**, стоящая **17.5–21.3 амфифила** и не имеющая нижней
-границы, связанной с размером области, против пола замыкания **937–1014**: полоса перевёрнута в
-**44–58 раз**. Спанирующая парцеллу мицелла с шапочками стоит 439–490, то есть **0.43–0.52×** пола —
-тоже дешевле замыкания. Периодический бокс давал не бескрайность как таковую, а **бескрайность при
-любом размере**; мицелла с шапочками бескрайна при любом размере и в парцелле, платя ~19 амфифилов за
-свободный конец. Измеренный объект — ровно это: одна КОНТАКТНАЯ сеть из 2092 химически отдельных
-молекул, с ограниченной межузельной пустотой и ни одним запертым бидом воды.
+Why, by arithmetic, not by a sigh: in a finite region the cheapest object WITHOUT AN EDGE is not a
+spanning micelle but a **cylindrical micelle with end caps**, costing **17.5-21.3 amphiphiles** with no
+lower bound tied to region size, against a closure floor of **937-1014**: the band is inverted by
+**44-58×**. A micelle with caps spanning the parcel costs 439-490, that is, **0.43-0.52×** of the floor,
+also cheaper than closure. The periodic box was not providing edgelessness as such but **edgelessness at
+any size**; a capped micelle is edgeless at any size, including inside the parcel, at a cost of ~19
+amphiphiles for a free end. The measured object is exactly that: one CONTACT network of 2092 chemically
+distinct molecules, with bounded interstitial void and not a single trapped water bead.
 
-**Что осталось стоять после этого шага.** Сняты: химия, подача (при 1.50×, 2.08×, 2.36× и 4.82× пола),
-энергия пары, размер бокса, температура, заряд/соль/pH и теперь **топология границы**. Выжило ровно
-одно объяснение, и оно про молекулу: **упаковочный параметр a/t этого амфифила** (§9 пункт 1 —
-двухвостая топология ПО ПОСТРОЕНИЮ при фиксированно коротком хвосте). Это перестало быть первым
-пунктом списка по ожидаемой отдаче и стало единственным.
+**What is still standing after this step.** Ruled out: chemistry, feed (at 1.50×, 2.08×, 2.36×, and 4.82×
+of the floor), pair energy, box size, temperature, charge/salt/pH, and now **boundary topology**. Exactly
+one explanation survives, and it concerns the molecule: **this amphiphile's packing parameter a/t**
+(§9, item 1: two-tailed topology BY CONSTRUCTION with a fixed short tail). This has stopped being the
+first item on an expected-payoff list and become the only one.
 
-**Рамка, которая была бы должна и на успехе, и приводится поэтому же.** (1) Стенка нейтральна
-ИЗМЕРЕННО, но она идеализация, которой в океане нет: настоящая граница воздух/вода гидрофобна и
-нуклеировала бы плёнку (случай аэрозоля, сам по себе пребиотически реальный), минеральная —
-гидрофильна. (2) Парцелла 36 σ: замыкание в капле, чей радиус в 1.6 раза больше диаметра самого
-объекта, — не замыкание в океане. (3) **Периодический результат стоит как самостоятельный вывод, а не
-как ошибка, которую здесь исправили**: в периодическом боксе ниже L\* основное состояние — спанирующий
-объект, и измеренный объект им и был. Опубликованная таблица ворот по-прежнему несёт эту строку, а
-удерживаемое плечо опубликовано ОТДЕЛЬНОЙ строкой (`verify/out/gates-confined.json`). (4) Чтобы
-показать то же без удержания, нужен бокс L > L\* = **146.9–172.5 σ** = **2.53e6 частиц против потолка
-953 589** — по-прежнему структурно недостижимо, потому что список соседей на частицу стоит L³ρ².
-Удержание — единственный способ, которым этот движок вообще может задать вопрос, и именно поэтому
-нейтральность стенки пришлось измерить, а не предположить.
+**A frame that would have been owed on success too, and is given for that same reason.** (1) The wall is
+neutral, MEASURED, but it is an idealization the ocean does not have: a real air/water boundary is
+hydrophobic and would nucleate a film (the aerosol case, itself prebiotically real), a mineral one is
+hydrophilic. (2) A parcel of 36 σ: closure inside a droplet whose radius is 1.6× the diameter of the object
+itself is not closure in the ocean. (3) **The periodic result stands as its own conclusion, not as an
+error that was corrected here**: in a periodic box below L\*, the ground state is a spanning object, and
+the measured object was exactly that. The published gate table still carries that row, and the confined
+arm is published as a SEPARATE row (`verify/out/gates-confined.json`). (4) To show the same thing without
+confinement would need a box L > L\* = **146.9-172.5 σ** = **2.53e6 particles against a ceiling of
+953,589**, still structurally unreachable, because the per-particle neighbor list costs L³ρ².
+Confinement is the only way this engine can even ask the question, which is exactly why the wall's
+neutrality had to be measured, not assumed.
 
-Полный протокол, все команды и все числа: `.superpowers/sdd/2026-08-16-soup-to-vesicle/confined-parcel-report.md`.
-Воспроизвести (кампанию заново прогонять НЕ надо):
+Full protocol, all commands and all numbers: `.superpowers/sdd/2026-08-16-soup-to-vesicle/confined-parcel-report.md`.
+To reproduce (there is no need to rerun the campaign):
 
 ```
-# ворота: периодическая таблица и ОТДЕЛЬНАЯ строка удерживаемого плеча
+# gates: the periodic table and the SEPARATE confined-arm row
 nice -n 15 npm run verify
 nice -n 15 npx tsx verify/confined-gates.ts
 
-# доказательства реализации (стенка против ЧИСЛЕННОГО градиента, отсутствие обёртки с контролем,
-# проверка постановки 0 из 3, отказы) -- около 32 с
+# implementation proofs (wall against a NUMERICAL gradient, absence of wrapping with a control,
+# verification of the 0-of-3 setup, failure modes) -- about 32 s
 nice -n 15 npx vitest run tests/soup-confine.test.ts --no-file-parallelism
 
-# инструменты по чекпойнтам, уже лежащим на диске
+# tools over checkpoints already on disk
 CONTINUOUS_RUN_PREFIX=cpR36-step CONTINUOUS_RUN_DIRS=data/checkpoints/cpR36 \
   CONTINUOUS_RUN_ARTIFACT=verify/out/confined-campaign-R36-trace.json \
   nice -n 15 npx vitest run tests/continuous-run-audit.test.ts --no-file-parallelism

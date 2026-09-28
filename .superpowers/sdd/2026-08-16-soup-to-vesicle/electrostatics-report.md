@@ -146,7 +146,7 @@ uncertainty of the interaction strength is that range — measured, printed by t
 ```
 ES-SIGMA-RANGE sigma=0.65nm A=1.201538 lambdaD=1.47897sig U(0.95)=0.4234kT | sigma=0.8nm A=0.976250
   lambdaD=1.20167sig U(0.95)=0.3180kT | sigma=1nm A=0.781000 lambdaD=0.96133sig U(0.95)=0.2245kT
-  фактор_между_концами=1.886
+  factor_between_ends=1.886
 ```
 
 **Every result below carries that factor 1.886.** In particular §9's energy-scale argument — 0.32 kT of
@@ -221,7 +221,7 @@ ES-GRADIENT rc=2.7224620 A=0.9762500 kappa=0.8321783 shiftU=3.721114e-2 shiftF=4
   r=2.00 F_num=7.846960e-2 F_ana=7.846960e-2 rel=1.24e-10
   r=2.40 F_num=2.430582e-2 F_ana=2.430582e-2 rel=1.21e-10
   r=2.70 F_num=1.337326e-3 F_ana=1.337326e-3 rel=5.15e-9
-  худшая относительная невязка 5.145e-9 при r=2.7
+  worst relative residual 5.145e-9 at r=2.7
   U(rc-1e-7)=2.894331e-16 F(rc-1e-7)=5.855929e-9 U(rc)=0 F(rc)=0 U(rc+0.1)=0
 ```
 
@@ -229,13 +229,13 @@ Both U and F go continuously to zero at the cutoff (2.9e-16 and 5.9e-9 one part 
 exactly 0) — which is what the shifted-force truncation is for and what a plain cut would fail.
 
 ```
-ES-FULL-GRADIENT заряженных=120 проверено_частиц=6 компонент=18
-  С ЗАРЯДОМ:  худшая отн. невязка=1.736e-5 при mean|F|=0.0469
-  БЕЗ ЗАРЯДА (контроль): худшая отн. невязка=1.303e-3 при mean|F|=81.3099
-  первые три компоненты с зарядом: i=300 ось=0 F_num=0.19696 F_gpu=0.19695 | i=300 ось=1
-    F_num=0.23839 F_gpu=0.23841 | i=300 ось=2 F_num=-0.14530 F_gpu=-0.14532
-  первые три компоненты БЕЗ заряда: i=661 ось=0 F_num=-32.52176 F_gpu=-32.53144 U+=-2114.6562
-    U-=-2114.7862 | i=661 ось=1 F_num=-148.24921 F_gpu=-148.23669 | i=661 ось=2 F_num=-225.74710
+ES-FULL-GRADIENT charged=120 particles_checked=6 components=18
+  WITH CHARGE:  worst rel. residual=1.736e-5 at mean|F|=0.0469
+  WITHOUT CHARGE (control): worst rel. residual=1.303e-3 at mean|F|=81.3099
+  first three components with charge: i=300 axis=0 F_num=0.19696 F_gpu=0.19695 | i=300 axis=1
+    F_num=0.23839 F_gpu=0.23841 | i=300 axis=2 F_num=-0.14530 F_gpu=-0.14532
+  first three components WITHOUT charge: i=661 axis=0 F_num=-32.52176 F_gpu=-32.53144 U+=-2114.6562
+    U-=-2114.7862 | i=661 axis=1 F_num=-148.24921 F_gpu=-148.23669 | i=661 axis=2 F_num=-225.74710
     F_gpu=-225.72752
 ```
 
@@ -253,26 +253,26 @@ particles instead of the charged run's picks.
 And the same term applied identically on all three force paths, plus proof it is doing something:
 
 ```
-SOUP-FORCES-ES maxDiff(сетка+Верле против перебора)=2.2888e-5 meanAbsRef=5.3442 заряженных_голов=100/100
-  maxDiff(заряд против нейтрали)=191.4337 A=0.976250 kappa=0.832178 rc=2.7224620
+SOUP-FORCES-ES maxDiff(grid+Verlet vs brute force)=2.2888e-5 meanAbsRef=5.3442 charged_heads=100/100
+  maxDiff(charge vs neutral)=191.4337 A=0.976250 kappa=0.832178 rc=2.7224620
 ```
 
 ### 3.2 The protonation sampling: Henderson–Hasselbalch, then detailed balance
 
 ```
 ES-HENDERSON pKa_intrinsic=4.9
-  pH=3.9 alpha_измер=0.08962 alpha_HH=0.09091 откл=-1.28e-3 4se=5.75e-3
-  pH=4.4 alpha_измер=0.23990 alpha_HH=0.24025 откл=-3.53e-4 4se=8.54e-3
-  pH=4.9 alpha_измер=0.50115 alpha_HH=0.50000 откл=1.15e-3 4se=1.00e-2
-  pH=5.4 alpha_измер=0.76013 alpha_HH=0.75975 откл=3.78e-4 4se=8.54e-3
-  pH=5.9 alpha_измер=0.91117 alpha_HH=0.90909 откл=2.08e-3 4se=5.75e-3
+  pH=3.9 alpha_measured=0.08962 alpha_HH=0.09091 dev=-1.28e-3 4se=5.75e-3
+  pH=4.4 alpha_measured=0.23990 alpha_HH=0.24025 dev=-3.53e-4 4se=8.54e-3
+  pH=4.9 alpha_measured=0.50115 alpha_HH=0.50000 dev=1.15e-3 4se=1.00e-2
+  pH=5.4 alpha_measured=0.76013 alpha_HH=0.75975 dev=3.78e-4 4se=8.54e-3
+  pH=5.9 alpha_measured=0.91117 alpha_HH=0.90909 dev=2.08e-3 4se=5.75e-3
 
-ES-DETAILED-BALANCE r=1.1 U_es(оба)=0.245689eps=0.2234kT dG_intr=0.000000eps
-  состояние      ни одна      первая      вторая      обе
-  точно      0.26317   0.26317   0.26317   0.21049
-  измерено   0.26631   0.26055   0.26357   0.20957
-  подметаний=200000 худшее отклонение=3.140e-3
-ES-DETAILED-BALANCE подавление состояния «обе»: 0.21049 против 0.25000 без dU_es
+ES-DETAILED-BALANCE r=1.1 U_es(both)=0.245689eps=0.2234kT dG_intr=0.000000eps
+  state          neither      first       second      both
+  exact      0.26317   0.26317   0.26317   0.21049
+  measured   0.26631   0.26055   0.26357   0.20957
+  sweeps=200000 worst deviation=3.140e-3
+ES-DETAILED-BALANCE suppression of the "both" state: 0.21049 against 0.25000 without dU_es
 ```
 
 Two heads 100 σ apart isolate the pH term (ΔU_es ≡ 0): the sampler reproduces Henderson–Hasselbalch, every
@@ -284,8 +284,8 @@ passing on a degenerate configuration.
 ### 3.3 The protonation state round-trips through a checkpoint
 
 ```
-ES-CHECKPOINT N=680 заряженных=91 подметаний=2 несовпадений_после_резюме=0 RNG_до=2570806743
-  RNG_после=2570806743 chargesB64=true длина=3628 отличий_у_перерисованного(без поля)=38
+ES-CHECKPOINT N=680 charged=91 sweeps=2 mismatches_after_resume=0 RNG_before=2570806743
+  RNG_after=2570806743 chargesB64=true length=3628 diffs_when_field_deleted=38
 ```
 
 Exact round-trip after two real Monte Carlo sweeps, the MC's own RNG state carried with it — and **not
@@ -482,7 +482,7 @@ settled steps, exactly the trap `final-campaign-report.md`'s concern 3 named).
 
 **Invariants, every checkpoint, asserted not eyeballed:** non-finite positions **0**, velocities **0**,
 all six valence/placement counters **0**, census exactly `{C:27894, O:9296, H:27894, M:723}` at all 15
-including the four dry ones carrying `W: 90`, `RUN-AUDIT-TETHER нарушений=0`. Final events
+including the four dry ones carrying `W: 90`, `RUN-AUDIT-TETHER violations=0`. Final events
 `{cc_bond:16679, cc_break:0, co_bond:5806, co_break:299}`.
 
 **Two things moved relative to the neutral campaign, and neither helps.** `radialHeadShells` went
@@ -844,8 +844,8 @@ not:
 ```
 $ nice -n 15 npx tsx soup/cli/campaign.ts --label esB19pH50 ... --charge --pH 5.0 --steps 40000 ...
       # (no --relax)
-Error: нефинитное состояние на шаге=1000: нефинитных компонент позиций=97467, скоростей=97467
-  из 98652 (появилось в интервале шагов 0..1000) -- расчёт разошёлся (Inf/NaN)
+Error: non-finite state at step=1000: non-finite position components=97467, velocity components=97467
+  out of 98652 (appeared in the step interval 0..1000) -- the computation diverged (Inf/NaN)
 ```
 
 The cause was the missing `--relax`, not the charge: this composition's cold lattice starts at

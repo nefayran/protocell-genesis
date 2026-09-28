@@ -1,271 +1,299 @@
-# protocell-genesis — дизайн
+# protocell-genesis: design
 
-Дата: 2026-08-15
+Date: 2026-08-15
 
-## 1. Цель
+## 1. Goal
 
-Интерактивная трёхмерная симуляция, показывающая путь от отдельных атомов и простейших
-молекул гидротермального флюида до замкнутой липидной везикулы, и одновременно
-защищающая этот путь численно: каждый шаг сверяется с измеренной величиной из
-литературы, а результат выводится как таблица пройденных и непройденных ворот.
+An interactive three-dimensional simulation showing the path from individual atoms and
+simple molecules of a hydrothermal fluid to a closed lipid vesicle, while numerically
+guarding that path: each step is checked against a measured value from the literature,
+and the result is output as a table of passed and failed gates.
 
-Симуляция не доказывает, что жизнь возникла именно так. Она доказывает **достаточность**:
-при заявленных условиях синтез амфифилов термодинамически разрешён, механизм роста цепи
-воспроизводит наблюдаемое распределение длин, а молекулы такой длины обязаны собираться
-в бислой и замыкаться. Это утверждение проверяемо и опровержимо по числам.
+The simulation does not prove that life arose exactly this way. It proves **sufficiency**:
+under the stated conditions, amphiphile synthesis is thermodynamically allowed, the
+chain-growth mechanism reproduces the observed length distribution, and molecules of that
+length are bound to assemble into a bilayer and close up. This claim is testable and
+falsifiable by the numbers.
 
-Приоритеты, заданные заказчиком, в порядке важности:
+Priorities set by the project owner, in order of importance:
 
-1. Научная точность.
-2. Интерактивное трёхмерное наблюдение.
+1. Scientific accuracy.
+2. Interactive three-dimensional observation.
 
-Стартовая точка — настоящие отдельные атомы и синтез «как в первичном бульоне».
-Финишная черта — замкнутая везикула с водой внутри, зафиксированная замером, а не на глаз.
+Starting point: real individual atoms and synthesis "as in the primordial soup."
+Finish line: a closed vesicle with water inside, confirmed by measurement, not by eye.
 
-## 1a. Поправка от 2026-08-16: единый непрерывный прогон
+## 1a. Amendment from 2026-08-16: a single continuous run
 
-Первоначальная архитектура делила путь на ступени с явным швом: химия считалась в своём масштабе, сборка в своём, а между ними переносилась только популяция молекул. Заказчик уточнил требование: нужен **один непрерывный прогон** от первичного бульона до везикулы, и проверяться должна гипотеза первичного образования везикул из атомов. Шов этому требованию не отвечает, поэтому архитектура меняется.
+The initial architecture split the path into stages with an explicit seam: chemistry was
+computed at its own scale, assembly at its own, and only the molecule population was
+carried across between them. The project owner clarified the requirement: what is needed
+is a **single continuous run** from primordial soup to vesicle, testing the hypothesis of
+primary vesicle formation from atoms. A seam does not meet this requirement, so the
+architecture changes.
 
-**Единая реактивная модель.** Все частицы живут в одной огрублённой шкале: носители углерода, водорода и кислорода, вода как неявный фон с явными участниками реакций, каталитические центры. Связи образуются и рвутся правилами с вероятностями, а не задаются при создании. Амфифилы возникают как продукт этих правил — цепь с полярной головой, — и их агрегация управляется тем же несвязанным потенциалом, который в ступени C уже прошёл ворота по площади на липид и толщине бислоя. Одна шкала времени на весь прогон.
+**A single reactive model.** All particles live on one coarse-grained scale: carriers of
+carbon, hydrogen and oxygen, water as an implicit background with explicit reaction
+participants, catalytic sites. Bonds form and break by probabilistic rules rather than
+being fixed at creation. Amphiphiles emerge as a product of these rules, a chain with a
+polar head, and their aggregation is governed by the same non-bonded potential that has
+already passed the per-lipid area and bilayer thickness gates in stage C. One time scale
+for the whole run.
 
-**Что это утверждение может доказать.** Не «так было на Земле». Строго проверяемое: при заявленных ингредиентах и правилах система самопроизвольно проходит путь бульон → амфифил → мицелла → бислой → замкнутая везикула, и существует окно параметров, где это происходит, а вне него — нет. Фазовая карта по температуре, концентрации прекурсоров и плотности каталитических центров является содержанием проверки гипотезы, и «нет» в части карты — полноценный результат.
+**What this claim can prove.** Not "this is how it happened on Earth." Strictly testable:
+given the stated ingredients and rules, the system spontaneously traverses the path
+soup -> amphiphile -> micelle -> bilayer -> closed vesicle, and there exists a parameter
+window in which this happens, and outside it, it does not. A phase map over temperature,
+precursor concentration and catalytic-site density is the substance of the hypothesis test,
+and a "no" over part of that map is a full-fledged result.
 
-**Что при этом теряется, и это записано в отчёте.** Абсолютное время не привязано к секундам: остаётся единственный явный множитель `κ_t`, выведенный на экран. Скорости реакций несут ранг D, потому что элементарных константы для условий ранней Земли не существует. Атомная детализация в кадре — реконструкция по справочной геометрии поверх огрублённых координат, а не полноатомная динамика.
+**What is lost in the process, and this is recorded in the report.** Absolute time is not
+tied to seconds: what remains is a single explicit factor `κ_t`, displayed on screen.
+Reaction rates carry rank D, because elementary-reaction rate constants for early-Earth
+conditions do not exist. Atomic detail in the frame is a reconstruction from reference
+geometry laid over coarse-grained coordinates, not full-atom dynamics.
 
-**Что переиспользуется без изменений:** проверенный потенциал сборки и его ворота, детектор замкнутости заливкой снаружи, механика вердиктов и отчёта, поатомный рендер с обратным отображением.
+**What is reused unchanged:** the verified assembly potential and its gates, the
+flood-fill closure detector, the verdict and reporting mechanism, per-atom rendering with
+back-mapping.
 
-## 2. Границы честности
+## 2. Boundaries of honesty
 
-Три ограничения формулируются заранее, показываются в интерфейсе и повторяются в отчёте.
+Three limitations are stated up front, shown in the interface, and repeated in the report.
 
-**Масштабы времени различаются на порядки.** Химический синтез в эксперименте идёт
-двое-трое суток, самосборка мембраны — микросекунды. Ступени соединены не непрерывной
-динамикой, а явным «швом»: со ступени химии на ступень сборки переносится популяция
-молекул по длинам цепи, pH и ионная сила, и больше ничего. Шов подписан на экране.
+**Time scales differ by orders of magnitude.** Chemical synthesis in the experiment runs
+for two to three days; membrane self-assembly takes microseconds. The stages are joined
+not by continuous dynamics but by an explicit "seam": only the molecule population by
+chain length, pH and ionic strength is carried from the chemistry stage to the assembly
+stage, nothing else. The seam is labeled on screen.
 
-**Абсолютные скорости химических реакций неизвестны.** Литература прямо фиксирует, что
-элементарных константы скорости для условий ранней Земли не существует, а промышленные
-микрокинетики Фишера—Тропша к ним не относятся. Поэтому кинетика строится на детальном
-балансе: отношение прямой и обратной константы жёстко равно `exp(-ΔG/RT)`, а общий
-масштаб времени задаётся единственным глобальным множителем `κ_t`, который выводится
-числом на экран. Следствие, и оно принципиально: **куда система придёт — доказуемо, за
-сколько — нет.**
+**Absolute chemical reaction rates are unknown.** The literature states directly that
+elementary rate constants for early-Earth conditions do not exist, and industrial
+Fischer-Tropsch microkinetics do not apply to them. Kinetics are therefore built on
+detailed balance: the ratio of the forward to the reverse constant is strictly equal to
+`exp(-ΔG/RT)`, and the overall time scale is set by a single global factor `κ_t`, which is
+displayed on screen as a number. The consequence, and it is fundamental: **where the
+system ends up is provable; how long it takes is not.**
 
-**Вода в ступени химии не представлена полностью.** Явно показаны только молекулы,
-участвующие в реакциях; остальное — неявный фон с правильной вязкостью и
-диэлектрической проницаемостью при заданной температуре. Это подписано в интерфейсе.
+**Water in the chemistry stage is not fully represented.** Only molecules that take part
+in reactions are shown explicitly; everything else is an implicit background with the
+correct viscosity and dielectric permittivity at the given temperature. This is labeled in
+the interface.
 
-## 3. Иерархия доводов
+## 3. Hierarchy of evidence
 
-Ранг присваивается каждой реакции и каждой константе отдельно, не проекту целиком.
+A rank is assigned to each reaction and each constant individually, not to the project as
+a whole.
 
-| Ранг | Смысл | Что обязательно записано |
+| Rank | Meaning | What must be recorded |
 | --- | --- | --- |
-| A | Измерено | Ссылка, условия измерения, погрешность |
-| B | Посчитано | Метод, уровень теории, базис, контроль на реакции ранга A с указанием расхождения в кДж/моль |
-| C | Ограничено термодинамикой | Абсолютная величина неизвестна; отношение `k_f/k_r` выведено из ΔG, равновесие верно, время — нет |
-| D | Оценка | Источник оценки; ворота, опирающиеся только на D, выходят в отчёте как **недоказанные** |
+| A | Measured | Reference, measurement conditions, uncertainty |
+| B | Calculated | Method, level of theory, basis set, control against a rank-A reaction with the discrepancy stated in kJ/mol |
+| C | Bounded by thermodynamics | Absolute value unknown; the ratio `k_f/k_r` is derived from ΔG, equilibrium is correct, timing is not |
+| D | Estimate | Source of the estimate; gates that rely on D alone appear in the report as **unproven** |
 
-Ранг хранится в `data/network.json` рядом с константой. Повышение ранга — отдельный
-коммит в этот файл. Правило структуры, которое делает подгонку видимой: в `engine/`
-не должно быть ни одной вписанной руками химической константы, движок только читает
-артефакты из `data/`.
+The rank is stored in `data/network.json` next to the constant. A rank upgrade is a
+separate commit to this file. A structural rule that keeps fitting visible: `engine/` must
+not contain a single hand-entered chemical constant; the engine only reads artifacts from
+`data/`.
 
-## 4. Архитектура
+## 4. Architecture
 
-Пять слоёв, разделённых по времени исполнения, а не по темам.
+Five layers, separated by execution time, not by topic.
 
-| Слой | Когда исполняется | Технология | Выход |
+| Layer | When it runs | Technology | Output |
 | --- | --- | --- | --- |
-| `thermo/` | сборка, редко | Python + pyCHNOSZ (R, CHNOSZ, база OBIGT, уравнения HKF) | ΔG°(T,P) и logK на каждую реакцию |
-| `qm/` | сборка, ещё реже | Python + PySCF + geomeTRIC | ΔG‡ переходных состояний, рейты по Эйрингу, повышение ранга C → B |
-| `ref/` | сборка и проверка | Python | детерминированное решение ОДУ и стохастическое Gillespie SSA той же сети |
-| `engine/` | runtime, реалтайм | TypeScript + WGSL | три ступени: пространственная химия → ворота агрегации → CG-MD, плюс метрики |
-| `verify/` | по требованию, перед каждой отдачей | Node + puppeteer-core/CDP, системный Chrome | `gates.json`, `report.html` |
-| `viewer/` | runtime | three.js | один canvas, одна камера сквозь все ступени, бейдж масштаба времени |
+| `thermo/` | build time, rarely | Python + pyCHNOSZ (R, CHNOSZ, the OBIGT database, HKF equations) | ΔG°(T,P) and logK for each reaction |
+| `qm/` | build time, even more rarely | Python + PySCF + geomeTRIC | ΔG‡ of transition states, Eyring rates, rank upgrade C -> B |
+| `ref/` | build time and verification | Python | deterministic ODE solution and stochastic Gillespie SSA of the same network |
+| `engine/` | runtime, real time | TypeScript + WGSL | three stages: spatial chemistry -> aggregation gates -> CG-MD, plus metrics |
+| `verify/` | on demand, before every delivery | Node + puppeteer-core/CDP, system Chrome | `gates.json`, `report.html` |
+| `viewer/` | runtime | three.js | one canvas, one camera through all stages, time-scale badge |
 
-`data/network.json` — единственный источник химической правды: стехиометрия, баланс массы
-и заряда, ΔG, logK, константы, ранги, ссылки. Генерируется слоями `thermo/` и `qm/`,
-хранится в git как детерминированный артефакт.
+`data/network.json` is the single source of chemical truth: stoichiometry, mass and
+charge balance, ΔG, logK, constants, ranks, references. It is generated by the `thermo/`
+and `qm/` layers and stored in git as a deterministic artifact.
 
-Валидация исполняет **тот же WGSL**, что и интерактивный просмотр. Двух реализаций
-физики не существует, поэтому они не могут разъехаться.
+Validation runs **the same WGSL** as the interactive viewer. There is no second
+implementation of the physics, so the two cannot drift apart.
 
-## 5. Ступень A — химия
+## 5. Stage A: chemistry
 
-**Условия** взяты с реального эксперимента, чтобы было с чем сверяться: водный флюид,
-175 °C, источник углерода — формиат или оксалат, диспропорционирующие в H₂, CO₂ и CO,
-каталитическая стенка. Это точка McCollom, Ritter & Simoneit 1999.
+**Conditions** are taken from a real experiment so there is something to check against: an
+aqueous fluid at 175 °C, carbon source formate or oxalate disproportionating into H₂, CO₂
+and CO, a catalytic wall. This is the McCollom, Ritter & Simoneit 1999 setpoint.
 
-**Виды** с настоящими формулами и зарядами: HCOOH и HCOO⁻, оксалат, CO₂(aq), HCO₃⁻,
-CO(aq), H₂(aq), H₂O, H⁺ и OH⁻, Na⁺ и Cl⁻ для ионной силы, поверхностные интермедиаты
-(`*CO`, `*C`, `*CH₂`, растущая цепь `*Cₙ`), продукты — н-алкановые кислоты, н-алканолы,
-н-алканы.
+**Species** with real formulas and charges: HCOOH and HCOO⁻, oxalate, CO₂(aq), HCO₃⁻,
+CO(aq), H₂(aq), H₂O, H⁺ and OH⁻, Na⁺ and Cl⁻ for ionic strength, surface intermediates
+(`*CO`, `*C`, `*CH₂`, the growing chain `*Cₙ`), products: n-alkanoic acids, n-alkanols,
+n-alkanes.
 
-**Механизм** — рост цепи на активном центре: продолжение `*Cₙ + *CH₂ → *Cₙ₊₁` против
-обрыва через десорбцию. Отношение этих скоростей есть α, а распределение
-Андерсона—Шульца—Флори `wₙ = n(1−α)²αⁿ⁻¹` возникает как следствие механизма, а не как
-вписанный закон. α фитится **один раз** при 175 °C и далее обязан предсказывать
-распределение при другой температуре без новых параметров.
+**Mechanism**: chain growth on an active site, propagation `*Cₙ + *CH₂ -> *Cₙ₊₁` competing
+against termination via desorption. The ratio of these rates is α, and the
+Anderson-Schulz-Flory distribution `wₙ = n(1−α)²αⁿ⁻¹` arises as a consequence of the
+mechanism, not as a law written in by hand. α is fitted **once** at 175 °C and must
+thereafter predict the distribution at a different temperature with no new parameters.
 
-**Численный метод** — реактивная броуновская динамика в WGSL. Коэффициент диффузии из
-Стокса—Эйнштейна с вязкостью воды при заданной температуре; вероятность реакции при
-столкновении выводится из константы скорости через диффузионный предел Смолуховского
-`k_diff = 4πDR`, поэтому пространственная модель обязана воспроизводить объёмную кинетику,
-и это проверяется воротами 3.
+**Numerical method**: reactive Brownian dynamics in WGSL. The diffusion coefficient comes
+from Stokes-Einstein with the viscosity of water at the given temperature; the reaction
+probability on collision is derived from the rate constant through the Smoluchowski
+diffusion limit `k_diff = 4πDR`, so the spatial model is required to reproduce bulk
+kinetics, and this is checked by gate 3.
 
-**Визуализация поатомная.** Шар-стержень, радиусы Ван-дер-Ваальса, цвета CPK, геометрия
-конформеров из RDKit с кэшем в `data/conformers.json`. В кадре видно, как на стенке из CO
-и H₂ растёт цепь и уплывает готовая молекула кислоты.
+**Per-atom visualization.** Ball-and-stick, van der Waals radii, CPK colors, conformer
+geometry from RDKit cached in `data/conformers.json`. The frame shows a chain growing on a
+wall of CO and H₂ and a finished acid molecule drifting away.
 
-## 6. Ступень B — ворота агрегации
+## 6. Stage B: aggregation gate
 
-Со ступени A приходит популяция кислот по длинам цепи, концентрации, pH и ионная сила.
-Рассчитывается протонирование по Гендерсону—Хассельбальху с кажущейся pKa, растущей при
-агрегации, и порог агрегации `log₁₀ CMC = A − B·n`. Определяется, какие компоненты
-превышают порог, и с какими долями они передаются в ступень C.
+Stage A supplies a population of acids by chain length, concentration, pH and ionic
+strength. Protonation is computed by Henderson-Hasselbalch with an apparent pKa that rises
+on aggregation, and the aggregation threshold `log₁₀ CMC = A − B·n`. It is determined which
+components exceed the threshold and in what fractions they are passed to stage C.
 
-Ступень имеет право не пройти. Если химия выдала только короткие цепи, мембраны не будет —
-это правильный отрицательный результат, а не повод менять параметры.
+This stage is allowed to fail. If the chemistry produced only short chains, there will be
+no membrane; that is a correct negative result, not a reason to change the parameters.
 
-## 7. Ступень C — самосборка и замыкание
+## 7. Stage C: self-assembly and closure
 
-Модель Cooke & Deserno 2005, бессольвентная, три бида на липид. Параметры берутся из
-статьи целиком:
+The Cooke & Deserno 2005 model, solvent-free, three beads per lipid. Parameters are taken
+from the paper in full:
 
-- размеры: `b_hh = b_ht = 0.95σ`, `b_tt = σ`;
-- отталкивание WCA `V_rep = 4ε[(b/r)¹² − (b/r)⁶ + ¼]` при `r ≤ r_c`, `r_c = 2^(1/6)·b`;
-- связи FENE `V_bond = −½ k_bond r_∞² log[1 − (r/r_∞)²]`, `k_bond = 30ε/σ²`, `r_∞ = 1.5σ`;
-- изгиб `V_bend = ½ k_bend (r − 4σ)²`, `k_bend = 10ε/σ²`;
-- притяжение хвостов `V_cos = −ε` при `r < r_c`, далее `−ε cos²[π(r − r_c)/(2w_c)]` до `r_c + w_c`;
-- термостат Ланжевена с трением `Γ = 1/τ`, шаг `δt = 0.01τ`, диапазон `kT/ε = 0.6…1.1`.
+- sizes: `b_hh = b_ht = 0.95σ`, `b_tt = σ`;
+- WCA repulsion `V_rep = 4ε[(b/r)¹² − (b/r)⁶ + ¼]` for `r ≤ r_c`, `r_c = 2^(1/6)·b`;
+- FENE bonds `V_bond = −½ k_bond r_∞² log[1 − (r/r_∞)²]`, `k_bond = 30ε/σ²`, `r_∞ = 1.5σ`;
+- bending `V_bend = ½ k_bend (r − 4σ)²`, `k_bend = 10ε/σ²`;
+- tail attraction `V_cos = −ε` for `r < r_c`, then `−ε cos²[π(r − r_c)/(2w_c)]` up to
+  `r_c + w_c`;
+- Langevin thermostat with friction `Γ = 1/τ`, step `δt = 0.01τ`, range `kT/ε = 0.6…1.1`.
 
-Длина цепи со ступени B отображается в число хвостовых бидов: C8 → 2, C12 → 3, C16 → 4.
-Пятибидовое расширение модели опубликовано (параметризовано для POPC и DPPC), но само
-соответствие «число атомов углерода → число бидов» здесь наше, поэтому оно несёт ранг D
-до проверки: отображение принимается только если площадь на липид и толщина бислоя
-остаются в измеренном коридоре ворот 6, иначе ворота фиксируют расхождение. Прочие
-параметры модели не трогаются.
+Chain length from stage B is mapped to a number of tail beads: C8 -> 2, C12 -> 3, C16 -> 4.
+A five-bead extension of the model has been published (parameterized for POPC and DPPC),
+but the mapping "number of carbon atoms -> number of beads" here is our own, so it carries
+rank D until verified: the mapping is accepted only if the per-lipid area and bilayer
+thickness stay within the measured corridor of gate 6; otherwise the gate records the
+discrepancy. The other model parameters are left untouched.
 
-**Замкнутость определяется заливкой снаружи.** Занятость сетки, flood-fill от границы
-бокса, непролитая полость — замкнутая везикула, её объём есть число. Этот тест выбран
-вместо эйлеровой характеристики по поверхности потому, что он однозначен и дёшев на GPU.
+**Closure is determined by an outside flood fill.** Grid occupancy, flood fill from the
+box boundary, an unfilled cavity is a closed vesicle, and its volume is a number. This test
+was chosen over the Euler characteristic of the surface because it is unambiguous and
+cheap on the GPU.
 
-## 8. Шесть ворот
+## 8. Six gates
 
-Ворота — это утверждение с числом модели, литературным интервалом, вердиктом и рангом
-довода. Отчёт `verify/report.html` показывает все шесть; проект считается доказавшим
-только то, что прошли ворота с рангом не ниже C.
+A gate is a statement pairing a model number with a literature interval, a verdict and an
+evidence rank. The `verify/report.html` report shows all six; the project is considered to
+have proven only what passed gates ranked C or better.
 
-**Ворота 1 — термодинамика синтеза.** ΔG_r реакции CO₂ + H₂ → н-алкановая кислота при
-175 °C и активностях флюида, рассчитанный pyCHNOSZ по OBIGT. Опора: Shock 1998 — при
-смешении гидротермального флюида с морской водой в диапазоне 250–50 °C термодинамически
-возможно восстановление до 100 % углерода в смесь карбоновых кислот, спиртов и кетонов.
-Критерий: знак ΔG и величина в кДж на моль углерода.
+**Gate 1: thermodynamics of synthesis.** ΔG_r of the reaction CO₂ + H₂ -> n-alkanoic acid
+at 175 °C and fluid activities, computed by pyCHNOSZ against OBIGT. Support: Shock 1998:
+when hydrothermal fluid mixes with seawater in the range 250-50 °C, it is thermodynamically
+possible to reduce up to 100% of the carbon into a mixture of carboxylic acids, alcohols
+and ketones. Criterion: the sign of ΔG and its magnitude in kJ per mole of carbon.
 
-**Ворота 2 — распределение длин цепей.** α фитится при 175 °C по McCollom, Ritter &
-Simoneit 1999 (продукты C2 – >C35), затем предсказывает гистограмму при другой
-температуре без новых параметров. Критерий: расхождение гистограмм.
+**Gate 2: chain-length distribution.** α is fitted at 175 °C against McCollom, Ritter &
+Simoneit 1999 (products C2 to >C35), then predicts the histogram at a different
+temperature with no new parameters. Criterion: histogram discrepancy.
 
-**Ворота 3 — самосогласованность кинетики.** Одна и та же сеть, решённая тремя способами
-(ОДУ, Gillespie SSA, пространственная броуновская динамика в WGSL), даёт совпадающие
-концентрации в пределах статистической ошибки; численно проверяется `k_f/k_r =
-exp(−ΔG/RT)`. Ворота инженерные, но без них остальные бессмысленны.
+**Gate 3: kinetic self-consistency.** The same network, solved three ways (ODE, Gillespie
+SSA, spatial Brownian dynamics in WGSL), gives matching concentrations within statistical
+error; `k_f/k_r = exp(−ΔG/RT)` is checked numerically. This gate is an engineering check,
+but without it the rest are meaningless.
 
-**Ворота 4 — закон CMC от длины цепи.** Модель обязана дать `log CMC = A − B·n` с
-наклоном по измеренным точкам: октаноат натрия (C8) — 300 мМ, деканоат натрия (C10) —
-86 мМ, откуда B ≈ 0.27 на метиленовую группу, что соответствует энергии переноса около
-0.63 kT на CH₂. Две независимые величины сверяются друг с другом.
+**Gate 4: CMC-versus-chain-length law.** The model must produce `log CMC = A − B·n` with a
+slope matching measured points: sodium octanoate (C8), 300 mM; sodium decanoate (C10), 86
+mM, giving B ≈ 0.27 per methylene group, corresponding to a transfer energy of about
+0.63 kT per CH₂. Two independent quantities are checked against each other.
 
-**Ворота 5 — окно pH и соли.** Везикулы существуют только вблизи кажущейся pKa: для
-декановой кислоты примерно pH 7–9, и кажущаяся pKa падает на 0.7 при росте
-концентрации NaCl с 10 до 100 мМ. Модель, собирающая мембрану при любом pH, ворота не
-проходит.
+**Gate 5: pH and salt window.** Vesicles exist only near the apparent pKa: for decanoic
+acid, roughly pH 7-9, and the apparent pKa drops by 0.7 as NaCl concentration rises from 10
+to 100 mM. A model that assembles a membrane at any pH fails this gate.
 
-**Ворота 6 — свойства бислоя и замыкание.** Площадь на липид 1.1–1.5 σ², толщина бислоя
-около 5σ, модуль изгиба 5–50 kT из спектра ундуляций `⟨|h_q|²⟩ = kT/(κq⁴)`, наличие
-непролитой полости и её объём из flood-fill.
+**Gate 6: bilayer properties and closure.** Per-lipid area 1.1-1.5 σ², bilayer thickness
+about 5σ, bending modulus 5-50 kT from the undulation spectrum
+`⟨|h_q|²⟩ = kT/(κq⁴)`, presence of an unfilled cavity and its volume from flood fill.
 
-## 9. Структура репозитория
+## 9. Repository structure
 
 ```
-data/literature.json      цели ворот: величина, интервал, условия, ссылка
-data/network.json         генерируется: стехиометрия, заряд, ΔG, logK, константы, ранги
-data/conformers.json      геометрии молекул из RDKit
-thermo/                   Python: pyCHNOSZ/OBIGT → ΔG(T,P), logK
-qm/                       Python: PySCF + geomeTRIC → ΔG‡ → рейты по Эйрингу
-ref/                      Python: ОДУ и Gillespie той же сети
+data/literature.json      gate targets: value, interval, conditions, reference
+data/network.json         generated: stoichiometry, charge, ΔG, logK, constants, ranks
+data/conformers.json      molecule geometries from RDKit
+thermo/                   Python: pyCHNOSZ/OBIGT -> ΔG(T,P), logK
+qm/                       Python: PySCF + geomeTRIC -> ΔG‡ -> Eyring rates
+ref/                      Python: ODE and Gillespie of the same network
 engine/wgsl/              chem_bd, cgmd, neighbor_grid, floodfill
 engine/src/               stageA, stageB, stageC, metrics, params
-viewer/                   three.js: поатомный и бидовый режимы, бейдж масштаба времени
-verify/                   Node + CDP: прогон, gates.json, report.html
+viewer/                   three.js: per-atom and per-bead modes, time-scale badge
+verify/                   Node + CDP: run, gates.json, report.html
 ```
 
-## 10. Технологический стек
+## 10. Technology stack
 
-Runtime — TypeScript, Vite, three.js, физика в WGSL. UI-фреймворка нет: один canvas и
-тонкая панель управления.
+Runtime: TypeScript, Vite, three.js, physics in WGSL. No UI framework: one canvas and a
+thin control panel.
 
-Сборочные слои — Python 3.13 в отдельном venv (не 3.14: для него колёса rdkit и pyscf
-ненадёжны; `python@3.13` в системе уже есть), плюс R с пакетом CHNOSZ через brew.
+Build layers: Python 3.13 in a dedicated venv (not 3.14: rdkit and pyscf wheels are
+unreliable for it; `python@3.13` is already present on the system), plus R with the CHNOSZ
+package via brew.
 
-Валидация — Node с puppeteer-core, системный Chrome в режиме `--headless=new
---enable-unsafe-webgpu`.
+Validation: Node with puppeteer-core, system Chrome in `--headless=new
+--enable-unsafe-webgpu` mode.
 
-Замеренное на этой машине (M5 Pro, 16 ядер, 48 ГБ): headless Chrome отдаёт адаптер
-`apple/metal-3`, compute-проход исполняется корректно. Пойманная при замере ловушка:
-`--dump-dom` дампит DOM раньше завершения асинхронной работы GPU и возвращает исходное
-содержимое, из-за чего живой GPU выглядит как отсутствующий. Метрики обязаны читаться
-через CDP или запросом наружу, не из дампа DOM.
+Measured on this machine (M5 Pro, 16 cores, 48 GB): headless Chrome exposes the
+`apple/metal-3` adapter, and the compute pass executes correctly. A trap caught during
+measurement: `--dump-dom` dumps the DOM before the asynchronous GPU work finishes and
+returns the original content, which makes a live GPU look absent. Metrics must be read via
+CDP or an outbound request, not from the DOM dump.
 
-## 11. Порядок реализации
+## 11. Implementation order
 
-Слоями; каждый слой проверяем сам по себе.
+By layer; each layer is verifiable on its own.
 
-- **L0.** Cooke—Deserno в WGSL: случайный раствор липидов, самосборка, замер площади на
-  липид и толщины. Если коридор 1.1–1.5 σ² и ≈5σ не воспроизводится, дальше идти
-  бессмысленно. Первый спайк.
-- **L1.** Спектр ундуляций → κ; flood-fill → детектор замкнутой везикулы. Ворота 6 целиком.
-- **L2.** `literature.json`, `verify/`, отчёт. Экзамен становится одной командой.
-- **L3.** `thermo/` на pyCHNOSZ → `network.json`. Ворота 1.
-- **L4.** `ref/`: ОДУ и Gillespie. Ворота 3.
-- **L5.** Ступень A: пространственная химия в WGSL, поатомный рендер. Ворота 2.
-- **L6.** Ступень B: протонирование и CMC. Ворота 4 и 5.
-- **L7.** `qm/`: барьеры PySCF, апгрейд рангов C → B с обязательным контролем на реакции,
-  где измерение существует.
-- **L8.** Фазовая карта ансамблем прогонов по T, pH, соли; опционально экспорт траектории
-  в Blender 5.2 для кинематографического рендера.
+- **L0.** Cooke-Deserno in WGSL: a random lipid solution, self-assembly, measurement of
+  per-lipid area and thickness. If the 1.1-1.5 σ² and ≈5σ corridor is not reproduced, there
+  is no point going further. The first spike.
+- **L1.** Undulation spectrum -> κ; flood fill -> closed-vesicle detector. Gate 6 in full.
+- **L2.** `literature.json`, `verify/`, the report. The exam becomes a single command.
+- **L3.** `thermo/` on pyCHNOSZ -> `network.json`. Gate 1.
+- **L4.** `ref/`: ODE and Gillespie. Gate 3.
+- **L5.** Stage A: spatial chemistry in WGSL, per-atom rendering. Gate 2.
+- **L6.** Stage B: protonation and CMC. Gates 4 and 5.
+- **L7.** `qm/`: PySCF barriers, rank upgrades C -> B with a mandatory control against a
+  reaction where a measurement exists.
+- **L8.** Phase map from an ensemble of runs over T, pH, salt; optionally, trajectory
+  export to Blender 5.2 for a cinematic render.
 
-## 12. Риски
+## 12. Risks
 
-**Доступ к данным для ворот 2.** Распределения продуктов McCollom 1999 находятся за
-пейволом Springer. План: брать цифры из открытой версии обзора 2023 в PMC. Если
-распределения там нет, ворота 2 остаются в отчёте как «недоказано, нет данных», а ссылка
-на статью передаётся заказчику. Ворота не объявляются пройденными по косвенным
-соображениям.
+**Access to data for gate 2.** The McCollom 1999 product distributions sit behind a
+Springer paywall. Plan: take the numbers from the open 2023 review on PMC. If the
+distribution is not there, gate 2 remains in the report as "unproven, no data," and the
+reference is handed to the project owner. Gates are not declared passed on indirect
+grounds.
 
-**Полнота OBIGT для длинных цепей.** Аквоспеций для длинных н-алкановых кислот в базе
-может не быть. Тогда применяются групповые вклады с явным понижением ранга довода до C
-или D, а не молчаливая экстраполяция.
+**Completeness of OBIGT for long chains.** The database may lack aqueous species for long
+n-alkanoic acids. In that case, group contributions are applied with an explicit rank
+downgrade to C or D, not a silent extrapolation.
 
-**Производительность сетки соседей на GPU.** Требуется grid + префиксные суммы.
-Ожидание — 30 тысяч бидов в реальном времени, но это будет замер, а не обещание;
-цифра фиксируется в `verify/report.html`.
+**Neighbor-grid performance on the GPU.** Requires a grid plus prefix sums. Expectation:
+30,000 beads in real time, but this will be a measurement, not a promise; the number is
+recorded in `verify/report.html`.
 
-**Расхождение поатомной визуализации и бидовой физики.** Ступень A рисуется по атомам,
-ступень C считается по бидам. Отображение одного в другое подписывается в интерфейсе,
-чтобы наблюдатель не принял бид за атом.
+**Discrepancy between per-atom visualization and per-bead physics.** Stage A is drawn by
+atom, stage C is computed by bead. The mapping from one to the other is labeled in the
+interface so the observer does not mistake a bead for an atom.
 
-## 13. Источники
+## 13. Sources
 
-- Cooke & Deserno 2005, «Solvent-free model for self-assembling fluid bilayer membranes»,
-  arXiv:cond-mat/0509218 — параметры CG-модели, площадь на липид, толщина, модуль изгиба.
+- Cooke & Deserno 2005, "Solvent-free model for self-assembling fluid bilayer membranes,"
+  arXiv:cond-mat/0509218: CG model parameters, per-lipid area, thickness, bending modulus.
 - McCollom, Ritter & Simoneit 1999, Origins of Life and Evolution of the Biosphere 29,
-  153–166 — синтез липидов из формиата и оксалата при 175 °C, продукты C2 – >C35.
-- Shock 1998, J. Geophys. Res. Planets, «Organic synthesis during fluid mixing in
-  hydrothermal systems» — термодинамическая возможность восстановления углерода.
-- Обзор «Plausible Sources of Membrane-Forming Fatty Acids on the Early Earth», PMC9869395
-  — отсутствие константы скорости для условий ранней Земли, оценки выходов.
-- Обзор «Dynamics of the vesicles composed of fatty acids and other amphiphile mixtures»,
-  PMC7575682 — окно pH около кажущейся pKa, сдвиг pKa при росте ионной силы, CVC.
-- CHNOSZ и база OBIGT (chnosz.net) — термодинамические данные, уравнения HKF.
+  153-166: lipid synthesis from formate and oxalate at 175 °C, products C2 to >C35.
+- Shock 1998, J. Geophys. Res. Planets, "Organic synthesis during fluid mixing in
+  hydrothermal systems": thermodynamic feasibility of carbon reduction.
+- Review "Plausible Sources of Membrane-Forming Fatty Acids on the Early Earth," PMC9869395:
+  absence of a rate constant for early-Earth conditions, yield estimates.
+- Review "Dynamics of the vesicles composed of fatty acids and other amphiphile mixtures,"
+  PMC7575682: pH window near the apparent pKa, pKa shift with rising ionic strength, CVC.
+- CHNOSZ and the OBIGT database (chnosz.net): thermodynamic data, HKF equations.

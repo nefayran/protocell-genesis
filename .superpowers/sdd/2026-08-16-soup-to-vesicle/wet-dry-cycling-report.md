@@ -120,15 +120,15 @@ audited off-GPU (`tests/continuous-run-audit.test.ts`, unmodified; artifact
 
 ```
 $ nice -n 15 npx tsx soup/cli/campaign.ts --label wdctl19 --box 30 --start '{"C":1860,"O":7440,"H":1860,"M":124,"W":21600}' --seed 19 --kT 1.1 --steps 102000 --every 34000 --dir data/checkpoints/wdctl19 --relax
-[campaign] минимизация холодного старта: итераций=200 шаг_первой=0.1 граница_суммарного_смещения=10.0500 max|F| 3.3966e+4 -> 1.7054e+1 нефинитных_до=0 нефинитных_после=0 шаг_системы=0
-[campaign] шаг=34000/102000 stage=amphiphiles агрегатов=54 крупнейший=15 headShells=unavailable cavityVolume=0.000 stepMs=100663 ...
-[campaign] шаг=68000/102000 stage=amphiphiles агрегатов=50 крупнейший=13 headShells=unavailable cavityVolume=0.250 stepMs=114239 ...
-[campaign] шаг=102000/102000 stage=amphiphiles агрегатов=51 крупнейший=13 headShells=unavailable cavityVolume=0.000 stepMs=122503 ...
-[campaign] резюме label=wdctl19 из data/checkpoints/wdctl19/wdctl19-step102000.json, шаг=102000
-[campaign] шаг=136000/204000 stage=amphiphiles агрегатов=45 крупнейший=12 ... stepMs=117052 ...
-[campaign] шаг=170000/204000 stage=amphiphiles агрегатов=46 крупнейший=11 ... stepMs=121317 ...
-[campaign] шаг=204000/204000 stage=amphiphiles агрегатов=45 крупнейший=12 ... stepMs=121261 ...
-[campaign] бюджет шагов выполнен полностью: шаг=204000
+[campaign] cold-start minimization: iterations=200 first_step=0.1 total_displacement_bound=10.0500 max|F| 3.3966e+4 -> 1.7054e+1 nonFinite_before=0 nonFinite_after=0 system_step=0
+[campaign] step=34000/102000 stage=amphiphiles aggregates=54 largest=15 headShells=unavailable cavityVolume=0.000 stepMs=100663 ...
+[campaign] step=68000/102000 stage=amphiphiles aggregates=50 largest=13 headShells=unavailable cavityVolume=0.250 stepMs=114239 ...
+[campaign] step=102000/102000 stage=amphiphiles aggregates=51 largest=13 headShells=unavailable cavityVolume=0.000 stepMs=122503 ...
+[campaign] resume label=wdctl19 from data/checkpoints/wdctl19/wdctl19-step102000.json, step=102000
+[campaign] step=136000/204000 stage=amphiphiles aggregates=45 largest=12 ... stepMs=117052 ...
+[campaign] step=170000/204000 stage=amphiphiles aggregates=46 largest=11 ... stepMs=121317 ...
+[campaign] step=204000/204000 stage=amphiphiles aggregates=45 largest=12 ... stepMs=121261 ...
+[campaign] step budget fully executed: step=204000
 ```
 
 | step | stage | amph | yield | perTail | cc | co | co_brk | aggs | qualifying | largest | cavity | encH₂O/thr | nonFinite |
@@ -288,7 +288,7 @@ reported as a measurement of *this model's* box-scaling cycle, not as a test of 
 ### 4.1 The re-derivation was structurally forced, not cosmetic
 
 `deriveCycleConfig` (`soup/src/soup-box-scale-math.ts`) throws when
-`targetDryDensity <= wetDensity`: *"сухая фаза обязана концентрировать, не разбавлять"*. The old
+`targetDryDensity <= wetDensity`: *"the dry phase must concentrate, not dilute"*. The old
 amplitude was **0.6 σ⁻³**, derived for a water-free medium at ρ_tot = 0.4799. At real liquid water
 ρ_tot = **1.21793**, so 0.6 is a *dilution* and cycling is impossible with it. This is pinned as the
 first assertion of the new test, so the re-derivation cannot be mistaken for taste.
@@ -521,10 +521,10 @@ N: 202 636 vs the measured hard ceiling 429 496 particles                     ma
 
 ```
 $ nice -n 15 npx tsx soup/cli/campaign.ts --label ves55w --box 55 --start '{"C":11462,"O":45848,"H":11462,"M":764,"W":133100}' --seed 19 --kT 1.1 --steps 1 --every 1 --dir data/checkpoints/trace55w --relax
-[campaign] новый запуск label=ves55w (совпадающих контрольных точек в data/checkpoints/trace55w нет)
-[campaign] система готова N=202636 стартовый_шаг=0 цель=1
-[campaign] минимизация холодного старта: итераций=200 шаг_первой=0.1 граница_суммарного_смещения=10.0500 max|F| 2.5088e+4 -> 2.6231e+1 нефинитных_до=0 нефинитных_после=0 шаг_системы=0
-[campaign] шаг=1/1 stage=monomers агрегатов=0 крупнейший=0 headShells=n/a cavityVolume=0.000 stepMs=132 checkpointMs=509 progressMs=60 сохранено=data/checkpoints/trace55w/ves55w-step1.json
+[campaign] new run label=ves55w (no matching checkpoints found in data/checkpoints/trace55w)
+[campaign] system ready N=202636 start_step=0 target=1
+[campaign] cold-start minimization: iterations=200 first_step=0.1 total_displacement_bound=10.0500 max|F| 2.5088e+4 -> 2.6231e+1 nonFinite_before=0 nonFinite_after=0 system_step=0
+[campaign] step=1/1 stage=monomers aggregates=0 largest=0 headShells=n/a cavityVolume=0.000 stepMs=132 checkpointMs=509 progressMs=60 saved=data/checkpoints/trace55w/ves55w-step1.json
 ```
 
 Audited off-GPU from that file: `step=1 stage=monomers amph=0 aggs=0 cc=1 co=0 largest=None
@@ -542,16 +542,16 @@ itself, where the branch does not apply, and passes.
 ### 6.2 Stage trace — the CLI's own progress lines, unedited, 7 resumable chunks
 
 ```
-[campaign] шаг=20000/20000   stage=bilayer      агрегатов=313 крупнейший=23 headShells=2 cavityVolume=0.000 stepMs=594462 checkpointMs=624  progressMs=1744
-[campaign] резюме label=ves55w из data/checkpoints/ves55w/ves55w-step20000.json, шаг=20000
-[campaign] --relax пропущен: это резюме с шага=20000, минимизация допустима только на свежем старте
-[campaign] шаг=38000/38000   stage=amphiphiles  агрегатов=309 крупнейший=24 headShells=1 cavityVolume=0.250 stepMs=546540 checkpointMs=520  progressMs=1837
-[campaign] шаг=56000/56000   stage=bilayer      агрегатов=295 крупнейший=31 headShells=2 cavityVolume=0.000 stepMs=547548 checkpointMs=1005 progressMs=2104
-[campaign] шаг=74000/74000   stage=bilayer      агрегатов=306 крупнейший=28 headShells=1 cavityVolume=0.000 stepMs=559743 checkpointMs=687  progressMs=1818
-[campaign] шаг=92000/92000   stage=amphiphiles  агрегатов=304 крупнейший=29 headShells=2 cavityVolume=0.125 stepMs=566026 checkpointMs=576  progressMs=1786
-[campaign] шаг=110000/110000 stage=amphiphiles  агрегатов=304 крупнейший=20 headShells=2 cavityVolume=0.000 stepMs=582481 checkpointMs=826  progressMs=2131
-[campaign] шаг=127000/127000 stage=amphiphiles  агрегатов=302 крупнейший=29 headShells=2 cavityVolume=0.000 stepMs=551517 checkpointMs=568  progressMs=1889
-[campaign] бюджет шагов выполнен полностью: шаг=127000
+[campaign] step=20000/20000   stage=bilayer      aggregates=313 largest=23 headShells=2 cavityVolume=0.000 stepMs=594462 checkpointMs=624  progressMs=1744
+[campaign] resume label=ves55w from data/checkpoints/ves55w/ves55w-step20000.json, step=20000
+[campaign] --relax skipped: this is a resume from step=20000, minimization is only allowed on a fresh start
+[campaign] step=38000/38000   stage=amphiphiles  aggregates=309 largest=24 headShells=1 cavityVolume=0.250 stepMs=546540 checkpointMs=520  progressMs=1837
+[campaign] step=56000/56000   stage=bilayer      aggregates=295 largest=31 headShells=2 cavityVolume=0.000 stepMs=547548 checkpointMs=1005 progressMs=2104
+[campaign] step=74000/74000   stage=bilayer      aggregates=306 largest=28 headShells=1 cavityVolume=0.000 stepMs=559743 checkpointMs=687  progressMs=1818
+[campaign] step=92000/92000   stage=amphiphiles  aggregates=304 largest=29 headShells=2 cavityVolume=0.125 stepMs=566026 checkpointMs=576  progressMs=1786
+[campaign] step=110000/110000 stage=amphiphiles  aggregates=304 largest=20 headShells=2 cavityVolume=0.000 stepMs=582481 checkpointMs=826  progressMs=2131
+[campaign] step=127000/127000 stage=amphiphiles  aggregates=302 largest=29 headShells=2 cavityVolume=0.000 stepMs=551517 checkpointMs=568  progressMs=1889
+[campaign] step budget fully executed: step=127000
 ```
 
 **Stage transitions:** `monomers` → `bilayer` **before step 20 000** (faster than any previous run:
@@ -638,7 +638,7 @@ wet phase" is not a claim one run can support.
 
 - **Pure test** — pins the arithmetic that forced the re-derivation, not the config literals:
   `targetDryDensity` must exceed the liquid-water broth's own density, and the pre-liquid-water value
-  0.6 is asserted to be **refused** by `deriveCycleConfig` (`/не превышает текущую/`); it must be
+  0.6 is asserted to be **refused** by `deriveCycleConfig` (`/does not exceed the current one/`); it must be
   below close packing (√2); the dry box realises the configured density to 6 decimals and is derived
   from N (not from a box literal); the schedule's phase boundaries and transition steps are the
   file's own numbers. Output: `DRYWET-CONFIG … concentrationFactor=1.1002 …`.
@@ -683,7 +683,7 @@ wet phase" is not a claim one run can support.
 ### 8.2 One real defect found in the test harness, fixed at the source rather than in the assertion
 
 `tests/soup-nonfinite-guard.test.ts` and `tests/soup-cold-start-relax.test.ts` both failed on
-`AssertionError: браузер сообщил об ошибке/предупреждении GPU во время теста: error: Failed to load
+`AssertionError: the browser reported a GPU error/warning during the test: error: Failed to load
 resource: the server responded with a status of 404 (Not Found)`. Every substantive number in both
 tests was correct; the failure was the "page logged no console error" assertion. It survived clearing
 `node_modules/.vite/deps_temp_*` and the whole `node_modules/.vite`, so it was **not** the

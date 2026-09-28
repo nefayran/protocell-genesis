@@ -110,24 +110,24 @@ fixed — before it, all 72 checkpoints on disk carried zero seeds), and the con
 checked field by field, so a mismatched file is skipped rather than silently resumed into. But chunk
 boundaries fall in different places than they would in one unbroken process, so the noise is drawn at
 different moments: this is the same distribution continued, not a bit-identical continuation. The CLI
-says so itself on every resume — `--relax пропущен: это резюме с шага=N` — and no claim here rests on
+says so itself on every resume — `--relax skipped: this is a resume from step=N` — and no claim here rests on
 trajectory identity.
 
 Real output of the first and last chunks, unedited:
 
 ```
-[campaign] резюме label=bbB76 из data/checkpoints/bbB76/bbB76-step86500.json, шаг=86500
-[campaign] система готова N=483268 стартовый_шаг=86500 цель=91500
-[campaign] --relax пропущен: это резюме с шага=86500, минимизация допустима только на свежем старте
-[campaign] шаг=91500/91500 stage=amphiphiles агрегатов=2 крупнейший=4570 headShells=2 cavityVolume=101.250 фаза=wet/0 box=76.0000 связей=39622 census={"C":55988,"O":18659,"H":55988,"M":1452,"W":351181,"K":0} stepMs=402017 checkpointMs=849 progressMs=1456 сохранено=data/checkpoints/bbB76/bbB76-step91500.json rc_es=15.2000(=4.000lD, отброшено=0.0916) pH=7 I=0.01 alpha=0.7513 pKaApp=6.520 спаренных=0.0762 неодинаковых=0.4782(случайно 0.3737) подметаний=5 последнее(принято=9203/18659 dEs=3.8471kT)
-[campaign] бюджет шагов выполнен полностью: шаг=91500
+[campaign] resume label=bbB76 from data/checkpoints/bbB76/bbB76-step86500.json, step=86500
+[campaign] system ready N=483268 startStep=86500 target=91500
+[campaign] --relax skipped: this is a resume from step=86500, minimization is only allowed on a fresh start
+[campaign] step=91500/91500 stage=amphiphiles aggregates=2 largest=4570 headShells=2 cavityVolume=101.250 phase=wet/0 box=76.0000 bonds=39622 census={"C":55988,"O":18659,"H":55988,"M":1452,"W":351181,"K":0} stepMs=402017 checkpointMs=849 progressMs=1456 saved=data/checkpoints/bbB76/bbB76-step91500.json rc_es=15.2000(=4.000lD, discarded=0.0916) pH=7 I=0.01 alpha=0.7513 pKaApp=6.520 paired=0.0762 unlike=0.4782(random 0.3737) sweeps=5 last(accepted=9203/18659 dEs=3.8471kT)
+[campaign] step budget fully completed: step=91500
 nice -n 15 npx tsx soup/cli/campaign.ts ...  23.56s user 37.97s system 15% cpu 6:47.78 total
 ```
 
 ```
-[campaign] --relax пропущен: это резюме с шага=143500, минимизация допустима только на свежем старте
-[campaign] шаг=148200/148200 stage=amphiphiles агрегатов=4 крупнейший=4512 headShells=2 cavityVolume=139.250 фаза=wet/0 box=76.0000 связей=43732 census={"C":55988,"O":18659,"H":55988,"M":1452,"W":351181,"K":0} stepMs=412002 checkpointMs=1470 progressMs=1879 сохранено=data/checkpoints/bbB76/bbB76-step148200.json rc_es=15.2000(=4.000lD, отброшено=0.0916) pH=7 I=0.01 alpha=0.7511 pKaApp=6.520 спаренных=0.0766 неодинаковых=0.4834(случайно 0.3739) подметаний=4 последнее(принято=9372/18659 dEs=3.8552kT)
-[campaign] бюджет шагов выполнен полностью: шаг=148200
+[campaign] --relax skipped: this is a resume from step=143500, minimization is only allowed on a fresh start
+[campaign] step=148200/148200 stage=amphiphiles aggregates=4 largest=4512 headShells=2 cavityVolume=139.250 phase=wet/0 box=76.0000 bonds=43732 census={"C":55988,"O":18659,"H":55988,"M":1452,"W":351181,"K":0} stepMs=412002 checkpointMs=1470 progressMs=1879 saved=data/checkpoints/bbB76/bbB76-step148200.json rc_es=15.2000(=4.000lD, discarded=0.0916) pH=7 I=0.01 alpha=0.7511 pKaApp=6.520 paired=0.0766 unlike=0.4834(random 0.3739) sweeps=4 last(accepted=9372/18659 dEs=3.8552kT)
+[campaign] step budget fully completed: step=148200
 nice -n 15 npx tsx soup/cli/campaign.ts ...  26.70s user 47.95s system 17% cpu 6:59.13 total
 ```
 
@@ -334,8 +334,8 @@ the object to be one molecule. It is not.
 ## 6. WHAT CHANGED IN `docs/soup-to-vesicle-verdict.md`
 
 Rewritten in place (committed, Russian, for a reader who was not here): **363 → 650 lines**. It
-predated the electrostatics work entirely — its old §11 read *«Электростатики нет вовсе, соль и pH
-объявлены непредставимыми»* — and it now covers everything since.
+predated the electrostatics work entirely — its old §11 read *"there is no electrostatics at all, salt and pH
+are declared unrepresentable"* — and it now covers everything since.
 
 | section | what is new |
 |---|---|
@@ -369,7 +369,7 @@ Nothing did.
 |---|---|---|---|
 | `tests/soup-forces.test.ts` | 3 passed | **3 passed** | grid/Verlet/brute-force agreement incl. the charged path |
 | `tests/soup-checkpoint.test.ts` | 3 passed | **3 passed** | the resume path this whole task depends on |
-| `tests/verlet-capacity.test.ts` | 2 passed | **2 passed** | both guards fired: `VERLET-OVERFLOW` at capacity 64, `VERLET-DERIVED-OK {"cap":1126,"max":322,"atCapacity":0}`, and `VERLET-CEILING … 17280000000 байт … WebGPU отказал бы МОЛЧА` |
+| `tests/verlet-capacity.test.ts` | 2 passed | **2 passed** | both guards fired: `VERLET-OVERFLOW` at capacity 64, `VERLET-DERIVED-OK {"cap":1126,"max":322,"atCapacity":0}`, and `VERLET-CEILING … 17280000000 bytes … WebGPU would fail SILENTLY` |
 | `tests/gates.test.ts` | 8 passed | **8 passed** | |
 | `tests/supply-window.test.ts` | 1 passed | **1 passed** | `WINDOW-SCALING floor=[932, 955] cheapestSpanning=[5.806, 5.917]*L L*=[157.4, 164.4]sigma … N_at_L*=3.121e+6 overCeiling=7.3x` — the pin brackets big-box's re-derived L\* = 160.6–161.3 |
 | `tests/coalescence-mechanism-pin.test.ts` | 5 passed | **5 passed** | |
@@ -382,7 +382,7 @@ Nothing did.
 | `tests/continuous-run-audit.test.ts` | 1 passed | **1 passed** | **29** checkpoints, tether violations 0, invariants clean |
 | `tests/percolation-check.test.ts` | 1 passed | **1 passed** | 23 campaign rows + 3 controls |
 | `tests/electrostatics-audit.test.ts` | 1 passed | **1 passed** | re-pointed at this campaign's 23 wet checkpoints |
-| `tests/soup-grid-resize.test.ts` | **1 failed** | **1 failed** | **HEAD's own side, and this task proves it more strongly than a stash could**: not one byte of `soup/`, `engine/` or `data/` changed, so the failure cannot be attributable to this diff. Same message, same line: `список Верле: измеренный дрейф 55675.0687 превышает skin/2=0.7500`. Not chased, per the brief |
+| `tests/soup-grid-resize.test.ts` | **1 failed** | **1 failed** | **HEAD's own side, and this task proves it more strongly than a stash could**: not one byte of `soup/`, `engine/` or `data/` changed, so the failure cannot be attributable to this diff. Same message, same line: `Verlet list: measured drift 55675.0687 exceeds skin/2=0.7500`. Not chased, per the brief |
 | `npx tsc --noEmit` | 21 errors | **21 errors** | the pre-existing `ArrayBufferLike`/`SharedArrayBuffer` class, unchanged in count — the new `verify/viewer-smoke.ts` adds zero |
 
 Known flaky, **not chased**, per the brief: `soup-drywet-cycling` (margin-flaky, event ratio 0.43×
@@ -451,14 +451,14 @@ proves frames are still being produced.
 
 ```
  ✓ tests/run-ui.test.ts (8 tests) 37191ms
-   ✓ управление прогоном: старт держит счёт, пауза останавливает его, стоп останавливает навсегда 4348ms
-   ✓ второй прогон на той же странице: счёт шагов продвигается дальше одного STEP_BATCH 1589ms
-   ✓ прогон переживает бусину, улетевшую за коробку по z, и не рушится дольше обычного (item 1a) 24758ms
-   ✓ сцена не пропадает при развороте камеры по нескольким дистанциям и углам (item 2) 843ms
-   ✓ слишком малый бокс отклоняется с понятным сообщением, а не рушит прогон (item 3) 1490ms
-   ✓ состав: число голов задаётся напрямую, видно в предпросмотре и реально уменьшает бульон (item "composition") 1232ms
-   ✓ состав: отрицательное число голов отклоняется с понятным сообщением, а не рушит прогон (item "composition") 1586ms
-   ✓ океанский фон: прогон стартует и рисует кадры, заметки честности на месте, скриншот нетривиален (ocean-look) 1095ms
+   ✓ run control: start keeps the count, pause stops it, stop stops it permanently 4348ms
+   ✓ second run on the same page: the step count advances past one STEP_BATCH 1589ms
+   ✓ the run survives a bead that flew out of the box along z, and does not crash for longer than usual (item 1a) 24758ms
+   ✓ the scene does not disappear when the camera is turned across several distances and angles (item 2) 843ms
+   ✓ too small a box is rejected with a clear message, rather than crashing the run (item 3) 1490ms
+   ✓ composition: the head count is set directly, is visible in the preview, and actually reduces the broth (item "composition") 1232ms
+   ✓ composition: a negative head count is rejected with a clear message, rather than crashing the run (item "composition") 1586ms
+   ✓ ocean background: the run starts and draws frames, the honesty notes are in place, the screenshot is non-trivial (ocean-look) 1095ms
 ```
 
 And one headless start of the real page, as its own committed instrument

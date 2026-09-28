@@ -1,60 +1,60 @@
-# Ступень A: атомы, реакции, рост цепи — план реализации
+# Stage A: Atoms, Reactions, Chain Growth. Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Настоящие атомы в трёхмерной сцене: молекулы диффундируют, сталкиваются, реагируют, на каталитической стенке растёт углеродная цепь, и из неё получается молекула алкановой кислоты — с проверкой каждого механизма против аналитического закона.
+**Goal:** Real atoms in a three-dimensional scene: molecules diffuse, collide, and react; a carbon chain grows on a catalytic wall, producing an alkanoic acid molecule, with every mechanism verified against an analytical law.
 
-**Architecture:** Реактивная броуновская динамика в WGSL: частица — молекула с внутренней поатомной геометрией, построенной по литературным длинам связей. Реакции происходят при контакте с вероятностью, выведенной из константы скорости через диффузионный предел Смолуховского. Рост цепи идёт на дискретных активных центрах стенки как конкуренция продолжения и обрыва, поэтому распределение длин цепей возникает следствием механизма и предсказывается независимо измеренным отношением скоростей. Рендер поатомный: шар-стержень, радиусы Ван-дер-Ваальса, цвета CPK.
+**Architecture:** Reactive Brownian dynamics in WGSL: a particle is a molecule with internal per-atom geometry built from literature bond lengths. Reactions occur on contact with a probability derived from the rate constant through the Smoluchowski diffusion limit. Chain growth happens at discrete active sites on the wall as competition between propagation and termination, so the chain-length distribution emerges as a consequence of the mechanism and is predicted by an independently measured rate ratio. Rendering is per-atom: ball-and-stick, Van der Waals radii, CPK colors.
 
-**Tech Stack:** TypeScript, WGSL (WebGPU), three.js, Vitest, puppeteer-core с системным Chrome. Переиспользуется вся обвязка ступени C: `engine/src/gpu.ts`, шаблон сетки соседей, стенд тестов через `gpuPage()`, механика ворот из `verify/`.
+**Tech Stack:** TypeScript, WGSL (WebGPU), three.js, Vitest, puppeteer-core with the system Chrome. All of Stage C's harness is reused: `engine/src/gpu.ts`, the neighbor-grid template, the test rig through `gpuPage()`, the gate mechanics from `verify/`.
 
-**Spec:** `docs/superpowers/specs/2026-08-15-protocell-genesis-design.md`, раздел 5 (ступень A) и раздел 3 (иерархия доводов)
+**Spec:** `docs/superpowers/specs/2026-08-15-protocell-genesis-design.md`, section 5 (Stage A) and section 3 (evidence hierarchy)
 
 ## Global Constraints
 
-- Единицы ступени A — **нанометры, наносекунды, молекулы**; они не совпадают с приведёнными единицами ступени C (σ, τ, ε). Ни одна величина не переносится между ступенями без явного пересчёта, и на экране всегда видно, в каких единицах идёт текущая ступень.
-- Условия прогона: водный флюид, **175 °C = 448.15 K**, вязкость воды при этой температуре **1.53·10⁻⁴ Pa·s**. Источник углерода — CO и H₂ (продукты диспропорционирования формиата или оксалата).
-- Атомные данные (ранг A, из справочников, значения проверяются тестом): длины связей CO 1.128 Å, H₂ 0.741 Å, H₂O O–H 0.9572 Å при угле 104.52°, CO₂ C=O 1.160 Å линейно, C–C 1.54 Å, C–H 1.09 Å, карбоксильные C=O 1.21 Å и C–O 1.36 Å, O–H 0.97 Å, тетраэдрический угол 109.47°. Радиусы Ван-дер-Ваальса по Бонди: H 1.20, C 1.70, N 1.55, O 1.52 Å.
-- **Константы скорости реакций синтеза для условий ранней Земли не существует** (спека, раздел 2). Все они входят с рангом **D**, помечены как оценки, и любые ворота, опирающиеся только на них, публикуются как недоказанные. Ранг повышается позже слоями `thermo/` и `qm/`, не в этом плане.
-- Единственный глобальный множитель времени `κ_t` выводится числом на экран и в отчёт. Ни одна другая величина не масштабируется скрытно.
-- Диффузия считается по Стоксу—Эйнштейну `D = kT/(6πηa)`; диффузионный предел реакции — по Смолуховскому `k = 4πD_AB·R_AB`, где `D_AB = D_A + D_B`.
-- Баланс массы по каждому элементу и баланс заряда — **точные инварианты**. Ни одна реакция не проходит проверку схемы, если они нарушены, и длинный прогон проверяется на их сохранение.
-- Никаких вписанных химических констант в коде: всё читается из `data/chemistry.json` и `data/atoms.json`. Сторож из `tests/params.test.ts` расширяется на новые каталоги.
-- Результаты из браузера читаются только через `page.evaluate`; `--dump-dom` запрещён (замерено: отдаёт содержимое до завершения работы GPU).
-- Длинные прогоны запускаются в фоновом режиме инструмента с выводом в лог и ожидаются в том же ходу через `Monitor`; передний план обрезан на 600 с, дочерний процесс через `&` умирает с концом хода, а цепочка длинных прогонов в одном вызове убивает воркер vitest.
+- Stage A's units are **nanometers, nanoseconds, molecules**; they do not match Stage C's reduced units (σ, τ, ε). No quantity is carried over between stages without an explicit conversion, and the screen always shows which units the current stage is using.
+- Run conditions: aqueous fluid, **175 °C = 448.15 K**, water viscosity at this temperature **1.53·10⁻⁴ Pa·s**. The carbon source is CO and H₂ (products of formate or oxalate disproportionation).
+- Atomic data (rank A, from reference handbooks, values checked by a test): bond lengths CO 1.128 Å, H₂ 0.741 Å, H₂O O-H 0.9572 Å at an angle of 104.52°, CO₂ C=O 1.160 Å linear, C-C 1.54 Å, C-H 1.09 Å, carboxyl C=O 1.21 Å and C-O 1.36 Å, O-H 0.97 Å, tetrahedral angle 109.47°. Van der Waals radii per Bondi: H 1.20, C 1.70, N 1.55, O 1.52 Å.
+- **No rate constants exist for early-Earth synthesis reactions under these conditions** (spec, section 2). All of them enter at rank **D**, marked as estimates, and any gate relying solely on them is published as unproven. The rank is raised later by the `thermo/` and `qm/` layers, not in this plan.
+- The single global time multiplier `κ_t` is displayed as a number on screen and in the report. No other quantity is scaled silently.
+- Diffusion is computed from the Stokes-Einstein relation `D = kT/(6πηa)`; the reaction's diffusion limit follows Smoluchowski's `k = 4πD_AB·R_AB`, where `D_AB = D_A + D_B`.
+- Mass balance for each element and charge balance are **exact invariants**. No reaction passes the scheme check if they are violated, and a long run is checked for their conservation.
+- No hardcoded chemical constants in the code: everything is read from `data/chemistry.json` and `data/atoms.json`. The guard in `tests/params.test.ts` is extended to the new directories.
+- Results from the browser are read only through `page.evaluate`; `--dump-dom` is forbidden (measured: it returns content before the GPU finishes working).
+- Long runs are launched in the tool's background mode with output to a log and awaited in the same turn through `Monitor`; the foreground is cut off at 600 s, a child process started with `&` dies at the end of the turn, and chaining long runs in a single call kills the vitest worker.
 
 ---
 
-## Структура файлов
+## File Structure
 
-- `data/atoms.json` — элементы: масса, радиус Ван-дер-Ваальса, цвет CPK, ковалентный радиус.
-- `data/molecules.json` — виды: формула, заряд, топология связей, длины и углы, источник каждого значения.
-- `data/chemistry.json` — реакции: стехиометрия, тип (объёмная, адсорбция, продолжение цепи, обрыв), константа с ранга D и её обоснование, контактный радиус.
-- `chem/src/species.ts` — разбор формулы, масса, заряд, число атомов по элементам.
-- `chem/src/geometry.ts` — построение поатомных координат вида по длинам и углам, включая зигзаг насыщенной цепи.
-- `chem/src/network.ts` — загрузка `chemistry.json`, проверка баланса массы и заряда, вывод контактных радиусов и вероятностей реакции.
-- `chem/src/diffusion.ts` — Стокс—Эйнштейн, Смолуховский, перевод констант в вероятность на шаг.
-- `chem/wgsl/bd.wgsl` — броуновский шаг с периодическими границами.
-- `chem/wgsl/react.wgsl` — контактные реакции по сетке соседей.
-- `chem/wgsl/surface.wgsl` — активные центры стенки: адсорбция, продолжение, обрыв.
-- `chem/src/sim.ts` — состояние ступени A, шаг, счётчики событий, инварианты.
-- `chem/src/asf.ts` — распределение длин цепей, оценка α из счётчиков и из гистограммы.
-- `viewer/atoms.ts` — поатомный рендер: шар-стержень, CPK, радиусы, легенда, бейдж единиц и `κ_t`.
-- `verify/stage-a.ts` — сценарии ступени A и её ворота.
-- `tests/chem-*.test.ts` — тесты по задачам.
+- `data/atoms.json`: elements (mass, Van der Waals radius, CPK color, covalent radius).
+- `data/molecules.json`: species (formula, charge, bond topology, lengths and angles, source for each value).
+- `data/chemistry.json`: reactions: stoichiometry, type (bulk, adsorption, chain propagation, termination), a rank-D rate constant and its justification, contact radius.
+- `chem/src/species.ts`: formula parsing, mass, charge, atom counts per element.
+- `chem/src/geometry.ts`: builds per-atom coordinates for a species from bond lengths and angles, including the zigzag of a saturated chain.
+- `chem/src/network.ts`: loads `chemistry.json`, checks mass and charge balance, derives contact radii and reaction probabilities.
+- `chem/src/diffusion.ts`: Stokes-Einstein, Smoluchowski, converting rate constants into a per-step probability.
+- `chem/wgsl/bd.wgsl`: Brownian step with periodic boundaries.
+- `chem/wgsl/react.wgsl`: contact reactions via the neighbor grid.
+- `chem/wgsl/surface.wgsl`: wall active sites: adsorption, propagation, termination.
+- `chem/src/sim.ts`: Stage A state, stepping, event counters, invariants.
+- `chem/src/asf.ts`: chain-length distribution, estimating alpha from event counts and from the histogram.
+- `viewer/atoms.ts`: per-atom rendering: ball-and-stick, CPK, radii, legend, units badge and `κ_t`.
+- `verify/stage-a.ts`: Stage A scenarios and its gates.
+- `tests/chem-*.test.ts`: tests per task.
 
 ---
 
-### Task 1: Атомы, виды, поатомная геометрия
+### Task 1: Atoms, Species, Per-Atom Geometry
 
 **Files:**
 - Create: `data/atoms.json`, `data/molecules.json`, `chem/src/species.ts`, `chem/src/geometry.ts`
 - Test: `tests/chem-species.test.ts`
 
 **Interfaces:**
-- Produces: `parseFormula(f: string): Record<string, number>`; `molarMass(f: string): number`; `loadSpecies(): Record<string, Species>` где `Species = {id: string, formula: string, charge: number, atoms: AtomRef[], bonds: [number, number][], source: string}` и `AtomRef = {element: string, position: [number, number, number]}` в нанометрах; `buildAlkanoicAcid(n: number): Species` — н-алкановая кислота с `n` атомами углерода, зигзаг во всю длину.
+- Produces: `parseFormula(f: string): Record<string, number>`; `molarMass(f: string): number`; `loadSpecies(): Record<string, Species>` where `Species = {id: string, formula: string, charge: number, atoms: AtomRef[], bonds: [number, number][], source: string}` and `AtomRef = {element: string, position: [number, number, number]}` in nanometers; `buildAlkanoicAcid(n: number): Species`, an n-alkanoic acid with `n` carbon atoms, zigzag along its full length.
 
-- [ ] **Step 1: Написать падающие тесты**
+- [ ] **Step 1: Write failing tests**
 
 `tests/chem-species.test.ts`:
 
@@ -64,14 +64,14 @@ import { buildAlkanoicAcid, loadSpecies, molarMass, parseFormula } from '../chem
 
 const dist = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
 
-test('формула разбирается и даёт молярную массу', () => {
+test('formula parses and gives the molar mass', () => {
   expect(parseFormula('H2O')).toEqual({ H: 2, O: 1 })
   expect(parseFormula('C10H20O2')).toEqual({ C: 10, H: 20, O: 2 })
   expect(molarMass('H2O')).toBeCloseTo(18.015, 2)
   expect(molarMass('CO')).toBeCloseTo(28.010, 2)
 })
 
-test('геометрия воды совпадает со справочными значениями', () => {
+test('water geometry matches reference values', () => {
   const w = loadSpecies()['H2O']
   const o = w.atoms.find((a) => a.element === 'O')!.position
   const hs = w.atoms.filter((a) => a.element === 'H').map((a) => a.position)
@@ -81,13 +81,13 @@ test('геометрия воды совпадает со справочными
   expect((Math.acos(cos) * 180) / Math.PI).toBeCloseTo(104.52, 1)
 })
 
-test('CO и H2 двухатомны с правильной длиной связи', () => {
+test('CO and H2 are diatomic with the correct bond length', () => {
   const s = loadSpecies()
   expect(dist(s['CO'].atoms[0].position, s['CO'].atoms[1].position)).toBeCloseTo(0.1128, 5)
   expect(dist(s['H2'].atoms[0].position, s['H2'].atoms[1].position)).toBeCloseTo(0.0741, 5)
 })
 
-test('цепь кислоты строится зигзагом с правильными связями и составом', () => {
+test('the acid chain is built as a zigzag with correct bonds and composition', () => {
   const c10 = buildAlkanoicAcid(10)
   expect(parseFormula(c10.formula)).toEqual({ C: 10, H: 20, O: 2 })
   const cs = c10.atoms.filter((a) => a.element === 'C').map((a) => a.position)
@@ -97,7 +97,7 @@ test('цепь кислоты строится зигзагом с правил�
   expect(span).toBeLessThan(0.154 * (cs.length - 1))
 })
 
-test('заряды видов взяты из данных, а не выдуманы', () => {
+test('species charges come from the data, not made up', () => {
   const s = loadSpecies()
   expect(s['HCOO-'].charge).toBe(-1)
   expect(s['H+'].charge).toBe(1)
@@ -105,18 +105,18 @@ test('заряды видов взяты из данных, а не выдума
 })
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+- [ ] **Step 2: Run and confirm the tests fail**
 
 Run: `npx vitest run tests/chem-species.test.ts`
-Expected: FAIL — `chem/src/species` не найден.
+Expected: FAIL, `chem/src/species` not found.
 
-- [ ] **Step 3: Реализовать данные атомов**
+- [ ] **Step 3: Implement the atom data**
 
 `data/atoms.json`:
 
 ```json
 {
-  "source": "массы IUPAC 2021; радиусы Ван-дер-Ваальса Bondi 1964; цвета CPK",
+  "source": "IUPAC 2021 masses; Van der Waals radii Bondi 1964; CPK colors",
   "rank": "A",
   "elements": {
     "H":  { "mass": 1.008,  "vdw": 0.120, "covalent": 0.031, "color": "#ffffff" },
@@ -129,11 +129,11 @@ Expected: FAIL — `chem/src/species` не найден.
 }
 ```
 
-Все длины в нанометрах.
+All lengths are in nanometers.
 
-- [ ] **Step 4: Реализовать данные видов и построение геометрии**
+- [ ] **Step 4: Implement species data and geometry construction**
 
-`data/molecules.json` описывает виды через длины и углы, а не через готовые координаты, чтобы источник был виден:
+`data/molecules.json` describes species through lengths and angles rather than ready-made coordinates, so the source of each value stays visible:
 
 ```json
 {
@@ -150,15 +150,15 @@ Expected: FAIL — `chem/src/species` не найден.
     "H2": "CRC Handbook, 97th ed.",
     "OH_water": "Benedict, Gailar & Plyler 1956",
     "CO2_double": "CRC Handbook, 97th ed.",
-    "CC_single": "стандартная длина одинарной связи C-C в алканах",
-    "CH": "стандартная длина связи C-H в алканах",
-    "C_O_carboxyl_double": "стандартная карбонильная связь карбоновых кислот",
-    "C_O_carboxyl_single": "стандартная гидроксильная связь карбоновых кислот",
-    "OH_carboxyl": "стандартная связь O-H",
-    "C_O_formate": "делокализованная связь в формиат-ионе",
+    "CC_single": "standard C-C single bond length in alkanes",
+    "CH": "standard C-H bond length in alkanes",
+    "C_O_carboxyl_double": "standard carbonyl bond of carboxylic acids",
+    "C_O_carboxyl_single": "standard hydroxyl bond of carboxylic acids",
+    "OH_carboxyl": "standard O-H bond",
+    "C_O_formate": "delocalized bond in the formate ion",
     "water_HOH": "Benedict, Gailar & Plyler 1956",
-    "tetrahedral": "идеальная sp3-геометрия",
-    "formate_OCO": "экспериментальная геометрия формиат-иона"
+    "tetrahedral": "ideal sp3 geometry",
+    "formate_OCO": "experimental geometry of the formate ion"
   },
   "species": [
     { "id": "CO",    "formula": "CO",    "charge": 0,  "kind": "diatomic", "bond": "CO_triple" },
@@ -174,16 +174,16 @@ Expected: FAIL — `chem/src/species` не найден.
 }
 ```
 
-`chem/src/species.ts` разбирает формулу регулярным выражением по парам «элемент, число», берёт массы из `atoms.json`, и собирает координаты по `kind`: `single` — один атом в начале координат; `diatomic` — второй атом по оси x на длину связи; `bent` — центральный атом в начале, два соседа под заданным углом в плоскости xy; `linear3` — центральный атом в начале, два соседа по ±x; `formate` — углерод в начале, два кислорода под углом `formate_OCO` на длину `C_O_formate`, водород на C по длине `CH`.
+`chem/src/species.ts` parses the formula with a regular expression over "element, count" pairs, takes masses from `atoms.json`, and assembles coordinates by `kind`: `single`: one atom at the origin; `diatomic`: a second atom along the x axis at the bond length; `bent`: a central atom at the origin with two neighbors at the given angle in the xy plane; `linear3`: a central atom at the origin with two neighbors along ±x; `formate`: carbon at the origin, two oxygens at the `formate_OCO` angle at the `C_O_formate` length, and a hydrogen on C at the `CH` length.
 
-`buildAlkanoicAcid(n)` строит скелет из `n` углеродов зигзагом: углы `tetrahedral`, длины `CC_single`, чередование знака по оси y, так что проекция на ось цепи равна `CC_single·cos(θ/2)` на звено; на первом углероде — карбоксильная группа с `C_O_carboxyl_double`, `C_O_carboxyl_single` и `OH_carboxyl`; остальные углероды дополняются водородами до четырёх связей. Формула собирается из фактического числа атомов, а не задаётся строкой, чтобы состав нельзя было разойтись с геометрией.
+`buildAlkanoicAcid(n)` builds a skeleton of `n` carbons as a zigzag: `tetrahedral` angles, `CC_single` lengths, alternating sign along the y axis, so the projection onto the chain axis equals `CC_single·cos(θ/2)` per unit; the first carbon carries the carboxyl group with `C_O_carboxyl_double`, `C_O_carboxyl_single`, and `OH_carboxyl`; the remaining carbons are filled out with hydrogens up to four bonds. The formula is assembled from the actual atom count rather than given as a fixed string, so the composition can never diverge from the geometry.
 
-- [ ] **Step 5: Запустить тесты и убедиться, что они проходят**
+- [ ] **Step 5: Run the tests and confirm they pass**
 
 Run: `npx vitest run tests/chem-species.test.ts`
-Expected: PASS все пять. Если длина цепи вышла больше `0.154·(n−1)` — зигзаг выродился в прямую линию, проверить чередование знака.
+Expected: PASS, all five. If the chain length comes out greater than `0.154·(n-1)`, the zigzag has degenerated into a straight line: check the sign alternation.
 
-- [ ] **Step 6: Коммит**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add data/atoms.json data/molecules.json chem/src/species.ts chem/src/geometry.ts tests/chem-species.test.ts
@@ -192,18 +192,18 @@ git commit -m "feat: atomic data, species geometry from literature bond lengths"
 
 ---
 
-### Task 2: Сеть реакций с точными инвариантами
+### Task 2: Reaction Network with Exact Invariants
 
 **Files:**
 - Create: `data/chemistry.json`, `chem/src/network.ts`
-- Modify: `tests/params.test.ts` (расширить сторож констант на `chem/src` и `chem/wgsl`)
+- Modify: `tests/params.test.ts` (extend the constant guard to `chem/src` and `chem/wgsl`)
 - Test: `tests/chem-network.test.ts`
 
 **Interfaces:**
-- Consumes: `loadSpecies`, `parseFormula` из задачи 1.
-- Produces: `loadNetwork(): Network` где `Network = {reactions: Reaction[]}` и `Reaction = {id: string, kind: 'bulk' | 'adsorb' | 'propagate' | 'terminate', reactants: string[], products: string[], k: number, kUnits: string, rank: 'A'|'B'|'C'|'D', basis: string, contactRadius?: number}`; `checkBalance(r: Reaction): {mass: Record<string, number>, charge: number}` — возвращает разности по элементам и по заряду, нули означают баланс; `assertNetworkBalanced(n: Network): void` — бросает с перечислением нарушений.
+- Consumes: `loadSpecies`, `parseFormula` from Task 1.
+- Produces: `loadNetwork(): Network` where `Network = {reactions: Reaction[]}` and `Reaction = {id: string, kind: 'bulk' | 'adsorb' | 'propagate' | 'terminate', reactants: string[], products: string[], k: number, kUnits: string, rank: 'A'|'B'|'C'|'D', basis: string, contactRadius?: number}`; `checkBalance(r: Reaction): {mass: Record<string, number>, charge: number}`, which returns the differences per element and per charge, zeros meaning balanced; `assertNetworkBalanced(n: Network): void`, which throws with a list of the violations.
 
-- [ ] **Step 1: Написать падающие тесты**
+- [ ] **Step 1: Write failing tests**
 
 `tests/chem-network.test.ts`:
 
@@ -211,12 +211,12 @@ git commit -m "feat: atomic data, species geometry from literature bond lengths"
 import { expect, test } from 'vitest'
 import { assertNetworkBalanced, checkBalance, loadNetwork } from '../chem/src/network'
 
-test('вся сеть сбалансирована по массе и заряду', () => {
+test('the whole network is balanced in mass and charge', () => {
   expect(() => assertNetworkBalanced(loadNetwork())).not.toThrow()
 })
 
-test('несбалансированная реакция выявляется по элементам и заряду', () => {
-  const bad = { id: 'bad', kind: 'bulk' as const, reactants: ['CO', 'H2'], products: ['H2O'], k: 1, kUnits: 'nm^3/ns', rank: 'D' as const, basis: 'тест' }
+test('an unbalanced reaction is detected by element and by charge', () => {
+  const bad = { id: 'bad', kind: 'bulk' as const, reactants: ['CO', 'H2'], products: ['H2O'], k: 1, kUnits: 'nm^3/ns', rank: 'D' as const, basis: 'test' }
   const d = checkBalance(bad)
   expect(d.mass.C).toBe(1)
   expect(d.charge).toBe(0)
@@ -225,7 +225,7 @@ test('несбалансированная реакция выявляется �
   expect(checkBalance(charged).charge).toBe(1)
 })
 
-test('каждая реакция несёт ранг и обоснование, и все скорости синтеза имеют ранг D', () => {
+test('every reaction carries a rank and a justification, and all synthesis rates have rank D', () => {
   for (const r of loadNetwork().reactions) {
     expect(['A', 'B', 'C', 'D']).toContain(r.rank)
     expect(r.basis.length).toBeGreaterThan(10)
@@ -233,50 +233,50 @@ test('каждая реакция несёт ранг и обоснование,
   }
 })
 
-test('каждая реакция объёмного типа имеет контактный радиус', () => {
+test('every bulk-type reaction has a contact radius', () => {
   for (const r of loadNetwork().reactions) {
     if (r.kind === 'bulk') expect(r.contactRadius).toBeGreaterThan(0)
   }
 })
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+- [ ] **Step 2: Run and confirm the tests fail**
 
 Run: `npx vitest run tests/chem-network.test.ts`
-Expected: FAIL — `chem/src/network` не найден.
+Expected: FAIL, `chem/src/network` not found.
 
-- [ ] **Step 3: Реализовать сеть**
+- [ ] **Step 3: Implement the network**
 
-`data/chemistry.json` — минимальная сеть, которой достаточно для роста цепи, и ни одной лишней реакции:
+`data/chemistry.json`: the minimal network sufficient for chain growth, with no extra reaction:
 
 ```json
 {
-  "conditions": { "temperatureK": 448.15, "viscosityPaS": 1.53e-4, "note": "175 C, водный флюид" },
+  "conditions": { "temperatureK": 448.15, "viscosityPaS": 1.53e-4, "note": "175 C, aqueous fluid" },
   "reactions": [
-    { "id": "adsorb_CO", "kind": "adsorb", "reactants": ["CO"], "products": ["*CO"], "k": 0.5, "kUnits": "1/ns на центр", "rank": "D",
-      "basis": "оценка: адсорбция CO на металлическом центре быстрая относительно роста цепи; абсолютная величина неизвестна, задаёт только масштаб kappa_t" },
-    { "id": "reduce_CO", "kind": "propagate", "reactants": ["*CO", "H2"], "products": ["*CH2", "H2O"], "k": 0.2, "kUnits": "1/ns на центр", "rank": "D",
-      "basis": "оценка: восстановление адсорбированного CO водородом до метиленового звена, суммарная стадия" },
-    { "id": "grow", "kind": "propagate", "reactants": ["*Cn", "*CH2"], "products": ["*Cn+1"], "k": 0.15, "kUnits": "1/ns на центр", "rank": "D",
-      "basis": "оценка: присоединение метиленового звена к растущей цепи; отношение к обрыву задаёт alpha и проверяется распределением" },
-    { "id": "terminate_acid", "kind": "terminate", "reactants": ["*Cn", "H2O"], "products": ["acid_n"], "k": 0.05, "kUnits": "1/ns на центр", "rank": "D",
-      "basis": "оценка: обрыв цепи с образованием карбоксильной группы и десорбцией" },
+    { "id": "adsorb_CO", "kind": "adsorb", "reactants": ["CO"], "products": ["*CO"], "k": 0.5, "kUnits": "1/ns per site", "rank": "D",
+      "basis": "estimate: CO adsorption on the metallic site is fast relative to chain growth; the absolute value is unknown, it only sets the scale of kappa_t" },
+    { "id": "reduce_CO", "kind": "propagate", "reactants": ["*CO", "H2"], "products": ["*CH2", "H2O"], "k": 0.2, "kUnits": "1/ns per site", "rank": "D",
+      "basis": "estimate: reduction of adsorbed CO by hydrogen to a methylene unit, a lumped step" },
+    { "id": "grow", "kind": "propagate", "reactants": ["*Cn", "*CH2"], "products": ["*Cn+1"], "k": 0.15, "kUnits": "1/ns per site", "rank": "D",
+      "basis": "estimate: addition of a methylene unit to the growing chain; the ratio to termination sets alpha and is checked against the distribution" },
+    { "id": "terminate_acid", "kind": "terminate", "reactants": ["*Cn", "H2O"], "products": ["acid_n"], "k": 0.05, "kUnits": "1/ns per site", "rank": "D",
+      "basis": "estimate: chain termination forming the carboxyl group with desorption" },
     { "id": "formate_split", "kind": "bulk", "reactants": ["HCOO-", "H+"], "products": ["CO", "H2O"], "k": 1.2, "kUnits": "nm^3/ns", "rank": "D",
-      "basis": "оценка: диспропорционирование формиата как источник CO; в этом плане нужна только как поставщик CO", "contactRadius": 0.35 }
+      "basis": "estimate: formate disproportionation as a CO source; in this plan it is needed only as a CO supplier", "contactRadius": 0.35 }
   ]
 }
 ```
 
-`chem/src/network.ts` загружает файл, для видов вида `*Cn` и `acid_n` разворачивает шаблон по длине цепи при проверке баланса (звено `*CH2` даёт CH₂, кислота из `n` углеродов — `C_nH_{2n}O_2`), считает разности по элементам и заряду, и бросает с полным перечислением.
+`chem/src/network.ts` loads the file, and for species of the form `*Cn` and `acid_n` expands the template by chain length when checking balance (the `*CH2` unit gives CH₂, an acid with `n` carbons gives `C_nH_{2n}O_2`), computes the differences per element and charge, and throws with the full list.
 
-Расширить сторож в `tests/params.test.ts`: сканируемые каталоги становятся `['engine/src', 'engine/wgsl', 'chem/src', 'chem/wgsl']`, исключения — `params.ts`, `species.ts`, `network.ts`, `diffusion.ts` (они читают данные и обязаны упоминать имена полей, но не числа: проверить, что и в них нет числовых литералов из запретного списка).
+Extend the guard in `tests/params.test.ts`: the scanned directories become `['engine/src', 'engine/wgsl', 'chem/src', 'chem/wgsl']`, with exceptions for `params.ts`, `species.ts`, `network.ts`, `diffusion.ts` (they read data and are allowed to mention field names, but not numbers: check that they too contain no numeric literals from the forbidden list).
 
-- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+- [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `npx vitest run tests/chem-network.test.ts tests/params.test.ts`
-Expected: PASS. Если баланс не сходится на `grow` — шаблон `*Cn` разворачивается неверно: звено добавляет ровно CH₂.
+Expected: PASS. If the balance does not close on `grow`, the `*Cn` template is expanding incorrectly: the unit must add exactly CH₂.
 
-- [ ] **Step 5: Коммит**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add data/chemistry.json chem/src/network.ts tests/chem-network.test.ts tests/params.test.ts
@@ -285,18 +285,18 @@ git commit -m "feat: reaction network with exact mass and charge invariants"
 
 ---
 
-### Task 3: Броуновское движение и закон 6Dt
+### Task 3: Brownian Motion and the 6Dt Law
 
 **Files:**
 - Create: `chem/src/diffusion.ts`, `chem/wgsl/bd.wgsl`, `chem/src/sim.ts`
-- Modify: `engine/src/index.ts` (экспортировать фасад ступени A)
+- Modify: `engine/src/index.ts` (export the Stage A facade)
 - Test: `tests/chem-diffusion.test.ts`
 
 **Interfaces:**
-- Consumes: `getGpu`, `readBack`, `storageBuffer` из `engine/src/gpu.ts`; `loadSpecies` из задачи 1.
-- Produces: `stokesEinstein(radiusNm: number, tempK: number, viscosityPaS: number): number` — коэффициент диффузии в нм²/нс; `smoluchowski(dA: number, dB: number, rContactNm: number): number` — константа в нм³/нс; `createChemSystem(opts: ChemOpts): Promise<ChemSystem>` где `ChemOpts = {box: [number,number,number], counts: Record<string, number>, seed: number, dtNs: number, kappaT: number, contactProbability?: number, wall?: {z: number, sites: number}}` — `contactProbability` по умолчанию 1 и используется задачей 4, `wall` добавляется задачей 5 и без него стенки нет; `ChemSystem.step(n: number): Promise<void>`; `ChemSystem.positions(): Promise<Float32Array>` — по 4 float на молекулу (x, y, z, индекс вида); `ChemSystem.msd(): Promise<number>` — среднеквадратичное смещение с начала прогона в нм²; `ChemSystem.elapsedNs: number`. Фасады в `engine/src/index.ts`: `diffusionOf(speciesId: string): number` — коэффициент диффузии вида в нм²/нс.
+- Consumes: `getGpu`, `readBack`, `storageBuffer` from `engine/src/gpu.ts`; `loadSpecies` from Task 1.
+- Produces: `stokesEinstein(radiusNm: number, tempK: number, viscosityPaS: number): number`, the diffusion coefficient in nm²/ns; `smoluchowski(dA: number, dB: number, rContactNm: number): number`, the constant in nm³/ns; `createChemSystem(opts: ChemOpts): Promise<ChemSystem>` where `ChemOpts = {box: [number,number,number], counts: Record<string, number>, seed: number, dtNs: number, kappaT: number, contactProbability?: number, wall?: {z: number, sites: number}}`; `contactProbability` defaults to 1 and is used by Task 4, `wall` is added by Task 5 and there is no wall without it; `ChemSystem.step(n: number): Promise<void>`; `ChemSystem.positions(): Promise<Float32Array>`, 4 floats per molecule (x, y, z, species index); `ChemSystem.msd(): Promise<number>`, the mean-squared displacement since the start of the run, in nm²; `ChemSystem.elapsedNs: number`. Facades in `engine/src/index.ts`: `diffusionOf(speciesId: string): number`, the species' diffusion coefficient in nm²/ns.
 
-- [ ] **Step 1: Написать падающие тесты**
+- [ ] **Step 1: Write failing tests**
 
 `tests/chem-diffusion.test.ts`:
 
@@ -307,20 +307,20 @@ import { smoluchowski, stokesEinstein } from '../chem/src/diffusion'
 
 afterAll(shutdownGpu)
 
-test('Стокс-Эйнштейн даёт коэффициент диффузии нужного порядка при 175 C', () => {
+test('Stokes-Einstein gives a diffusion coefficient of the right order at 175 C', () => {
   const d = stokesEinstein(0.19, 448.15, 1.53e-4)
   expect(d).toBeGreaterThan(5)
   expect(d).toBeLessThan(30)
 })
 
-test('Смолуховский складывает коэффициенты и линеен по радиусу', () => {
+test('Smoluchowski adds the coefficients and is linear in radius', () => {
   const k1 = smoluchowski(10, 10, 0.35)
   const k2 = smoluchowski(10, 10, 0.70)
   expect(k2 / k1).toBeCloseTo(2, 6)
   expect(k1).toBeCloseTo(4 * Math.PI * 20 * 0.35, 6)
 })
 
-test('среднеквадратичное смещение растёт как 6Dt', async () => {
+test('mean-squared displacement grows as 6Dt', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api
@@ -333,25 +333,25 @@ test('среднеквадратичное смещение растёт как 
 })
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+- [ ] **Step 2: Run and confirm the tests fail**
 
 Run: `npx vitest run tests/chem-diffusion.test.ts`
-Expected: FAIL — `chem/src/diffusion` не найден.
+Expected: FAIL, `chem/src/diffusion` not found.
 
-- [ ] **Step 3: Реализовать диффузию**
+- [ ] **Step 3: Implement diffusion**
 
-`chem/src/diffusion.ts`: `stokesEinstein` считает `kT/(6πηa)` в СИ и переводит в нм²/нс множителем `1e18/1e9`; `smoluchowski` возвращает `4π(D_A+D_B)R`. Радиус вида берётся как максимум расстояния от центра масс до атома плюс радиус Ван-дер-Ваальса этого атома.
+`chem/src/diffusion.ts`: `stokesEinstein` computes `kT/(6πηa)` in SI units and converts to nm²/ns with the factor `1e18/1e9`; `smoluchowski` returns `4π(D_A+D_B)R`. A species' radius is taken as the maximum distance from the center of mass to an atom, plus that atom's Van der Waals radius.
 
-`chem/wgsl/bd.wgsl` — шаг сверхдемпфированной динамики: `x += sqrt(2*D*dt)*ξ` покомпонентно, где `ξ` — стандартный нормальный из PCG-хеша по индексу, шагу и семени, `D` берётся из буфера по индексу вида. Периодические границы по всем трём осям. Отдельно ведётся незавёрнутая координата, чтобы среднеквадратичное смещение не обрезалось боксом — именно она идёт в `msd()`.
+`chem/wgsl/bd.wgsl`: an overdamped-dynamics step: `x += sqrt(2*D*dt)*ξ` component-wise, where `ξ` is a standard normal from a PCG hash over the index, step, and seed, and `D` is taken from a buffer by species index. Periodic boundaries on all three axes. An unwrapped coordinate is tracked separately so the mean-squared displacement is not clipped by the box; it is this coordinate that feeds `msd()`.
 
-`chem/src/sim.ts` держит буферы координат (завёрнутых и незавёрнутых), индексов вида, коэффициентов диффузии, и реализует перечисленные методы. `elapsedNs` увеличивается на `dtNs` за шаг и умножается на `kappaT` только при выводе на экран, не в физике.
+`chem/src/sim.ts` holds the coordinate buffers (wrapped and unwrapped), species indices, diffusion coefficients, and implements the listed methods. `elapsedNs` increases by `dtNs` per step and is multiplied by `kappaT` only for on-screen display, not in the physics.
 
-- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+- [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `npx vitest run tests/chem-diffusion.test.ts`
-Expected: PASS все три. Если отношение к `6Dt` систематически равно 1/3 — считается смещение по одной оси вместо трёх; если вдвое меньше — в множителе шума потерян коэффициент 2.
+Expected: PASS, all three. If the ratio to `6Dt` is systematically 1/3, the displacement is being computed along one axis instead of three; if it is half as much, the noise-factor coefficient of 2 has been lost.
 
-- [ ] **Step 5: Коммит**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add chem/src/diffusion.ts chem/wgsl/bd.wgsl chem/src/sim.ts engine/src/index.ts tests/chem-diffusion.test.ts
@@ -360,18 +360,18 @@ git commit -m "feat: Brownian dynamics verified against the 6Dt law"
 
 ---
 
-### Task 4: Реакция при контакте и проверка по Смолуховскому
+### Task 4: Contact Reaction and Verification Against Smoluchowski
 
 **Files:**
 - Create: `chem/wgsl/react.wgsl`
-- Modify: `chem/src/sim.ts` (реакции в шаге, счётчики событий), `engine/src/index.ts`
+- Modify: `chem/src/sim.ts` (reactions in the step, event counters), `engine/src/index.ts`
 - Test: `tests/chem-reaction.test.ts`
 
 **Interfaces:**
-- Consumes: `ChemSystem` из задачи 3, `loadNetwork` из задачи 2.
-- Produces: `ChemSystem.counts(): Promise<Record<string, number>>`; `ChemSystem.events(): Promise<Record<string, number>>` — сколько раз сработала каждая реакция; `ChemSystem.measureSecondOrderRate(reactionId: string): Promise<number>` — наблюдаемая константа в нм³/нс из убыли реагентов. Фасады в `engine/src/index.ts`: `smoluchowskiOf(reactionId: string): number` — предсказанный диффузионный предел для этой реакции; `invariantsOf(sys: ChemSystem): Promise<{elements: Record<string, number>, charge: number}>` — атомы по элементам и суммарный заряд из текущих численностей.
+- Consumes: `ChemSystem` from Task 3, `loadNetwork` from Task 2.
+- Produces: `ChemSystem.counts(): Promise<Record<string, number>>`; `ChemSystem.events(): Promise<Record<string, number>>`, how many times each reaction fired; `ChemSystem.measureSecondOrderRate(reactionId: string): Promise<number>`, the observed constant in nm³/ns from reactant depletion. Facades in `engine/src/index.ts`: `smoluchowskiOf(reactionId: string): number`, the predicted diffusion limit for that reaction; `invariantsOf(sys: ChemSystem): Promise<{elements: Record<string, number>, charge: number}>`, atoms per element and total charge from the current counts.
 
-- [ ] **Step 1: Написать падающий тест**
+- [ ] **Step 1: Write a failing test**
 
 `tests/chem-reaction.test.ts`:
 
@@ -381,7 +381,7 @@ import { gpuPage, shutdownGpu } from './helpers/gpu'
 
 afterAll(shutdownGpu)
 
-test('наблюдаемая скорость реакции при контакте совпадает с пределом Смолуховского', async () => {
+test('the observed contact-reaction rate matches the Smoluchowski limit', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api
@@ -396,7 +396,7 @@ test('наблюдаемая скорость реакции при контак
   expect(r.measured / r.predicted).toBeLessThan(1.25)
 })
 
-test('число атомов каждого элемента и суммарный заряд сохраняются', async () => {
+test('the atom count of each element and the total charge are conserved', async () => {
   const page = await gpuPage()
   const inv = await page.evaluate(async () => {
     const api = (window as any).api
@@ -411,25 +411,25 @@ test('число атомов каждого элемента и суммарн�
 })
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+- [ ] **Step 2: Run and confirm the tests fail**
 
 Run: `npx vitest run tests/chem-reaction.test.ts`
-Expected: FAIL — `api.createChemSystem` не принимает `contactProbability`, `measureSecondOrderRate` отсутствует.
+Expected: FAIL, `api.createChemSystem` does not accept `contactProbability`, `measureSecondOrderRate` is missing.
 
-- [ ] **Step 3: Реализовать реакции**
+- [ ] **Step 3: Implement reactions**
 
-`chem/wgsl/react.wgsl`: сетка ячеек со стороной не меньше максимального контактного радиуса сети, обход соседних ячеек, и для каждой пары подходящих видов на расстоянии меньше контактного радиуса — реакция с вероятностью `contactProbability`. Чтобы одна молекула не реагировала дважды за шаг, каждая пара разрешается атомарным захватом обоих участников (`atomicCompareExchangeWeak` по флагу занятости), а проигравшие ждут следующего шага. Продукты записываются на место реагентов: изменение вида — это смена индекса вида в буфере, лишние частицы помечаются мёртвыми и не участвуют дальше.
+`chem/wgsl/react.wgsl`: a cell grid with a side no smaller than the network's largest contact radius, traversal of neighboring cells, and for every eligible species pair within the contact radius, a reaction with probability `contactProbability`. To keep one molecule from reacting twice in a step, each pair is resolved by an atomic capture of both participants (`atomicCompareExchangeWeak` on a busy flag), and the losers wait for the next step. Products are written in place of the reactants: a species change is a change of the species index in the buffer, and surplus particles are marked dead and take no further part.
 
-`measureSecondOrderRate` берёт число событий `N`, объём `V`, время `t` и средние численности `n_A`, `n_B`: `k = N·V/(n_A·n_B·t)`. При `contactProbability = 1` эта величина обязана совпасть с `4πD_AB R` в пределах, заданных тестом.
+`measureSecondOrderRate` takes the event count `N`, volume `V`, time `t`, and average populations `n_A`, `n_B`: `k = N·V/(n_A·n_B·t)`. At `contactProbability = 1` this value must match `4πD_AB R` within the bounds set by the test.
 
-`invariantsOf(sys)` пересчитывает атомы по элементам и суммарный заряд из текущих численностей видов и их формул.
+`invariantsOf(sys)` recomputes atoms per element and the total charge from the current species counts and their formulas.
 
-- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+- [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `npx vitest run tests/chem-reaction.test.ts`
-Expected: PASS оба. Если наблюдаемая скорость систематически ниже предела — шаг слишком велик и пары успевают пролетать сквозь контактный радиус: уменьшить `dtNs` так, чтобы `sqrt(6·D·dt)` было заметно меньше контактного радиуса, и записать выбранное значение в отчёт.
+Expected: PASS, both. If the observed rate is systematically below the limit, the step is too large and pairs manage to fly past the contact radius: reduce `dtNs` so that `sqrt(6·D·dt)` is noticeably smaller than the contact radius, and record the chosen value in the report.
 
-- [ ] **Step 5: Коммит**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add chem/wgsl/react.wgsl chem/src/sim.ts engine/src/index.ts tests/chem-reaction.test.ts
@@ -438,7 +438,7 @@ git commit -m "feat: contact reactions verified against the Smoluchowski limit"
 
 ---
 
-### Task 5: Каталитическая стенка и рост цепи
+### Task 5: Catalytic Wall and Chain Growth
 
 **Files:**
 - Create: `chem/wgsl/surface.wgsl`, `chem/src/asf.ts`
@@ -447,9 +447,9 @@ git commit -m "feat: contact reactions verified against the Smoluchowski limit"
 
 **Interfaces:**
 - Consumes: `ChemSystem`, `loadNetwork`.
-- Produces: `ChemSystem.sites(): Promise<{index: number, occupant: string, chainLength: number}[]>`; `ChemSystem.chainHistogram(): Promise<Record<number, number>>` — сколько молекул кислоты каждой длины получено; `alphaFromRates(net: Network): number` — `k_grow/(k_grow + k_terminate)`; `alphaFromHistogram(h: Record<number, number>): {alpha: number, r2: number}` — оценка по наклону `ln N_n` против `n`. Фасад в `engine/src/index.ts`: `longestAcid(sys: ChemSystem): Promise<{carbons: number, atoms: AtomRef[]}>` — самая длинная полученная кислота с поатомной геометрией из `buildAlkanoicAcid`.
+- Produces: `ChemSystem.sites(): Promise<{index: number, occupant: string, chainLength: number}[]>`; `ChemSystem.chainHistogram(): Promise<Record<number, number>>`, how many acid molecules of each length were obtained; `alphaFromRates(net: Network): number`, `k_grow/(k_grow + k_terminate)`; `alphaFromHistogram(h: Record<number, number>): {alpha: number, r2: number}`, an estimate from the slope of `ln N_n` versus `n`. Facade in `engine/src/index.ts`: `longestAcid(sys: ChemSystem): Promise<{carbons: number, atoms: AtomRef[]}>`, the longest acid obtained, with per-atom geometry from `buildAlkanoicAcid`.
 
-- [ ] **Step 1: Написать падающие тесты**
+- [ ] **Step 1: Write failing tests**
 
 `tests/chem-growth.test.ts`:
 
@@ -461,7 +461,7 @@ import { loadNetwork } from '../chem/src/network'
 
 afterAll(shutdownGpu)
 
-test('оценка alpha по гистограмме восстанавливает заложенное значение', () => {
+test('the alpha estimate from the histogram recovers the seeded value', () => {
   const alpha = 0.72
   const h: Record<number, number> = {}
   for (let n = 1; n <= 20; n++) h[n] = Math.round(1e6 * (1 - alpha) * Math.pow(alpha, n - 1))
@@ -470,7 +470,7 @@ test('оценка alpha по гистограмме восстанавлива�
   expect(got.r2).toBeGreaterThan(0.99)
 })
 
-test('на стенке растут цепи, и распределение длин предсказано отношением скоростей', async () => {
+test('chains grow on the wall, and the length distribution is predicted by the rate ratio', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api
@@ -489,7 +489,7 @@ test('на стенке растут цепи, и распределение д�
   expect(Math.abs(measured.alpha - predicted)).toBeLessThan(0.1)
 }, 1_800_000)
 
-test('в кадре есть готовая молекула кислоты с правильным составом', async () => {
+test('the frame contains a finished acid molecule with the correct composition', async () => {
   const page = await gpuPage()
   const acid = await page.evaluate(async () => {
     const api = (window as any).api
@@ -503,25 +503,25 @@ test('в кадре есть готовая молекула кислоты с �
 }, 1_800_000)
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+- [ ] **Step 2: Run and confirm the tests fail**
 
 Run: `npx vitest run tests/chem-growth.test.ts`
-Expected: FAIL — `chem/src/asf` не найден.
+Expected: FAIL, `chem/src/asf` not found.
 
-- [ ] **Step 3: Реализовать стенку и рост**
+- [ ] **Step 3: Implement the wall and growth**
 
-`chem/wgsl/surface.wgsl`: активные центры — массив фиксированных позиций в плоскости `z = wall.z`, у каждого поле занятости и длина цепи. Молекула, оказавшаяся ближе контактного радиуса к свободному центру, адсорбируется по `adsorb_CO`. Занятый центр с `*CO` и налетевшим `H2` превращается в `*CH2` по `reduce_CO`, выпуская `H2O` в объём. Центр с цепью и соседний центр с `*CH2` объединяются по `grow`, увеличивая длину цепи на единицу. Центр с цепью и налетевшая `H2O` дают по `terminate_acid` молекулу кислоты, которая уходит в объём как отдельная частица с длиной цепи в качестве параметра вида, а центр освобождается.
+`chem/wgsl/surface.wgsl`: active sites are an array of fixed positions in the plane `z = wall.z`, each with an occupancy field and a chain length. A molecule that ends up closer than the contact radius to a free site adsorbs via `adsorb_CO`. A site occupied by `*CO` that is hit by `H2` turns into `*CH2` via `reduce_CO`, releasing `H2O` into the bulk. A site holding a chain and a neighboring site holding `*CH2` merge via `grow`, increasing the chain length by one. A site holding a chain hit by `H2O` gives, via `terminate_acid`, an acid molecule that leaves into the bulk as a separate particle with the chain length as a species parameter, and the site is freed.
 
-`chem/src/asf.ts`: `alphaFromRates` берёт отношение из сети; `alphaFromHistogram` делает линейную регрессию `ln N_n` по `n`, возвращает `alpha = exp(наклон)` и коэффициент детерминации. Первую точку `n = 1` исключить, если она искажена стадией зарождения, и сказать об этом в отчёте.
+`chem/src/asf.ts`: `alphaFromRates` takes the ratio from the network; `alphaFromHistogram` performs a linear regression of `ln N_n` against `n`, returning `alpha = exp(slope)` and the coefficient of determination. Exclude the first point `n = 1` if it is skewed by the nucleation stage, and say so in the report.
 
-`longestAcid(sys)` находит самую длинную полученную кислоту, строит её поатомную геометрию через `buildAlkanoicAcid` и возвращает состав.
+`longestAcid(sys)` finds the longest acid obtained, builds its per-atom geometry via `buildAlkanoicAcid`, and returns the composition.
 
-- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+- [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `npx vitest run tests/chem-growth.test.ts`
-Expected: PASS все три. Если цепи не растут дальше двух звеньев — либо центры заняты `*CO`, который не восстанавливается (мало `H2` в объёме), либо `grow` требует соседства центров, а они расставлены слишком редко: записать замеренные числа событий по каждой реакции и решать по ним, а не наугад.
+Expected: PASS, all three. If chains do not grow past two units, either the sites are stuck occupied by `*CO` that never gets reduced (too little `H2` in the bulk), or `grow` requires adjacent sites that are spaced too far apart: record the measured event counts for each reaction and decide from them, not by guessing.
 
-- [ ] **Step 5: Коммит**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add chem/wgsl/surface.wgsl chem/src/asf.ts chem/src/sim.ts engine/src/index.ts tests/chem-growth.test.ts
@@ -530,18 +530,18 @@ git commit -m "feat: catalytic wall chain growth with ASF distribution predicted
 
 ---
 
-### Task 6: Поатомный рендер
+### Task 6: Per-Atom Rendering
 
 **Files:**
 - Create: `viewer/atoms.ts`, `viewer/stage-a.html`
-- Modify: `viewer/main.ts` (переключатель ступеней)
+- Modify: `viewer/main.ts` (stage switcher)
 - Test: `tests/chem-viewer.test.ts`
 
 **Interfaces:**
 - Consumes: `ChemSystem`, `loadSpecies`, `data/atoms.json`.
-- Produces: страница `/viewer/stage-a.html`, публикующая `window.stageA = {frames: number, molecules: number, atoms: number, bonds: number, unitsBadge: string, kappaT: number, speciesLegend: string[]}`.
+- Produces: the page `/viewer/stage-a.html`, which publishes `window.stageA = {frames: number, molecules: number, atoms: number, bonds: number, unitsBadge: string, kappaT: number, speciesLegend: string[]}`.
 
-- [ ] **Step 1: Написать падающий тест**
+- [ ] **Step 1: Write a failing test**
 
 `tests/chem-viewer.test.ts`:
 
@@ -551,39 +551,39 @@ import { gpuPage, shutdownGpu } from './helpers/gpu'
 
 afterAll(shutdownGpu)
 
-test('поатомная сцена рисует атомы и связи и подписывает единицы', async () => {
+test('the per-atom scene draws atoms and bonds and labels units', async () => {
   const page = await gpuPage()
   await page.goto(new URL('/viewer/stage-a.html', page.url()).href, { waitUntil: 'load' })
   await page.waitForFunction('window.stageA && window.stageA.frames > 5')
   const s = await page.evaluate(() => ({ ...(window as any).stageA }))
   expect(s.atoms).toBeGreaterThan(s.molecules)
   expect(s.bonds).toBeGreaterThan(0)
-  expect(s.unitsBadge).toContain('нм')
-  expect(s.unitsBadge).toContain('нс')
-  expect(s.unitsBadge.toLowerCase()).toContain('атом')
+  expect(s.unitsBadge).toContain('nm')
+  expect(s.unitsBadge).toContain('ns')
+  expect(s.unitsBadge.toLowerCase()).toContain('atom')
   expect(s.speciesLegend.length).toBeGreaterThan(3)
   const shot = await page.screenshot({ encoding: 'binary' })
   expect(shot.length).toBeGreaterThan(5000)
 })
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тест падает**
+- [ ] **Step 2: Run and confirm the test fails**
 
 Run: `npx vitest run tests/chem-viewer.test.ts`
-Expected: FAIL — страница отсутствует.
+Expected: FAIL, the page does not exist.
 
-- [ ] **Step 3: Реализовать рендер**
+- [ ] **Step 3: Implement the rendering**
 
-`viewer/atoms.ts`: два `InstancedMesh` — сферы для атомов с радиусом `vdw` из `atoms.json` (масштабированным на общий коэффициент, чтобы стержни были видны) и цилиндры для связей по топологии вида; цвет берётся из `atoms.json`. Позиция атома — позиция молекулы плюс её внутренняя координата, повёрнутая на ориентацию молекулы (ориентацию хранить кватернионом и вращать броуновски тем же кернелом, что и трансляцию, отдельным вращательным коэффициентом диффузии). Легенда перечисляет присутствующие виды с формулами.
+`viewer/atoms.ts`: two `InstancedMesh` objects: spheres for atoms with the `vdw` radius from `atoms.json` (scaled by a shared factor so the sticks stay visible) and cylinders for bonds by species topology; color comes from `atoms.json`. An atom's position is the molecule's position plus its internal coordinate, rotated by the molecule's orientation (store the orientation as a quaternion and rotate it via Brownian motion with the same kernel as the translation, using a separate rotational diffusion coefficient). The legend lists the species present with their formulas.
 
-Бейдж единиц обязан говорить: масштаб нанометры и наносекунды, **это настоящие атомы, показанные поатомно**, множитель времени `κ_t` числом, и что ступень A не соединена по времени со ступенью C. Видно без наведения.
+The units badge must state: the scale is nanometers and nanoseconds, **these are real atoms, shown per-atom**, the time multiplier `κ_t` as a number, and that Stage A is not linked in time to Stage C. Visible without hovering.
 
-- [ ] **Step 4: Запустить тест и убедиться, что он проходит**
+- [ ] **Step 4: Run the test and confirm it passes**
 
 Run: `npx vitest run tests/chem-viewer.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Коммит**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add viewer/atoms.ts viewer/stage-a.html viewer/main.ts tests/chem-viewer.test.ts
@@ -592,7 +592,7 @@ git commit -m "feat: per-atom ball-and-stick viewer for stage A"
 
 ---
 
-### Task 7: Ворота ступени A в отчёте
+### Task 7: Stage A Gates in the Report
 
 **Files:**
 - Create: `verify/stage-a.ts`
@@ -600,10 +600,10 @@ git commit -m "feat: per-atom ball-and-stick viewer for stage A"
 - Test: `tests/chem-gates.test.ts`
 
 **Interfaces:**
-- Consumes: всё предыдущее; `evaluateGates`, `renderReport` из ступени C.
-- Produces: записи ворот `diffusion-6dt`, `smoluchowski-rate`, `asf-alpha`, `mass-charge-conservation` в `data/literature.json`; сценарии в `verify/stage-a.ts`, пишущие метрики в `verify/out/gates.json`.
+- Consumes: everything above; `evaluateGates`, `renderReport` from Stage C.
+- Produces: gate entries `diffusion-6dt`, `smoluchowski-rate`, `asf-alpha`, `mass-charge-conservation` in `data/literature.json`; scenarios in `verify/stage-a.ts` that write metrics to `verify/out/gates.json`.
 
-- [ ] **Step 1: Написать падающие тесты**
+- [ ] **Step 1: Write failing tests**
 
 `tests/chem-gates.test.ts`:
 
@@ -612,7 +612,7 @@ import { expect, test } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { evaluateGates } from '../verify/gates'
 
-test('ворота ступени A объявлены с коридорами и рангами', () => {
+test('Stage A gates are declared with corridors and ranks', () => {
   const lit = JSON.parse(readFileSync('data/literature.json', 'utf8'))
   const ids = lit.gates.map((g: any) => g.id)
   for (const id of ['diffusion-6dt', 'smoluchowski-rate', 'asf-alpha', 'mass-charge-conservation']) {
@@ -622,68 +622,68 @@ test('ворота ступени A объявлены с коридорами �
   expect(asf.rank).toBe('D')
 })
 
-test('инвариант массы и заряда проходит только при точном нуле', () => {
+test('the mass and charge invariant passes only at exactly zero', () => {
   const ok = evaluateGates({ 'massChargeDrift': 0 })
   expect(ok.find((g) => g.id === 'mass-charge-conservation')!.verdict).toBe('passed')
   const bad = evaluateGates({ 'massChargeDrift': 1 })
   expect(bad.find((g) => g.id === 'mass-charge-conservation')!.verdict).toBe('failed')
 })
 
-test('ворота alpha ранга D выходят недоказанными при любом значении', () => {
+test('the rank-D alpha gate comes out unproven regardless of value', () => {
   const r = evaluateGates({ asfAlphaGap: 0.001 })
   expect(r.find((g) => g.id === 'asf-alpha')!.verdict).toBe('unproven')
 })
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+- [ ] **Step 2: Run and confirm the tests fail**
 
 Run: `npx vitest run tests/chem-gates.test.ts`
-Expected: FAIL — записи ворот отсутствуют.
+Expected: FAIL, the gate entries do not exist.
 
-- [ ] **Step 3: Реализовать ворота**
+- [ ] **Step 3: Implement the gates**
 
-Добавить в `data/literature.json`:
+Add to `data/literature.json`:
 
 ```json
 {
-  "id": "diffusion-6dt", "title": "Броуновское смещение", "metric": "msdOver6Dt", "unit": "-",
+  "id": "diffusion-6dt", "title": "Brownian displacement", "metric": "msdOver6Dt", "unit": "-",
   "target": { "min": 0.9, "max": 1.1 }, "rank": "A",
-  "source": "закон Эйнштейна для трёхмерной диффузии, <r^2> = 6Dt",
-  "conditions": "4000 молекул CO, 175 C, вязкость 1.53e-4 Pa s, D по Стоксу-Эйнштейну"
+  "source": "Einstein's law for three-dimensional diffusion, <r^2> = 6Dt",
+  "conditions": "4000 CO molecules, 175 C, viscosity 1.53e-4 Pa s, D from Stokes-Einstein"
 },
 {
-  "id": "smoluchowski-rate", "title": "Скорость реакции при контакте", "metric": "kOverSmoluchowski", "unit": "-",
+  "id": "smoluchowski-rate", "title": "Contact reaction rate", "metric": "kOverSmoluchowski", "unit": "-",
   "target": { "min": 0.75, "max": 1.25 }, "rank": "A",
-  "source": "диффузионный предел Смолуховского, k = 4 pi D_AB R",
-  "conditions": "вероятность реакции при контакте 1, шаг подобран так, чтобы смещение за шаг было меньше контактного радиуса"
+  "source": "Smoluchowski diffusion limit, k = 4 pi D_AB R",
+  "conditions": "contact reaction probability 1, step chosen so the per-step displacement is smaller than the contact radius"
 },
 {
-  "id": "asf-alpha", "title": "Распределение длин цепей", "metric": "asfAlphaGap", "unit": "-",
+  "id": "asf-alpha", "title": "Chain length distribution", "metric": "asfAlphaGap", "unit": "-",
   "target": { "max": 0.1 }, "rank": "D",
-  "source": "Anderson-Schulz-Flory: alpha предсказана отношением скоростей продолжения и обрыва",
-  "conditions": "константы скорости ранга D (оценки); ворота публикуются недоказанными до повышения ранга слоями thermo и qm"
+  "source": "Anderson-Schulz-Flory: alpha predicted by the ratio of propagation and termination rates",
+  "conditions": "rank-D rate constants (estimates); the gate is published as unproven until the rank is raised by the thermo and qm layers"
 },
 {
-  "id": "mass-charge-conservation", "title": "Сохранение массы и заряда", "metric": "massChargeDrift", "unit": "-",
+  "id": "mass-charge-conservation", "title": "Mass and charge conservation", "metric": "massChargeDrift", "unit": "-",
   "target": { "max": 0 }, "rank": "A",
-  "source": "точный инвариант: атомы каждого элемента и суммарный заряд",
-  "conditions": "прогон с реакциями, сверка численностей до и после"
+  "source": "exact invariant: atoms of each element and total charge",
+  "conditions": "run with reactions, comparing counts before and after"
 }
 ```
 
-`verify/stage-a.ts` прогоняет четыре сценария и отдаёт `msdOver6Dt`, `kOverSmoluchowski`, `asfAlphaGap`, `massChargeDrift`, а также `kappaT` и число событий по каждой реакции. `verify/run.ts` вызывает их и вносит в тот же `gates.json` с общим `runId`. `verify/report.ts` печатает раздел ступени A: единицы, `κ_t` числом, таблицу событий, гистограмму длин цепей и оговорку, что все скорости синтеза имеют ранг D.
+`verify/stage-a.ts` runs four scenarios and returns `msdOver6Dt`, `kOverSmoluchowski`, `asfAlphaGap`, `massChargeDrift`, plus `kappaT` and the event count for each reaction. `verify/run.ts` calls them and writes into the same `gates.json` under a shared `runId`. `verify/report.ts` prints the Stage A section: units, `κ_t` as a number, the event table, the chain-length histogram, and a note that all synthesis rates carry rank D.
 
-- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+- [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `npx vitest run tests/chem-gates.test.ts`
-Expected: PASS все три.
+Expected: PASS, all three.
 
-- [ ] **Step 5: Прогнать экзамен целиком**
+- [ ] **Step 5: Run the full exam**
 
 Run: `npm run verify`
-Expected: в отчёте появились четыре ворот ступени A; `diffusion-6dt`, `smoluchowski-rate` и `mass-charge-conservation` пройдены, `asf-alpha` недоказаны по ранту D. Отдать пользователю полный путь к `verify/out/report.html`.
+Expected: the report shows the four Stage A gates; `diffusion-6dt`, `smoluchowski-rate`, and `mass-charge-conservation` pass, `asf-alpha` is unproven due to rank D. Give the user the full path to `verify/out/report.html`.
 
-- [ ] **Step 6: Коммит**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add verify/stage-a.ts data/literature.json verify/run.ts verify/report.ts tests/chem-gates.test.ts
@@ -692,19 +692,19 @@ git commit -m "feat: stage A gates in the verification report"
 
 ---
 
-### Task 8: Мембрана из настоящих молекул (обратное отображение)
+### Task 8: Membrane from Real Molecules (Backmapping)
 
-Выполняется ВНЕ очереди, сразу после задачи 1, потому что опирается только на неё и на готовую ступень C.
+Carried out out of sequence, right after Task 1, because it depends only on that and on the completed Stage C.
 
 **Files:**
 - Create: `chem/src/backmap.ts`, `viewer/molecular.ts`, `viewer/molecular.html`
 - Test: `tests/chem-backmap.test.ts`
 
 **Interfaces:**
-- Consumes: `buildAlkanoicAcid`, `loadSpecies` из задачи 1; `createSystem`, `System.positions()` из ступени C (`engine/src/sim.ts`); `data/atoms.json`.
-- Produces: `backmapLipid(head: [number,number,number], tail1: [number,number,number], tail2: [number,number,number], carbons: number, sigmaNm: number): {atoms: {element: string, position: [number,number,number]}[], bonds: [number,number][]}` — разворачивает три бида в поатомную молекулу кислоты, ориентируя её ось по направлению голова→хвост и укладывая зигзаг в плоскости, содержащей эту ось; `backmapSystem(positions: Float32Array, opts: {carbons: number, sigmaNm: number}): {atoms: …, bonds: …}` — то же для всей мембраны; страница `/viewer/molecular.html`, публикующая `window.molecular = {frames: number, molecules: number, atoms: number, bonds: number, reconstructionBadge: string}`.
+- Consumes: `buildAlkanoicAcid`, `loadSpecies` from Task 1; `createSystem`, `System.positions()` from Stage C (`engine/src/sim.ts`); `data/atoms.json`.
+- Produces: `backmapLipid(head: [number,number,number], tail1: [number,number,number], tail2: [number,number,number], carbons: number, sigmaNm: number): {atoms: {element: string, position: [number,number,number]}[], bonds: [number,number][]}`, which unfolds three beads into a per-atom acid molecule, orienting its axis along the head→tail direction and laying the zigzag in the plane containing that axis; `backmapSystem(positions: Float32Array, opts: {carbons: number, sigmaNm: number}): {atoms: …, bonds: …}`, the same for the whole membrane; the page `/viewer/molecular.html`, which publishes `window.molecular = {frames: number, molecules: number, atoms: number, bonds: number, reconstructionBadge: string}`.
 
-- [ ] **Step 1: Написать падающие тесты**
+- [ ] **Step 1: Write failing tests**
 
 `tests/chem-backmap.test.ts`:
 
@@ -714,7 +714,7 @@ import { backmapLipid } from '../chem/src/backmap'
 
 const d = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
 
-test('развёрнутая молекула сохраняет состав и длины связей', () => {
+test('the unfolded molecule preserves composition and bond lengths', () => {
   const m = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 12, 0.8)
   const cs = m.atoms.filter((a) => a.element === 'C').map((a) => a.position)
   expect(cs.length).toBe(12)
@@ -723,7 +723,7 @@ test('развёрнутая молекула сохраняет состав и
   expect(m.bonds.length).toBeGreaterThan(cs.length)
 })
 
-test('ось молекулы совпадает с направлением голова-хвост', () => {
+test('the molecule axis matches the head-tail direction', () => {
   const m = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 12, 0.8)
   const cs = m.atoms.filter((a) => a.element === 'C').map((a) => a.position)
   const axis = [cs[cs.length - 1][0] - cs[0][0], cs[cs.length - 1][1] - cs[0][1], cs[cs.length - 1][2] - cs[0][2]]
@@ -731,14 +731,14 @@ test('ось молекулы совпадает с направлением г�
   expect(Math.abs(axis[2] / len)).toBeGreaterThan(0.9)
 })
 
-test('карбоксильная группа сидит на головном конце, а не на хвостовом', () => {
+test('the carboxyl group sits at the head end, not the tail end', () => {
   const m = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 12, 0.8)
   const os = m.atoms.filter((a) => a.element === 'O').map((a) => a.position)
   const cs = m.atoms.filter((a) => a.element === 'C').map((a) => a.position)
   for (const o of os) expect(d(o, cs[0])).toBeLessThan(d(o, cs[cs.length - 1]))
 })
 
-test('масштаб бида в нанометры задаётся явно и меняет размер молекулы', () => {
+test('the bead-to-nanometer scale is given explicitly and changes the molecule size', () => {
   const a = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 12, 0.8)
   const b = backmapLipid([0, 0, 4], [0, 0, 2], [0, 0, 0], 16, 0.8)
   const span = (m: typeof a) => {
@@ -749,31 +749,31 @@ test('масштаб бида в нанометры задаётся явно и
 })
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+- [ ] **Step 2: Run and confirm the tests fail**
 
 Run: `npx vitest run tests/chem-backmap.test.ts`
-Expected: FAIL — `chem/src/backmap` не найден.
+Expected: FAIL, `chem/src/backmap` not found.
 
-- [ ] **Step 3: Реализовать обратное отображение**
+- [ ] **Step 3: Implement the backmapping**
 
-`chem/src/backmap.ts` строит молекулу через `buildAlkanoicAcid(carbons)` в её собственной системе координат, затем поворачивает так, чтобы ось цепи легла на направление от головного бида к последнему хвостовому, и переносит так, чтобы карбоксильный углерод оказался в позиции головного бида, переведённой в нанометры множителем `sigmaNm`. Число углеродов и `sigmaNm` — параметры вызова, не константы в коде.
+`chem/src/backmap.ts` builds the molecule via `buildAlkanoicAcid(carbons)` in its own coordinate system, then rotates it so the chain axis lies along the direction from the head bead to the last tail bead, and translates it so the carboxyl carbon ends up at the head bead's position, converted to nanometers by the factor `sigmaNm`. The carbon count and `sigmaNm` are call parameters, not constants in the code.
 
-- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+- [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `npx vitest run tests/chem-backmap.test.ts`
-Expected: PASS все четыре.
+Expected: PASS, all four.
 
-- [ ] **Step 5: Написать падающий тест сцены**
+- [ ] **Step 5: Write a failing test for the scene**
 
-`tests/chem-backmap.test.ts` дополняется проверкой страницы: открыть `/viewer/molecular.html`, дождаться `window.molecular.frames > 5`, убедиться что `atoms > molecules * 10`, `bonds > atoms`, и что `reconstructionBadge` содержит слова о восстановленной атомной детализации.
+`tests/chem-backmap.test.ts` is extended with a check of the page: open `/viewer/molecular.html`, wait for `window.molecular.frames > 5`, confirm that `atoms > molecules * 10`, `bonds > atoms`, and that `reconstructionBadge` contains wording about the reconstructed atomic detail.
 
-- [ ] **Step 6: Реализовать сцену**
+- [ ] **Step 6: Implement the scene**
 
-`viewer/molecular.ts` берёт координаты бидов из живой системы ступени C, разворачивает каждый липид в молекулу и рисует шар-стержень: сферы с радиусами Ван-дер-Ваальса и цветами CPK из `data/atoms.json`, цилиндры по связям. Чтобы кадр оставался живым, при большом числе липидов разворачивать поатомно только те, что попали в срез или в окно вокруг камеры, а остальные рисовать бидами — и говорить об этом на экране числом: сколько молекул показано поатомно из общего числа.
+`viewer/molecular.ts` takes bead coordinates from Stage C's live system, unfolds each lipid into a molecule, and draws it ball-and-stick: spheres with Van der Waals radii and CPK colors from `data/atoms.json`, cylinders along the bonds. To keep the frame responsive, when there are many lipids, unfold only those that fall inside a slice or a window around the camera per-atom, and draw the rest as beads, stating this on screen as a number: how many molecules are shown per-atom out of the total.
 
-Бейдж обязан сказать прямо: положения тяжёлого скелета взяты из проверенной огрублённой динамики, атомная детализация **восстановлена по справочной геометрии**, а не досчитана независимо; и что это та же мембрана, чьи площадь на липид и толщина сверены с литературой.
+The badge must say plainly: the heavy-skeleton positions come from the verified coarse-grained dynamics, the atomic detail is **reconstructed from reference geometry** rather than independently computed, and that this is the same membrane whose area per lipid and thickness were checked against the literature.
 
-- [ ] **Step 7: Коммит**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add chem/src/backmap.ts viewer/molecular.ts viewer/molecular.html tests/chem-backmap.test.ts
@@ -782,6 +782,6 @@ git commit -m "feat: atomistic backmapping of the coarse-grained membrane"
 
 ---
 
-## Что план сознательно не делает
+## What This Plan Deliberately Does Not Do
 
-Термодинамика (`thermo/` на pyCHNOSZ, ворота 1), эталонные решатели (`ref/` с ОДУ и Gillespie, ворота 3), квантовые барьеры (`qm/`, повышение рангов до B), ворота агрегации (CMC и pH, ворота 4 и 5) и шов со ступенью C — предмет отдельных планов. Этот план заканчивается тем, что в кадре есть настоящие атомы, они движутся по проверенному закону, реагируют с проверенной скоростью, и из них на стенке вырастает молекула алкановой кислоты.
+Thermodynamics (`thermo/` on pyCHNOSZ, gate 1), reference solvers (`ref/` with ODEs and Gillespie, gate 3), quantum barriers (`qm/`, raising ranks to B), aggregation gates (CMC and pH, gates 4 and 5), and the seam with Stage C are the subject of separate plans. This plan ends with real atoms in the frame, moving according to a verified law, reacting at a verified rate, and growing into an alkanoic acid molecule on the wall.

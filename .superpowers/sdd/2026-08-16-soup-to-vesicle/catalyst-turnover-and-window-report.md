@@ -233,19 +233,19 @@ but the code:
 
 ```
 $ nice -n 15 npx tsx soup/cli/campaign.ts --label turn30 --box 30 --start '{"C":2630,"O":10520,"H":2630,"M":175,"W":2345}' --seed 19 --kT 1.1 --steps 150000 --every 15000 --dir data/checkpoints/turnover30
-[campaign] новый запуск label=turn30 (совпадающих контрольных точек в data/checkpoints/turnover30 нет)
-[campaign] система готова N=18300 стартовый_шаг=0 цель=150000
-[campaign] шаг=15000/150000 stage=bilayer агрегатов=10 крупнейший=102 headShells=1 cavityVolume=1.125 stepMs=16725 ...
-[campaign] шаг=30000/150000 stage=micelles агрегатов=5 крупнейший=175 headShells=1 cavityVolume=2.875 stepMs=23335 ...
-[campaign] шаг=45000/150000 stage=micelles агрегатов=4 крупнейший=163 headShells=1 cavityVolume=3.500 stepMs=26210 ...
-[campaign] шаг=60000/150000 stage=micelles агрегатов=4 крупнейший=159 headShells=1 cavityVolume=4.750 stepMs=27083 ...
-[campaign] шаг=75000/150000 stage=micelles агрегатов=4 крупнейший=154 headShells=1 cavityVolume=3.125 stepMs=28790 ...
-[campaign] шаг=90000/150000 stage=micelles агрегатов=4 крупнейший=140 headShells=1 cavityVolume=2.375 stepMs=28034 ...
-[campaign] шаг=105000/150000 stage=micelles агрегатов=4 крупнейший=133 headShells=1 cavityVolume=6.375 stepMs=27750 ...
-[campaign] шаг=120000/150000 stage=micelles агрегатов=4 крупнейший=123 headShells=1 cavityVolume=5.500 stepMs=28894 ...
-[campaign] шаг=135000/150000 stage=bilayer агрегатов=3 крупнейший=236 headShells=2 cavityVolume=5.750 stepMs=26705 ...
-[campaign] шаг=150000/150000 stage=bilayer агрегатов=5 крупнейший=132 headShells=1 cavityVolume=2.500 stepMs=26967 ...
-[campaign] бюджет шагов выполнен полностью: шаг=150000
+[campaign] new run label=turn30 (no matching checkpoints in data/checkpoints/turnover30)
+[campaign] system ready N=18300 startStep=0 target=150000
+[campaign] step=15000/150000 stage=bilayer aggregates=10 largest=102 headShells=1 cavityVolume=1.125 stepMs=16725 ...
+[campaign] step=30000/150000 stage=micelles aggregates=5 largest=175 headShells=1 cavityVolume=2.875 stepMs=23335 ...
+[campaign] step=45000/150000 stage=micelles aggregates=4 largest=163 headShells=1 cavityVolume=3.500 stepMs=26210 ...
+[campaign] step=60000/150000 stage=micelles aggregates=4 largest=159 headShells=1 cavityVolume=4.750 stepMs=27083 ...
+[campaign] step=75000/150000 stage=micelles aggregates=4 largest=154 headShells=1 cavityVolume=3.125 stepMs=28790 ...
+[campaign] step=90000/150000 stage=micelles aggregates=4 largest=140 headShells=1 cavityVolume=2.375 stepMs=28034 ...
+[campaign] step=105000/150000 stage=micelles aggregates=4 largest=133 headShells=1 cavityVolume=6.375 stepMs=27750 ...
+[campaign] step=120000/150000 stage=micelles aggregates=4 largest=123 headShells=1 cavityVolume=5.500 stepMs=28894 ...
+[campaign] step=135000/150000 stage=bilayer aggregates=3 largest=236 headShells=2 cavityVolume=5.750 stepMs=26705 ...
+[campaign] step=150000/150000 stage=bilayer aggregates=5 largest=132 headShells=1 cavityVolume=2.500 stepMs=26967 ...
+[campaign] step budget fully completed: step=150000
 ```
 
 Offline CPU audit (`tests/continuous-run-audit.test.ts`, unmodified, the SAME
@@ -378,8 +378,8 @@ Both new points, unedited. The 0.80 arm at the real box-54 configuration:
 
 ```
 $ nice -n 15 npx tsx soup/cli/campaign.ts --label ves54w --box 54 --start '{"C":10844,"O":43376,"H":10844,"M":722,"W":60185}' --seed 19 --kT 1.1 --steps 15000 --every 15000 --dir data/checkpoints/ves54w
-[campaign] система готова N=125971 стартовый_шаг=0 цель=15000
-[campaign] шаг=15000/15000 stage=monomers агрегатов=24 крупнейший=1 headShells=unavailable cavityVolume=0.000 stepMs=424768 ...
+[campaign] system ready N=125971 startStep=0 target=15000
+[campaign] step=15000/15000 stage=monomers aggregates=24 largest=1 headShells=unavailable cavityVolume=0.000 stepMs=424768 ...
 ```
 ```
 NF data/checkpoints/ves54w/ves54w-step15000.json step=15000 nonFinitePos=366282 nonFiniteVel=366282 maxFiniteAbsCoord=6.040e+8 events={"cc_bond":10,"cc_break":0,"co_bond":8,"co_break":0}
@@ -389,8 +389,8 @@ and the cheap box-30 screen at 0.75:
 
 ```
 $ nice -n 15 npx tsx soup/cli/campaign.ts --label rho075 --box 30 --start '{"C":1860,"O":7440,"H":1860,"M":124,"W":8966}' --seed 19 --kT 1.1 --steps 20000 --every 20000 --dir data/checkpoints/rho075
-[campaign] система готова N=20250 стартовый_шаг=0 цель=20000
-[campaign] шаг=20000/20000 stage=monomers агрегатов=0 крупнейший=0 headShells=n/a cavityVolume=0.000 stepMs=19232 ...
+[campaign] system ready N=20250 startStep=0 target=20000
+[campaign] step=20000/20000 stage=monomers aggregates=0 largest=0 headShells=n/a cavityVolume=0.000 stepMs=19232 ...
 ```
 ```
 NF data/checkpoints/rho075/rho075-step20000.json step=20000 nonFinitePos=60495 nonFiniteVel=60495 maxFiniteAbsCoord=2.962e+1 events={"cc_bond":0,"cc_break":0,"co_bond":0,"co_break":0}
@@ -465,9 +465,9 @@ water. `R(54) = 26.587 σ` against `L/2 = 27.0`, ratio 0.985.
 
 ```
 $ nice -n 15 npx tsx soup/cli/campaign.ts --label ves54b --box 54 --start '{"C":10844,"O":43376,"H":10844,"M":722,"W":40943}' --seed 19 --kT 1.1 --steps 1 --every 1 --dir data/checkpoints/trace54b
-[campaign] новый запуск label=ves54b (совпадающих контрольных точек в data/checkpoints/trace54b нет)
-[campaign] система готова N=106729 стартовый_шаг=0 цель=1
-[campaign] шаг=1/1 stage=monomers агрегатов=0 крупнейший=0 headShells=n/a cavityVolume=0.000 stepMs=23 checkpointMs=140 progressMs=25 сохранено=data/checkpoints/trace54b/ves54b-step1.json
+[campaign] new run label=ves54b (no matching checkpoints in data/checkpoints/trace54b)
+[campaign] system ready N=106729 startStep=0 target=1
+[campaign] step=1/1 stage=monomers aggregates=0 largest=0 headShells=n/a cavityVolume=0.000 stepMs=23 checkpointMs=140 progressMs=25 saved=data/checkpoints/trace54b/ves54b-step1.json
 ```
 ```
 RUN-AUDIT-START data/checkpoints/trace54b/ves54b-step1.json step=1 bondSlotsUsed=0 events={"cc_bond":0,"cc_break":0,"co_bond":0,"co_break":0}
@@ -478,30 +478,30 @@ step 1, audited: `stage=monomers`, amphiphiles 0, aggregates 0, bonds 0, all fou
 ### 5.3 Stage trace — the CLI's own progress lines, unedited, 7 resumable chunks
 
 ```
-[campaign] система готова N=106729 стартовый_шаг=0 цель=45000
-[campaign] шаг=15000/45000  stage=micelles агрегатов=67 крупнейший=99  headShells=2 cavityVolume=0.375 stepMs=99012
-[campaign] шаг=30000/45000  stage=micelles агрегатов=44 крупнейший=274 headShells=1 cavityVolume=4.500 stepMs=153992
-[campaign] шаг=45000/45000  stage=bilayer  агрегатов=31 крупнейший=277 headShells=1 cavityVolume=8.125 stepMs=153029
-[campaign] резюме label=ves54b из data/checkpoints/ves54b/ves54b-step45000.json, шаг=45000
-[campaign] шаг=60000/90000  stage=bilayer  агрегатов=33 крупнейший=271 headShells=1 cavityVolume=5.875 stepMs=166590
-[campaign] шаг=75000/90000  stage=bilayer  агрегатов=34 крупнейший=271 headShells=1 cavityVolume=7.625 stepMs=173393
-[campaign] шаг=90000/90000  stage=bilayer  агрегатов=34 крупнейший=268 headShells=1 cavityVolume=6.250 stepMs=166996
-[campaign] шаг=105000/135000 stage=bilayer агрегатов=35 крупнейший=271 headShells=1 cavityVolume=7.125 stepMs=166545
-[campaign] шаг=120000/135000 stage=bilayer агрегатов=34 крупнейший=271 headShells=1 cavityVolume=6.875 stepMs=170752
-[campaign] шаг=135000/135000 stage=bilayer агрегатов=35 крупнейший=271 headShells=1 cavityVolume=6.750 stepMs=170149
-[campaign] шаг=150000/180000 stage=micelles агрегатов=36 крупнейший=266 headShells=1 cavityVolume=4.625 stepMs=169029
-[campaign] шаг=165000/180000 stage=micelles агрегатов=32 крупнейший=266 headShells=1 cavityVolume=4.625 stepMs=174102
-[campaign] шаг=180000/180000 stage=bilayer агрегатов=32 крупнейший=271 headShells=1 cavityVolume=6.750 stepMs=171784
-[campaign] шаг=195000/225000 stage=bilayer агрегатов=33 крупнейший=271 headShells=1 cavityVolume=6.750 stepMs=174602
-[campaign] шаг=210000/225000 stage=bilayer агрегатов=33 крупнейший=271 headShells=1 cavityVolume=6.750 stepMs=172587
-[campaign] шаг=225000/225000 stage=micelles агрегатов=30 крупнейший=266 headShells=1 cavityVolume=4.625 stepMs=172802
-[campaign] шаг=240000/270000 stage=bilayer агрегатов=31 крупнейший=271 headShells=1 cavityVolume=6.750 stepMs=171817
-[campaign] шаг=255000/270000 stage=bilayer агрегатов=34 крупнейший=271 headShells=1 cavityVolume=6.750 stepMs=174237
-[campaign] шаг=270000/270000 stage=bilayer агрегатов=34 крупнейший=271 headShells=1 cavityVolume=6.750 stepMs=173198
-[campaign] шаг=285000/315000 stage=micelles агрегатов=32 крупнейший=266 headShells=1 cavityVolume=4.625 stepMs=173037
-[campaign] шаг=300000/315000 stage=bilayer агрегатов=33 крупнейший=271 headShells=1 cavityVolume=6.750 stepMs=178922
-[campaign] шаг=315000/315000 stage=bilayer агрегатов=34 крупнейший=271 headShells=1 cavityVolume=6.750 stepMs=174313
-[campaign] бюджет шагов выполнен полностью: шаг=315000
+[campaign] system ready N=106729 startStep=0 target=45000
+[campaign] step=15000/45000  stage=micelles aggregates=67 largest=99  headShells=2 cavityVolume=0.375 stepMs=99012
+[campaign] step=30000/45000  stage=micelles aggregates=44 largest=274 headShells=1 cavityVolume=4.500 stepMs=153992
+[campaign] step=45000/45000  stage=bilayer  aggregates=31 largest=277 headShells=1 cavityVolume=8.125 stepMs=153029
+[campaign] resume label=ves54b from data/checkpoints/ves54b/ves54b-step45000.json, step=45000
+[campaign] step=60000/90000  stage=bilayer  aggregates=33 largest=271 headShells=1 cavityVolume=5.875 stepMs=166590
+[campaign] step=75000/90000  stage=bilayer  aggregates=34 largest=271 headShells=1 cavityVolume=7.625 stepMs=173393
+[campaign] step=90000/90000  stage=bilayer  aggregates=34 largest=268 headShells=1 cavityVolume=6.250 stepMs=166996
+[campaign] step=105000/135000 stage=bilayer aggregates=35 largest=271 headShells=1 cavityVolume=7.125 stepMs=166545
+[campaign] step=120000/135000 stage=bilayer aggregates=34 largest=271 headShells=1 cavityVolume=6.875 stepMs=170752
+[campaign] step=135000/135000 stage=bilayer aggregates=35 largest=271 headShells=1 cavityVolume=6.750 stepMs=170149
+[campaign] step=150000/180000 stage=micelles aggregates=36 largest=266 headShells=1 cavityVolume=4.625 stepMs=169029
+[campaign] step=165000/180000 stage=micelles aggregates=32 largest=266 headShells=1 cavityVolume=4.625 stepMs=174102
+[campaign] step=180000/180000 stage=bilayer aggregates=32 largest=271 headShells=1 cavityVolume=6.750 stepMs=171784
+[campaign] step=195000/225000 stage=bilayer aggregates=33 largest=271 headShells=1 cavityVolume=6.750 stepMs=174602
+[campaign] step=210000/225000 stage=bilayer aggregates=33 largest=271 headShells=1 cavityVolume=6.750 stepMs=172587
+[campaign] step=225000/225000 stage=micelles aggregates=30 largest=266 headShells=1 cavityVolume=4.625 stepMs=172802
+[campaign] step=240000/270000 stage=bilayer aggregates=31 largest=271 headShells=1 cavityVolume=6.750 stepMs=171817
+[campaign] step=255000/270000 stage=bilayer aggregates=34 largest=271 headShells=1 cavityVolume=6.750 stepMs=174237
+[campaign] step=270000/270000 stage=bilayer aggregates=34 largest=271 headShells=1 cavityVolume=6.750 stepMs=173198
+[campaign] step=285000/315000 stage=micelles aggregates=32 largest=266 headShells=1 cavityVolume=4.625 stepMs=173037
+[campaign] step=300000/315000 stage=bilayer aggregates=33 largest=271 headShells=1 cavityVolume=6.750 stepMs=178922
+[campaign] step=315000/315000 stage=bilayer aggregates=34 largest=271 headShells=1 cavityVolume=6.750 stepMs=174313
+[campaign] step budget fully completed: step=315000
 ```
 
 **Stage transitions:** `monomers` → `micelles` before step 15 000; first `bilayer` at step **45 000**
@@ -678,11 +678,11 @@ GATE6 area 1.2064 +/- 0.0070 (min 1.1904, max 1.2189)  thickness 4.4773 (per-fra
 CONVERGE start 1.55 (first sample 1.538)  moves 800  tail mean 1.2215 min 1.1925 max 1.2589  lnA drift t=-1.91 (-7.79e-5/move)  accepted 0.468  clusterFraction 1.0000  peaksOk true  checkpoints 4
 CONVERGE start 0.9 (first sample 0.905)  moves 400  tail mean 1.2145 min 1.1705 max 1.2629  lnA drift t=0.32 (1.85e-5/move)  accepted 0.477  clusterFraction 0.9975  peaksOk true  checkpoints 2
  ✓ tests/gate6-bilayer.test.ts (2 tests) 72886ms
-   ✓ готовый бислой при нулевом натяжении держит площадь и толщину из литературы 30444ms
-   ✓ площадь сходится в литературный коридор и из слишком большого, и из слишком малого бокса 42297ms
+   ✓ a ready-made bilayer at zero tension holds the area and thickness from the literature 30444ms
+   ✓ area converges into the literature corridor both from too large and too small a box 42297ms
 WATER-BILAYER-AREAMOVE-VERDICT settled=true chunks=450 areaPerLipid(MEASURED, tail mean)=1.2095 [min 1.2057, max 1.2126, corridor 1.1-1.5] driftPerChunk(lnA)=4.627e-7 t=0.06 thickness(measured)=4.3338 [corridor 4-6] clusterFraction=1.0000 waterInCore=38/4500 headBuriedFraction=0.0809 acceptedFraction=0.1256 of 4500 trials throughput=987.74 steps/s at N=5700 verdict=passed
  ✓ tests/water-bilayer-area-move.test.ts (1 test) 229771ms
-   ✓ бислойная заплатка в явной воде: площадь на липид ИЗМЕРЕНА при нулевом натяжении 229642ms
+   ✓ bilayer patch in explicit water: area per lipid MEASURED at zero tension 229642ms
  Test Files  2 passed (2)
       Tests  3 passed (3)
 ```
@@ -697,7 +697,7 @@ recomputed from.
 ```
 $ nice -n 15 npx vitest run tests/catalyst-turnover.test.ts
  ✓ tests/catalyst-turnover.test.ts (1 test) 85153ms
-   ✓ катализатор оборачивается: за один и тот же прогон нуклеируется больше цепей и расходуется больше углерода 85057ms
+   ✓ the catalyst turns over: within the same run, more chains nucleate and more carbon is consumed 85057ms
  Test Files  1 passed (1)
       Tests  1 passed (1)
 ```

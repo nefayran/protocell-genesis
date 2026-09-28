@@ -1,7 +1,5 @@
 # Atomic engine: chemistry and physics at the level of atoms
 
-English translation of [`README.ru.md`](README.ru.md).
-
 The task as set: an engine that works at the atomic level, for any elements, and reproduces
 processes, instead of the previous layer, where the chemistry came down to four invented rules with
 invented rates.

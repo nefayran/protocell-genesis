@@ -43,9 +43,9 @@ $ python3 -c "import json; d=json.load(open('data/soup.json')); print([{k:r[k] f
  {'id': 'co_break','kind': 'break','energyKT': 8.0, 'attemptRate': 0.05,        'rank': 'D'}]
 ```
 
-1. `data/soup.json` `cc_break.attemptRate = 0` **exactly**, with its own written basis: *"ОТКЛЮЧЕНО,
-   необратимо (task 'kinetic-growth', 2026-08-17) … правило разрыва ОСТАВЛЕНО в файле … но НИКОГДА не
-   срабатывает"*.
+1. `data/soup.json` `cc_break.attemptRate = 0` **exactly**, with its own written basis: *"DISABLED,
+   irreversibly (task 'kinetic-growth', 2026-08-17) … the break rule is LEFT in the file … but NEVER
+   fires"*.
 2. The propagation path is `attemptProbability(r, dt) = r.attemptRate * dt` (`soup/src/rules.ts:423`)
    → `packVec4(rules.map(... attemptProbability ...))` (`soup/src/soup-buffers.ts:267`) →
    `BP.attemptProbBreak`. The shader's gate is
@@ -414,9 +414,9 @@ O:C = 4 leaves no room for more at a stable total density. Inherited-and-worsene
 
 ```
 $ nice -n 15 npx tsx soup/cli/campaign.ts --label soup2ves54 --box 54 --start '{"C":15338,"O":61353,"H":15338,"M":1021,"W":13676}' --seed 19 --kT 1.1 --steps 1 --every 1 --dir data/checkpoints/trace54
-[campaign] новый запуск label=soup2ves54 (совпадающих контрольных точек в data/checkpoints/trace54 нет)
-[campaign] система готова N=106726 стартовый_шаг=0 цель=1
-[campaign] шаг=1/1 stage=monomers агрегатов=0 крупнейший=0 headShells=n/a cavityVolume=0.000 stepMs=24 checkpointMs=141 progressMs=22 сохранено=data/checkpoints/trace54/soup2ves54-step1.json
+[campaign] new run label=soup2ves54 (no matching checkpoints found in data/checkpoints/trace54)
+[campaign] system ready N=106726 start_step=0 target=1
+[campaign] step=1/1 stage=monomers aggregates=0 largest=0 headShells=n/a cavityVolume=0.000 stepMs=24 checkpointMs=141 progressMs=22 saved=data/checkpoints/trace54/soup2ves54-step1.json
 ```
 
 decoded off-GPU by `tests/continuous-run-audit.test.ts`:
@@ -431,26 +431,26 @@ pre-built patch, from the run's own recorded state.**
 ### 5.3 Stage trace — the CLI's own progress lines, unedited
 
 ```
-[campaign] шаг=15000/30000 stage=micelles агрегатов=88 крупнейший=71 headShells=1 cavityVolume=0.250 stepMs=106258
-[campaign] шаг=30000/30000 stage=micelles агрегатов=61 крупнейший=113 headShells=2 cavityVolume=0.250 stepMs=147387
-[campaign] шаг=45000/75000 stage=micelles агрегатов=45 крупнейший=111 headShells=1 cavityVolume=1.000 stepMs=155753
-[campaign] шаг=60000/75000 stage=micelles агрегатов=49 крупнейший=110 headShells=1 cavityVolume=1.500 stepMs=161046
-[campaign] шаг=75000/75000 stage=micelles агрегатов=48 крупнейший=108 headShells=1 cavityVolume=0.750 stepMs=159597
-[campaign] шаг=90000/120000 stage=bilayer агрегатов=45 крупнейший=108 headShells=2 cavityVolume=0.750 stepMs=147254
-[campaign] шаг=105000/120000 stage=micelles агрегатов=54 крупнейший=108 headShells=2 cavityVolume=0.375 stepMs=160498
-[campaign] шаг=120000/120000 stage=bilayer агрегатов=49 крупнейший=108 headShells=2 cavityVolume=0.375 stepMs=157822
-[campaign] шаг=135000/165000 stage=bilayer агрегатов=46 крупнейший=105 headShells=1 cavityVolume=0.625 stepMs=156966
-[campaign] шаг=150000/165000 stage=bilayer агрегатов=48 крупнейший=105 headShells=1 cavityVolume=0.625 stepMs=156770
-[campaign] шаг=165000/165000 stage=micelles агрегатов=51 крупнейший=108 headShells=2 cavityVolume=0.375 stepMs=156458
-[campaign] шаг=180000/210000 stage=bilayer агрегатов=49 крупнейший=108 headShells=2 cavityVolume=0.375 stepMs=153823
-[campaign] шаг=195000/210000 stage=bilayer агрегатов=45 крупнейший=105 headShells=1 cavityVolume=0.875 stepMs=155931
-[campaign] шаг=210000/210000 stage=bilayer агрегатов=47 крупнейший=105 headShells=1 cavityVolume=0.875 stepMs=157772
-[campaign] шаг=225000/255000 stage=micelles агрегатов=50 крупнейший=108 headShells=2 cavityVolume=0.500 stepMs=152276
-[campaign] шаг=240000/255000 stage=micelles агрегатов=48 крупнейший=108 headShells=2 cavityVolume=0.500 stepMs=155894
-[campaign] шаг=255000/255000 stage=bilayer агрегатов=50 крупнейший=105 headShells=1 cavityVolume=1.125 stepMs=155803
-[campaign] шаг=270000/300000 stage=bilayer агрегатов=47 крупнейший=105 headShells=1 cavityVolume=1.125 stepMs=153479
-[campaign] шаг=285000/300000 stage=bilayer агрегатов=45 крупнейший=108 headShells=2 cavityVolume=0.500 stepMs=156209
-[campaign] шаг=300000/300000 stage=micelles агрегатов=56 крупнейший=108 headShells=2 cavityVolume=0.625 stepMs=155939
+[campaign] step=15000/30000 stage=micelles aggregates=88 largest=71 headShells=1 cavityVolume=0.250 stepMs=106258
+[campaign] step=30000/30000 stage=micelles aggregates=61 largest=113 headShells=2 cavityVolume=0.250 stepMs=147387
+[campaign] step=45000/75000 stage=micelles aggregates=45 largest=111 headShells=1 cavityVolume=1.000 stepMs=155753
+[campaign] step=60000/75000 stage=micelles aggregates=49 largest=110 headShells=1 cavityVolume=1.500 stepMs=161046
+[campaign] step=75000/75000 stage=micelles aggregates=48 largest=108 headShells=1 cavityVolume=0.750 stepMs=159597
+[campaign] step=90000/120000 stage=bilayer aggregates=45 largest=108 headShells=2 cavityVolume=0.750 stepMs=147254
+[campaign] step=105000/120000 stage=micelles aggregates=54 largest=108 headShells=2 cavityVolume=0.375 stepMs=160498
+[campaign] step=120000/120000 stage=bilayer aggregates=49 largest=108 headShells=2 cavityVolume=0.375 stepMs=157822
+[campaign] step=135000/165000 stage=bilayer aggregates=46 largest=105 headShells=1 cavityVolume=0.625 stepMs=156966
+[campaign] step=150000/165000 stage=bilayer aggregates=48 largest=105 headShells=1 cavityVolume=0.625 stepMs=156770
+[campaign] step=165000/165000 stage=micelles aggregates=51 largest=108 headShells=2 cavityVolume=0.375 stepMs=156458
+[campaign] step=180000/210000 stage=bilayer aggregates=49 largest=108 headShells=2 cavityVolume=0.375 stepMs=153823
+[campaign] step=195000/210000 stage=bilayer aggregates=45 largest=105 headShells=1 cavityVolume=0.875 stepMs=155931
+[campaign] step=210000/210000 stage=bilayer aggregates=47 largest=105 headShells=1 cavityVolume=0.875 stepMs=157772
+[campaign] step=225000/255000 stage=micelles aggregates=50 largest=108 headShells=2 cavityVolume=0.500 stepMs=152276
+[campaign] step=240000/255000 stage=micelles aggregates=48 largest=108 headShells=2 cavityVolume=0.500 stepMs=155894
+[campaign] step=255000/255000 stage=bilayer aggregates=50 largest=105 headShells=1 cavityVolume=1.125 stepMs=155803
+[campaign] step=270000/300000 stage=bilayer aggregates=47 largest=105 headShells=1 cavityVolume=1.125 stepMs=153479
+[campaign] step=285000/300000 stage=bilayer aggregates=45 largest=108 headShells=2 cavityVolume=0.500 stepMs=156209
+[campaign] step=300000/300000 stage=micelles aggregates=56 largest=108 headShells=2 cavityVolume=0.625 stepMs=155939
 ```
 
 **Stage transitions:** `monomers` → `micelles` before step 15 000 (both `amphiphiles` and `micelles`
@@ -483,9 +483,9 @@ is not "the reagents ran out".
 Reproducibility, seed 23 (independent lineage, 45 000 steps):
 
 ```
-[campaign] шаг=15000/45000 stage=micelles агрегатов=95 крупнейший=78  headShells=1 cavityVolume=0.375
-[campaign] шаг=30000/45000 stage=micelles агрегатов=42 крупнейший=162 headShells=1 cavityVolume=0.375
-[campaign] шаг=45000/45000 stage=micelles агрегатов=39 крупнейший=154 headShells=1 cavityVolume=0.875
+[campaign] step=15000/45000 stage=micelles aggregates=95 largest=78  headShells=1 cavityVolume=0.375
+[campaign] step=30000/45000 stage=micelles aggregates=42 largest=162 headShells=1 cavityVolume=0.375
+[campaign] step=45000/45000 stage=micelles aggregates=39 largest=154 headShells=1 cavityVolume=0.875
 ```
 audited: step 45 000 — amph 1553, frac 0.3012, perTail **2.396**, α_ev 0.5845, aggs 39, qual 29,
 shareQ 0.9697, largest **154** amphiphiles / 627 particles, Rg 9.038, moments 9.362/16.382/55.933,
@@ -634,8 +634,8 @@ $ nice -n 15 npx vitest run tests/gate6-bilayer.test.ts
 CONVERGE start 1.55 (first sample 1.538)  moves 400  tail mean 1.2163 min 1.1783 max 1.2477  lnA drift t=-1.40 (-4.15e-5/move)  accepted 0.465  clusterFraction 1.0000  peaksOk true  checkpoints 2
 CONVERGE start 0.9 (first sample 0.905)  moves 400  tail mean 1.2045 min 1.1528 max 1.2447  lnA drift t=-1.65 (-1.04e-4/move)  accepted 0.469  clusterFraction 0.9975  peaksOk true  checkpoints 2
  ✓ tests/gate6-bilayer.test.ts (2 tests) 52770ms
-   ✓ готовый бислой при нулевом натяжении держит площадь и толщину из литературы 27151ms
-   ✓ площадь сходится в литературный коридор и из слишком большого, и из слишком малого бокса 25529ms
+   ✓ a ready bilayer at zero tension holds the area and thickness from the literature 27151ms
+   ✓ the area converges to the literature corridor from both a too-large and a too-small box 25529ms
  Test Files  1 passed (1)
       Tests  2 passed (2)
 ```
@@ -644,7 +644,7 @@ CONVERGE start 0.9 (first sample 0.905)  moves 400  tail mean 1.2045 min 1.1528 
 $ nice -n 15 npx vitest run tests/water-bilayer-area-move.test.ts
 WATER-BILAYER-AREAMOVE-VERDICT settled=true chunks=300 areaPerLipid(MEASURED, tail mean)=1.2019 [min 1.1955, max 1.2072, corridor 1.1-1.5] driftPerChunk(lnA)=4.637e-6 t=0.95 thickness(measured)=4.5911 [corridor 4-6] clusterFraction=0.9974 waterInCore=32/4500 headBuriedFraction=0.0599 acceptedFraction=0.1290 of 3000 trials throughput=1231.14 steps/s at N=5700 verdict=passed
  ✓ tests/water-bilayer-area-move.test.ts (1 test) 123560ms
-   ✓ бислойная заплатка в явной воде: площадь на липид ИЗМЕРЕНА при нулевом натяжении 123467ms
+   ✓ a bilayer patch in explicit water: area per lipid MEASURED at zero tension 123467ms
  Test Files  1 passed (1)
       Tests  1 passed (1)
 ```
@@ -657,11 +657,11 @@ measured over n = 5 (area 1.1211–1.2215, thickness 4.316–5.103): area **1.20
 
 ```
 $ nice -n 15 npx vitest run tests/soup-valence.test.ts
- ✓ ни один атом углерода не превышает 2 связей C-C и 1 связь C-O; ни одна голова не превышает configured chainCapacity связей, за 45000 шагов 54713ms
+ ✓ no carbon atom exceeds 2 C-C bonds and 1 C-O bond; no head exceeds the configured chainCapacity bonds, over 45000 steps 54713ms
  Test Files  1 passed (1)      Tests  1 passed (1)
 
-$ nice -n 15 npx vitest run tests/soup-bonds.test.ts -t 'каталитическом'
- ✓ связи образуются только на каталитическом центре там, где правило это требует 130404ms
+$ nice -n 15 npx vitest run tests/soup-bonds.test.ts -t 'catalytic center'
+ ✓ bonds form only at a catalytic center, where the rule requires it 130404ms
  Test Files  1 passed (1)      Tests  1 passed | 2 skipped (3)
 ```
 

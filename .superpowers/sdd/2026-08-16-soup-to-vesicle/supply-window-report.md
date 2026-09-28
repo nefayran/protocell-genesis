@@ -340,7 +340,7 @@ pre-made entered this run.**
 **Invariants, every checkpoint, asserted not eyeballed:** non-finite positions **0**, velocities **0**,
 all six valence counters **0** across all 12; census exactly `{C:20084, O:6693, H:20084, M:521,
 W:125971}` at the ten wet-box checkpoints and the same organics with `W:90` at the two dry ones;
-`RUN-AUDIT-TETHER нарушений=0`. Final events `{cc_bond:11926, cc_break:0, co_bond:3885, co_break:162}`.
+`RUN-AUDIT-TETHER violations=0`. Final events `{cc_bond:11926, cc_break:0, co_bond:3885, co_break:162}`.
 Final per-tail histogram `{2:1359, 3:475, 4:249, 5:170, 6:108, 7:60, 8:55, 9:26, 10:17, 11:11, 12:15,
 13:7, 14:6, 15:4, 16:6, 17:4, 18:2, 19:3, 22:2, 25:1}`.
 

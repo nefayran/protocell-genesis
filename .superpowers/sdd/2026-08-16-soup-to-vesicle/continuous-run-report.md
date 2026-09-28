@@ -204,53 +204,53 @@ low-probability channel and zero is consistent with it, not a violation — flag
 Every `--every` boundary of every chunk, first and last of each invocation shown, verbatim:
 
 ```
-[campaign] шаг=1/1 stage=monomers агрегатов=0 крупнейший=0 headShells=n/a cavityVolume=0.000 stepMs=76 checkpointMs=527 progressMs=48
-[campaign] шаг=4001/8001 stage=monomers агрегатов=137 крупнейший=3 headShells=unavailable cavityVolume=0.000 stepMs=72317
-[campaign] шаг=8001/8001 stage=monomers агрегатов=283 крупнейший=6 headShells=unavailable cavityVolume=0.000 stepMs=250776
-[campaign] шаг=12001/16001 stage=amphiphiles агрегатов=350 крупнейший=4 headShells=unavailable cavityVolume=0.000 stepMs=165019
-[campaign] шаг=16001/16001 stage=amphiphiles агрегатов=371 крупнейший=6 headShells=unavailable cavityVolume=0.000 stepMs=179647
-[campaign] шаг=20001/28001 stage=amphiphiles агрегатов=381 крупнейший=6 ... stepMs=176465
-[campaign] шаг=24001/28001 stage=amphiphiles агрегатов=384 крупнейший=7 ... stepMs=177325
-[campaign] шаг=28001/28001 stage=amphiphiles агрегатов=391 крупнейший=9 ... stepMs=179301
-[campaign] шаг=32001/40001 stage=amphiphiles агрегатов=391 крупнейший=9 ... stepMs=176458
-[campaign] шаг=36001/40001 stage=amphiphiles агрегатов=400 крупнейший=14 ... stepMs=181127
-[campaign] шаг=40001/40001 stage=amphiphiles агрегатов=397 крупнейший=14 ... stepMs=186628
-[campaign] шаг=44001/52001 stage=amphiphiles агрегатов=407 крупнейший=11 ... stepMs=184980
-[campaign] шаг=48001/52001 stage=amphiphiles агрегатов=409 крупнейший=9  ... stepMs=184989
-[campaign] шаг=52001/52001 stage=amphiphiles агрегатов=409 крупнейший=8  cavityVolume=0.125 stepMs=184790
-[campaign] шаг=56001/64001 stage=amphiphiles агрегатов=395 крупнейший=10 ... stepMs=123554
-[campaign] шаг=60001/64001 stage=amphiphiles агрегатов=403 крупнейший=10 ... stepMs=202266
-[campaign] шаг=64001/64001 stage=amphiphiles агрегатов=407 крупнейший=10 ... stepMs=170433
-[campaign] шаг=68001/76001 stage=amphiphiles агрегатов=411 крупнейший=10 ... stepMs=169242
-[campaign] шаг=72001/76001 stage=amphiphiles агрегатов=404 крупнейший=11 ... stepMs=168357
-[campaign] шаг=76001/76001 stage=amphiphiles агрегатов=404 крупнейший=11 ... stepMs=171106
-[campaign] шаг=80001/88001 stage=amphiphiles агрегатов=400 крупнейший=11 ... stepMs=165259
-[campaign] шаг=84001/88001 stage=amphiphiles агрегатов=414 крупнейший=11 ... stepMs=171372
-[campaign] шаг=88001/88001 stage=amphiphiles агрегатов=400 крупнейший=11 ... stepMs=172143
-[campaign] шаг=92001/100001 stage=amphiphiles агрегатов=399 крупнейший=11 ... stepMs=165894
-[campaign] шаг=96001/100001 stage=amphiphiles агрегатов=407 крупнейший=11 ... stepMs=174993
-[campaign] шаг=100001/100001 stage=amphiphiles агрегатов=406 крупнейший=12 ... stepMs=182369
-[campaign] шаг=104001/112001 stage=amphiphiles агрегатов=403 крупнейший=12 cavityVolume=0.125 stepMs=180864
-[campaign] шаг=108001/112001 stage=amphiphiles агрегатов=400 крупнейший=12 cavityVolume=0.125 stepMs=189317
-[campaign] шаг=112001/112001 stage=amphiphiles агрегатов=397 крупнейший=12 cavityVolume=0.125 stepMs=177844
-[campaign] шаг=116001/124001 stage=amphiphiles агрегатов=418 крупнейший=10 cavityVolume=0.250 stepMs=184265
-[campaign] шаг=120001/124001 stage=amphiphiles агрегатов=405 крупнейший=12 cavityVolume=0.125 stepMs=181064
-[campaign] шаг=124001/124001 stage=amphiphiles агрегатов=398 крупнейший=12 cavityVolume=0.125 stepMs=180789
-[campaign] шаг=128001/136001 stage=amphiphiles агрегатов=403 крупнейший=12 cavityVolume=0.125 stepMs=180023
-[campaign] шаг=132001/136001 stage=amphiphiles агрегатов=401 крупнейший=12 cavityVolume=0.125 stepMs=186763
-[campaign] шаг=136001/136001 stage=amphiphiles агрегатов=402 крупнейший=12 cavityVolume=0.125 stepMs=184307
-[campaign] шаг=140001/148001 stage=amphiphiles агрегатов=404 крупнейший=10 ... stepMs=177843
-[campaign] шаг=144001/148001 stage=amphiphiles агрегатов=398 крупнейший=12 ... stepMs=179520
-[campaign] шаг=148001/148001 stage=amphiphiles агрегатов=404 крупнейший=12 ... stepMs=175963
-[campaign] шаг=152001/160001 stage=amphiphiles агрегатов=395 крупнейший=12 ... stepMs=177222
-[campaign] шаг=156001/160001 stage=amphiphiles агрегатов=400 крупнейший=12 ... stepMs=180430
-[campaign] шаг=160001/160001 stage=amphiphiles агрегатов=413 крупнейший=12 ... stepMs=179902
-[campaign] шаг=164001/172001 stage=amphiphiles агрегатов=407 крупнейший=10 ... stepMs=172311
-[campaign] шаг=168001/172001 stage=amphiphiles агрегатов=402 крупнейший=12 ... stepMs=176316
-[campaign] шаг=172001/172001 stage=amphiphiles агрегатов=405 крупнейший=12 ... stepMs=180811
-[campaign] шаг=176001/184001 stage=amphiphiles агрегатов=398 крупнейший=12 ... stepMs=176805
-[campaign] шаг=180001/184001 stage=amphiphiles агрегатов=394 крупнейший=12 ... stepMs=179340
-[campaign] шаг=184001/184001 stage=amphiphiles агрегатов=409 крупнейший=12 headShells=unavailable cavityVolume=0.000 stepMs=178196
+[campaign] step=1/1 stage=monomers aggregates=0 largest=0 headShells=n/a cavityVolume=0.000 stepMs=76 checkpointMs=527 progressMs=48
+[campaign] step=4001/8001 stage=monomers aggregates=137 largest=3 headShells=unavailable cavityVolume=0.000 stepMs=72317
+[campaign] step=8001/8001 stage=monomers aggregates=283 largest=6 headShells=unavailable cavityVolume=0.000 stepMs=250776
+[campaign] step=12001/16001 stage=amphiphiles aggregates=350 largest=4 headShells=unavailable cavityVolume=0.000 stepMs=165019
+[campaign] step=16001/16001 stage=amphiphiles aggregates=371 largest=6 headShells=unavailable cavityVolume=0.000 stepMs=179647
+[campaign] step=20001/28001 stage=amphiphiles aggregates=381 largest=6 ... stepMs=176465
+[campaign] step=24001/28001 stage=amphiphiles aggregates=384 largest=7 ... stepMs=177325
+[campaign] step=28001/28001 stage=amphiphiles aggregates=391 largest=9 ... stepMs=179301
+[campaign] step=32001/40001 stage=amphiphiles aggregates=391 largest=9 ... stepMs=176458
+[campaign] step=36001/40001 stage=amphiphiles aggregates=400 largest=14 ... stepMs=181127
+[campaign] step=40001/40001 stage=amphiphiles aggregates=397 largest=14 ... stepMs=186628
+[campaign] step=44001/52001 stage=amphiphiles aggregates=407 largest=11 ... stepMs=184980
+[campaign] step=48001/52001 stage=amphiphiles aggregates=409 largest=9  ... stepMs=184989
+[campaign] step=52001/52001 stage=amphiphiles aggregates=409 largest=8  cavityVolume=0.125 stepMs=184790
+[campaign] step=56001/64001 stage=amphiphiles aggregates=395 largest=10 ... stepMs=123554
+[campaign] step=60001/64001 stage=amphiphiles aggregates=403 largest=10 ... stepMs=202266
+[campaign] step=64001/64001 stage=amphiphiles aggregates=407 largest=10 ... stepMs=170433
+[campaign] step=68001/76001 stage=amphiphiles aggregates=411 largest=10 ... stepMs=169242
+[campaign] step=72001/76001 stage=amphiphiles aggregates=404 largest=11 ... stepMs=168357
+[campaign] step=76001/76001 stage=amphiphiles aggregates=404 largest=11 ... stepMs=171106
+[campaign] step=80001/88001 stage=amphiphiles aggregates=400 largest=11 ... stepMs=165259
+[campaign] step=84001/88001 stage=amphiphiles aggregates=414 largest=11 ... stepMs=171372
+[campaign] step=88001/88001 stage=amphiphiles aggregates=400 largest=11 ... stepMs=172143
+[campaign] step=92001/100001 stage=amphiphiles aggregates=399 largest=11 ... stepMs=165894
+[campaign] step=96001/100001 stage=amphiphiles aggregates=407 largest=11 ... stepMs=174993
+[campaign] step=100001/100001 stage=amphiphiles aggregates=406 largest=12 ... stepMs=182369
+[campaign] step=104001/112001 stage=amphiphiles aggregates=403 largest=12 cavityVolume=0.125 stepMs=180864
+[campaign] step=108001/112001 stage=amphiphiles aggregates=400 largest=12 cavityVolume=0.125 stepMs=189317
+[campaign] step=112001/112001 stage=amphiphiles aggregates=397 largest=12 cavityVolume=0.125 stepMs=177844
+[campaign] step=116001/124001 stage=amphiphiles aggregates=418 largest=10 cavityVolume=0.250 stepMs=184265
+[campaign] step=120001/124001 stage=amphiphiles aggregates=405 largest=12 cavityVolume=0.125 stepMs=181064
+[campaign] step=124001/124001 stage=amphiphiles aggregates=398 largest=12 cavityVolume=0.125 stepMs=180789
+[campaign] step=128001/136001 stage=amphiphiles aggregates=403 largest=12 cavityVolume=0.125 stepMs=180023
+[campaign] step=132001/136001 stage=amphiphiles aggregates=401 largest=12 cavityVolume=0.125 stepMs=186763
+[campaign] step=136001/136001 stage=amphiphiles aggregates=402 largest=12 cavityVolume=0.125 stepMs=184307
+[campaign] step=140001/148001 stage=amphiphiles aggregates=404 largest=10 ... stepMs=177843
+[campaign] step=144001/148001 stage=amphiphiles aggregates=398 largest=12 ... stepMs=179520
+[campaign] step=148001/148001 stage=amphiphiles aggregates=404 largest=12 ... stepMs=175963
+[campaign] step=152001/160001 stage=amphiphiles aggregates=395 largest=12 ... stepMs=177222
+[campaign] step=156001/160001 stage=amphiphiles aggregates=400 largest=12 ... stepMs=180430
+[campaign] step=160001/160001 stage=amphiphiles aggregates=413 largest=12 ... stepMs=179902
+[campaign] step=164001/172001 stage=amphiphiles aggregates=407 largest=10 ... stepMs=172311
+[campaign] step=168001/172001 stage=amphiphiles aggregates=402 largest=12 ... stepMs=176316
+[campaign] step=172001/172001 stage=amphiphiles aggregates=405 largest=12 ... stepMs=180811
+[campaign] step=176001/184001 stage=amphiphiles aggregates=398 largest=12 ... stepMs=176805
+[campaign] step=180001/184001 stage=amphiphiles aggregates=394 largest=12 ... stepMs=179340
+[campaign] step=184001/184001 stage=amphiphiles aggregates=409 largest=12 headShells=unavailable cavityVolume=0.000 stepMs=178196
 ```
 
 **Stage transitions, with step numbers:** `monomers` → `amphiphiles` between step 8001 and step 12001
@@ -354,8 +354,8 @@ $ nice -n 15 npx vitest run tests/gate6-bilayer.test.ts
 CONVERGE start 1.55 (first sample 1.530)  moves 400  tail mean 1.2127 min 1.1753 max 1.2537  lnA drift t=0.44 (2.43e-5/move)  accepted 0.440  clusterFraction 1.0000  peaksOk true  checkpoints 2
 CONVERGE start 0.9 (first sample 0.905)  moves 400  tail mean 1.2010 min 1.1725 max 1.2274  lnA drift t=1.47 (5.04e-5/move)  accepted 0.469  clusterFraction 0.9975  peaksOk true  checkpoints 2
  ✓ tests/gate6-bilayer.test.ts (2 tests) 53020ms
-   ✓ готовый бислой при нулевом натяжении держит площадь и толщину из литературы 27333ms
-   ✓ площадь сходится в литературный коридор и из слишком большого, и из слишком малого бокса 25603ms
+   ✓ a pre-formed bilayer at zero tension holds the area and thickness from the literature 27333ms
+   ✓ area converges into the literature corridor from both a too-large and a too-small box 25603ms
  Test Files  1 passed (1)
       Tests  2 passed (2)
 ```
@@ -376,11 +376,11 @@ Rule-level invariant confirmations, one invocation each:
 
 ```
 $ nice -n 15 npx vitest run tests/soup-valence.test.ts
- ✓ ни один атом углерода не превышает 2 связей C-C и 1 связь C-O; ни одна голова не превышает configured chainCapacity связей, за 45000 шагов 65449ms
+ ✓ no carbon atom exceeds 2 C-C bonds and 1 C-O bond; no head exceeds the configured chainCapacity bonds, over 45000 steps 65449ms
  Test Files  1 passed (1)      Tests  1 passed (1)
 
-$ nice -n 15 npx vitest run tests/soup-bonds.test.ts -t 'каталитическом'
- ✓ связи образуются только на каталитическом центре там, где правило это требует 128750ms
+$ nice -n 15 npx vitest run tests/soup-bonds.test.ts -t 'catalytic'
+ ✓ bonds form only at a catalytic centre where the rule requires it 128750ms
  Test Files  1 passed (1)      Tests  1 passed | 2 skipped (3)
 
 $ CONTINUOUS_RUN_CHECKPOINTS='...15 checkpoints...' nice -n 15 npx vitest run tests/continuous-run-audit.test.ts

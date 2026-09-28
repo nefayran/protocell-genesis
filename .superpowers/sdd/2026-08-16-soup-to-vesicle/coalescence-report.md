@@ -424,26 +424,26 @@ Independently re-audited off the written file: max bond length **1.2030** (paren
 ```
 $ nice -n 15 npx tsx soup/cli/campaign.ts --label fuse54 --box 54 --start '{...}' --seed 19 --kT 1.1 \
     --steps 20000 --every 5000 --dir data/checkpoints/fuse
-[campaign] резюме label=fuse54 из data/checkpoints/fuse/fuse54-step174400.json, шаг=174400
-[campaign] система готова N=191764 стартовый_шаг=174400 цель=194400
-Error: нефинитное состояние на шаге=175400: нефинитных компонент позиций=565914, скоростей=565914
-       из 575292 (появилось в интервале шагов 174400..175400) -- расчёт разошёлся
+[campaign] resume label=fuse54 from data/checkpoints/fuse/fuse54-step174400.json, step=174400
+[campaign] system ready N=191764 startStep=174400 target=194400
+Error: non-finite state at step=175400: non-finite position components=565914, velocities=565914
+       of 575292 (appeared within the step interval 174400..175400) -- the computation diverged
 ```
 
 With a mid-run minimisation asked for at the first step:
 
 ```
-[campaign] минимизация ПОСРЕДИ прогона на шаге=174401 итераций=200 max|F| 2.2261e+4 -> 1.4835e+1
-Error: нефинитное состояние на шаге=174901: ... 572436 из 575292
+[campaign] minimization MID-RUN at step=174401 iterations=200 max|F| 2.2261e+4 -> 1.4835e+1
+Error: non-finite state at step=174901: ... 572436 of 575292
 ```
 
 **The control that exonerates the resume path**: the unmodified parent, copied into its own directory
 with the identical no-cycling config, resumed and ran clean —
 
 ```
-[campaign] шаг=175400 stage=micelles агрегатов=33 крупнейший=135 headShells=2 фаза=none/0 box=54.0000
-           связей=10736 census={"C":10845,"O":43380,"H":10845,"M":723,"W":125971,"K":0}
-[campaign] шаг=176400 stage=micelles агрегатов=33 крупнейший=136 ... связей=10739
+[campaign] step=175400 stage=micelles aggregates=33 largest=135 headShells=2 phase=none/0 box=54.0000
+           bonds=10736 census={"C":10845,"O":43380,"H":10845,"M":723,"W":125971,"K":0}
+[campaign] step=176400 stage=micelles aggregates=33 largest=136 ... bonds=10739
 ```
 
 So the divergence is the surgery, not the resume, not the config.
@@ -717,15 +717,15 @@ nice -n 15 npx vitest run tests/coalescence-mechanism-pin.test.ts --no-file-para
 Arm B's campaign line, verbatim, since it carries the headline of §8:
 
 ```
-[evaporation] регидратация: вставлено=21585 ниже_порога=984 минимальное_расстояние=0.6286
-              итераций_минимизации=29 max|F| 2.5431e+4 -> 6.2736e+1 смещение_прежних rms=0.2116 max=0.7397 граница=1.5000
-[campaign] шаг=36800/40000 stage=amphiphiles агрегатов=3 крупнейший=388 headShells=2 cavityVolume=3.000
-           фаза=wet/2 box=30.0000 связей=2507 census={"C":4783,"O":1594,"H":4783,"M":124,"W":21600,"K":0}
-[campaign] шаг=40000/40000 stage=amphiphiles агрегатов=3 крупнейший=392 headShells=1 cavityVolume=3.375
-           фаза=wet/2 box=30.0000 связей=2620 census={"C":4783,"O":1594,"H":4783,"M":124,"W":21600,"K":0}
+[evaporation] rehydration: inserted=21585 below_threshold=984 min_distance=0.6286
+              minimization_iterations=29 max|F| 2.5431e+4 -> 6.2736e+1 previous_displacement rms=0.2116 max=0.7397 bound=1.5000
+[campaign] step=36800/40000 stage=amphiphiles aggregates=3 largest=388 headShells=2 cavityVolume=3.000
+           phase=wet/2 box=30.0000 bonds=2507 census={"C":4783,"O":1594,"H":4783,"M":124,"W":21600,"K":0}
+[campaign] step=40000/40000 stage=amphiphiles aggregates=3 largest=392 headShells=1 cavityVolume=3.375
+           phase=wet/2 box=30.0000 bonds=2620 census={"C":4783,"O":1594,"H":4783,"M":124,"W":21600,"K":0}
 ```
 
-(`агрегатов=3` there is the project's own z-open count; the 3D-periodic audit of the same checkpoint
+(`aggregates=3` there is the project's own z-open count; the 3D-periodic audit of the same checkpoint
 gives **1** aggregate holding 100 % — §6 and §8.)
 
 ---

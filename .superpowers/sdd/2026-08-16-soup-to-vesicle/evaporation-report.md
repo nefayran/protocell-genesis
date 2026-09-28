@@ -186,8 +186,8 @@ platelet's own `frozen` flag), which bought a beautiful property and a broken ru
 ```
 EVAP-INSERTION inserted=5530 belowFloor=1847 minSeparation=0.5404 relaxIterations=10 max|F| 1.0798e+5 -> 1.1770e+4
 EVAP-ISOLATED ... organicsBitIdentical=true/true movedPreexistingFloats=0 ...
-→ нефинитное состояние на шаге=4000: нефинитных компонент позиций=50460, скоростей=50460 из 50502
-  (появилось в интервале шагов 3000..4000) -- расчёт разошёлся (Inf/NaN)
+→ non-finite state at step=4000: non-finite position components=50460, velocity components=50460 out of 50502
+  (appeared in the step interval 3000..4000) -- the computation diverged (Inf/NaN)
 ```
 
 **Not one of 45 216 organic coordinate floats moved — and 1000 real steps later the run diverged.**
@@ -278,8 +278,8 @@ EVAP-LADDER increments=12 lnStep=0.032328 linearPerIncrement=3.181% boxes=29.046
 ```
 
 Refusals driven: a composition where the solvent is **not** the last non-empty block throws
-(`/ПОСЛЕДНИМ непустым блоком/`), and a residual fraction that removes nothing throws
-(`/обязана УБИРАТЬ растворитель/`).
+(`/LAST non-empty block/`), and a residual fraction that removes nothing throws
+(`/MUST REMOVE solvent/`).
 
 ---
 
@@ -362,10 +362,10 @@ not Inf), and always from cycle 2 onward — i.e. only once material had actuall
 was something dense to squeeze:
 
 ```
-Error: список Верле: измеренный дрейф 29789312.2505 превышает skin/2=0.7500 ...
+Error: Verlet list: measured drift 29789312.2505 exceeds skin/2=0.7500 ...
   async applyEvaporatingTransition (soup/src/soup-box-scale.ts:151:58)
-Error: список Верле: измеренный дрейф 213101346629564.0000 превышает skin/2=0.7500 ...
-Error: список Верле: измеренный дрейф 371189702.0951 превышает skin/2=0.7500 ...
+Error: Verlet list: measured drift 213101346629564.0000 exceeds skin/2=0.7500 ...
+Error: Verlet list: measured drift 371189702.0951 exceeds skin/2=0.7500 ...
 ```
 
 Three hypotheses were tested, in order, and **two of the three were refuted by measurement**:
@@ -403,9 +403,9 @@ minimiser as a guard on the corrected `σ/(13·dt²)` trigger. Across the whole 
 fired on **9 of 216 increments (4.2 %)**, each time taking `max|F|` from ~0.8–1.4e3 to ~2.7–3.6e1:
 
 ```
-[evaporation] испарение приращение=6/18 box=26.3610 растворителя=11748 N=23032 max|F|=9.387e+2 итераций_минимизации=29 max|F|_после=2.877e+1 перетянутых_привязок=0 самая_длинная=1.0509 порог=1.4680
-[evaporation] испарение приращение=13/18 box=22.6696 растворителя=3918 N=15202 max|F|=7.848e+2 итераций_минимизации=29 max|F|_после=2.890e+1 перетянутых_привязок=0 самая_длинная=1.1089 порог=1.4680
-[evaporation] испарение приращение=17/18 box=20.7972 растворителя=706  N=11990 max|F|=1.364e+3 итераций_минимизации=29 max|F|_после=2.783e+1 перетянутых_привязок=0 самая_длинная=1.0898 порог=1.4680
+[evaporation] evaporation increment=6/18 box=26.3610 solvent=11748 N=23032 max|F|=9.387e+2 minimisation_iterations=29 max|F|_after=2.877e+1 overstretched_tethers=0 longest=1.0509 threshold=1.4680
+[evaporation] evaporation increment=13/18 box=22.6696 solvent=3918 N=15202 max|F|=7.848e+2 minimisation_iterations=29 max|F|_after=2.890e+1 overstretched_tethers=0 longest=1.1089 threshold=1.4680
+[evaporation] evaporation increment=17/18 box=20.7972 solvent=706  N=11990 max|F|=1.364e+3 minimisation_iterations=29 max|F|_after=2.783e+1 overstretched_tethers=0 longest=1.0898 threshold=1.4680
 ```
 
 **Why 4.2 % matters as a number and not as reassurance:** a minimisation mid-trajectory is a
@@ -500,10 +500,10 @@ Cycling ends at globalStep 195 400 (`cyclePhase` reports `wet/0`). The run then 
 **80 000 further steps with no cycling at all** — plain Langevin dynamics at box 30, ρ_tot = 1.21793:
 
 ```
-[campaign] шаг=215400 stage=micelles агрегатов=3 крупнейший=162 headShells=2 фаза=wet/0 box=30.0000 связей=1957
-[campaign] шаг=235400 stage=micelles агрегатов=4 крупнейший=159 headShells=2 фаза=wet/0 box=30.0000 связей=1974
-[campaign] шаг=255400 stage=micelles агрегатов=4 крупнейший=157 headShells=2 фаза=wet/0 box=30.0000 связей=1974
-[campaign] шаг=275400 stage=micelles агрегатов=4 крупнейший=161 headShells=1 фаза=wet/0 box=30.0000 связей=1974
+[campaign] step=215400 stage=micelles aggregates=3 largest=162 headShells=2 phase=wet/0 box=30.0000 bonds=1957
+[campaign] step=235400 stage=micelles aggregates=4 largest=159 headShells=2 phase=wet/0 box=30.0000 bonds=1974
+[campaign] step=255400 stage=micelles aggregates=4 largest=157 headShells=2 phase=wet/0 box=30.0000 bonds=1974
+[campaign] step=275400 stage=micelles aggregates=4 largest=161 headShells=1 phase=wet/0 box=30.0000 bonds=1974
 ```
 
 **163 → 162 → 159 → 157 → 161: flat over 80 000 steps without cycling.** The aggregate is a stable
@@ -542,13 +542,13 @@ run is the RNG state that resumes carry:
 
 ```
 $ nice -n 15 npx tsx soup/cli/campaign.ts --label ves54r --box 54 --start '{"C":10844,"O":43376,"H":10844,"M":722,"W":40943}' --seed 19 --kT 1.1 --steps 45000 --every 15000 --dir data/checkpoints/ves54r
-[campaign] шаг=15000/45000 stage=bilayer  агрегатов=73 крупнейший=100 headShells=1 cavityVolume=0.250 связей=5332
-[campaign] шаг=30000/45000 stage=micelles агрегатов=42 крупнейший=226 headShells=1 cavityVolume=6.250 связей=8001
-[campaign] шаг=45000/45000 stage=micelles агрегатов=32 крупнейший=232 headShells=1 cavityVolume=7.250 связей=9160
-[campaign] резюме label=ves54r из data/checkpoints/ves54r/ves54r-step45000.json, шаг=45000
-[campaign] шаг=60000/90000 stage=micelles агрегатов=27 крупнейший=281 headShells=1 cavityVolume=6.375 связей=9759
-[campaign] шаг=75000/90000 stage=micelles агрегатов=26 крупнейший=333 headShells=2 cavityVolume=11.625 связей=10092
-[campaign] шаг=90000/90000 stage=bilayer  агрегатов=22 крупнейший=588 headShells=1 cavityVolume=17.125 связей=10311
+[campaign] step=15000/45000 stage=bilayer  aggregates=73 largest=100 headShells=1 cavityVolume=0.250 bonds=5332
+[campaign] step=30000/45000 stage=micelles aggregates=42 largest=226 headShells=1 cavityVolume=6.250 bonds=8001
+[campaign] step=45000/45000 stage=micelles aggregates=32 largest=232 headShells=1 cavityVolume=7.250 bonds=9160
+[campaign] resume label=ves54r from data/checkpoints/ves54r/ves54r-step45000.json, step=45000
+[campaign] step=60000/90000 stage=micelles aggregates=27 largest=281 headShells=1 cavityVolume=6.375 bonds=9759
+[campaign] step=75000/90000 stage=micelles aggregates=26 largest=333 headShells=2 cavityVolume=11.625 bonds=10092
+[campaign] step=90000/90000 stage=bilayer  aggregates=22 largest=588 headShells=1 cavityVolume=17.125 bonds=10311
 ```
 
 Audited off-GPU (`verify/out/evaporation-box54-realrng-trace.json`):
@@ -624,8 +624,8 @@ Two honest qualifications, stated because they matter:
 `tests/soup-grid-resize.test.ts`'s bracket-crossing test fails:
 
 ```
-× box, реально пересекающий границу числа ячеек, реаллоцирует сетку: частицы и силы (грид против brute-force) сохраняются
-  → список Верле: измеренный дрейф 193669536.2374 превышает skin/2=0.7500
+× box that actually crosses the cell-count boundary reallocates the grid: particles and forces (grid vs brute-force) are preserved
+  → Verlet list: measured drift 193669536.2374 exceeds skin/2=0.7500
 ```
 
 It was **not** taken on trust that this pre-dated the task. Every change of this task was stashed and
@@ -635,8 +635,8 @@ that test alone re-run on the resulting tree:
 $ git stash push -m "evaporation-wip-probe" -- data/soup.json soup/cli/campaign.ts soup/src/checkpoint.ts soup/src/rules-validate.ts soup/src/rules.ts soup/src/sim.ts soup/src/soup-bindgroups.ts soup/src/soup-box-scale-math.ts soup/src/soup-box-scale.ts soup/src/soup-init-state.ts soup/src/soup-relax.ts soup/src/soup-runtime.ts soup/src/soup-types.ts tests/continuous-run-audit.test.ts
 Saved working directory and index state On stage-a-atoms: evaporation-wip-probe
 $ nice -n 15 npx vitest run tests/soup-grid-resize.test.ts
-  × box, реально пересекающий границу числа ячеек, ... 8758ms
-    → список Верле: измеренный дрейф 872361.5732 превышает skin/2=0.7500 ...
+  × box that actually crosses the cell-count boundary, ... 8758ms
+    → Verlet list: measured drift 872361.5732 exceeds skin/2=0.7500 ...
  Test Files  1 failed (1)
 $ git stash pop
 ```

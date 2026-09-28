@@ -6,7 +6,7 @@ this as the one measurement left: *"the measurement that would matter is item 3 
 document's §9 (a non-periodic domain), not more of this one"* — *"a non-periodic or large-enough domain
 so a spanning object is not the ground state (named as the root)"*.
 
-User's instruction, verbatim: «так сделай как в океане, в этом и цель».
+User's instruction, verbatim: "do it like in the ocean, that's the whole point."
 
 `data/params.json` rank-A constants: **NOT touched.** `data/soup.json`: **NOT touched, not one field**
 — confinement is a per-run CLI flag with its basis in `soup/cli/campaign-config.ts`, exactly the
@@ -267,34 +267,34 @@ is measured, not assumed.** k = 137 (a deliberately non-round value, so a hardco
 
 ```
 WALL-GRADIENT R=20 k=137 minPairSep=18.786 (interactionRange=2.947)
-  s=17.0000 F_r(GPU)=0.000000 F_r(численный)=0.000000 F_r(аналит)=0.000000
-  s=17.6000 F_r(GPU)=0.000000 F_r(численный)=0.000000 F_r(аналит)=0.000000
-  s=18.2000 F_r(GPU)=0.000000 F_r(численный)=0.000000 F_r(аналит)=0.000000
-  s=18.8000 F_r(GPU)=0.000000 F_r(численный)=0.000000 F_r(аналит)=0.000000
-  s=19.4000 F_r(GPU)=0.000000 F_r(численный)=0.000000 F_r(аналит)=0.000000
-  s=20.0000 F_r(GPU)=0.000000 F_r(численный)=-0.034250 F_r(аналит)=-0.000000
-  s=20.6000 F_r(GPU)=-82.200312 F_r(численный)=-82.200000 F_r(аналит)=-82.200000
-  s=21.2000 F_r(GPU)=-164.399858 F_r(численный)=-164.400000 F_r(аналит)=-164.400000
-  s=21.8000 F_r(GPU)=-246.599919 F_r(численный)=-246.600000 F_r(аналит)=-246.600000
-  s=22.4000 F_r(GPU)=-328.799722 F_r(численный)=-328.800000 F_r(аналит)=-328.800000
-  s=23.0000 F_r(GPU)=-411.000009 F_r(численный)=-411.000000 F_r(аналит)=-411.000000
-  s=23.6000 F_r(GPU)=-493.200287 F_r(численный)=-493.200000 F_r(аналит)=-493.200000
-WALL-GRADIENT max|GPU-аналит|=3.0056e-4 (относит. 3.8020e-6) max|GPU-численный|=3.1216e-4 (относит. 3.7976e-6)
-  на_изломе(s=R)|GPU-численный|=3.4250e-2 (граница шаблона k*h/4=3.4250e-2)
-  max|F| внутри=0.0000e+0 max|сетка-перебор|=0.0000e+0
+  s=17.0000 F_r(GPU)=0.000000 F_r(numerical)=0.000000 F_r(analytic)=0.000000
+  s=17.6000 F_r(GPU)=0.000000 F_r(numerical)=0.000000 F_r(analytic)=0.000000
+  s=18.2000 F_r(GPU)=0.000000 F_r(numerical)=0.000000 F_r(analytic)=0.000000
+  s=18.8000 F_r(GPU)=0.000000 F_r(numerical)=0.000000 F_r(analytic)=0.000000
+  s=19.4000 F_r(GPU)=0.000000 F_r(numerical)=0.000000 F_r(analytic)=0.000000
+  s=20.0000 F_r(GPU)=0.000000 F_r(numerical)=-0.034250 F_r(analytic)=-0.000000
+  s=20.6000 F_r(GPU)=-82.200312 F_r(numerical)=-82.200000 F_r(analytic)=-82.200000
+  s=21.2000 F_r(GPU)=-164.399858 F_r(numerical)=-164.400000 F_r(analytic)=-164.400000
+  s=21.8000 F_r(GPU)=-246.599919 F_r(numerical)=-246.600000 F_r(analytic)=-246.600000
+  s=22.4000 F_r(GPU)=-328.799722 F_r(numerical)=-328.800000 F_r(analytic)=-328.800000
+  s=23.0000 F_r(GPU)=-411.000009 F_r(numerical)=-411.000000 F_r(analytic)=-411.000000
+  s=23.6000 F_r(GPU)=-493.200287 F_r(numerical)=-493.200000 F_r(analytic)=-493.200000
+WALL-GRADIENT max|GPU-analytic|=3.0056e-4 (relative 3.8020e-6) max|GPU-numerical|=3.1216e-4 (relative 3.7976e-6)
+  at_kink(s=R)|GPU-numerical|=3.4250e-2 (template_bound k*h/4=3.4250e-2)
+  max|F| inside=0.0000e+0 max|grid-bruteforce|=0.0000e+0
 ```
 
 - **The kernel implements the gradient of the stated potential: 3.80e-6 relative**, against a
   float32 single-op epsilon of 1.19e-7 — i.e. ~32 epsilons over a handful of operations, and ~1e5
   times tighter than any wrong sign, factor, radius or centre convention could land.
-- **Inside the parcel the force is EXACTLY zero** (`max|F| внутри = 0`), so the wall is a wall and not
+- **Inside the parcel the force is EXACTLY zero** (`max|F| inside = 0`), so the wall is a wall and not
   a background field.
 - **The one disagreement is the STENCIL's, not the kernel's, and it is accounted rather than
   excluded.** At s = R exactly, a central difference straddles the kink where U's second derivative
   jumps, and returns −(½kh²)/(2h) = **−k·h/4 = −0.034250** however small h is. The measured
   disagreement there is **3.4250e-2 = the bound exactly**, and the kernel's own value at that point
   (0, the correct one-sided limit from inside) agrees with the analytic form like every other point.
-- **`max|сетка-перебор| = 0`**: the wall is applied bit-identically on the grid/Verlet path and on the
+- **`max|grid-bruteforce| = 0`**: the wall is applied bit-identically on the grid/Verlet path and on the
   O(N²) reference. That is the trap a one-body term added inside three of the four force kernels — or
   at seven of the eight call sites — would have fallen into, and it is why `encodeWall` lives inside
   the three `encodeSoupForce*` functions and not at their call sites.
@@ -303,9 +303,9 @@ The same gate at full physics, with charge on at the campaign's own 10 mM, in a 
 (`tests/soup-forces.test.ts`, extended per the brief):
 
 ```
-SOUP-FORCES-CONFINED maxDiff(сетка+Верле+список_голов против перебора)=7.6294e-5 meanAbsRef=14.7985 N=18888 снаружи_парцеллы=329 max|F_стенки|=25.4035
-SOUP-FORCES-CONFINED R=16.0000 V_парцеллы=17157.3 V_бокса/V_парцеллы=29.842 rc_es=15.2000 ёмкость_списка_голов=729 ёмкость_Верле=1126 плотнейшая_плотность=1.1009
-SOUP-FORCES-CONFINED заполнение: главный max=439/1126 головы max=728/729
+SOUP-FORCES-CONFINED maxDiff(grid+Verlet+head_list vs bruteforce)=7.6294e-5 meanAbsRef=14.7985 N=18888 outside_parcel=329 max|F_wall|=25.4035
+SOUP-FORCES-CONFINED R=16.0000 V_parcel=17157.3 V_box/V_parcel=29.842 rc_es=15.2000 head_list_capacity=729 Verlet_capacity=1126 densest_density=1.1009
+SOUP-FORCES-CONFINED occupancy: main max=439/1126 heads max=728/729
 ```
 
 329 beads outside the parcel carrying up to 25.4 in wall force, `densestDensity` = **1.1009** (the
@@ -315,9 +315,9 @@ overflowed** — the failure mode defect #1 and #2 in §3 would have produced.
 ### 5.2 No wrap, with the instrument's own positive control
 
 ```
-NO-WRAP box=100 R=20 N=29814 maxR=20.0760 продавливание=0.0760 зазор_до_грани=30.3077 (наибольший радиус взаимодействия 6.3067) maxПара=40.152 L/2=50.000 сильное=true
-NO-WRAP склеек_при_реальном_боксе=0/12777 maxDelta=0 | КОНТРОЛЬ при боксе 40: склеек=1140/12777 maxDelta=40.000
-NO-WRAP max|сдвиг обёртки позиции|=0 осей_обёртки(вся система)=0/3 [false,false,false]
+NO-WRAP box=100 R=20 N=29814 maxR=20.0760 penetration=0.0760 face_clearance=30.3077 (largest interaction radius 6.3067) maxPair=40.152 L/2=50.000 strong=true
+NO-WRAP folds_at_real_box=0/12777 maxDelta=0 | CONTROL at box 40: folds=1140/12777 maxDelta=40.000
+NO-WRAP max|position wrap shift|=0 wrap_axes(whole system)=0/3 [false,false,false]
 ```
 
 - **0 of 12 777 sampled pair components folded at the real box; maxDelta exactly 0.**
@@ -331,7 +331,7 @@ NO-WRAP max|сдвиг обёртки позиции|=0 осей_обёртки(
 ### 5.3 The checkpoint round-trip carries the parcel, and the wall is provably still there
 
 ```
-CONFINE-ROUNDTRIP шаг=300 в_файле={"radiusSigma":16,"stiffness":100} R_live до=16.000000 после=16.000000 max|dPos|=0 max|dVel|=0 различий_в_связях=0 max|dF|=0.00005340576171875 max|F_стенки| в этой конфигурации=26.1424
+CONFINE-ROUNDTRIP step=300 in_file={"radiusSigma":16,"stiffness":100} R_live before=16.000000 after=16.000000 max|dPos|=0 max|dVel|=0 bond_diffs=0 max|dF|=0.00005340576171875 max|F_wall| in this configuration=26.1424
 ```
 
 Positions, velocities and the bond graph come back **bit-identical**; the parcel and the stiffness are
@@ -345,9 +345,9 @@ of the term being checked for, so a *dropped* wall would be unmissable.
 
 ```
 CONFINE-REFUSALS
-  тесный бокс: confine: зазор до грани бокса L/2-R=1.0000 не превосходит наибольшего радиуса взаимодействия 6.3067 при box=[42.0000, 42.0000, 42.0000], R=20.0000 -- частица у поверхности парцеллы чувствовала бы СВОЙ ЖЕ образ через границу, то есть периодичность не снята. Возьмите бокс не меньше 54.6
-  глина: confine: удержание в парцелле несовместимо с минеральной пластиной (clay) -- это две стенки сразу; используйте clay:false
-  areaMove: areaMove: MC-ход по площади не имеет смысла в удерживаемой парцелле -- объём задаёт стенка, а не бокс, стенка совершает работу над системой при изменении бокса, и soupPotential не содержит её вклада. Нулевое натяжение измеряется в периодическом боксе (CreateSoupOpts.confine отсутствует)
+  tight box: confine: the clearance to the box face L/2-R=1.0000 does not exceed the largest interaction radius 6.3067 at box=[42.0000, 42.0000, 42.0000], R=20.0000 -- a particle at the parcel surface would feel its OWN image across the boundary, i.e. periodicity is not removed. Use a box no smaller than 54.6
+  clay: confine: confinement in a parcel is incompatible with a mineral platelet (clay) -- that is two walls at once; use clay:false
+  areaMove: areaMove: an MC area move has no meaning inside a confined parcel -- the wall sets the volume, not the box; the wall does work on the system when the box changes, and soupPotential does not contain its contribution. Zero tension is measured in a periodic box (CreateSoupOpts.confine absent)
 ```
 
 Each of the three would otherwise have produced a number that does not mean what its name says. The
@@ -659,7 +659,7 @@ GATE-CONFINED written verify/out/gates-confined.json
 | `tests/soup-forces.test.ts` | 3 passed | **4 passed** | +1: the confined brute-force gate (§5.1) |
 | `tests/soup-checkpoint.test.ts` | 3 passed | **4 passed** | +1: the confinement round-trip (§5.3) |
 | **`tests/soup-confine.test.ts`** | — | **3 passed** | new: gradient, no-wrap + control, setup check, refusals |
-| `tests/verlet-capacity.test.ts` | 2 passed | **2 passed** | both guards fired: `VERLET-OVERFLOW` at capacity 64, `VERLET-DERIVED-OK {"cap":1126,"max":322,"atCapacity":0,"mean":293.94}`, `VERLET-CEILING … 17280000000 байт … WebGPU отказал бы МОЛЧА` |
+| `tests/verlet-capacity.test.ts` | 2 passed | **2 passed** | both guards fired: `VERLET-OVERFLOW` at capacity 64, `VERLET-DERIVED-OK {"cap":1126,"max":322,"atCapacity":0,"mean":293.94}`, `VERLET-CEILING … 17280000000 bytes ... WebGPU would have failed SILENTLY` |
 | `tests/gates.test.ts` | 8 passed | **8 passed** | |
 | `tests/supply-window.test.ts` | 1 passed | **1 passed** | `WINDOW-SCALING floor=[932, 1001] … cheapestSpanning=[5.806, 6.343]*L L*=[146.9, 172.5]sigma` — the pin's own floor brackets §2's recomputation exactly |
 | `tests/coalescence-mechanism-pin.test.ts` | 5 passed | **5 passed** | |

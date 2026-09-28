@@ -247,9 +247,9 @@ ES-GRADIENT rc=4.8066620 A=0.9762500 kappa=0.8321783 shiftU=3.719971e-3 shiftF=3
   r=3.80 F_num=8.041866e-3 F_ana=8.041866e-3 rel=2.80e-10
   r=4.40 F_num=2.169655e-3 F_ana=2.169655e-3 rel=4.99e-10
   r=4.80 F_num=2.799485e-5 F_ana=2.799485e-5 rel=7.45e-9
-  худшая относительная невязка 7.452e-9 при r=4.8
+  worst relative residual 7.452e-9 at r=4.8
   U(rc-1e-7)=2.206648e-17 F(rc-1e-7)=4.186256e-10 U(rc)=0 F(rc)=0 U(rc+0.1)=0
-ES-SPLIT splitRadius=2.9469545 худшее |near+far-whole|=0.000e+0 F(split-)=2.954022e-2 F(split+)=2.954022e-2
+ES-SPLIT splitRadius=2.9469545 worst |near+far-whole|=0.000e+0 F(split-)=2.954022e-2 F(split+)=2.954022e-2
 ```
 
 **Worst relative residual 7.452e-9 over the full new range**, against the predecessor's **5.145e-9** over
@@ -261,13 +261,13 @@ probe including exactly at the seam, and F is the same value on both sides of it
 ### 3.2 The whole field, twice — and the second one is new because it had to be
 
 ```
-ES-FULL-GRADIENT заряженных=120 проверено_частиц=6 компонент=18
-  С ЗАРЯДОМ:  худшая отн. невязка=6.238e-4 (при номинальном шаге 2h: 6.109e-4) при mean|F|=3.4368
-  БЕЗ ЗАРЯДА (контроль): худшая отн. невязка=1.311e-3 (при номинальном шаге 2h: 1.238e-3) при mean|F|=81.2190
+ES-FULL-GRADIENT charged=120 checked_particles=6 components=18
+  WITH CHARGE:  worst rel. residual=6.238e-4 (at nominal step 2h: 6.109e-4) at mean|F|=3.4368
+  WITHOUT CHARGE (control): worst rel. residual=1.311e-3 (at nominal step 2h: 1.238e-3) at mean|F|=81.2190
 
 ES-FIELD-ONLY-GRADIENT N=1200 box=24
-  I=0.01 rc_es=10.8000 (=2.842 lambdaD) заряженных=209 компонент=627 худшая_абс=9.149e-8 худшая_отн=8.742e-6 mean|F_es|=0.197329
-  I=0.1 rc_es=4.8067 (=4.000 lambdaD) заряженных=209 компонент=627 худшая_абс=8.913e-8 худшая_отн=3.737e-6 mean|F_es|=0.128974
+  I=0.01 rc_es=10.8000 (=2.842 lambdaD) charged=209 components=627 worst_abs=9.149e-8 worst_rel=8.742e-6 mean|F_es|=0.197329
+  I=0.1 rc_es=4.8067 (=4.000 lambdaD) charged=209 components=627 worst_abs=8.913e-8 worst_rel=3.737e-6 mean|F_es|=0.128974
 ```
 
 **The full-field number moved 1.736e-5 → 6.238e-4, and it is NOT a regression of the force — it is a
@@ -292,8 +292,8 @@ full-field figure.
 ### 3.3 The head-only list is COMPLETE over the new range — checked against pure O(N²)
 
 ```
-SOUP-FORCES-ES maxDiff(сетка+Верле против перебора)=2.2888e-5 meanAbsRef=5.1965 заряженных_голов=100/100 maxDiff(заряд против нейтрали)=191.1086 A=0.976250 kappa=0.832178 rc=4.8066620
-SOUP-FORCES-ES-LONG maxDiff(сетка+Верле+список_голов против полного перебора)=1.5259e-5 meanAbsRef=3.4901 rc_es=13.5000 (=3.553 lambdaD, цель=15.2000, потолок_образа=13.5000) splitRadius=2.9469545 nbCutoff_было=2.7224620 отброшено_интегрально=0.1304
+SOUP-FORCES-ES maxDiff(grid+Verlet vs brute-force)=2.2888e-5 meanAbsRef=5.1965 charged_heads=100/100 maxDiff(charge vs neutral)=191.1086 A=0.976250 kappa=0.832178 rc=4.8066620
+SOUP-FORCES-ES-LONG maxDiff(grid+Verlet+head-list vs full brute-force)=1.5259e-5 meanAbsRef=3.4901 rc_es=13.5000 (=3.553 lambdaD, target=15.2000, image_ceiling=13.5000) splitRadius=2.9469545 nbCutoff_was=2.7224620 discarded_integrated=0.1304
 ```
 
 The first row is **2.2888e-5 — identical to the predecessor's published value to every digit**, at the
@@ -306,18 +306,18 @@ task's own defect one level down; this is what rules it out.
 
 ```
 ES-HENDERSON pKa_intrinsic=4.9
-  pH=3.9 alpha_измер=0.08962 alpha_HH=0.09091 откл=-1.28e-3 4se=5.75e-3
-  pH=4.4 alpha_измер=0.23990 alpha_HH=0.24025 откл=-3.53e-4 4se=8.54e-3
-  pH=4.9 alpha_измер=0.50115 alpha_HH=0.50000 откл=1.15e-3 4se=1.00e-2
-  pH=5.4 alpha_измер=0.76013 alpha_HH=0.75975 откл=3.78e-4 4se=8.54e-3
-  pH=5.9 alpha_измер=0.91117 alpha_HH=0.90909 откл=2.08e-3 4se=5.75e-3
+  pH=3.9 alpha_measured=0.08962 alpha_HH=0.09091 dev=-1.28e-3 4se=5.75e-3
+  pH=4.4 alpha_measured=0.23990 alpha_HH=0.24025 dev=-3.53e-4 4se=8.54e-3
+  pH=4.9 alpha_measured=0.50115 alpha_HH=0.50000 dev=1.15e-3 4se=1.00e-2
+  pH=5.4 alpha_measured=0.76013 alpha_HH=0.75975 dev=3.78e-4 4se=8.54e-3
+  pH=5.9 alpha_measured=0.91117 alpha_HH=0.90909 dev=2.08e-3 4se=5.75e-3
 
-ES-DETAILED-BALANCE r=1.1 U_es(оба)=0.337254eps=0.3066kT dG_intr=0.000000eps
-  состояние      ни одна      первая      вторая      обе
-  точно      0.26767   0.26767   0.26767   0.19699
-  измерено   0.26826   0.26547   0.26849   0.19777
-  подметаний=200000 худшее отклонение=1.374e-3
-ES-DETAILED-BALANCE подавление состояния «обе»: 0.19699 против 0.25000 без dU_es
+ES-DETAILED-BALANCE r=1.1 U_es(both)=0.337254eps=0.3066kT dG_intr=0.000000eps
+  state          neither      first      second      both
+  exact      0.26767   0.26767   0.26767   0.19699
+  measured   0.26826   0.26547   0.26849   0.19777
+  sweeps=200000 worst deviation=1.374e-3
+ES-DETAILED-BALANCE suppression of the "both" state: 0.19699 against 0.25000 without dU_es
 ```
 
 **Worst deviation from the exact enumerated Boltzmann weights: 1.374e-3, against the predecessor's
@@ -330,7 +330,7 @@ about the range).
 ### 3.5 The protonation state still round-trips, and the overflow guard is real
 
 ```
-ES-CHECKPOINT N=680 заряженных=85 подметаний=2 несовпадений_после_резюме=0 RNG_до=2428341886 RNG_после=2428341886 chargesB64=true длина=3628 отличий_у_перерисованного(без поля)=44
+ES-CHECKPOINT N=680 charged=85 sweeps=2 mismatches_after_resume=0 RNG_before=2428341886 RNG_after=2428341886 chargesB64=true length=3628 diffs_of_redrawn(without_field)=44
 ```
 
 **And the new list's own guard fired for real, on the first dry step of the campaign** — see §3.6, which
@@ -349,7 +349,7 @@ ES-LIST-OCCUPANCY listRange=16.7 max_neighbours=1332 mean=1154.2 capacity=2500
 1.88× of margin — and the campaign **threw on the first dry step**:
 
 ```
-Error: дальнодействующий список электростатики: longRangeListCapacity=2500 или размер headIdx (9296) было недостаточно при rc_es=15.2000 (найдено голов=9296) -- данные могли быть тихо отброшены
+Error: long-range electrostatics list: longRangeListCapacity=2500 or headIdx size (9296) was insufficient at rc_es=15.2000 (heads found=9296) -- data may have been silently discarded
 ```
 
 The dry box is 36.637 σ, so the head density is **3.2× the wet one**, and a sphere of radius
@@ -451,30 +451,30 @@ which no pair of live runs can claim. pH 6.0, the predecessor's own comparison p
 **Crowded (dry) phase**, `esB54pH50-step31000`, box 36.637, ρ_org = 1.338, 9296 heads:
 
 ```
-ES-CAL-CHECKPOINT esB54pH50-step31000.json шаг=31000 box=36.6370 N=65897 голов=9296 rho_голов=0.189032 потолок_образа=16.4867
-ES-CAL I=0.01 rc=2.7225 (=0.716 lambdaD, отброшено=0.8385) alpha=0.66732+-0.00454 pKa_app=5.6977 U(0.95)=0.3904kT U(1.0663)=0.3031kT подметаний=16 592мс
-ES-CAL I=0.01 rc=4.0000 (=1.053 lambdaD, отброшено=0.7164) alpha=0.46195+-0.00250 pKa_app=6.0662 U(0.95)=0.5289kT U(1.0663)=0.4346kT подметаний=16 889мс
-ES-CAL I=0.01 rc=6.0000 (=1.579 lambdaD, отброшено=0.5318) alpha=0.31430+-0.00274 pKa_app=6.3388 U(0.95)=0.6309kT U(1.0663)=0.5335kT подметаний=16 1459мс
-ES-CAL I=0.01 rc=8.0000 (=2.105 lambdaD, отброшено=0.3783) alpha=0.23974+-0.00223 pKa_app=6.5012 U(0.95)=0.6771kT U(1.0663)=0.5788kT подметаний=16 3231мс
-ES-CAL I=0.01 rc=11.0000 (=2.895 lambdaD, отброшено=0.2154) alpha=0.18883+-0.00189 pKa_app=6.6330 U(0.95)=0.7072kT U(1.0663)=0.6085kT подметаний=16 7355мс
-ES-CAL I=0.01 rc=13.0000 (=3.421 lambdaD, отброшено=0.1445) alpha=0.16753+-0.00174 pKa_app=6.6963 U(0.95)=0.7162kT U(1.0663)=0.6174kT подметаний=16 7739мс
-ES-CAL I=0.01 rc=15.2000 (=4.000 lambdaD, отброшено=0.0916) alpha=0.15152+-0.00182 pKa_app=6.7482 U(0.95)=0.7215kT U(1.0663)=0.6226kT подметаний=16 7712мс
-ES-CAL I=0.1 rc=2.7225 (=2.266 lambdaD, отброшено=0.3389) alpha=0.72382+-0.00356 pKa_app=5.5816 U(0.95)=0.3180kT U(1.0663)=0.2417kT подметаний=16 582мс
-ES-CAL I=0.1 rc=4.0000 (=3.329 lambdaD, отброшено=0.1551) alpha=0.58397+-0.00332 pKa_app=5.8527 U(0.95)=0.3895kT U(1.0663)=0.3095kT подметаний=16 952мс
-ES-CAL I=0.1 rc=4.8067 (=4.000 lambdaD, отброшено=0.0916) alpha=0.53364+-0.00377 pKa_app=5.9415 U(0.95)=0.4068kT U(1.0663)=0.3261kT подметаний=16 1417мс
-ES-CAL I=0.1 rc=6.0000 (=4.993 lambdaD, отброшено=0.0407) alpha=0.49329+-0.00414 pKa_app=6.0117 U(0.95)=0.4177kT U(1.0663)=0.3367kT подметаний=16 1924мс
-ES-CAL I=0.1 rc=8.0000 (=6.657 lambdaD, отброшено=0.0098) alpha=0.46640+-0.00332 pKa_app=6.0585 U(0.95)=0.4226kT U(1.0663)=0.3416kT подметаний=16 5168мс
-ES-CAL I=0.1 rc=11.0000 (=9.154 lambdaD, отброшено=0.0011) alpha=0.45680+-0.00396 pKa_app=6.0752 U(0.95)=0.4237kT U(1.0663)=0.3426kT подметаний=16 14425мс
-ES-CAL I=0.1 rc=13.0000 (=10.818 lambdaD, отброшено=0.0002) alpha=0.45706+-0.00363 pKa_app=6.0748 U(0.95)=0.4237kT U(1.0663)=0.3427kT подметаний=16 17291мс
+ES-CAL-CHECKPOINT esB54pH50-step31000.json step=31000 box=36.6370 N=65897 heads=9296 rho_heads=0.189032 image_ceiling=16.4867
+ES-CAL I=0.01 rc=2.7225 (=0.716 lambdaD, discarded=0.8385) alpha=0.66732+-0.00454 pKa_app=5.6977 U(0.95)=0.3904kT U(1.0663)=0.3031kT sweeps=16 592ms
+ES-CAL I=0.01 rc=4.0000 (=1.053 lambdaD, discarded=0.7164) alpha=0.46195+-0.00250 pKa_app=6.0662 U(0.95)=0.5289kT U(1.0663)=0.4346kT sweeps=16 889ms
+ES-CAL I=0.01 rc=6.0000 (=1.579 lambdaD, discarded=0.5318) alpha=0.31430+-0.00274 pKa_app=6.3388 U(0.95)=0.6309kT U(1.0663)=0.5335kT sweeps=16 1459ms
+ES-CAL I=0.01 rc=8.0000 (=2.105 lambdaD, discarded=0.3783) alpha=0.23974+-0.00223 pKa_app=6.5012 U(0.95)=0.6771kT U(1.0663)=0.5788kT sweeps=16 3231ms
+ES-CAL I=0.01 rc=11.0000 (=2.895 lambdaD, discarded=0.2154) alpha=0.18883+-0.00189 pKa_app=6.6330 U(0.95)=0.7072kT U(1.0663)=0.6085kT sweeps=16 7355ms
+ES-CAL I=0.01 rc=13.0000 (=3.421 lambdaD, discarded=0.1445) alpha=0.16753+-0.00174 pKa_app=6.6963 U(0.95)=0.7162kT U(1.0663)=0.6174kT sweeps=16 7739ms
+ES-CAL I=0.01 rc=15.2000 (=4.000 lambdaD, discarded=0.0916) alpha=0.15152+-0.00182 pKa_app=6.7482 U(0.95)=0.7215kT U(1.0663)=0.6226kT sweeps=16 7712ms
+ES-CAL I=0.1 rc=2.7225 (=2.266 lambdaD, discarded=0.3389) alpha=0.72382+-0.00356 pKa_app=5.5816 U(0.95)=0.3180kT U(1.0663)=0.2417kT sweeps=16 582ms
+ES-CAL I=0.1 rc=4.0000 (=3.329 lambdaD, discarded=0.1551) alpha=0.58397+-0.00332 pKa_app=5.8527 U(0.95)=0.3895kT U(1.0663)=0.3095kT sweeps=16 952ms
+ES-CAL I=0.1 rc=4.8067 (=4.000 lambdaD, discarded=0.0916) alpha=0.53364+-0.00377 pKa_app=5.9415 U(0.95)=0.4068kT U(1.0663)=0.3261kT sweeps=16 1417ms
+ES-CAL I=0.1 rc=6.0000 (=4.993 lambdaD, discarded=0.0407) alpha=0.49329+-0.00414 pKa_app=6.0117 U(0.95)=0.4177kT U(1.0663)=0.3367kT sweeps=16 1924ms
+ES-CAL I=0.1 rc=8.0000 (=6.657 lambdaD, discarded=0.0098) alpha=0.46640+-0.00332 pKa_app=6.0585 U(0.95)=0.4226kT U(1.0663)=0.3416kT sweeps=16 5168ms
+ES-CAL I=0.1 rc=11.0000 (=9.154 lambdaD, discarded=0.0011) alpha=0.45680+-0.00396 pKa_app=6.0752 U(0.95)=0.4237kT U(1.0663)=0.3426kT sweeps=16 14425ms
+ES-CAL I=0.1 rc=13.0000 (=10.818 lambdaD, discarded=0.0002) alpha=0.45706+-0.00363 pKa_app=6.0748 U(0.95)=0.4237kT U(1.0663)=0.3427kT sweeps=16 17291ms
 ```
 
 **Wet phase**, `esB54pH50-step174400`, box 54:
 
 ```
 ES-CAL-SHIFT esB54pH50-step174400.json
-  при 2 lambdaD: pKa(0.01)=5.7128 rc=8.000 | pKa(0.1)=4.9790 rc=2.722 | СДВИГ=0.7338 против литературных ~-0.7
-  при 4 lambdaD: pKa(0.01)=6.1201 rc=15.200 | pKa(0.1)=5.1157 rc=4.807 | СДВИГ=1.0044 против литературных ~-0.7
-  ОБЩАЯ ОБРЕЗКА 2.7224620 (как у предшественника): pKa(0.01)=5.0178 | pKa(0.1)=4.9790 | СДВИГ=0.0388
+  at 2 lambdaD: pKa(0.01)=5.7128 rc=8.000 | pKa(0.1)=4.9790 rc=2.722 | SHIFT=0.7338 against literature ~-0.7
+  at 4 lambdaD: pKa(0.01)=6.1201 rc=15.200 | pKa(0.1)=5.1157 rc=4.807 | SHIFT=1.0044 against literature ~-0.7
+  SHARED CUTOFF 2.7224620 (as with the predecessor): pKa(0.01)=5.0178 | pKa(0.1)=4.9790 | SHIFT=0.0388
 ```
 
 **The instrument validates itself against the predecessor before it says anything new.** At the shared
@@ -593,7 +593,7 @@ Stated as a limitation, not smoothed over.
 
 **Invariants, every checkpoint, asserted not eyeballed:** non-finite positions **0**, velocities **0**,
 all six valence counters **0**, census exactly `{C:27894, O:9296, H:27894, M:723}` at all 12 (the five
-dry ones carrying `W: 90`), `RUN-AUDIT-TETHER нарушений=0`, tether longest 1.1211–1.2228 against
+dry ones carrying `W: 90`), `RUN-AUDIT-TETHER violations=0`, tether longest 1.1211–1.2228 against
 rInf 1.5 with **0** over. Final events `{cc_bond:14226, cc_break:0, co_bond:5517, co_break:151}`.
 
 ### 7.3 Closure, against the SAME pre-fixed criteria

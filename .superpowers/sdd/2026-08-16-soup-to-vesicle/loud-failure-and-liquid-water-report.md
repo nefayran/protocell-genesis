@@ -91,7 +91,7 @@ $ nice -n 15 npx vitest run tests/soup-nonfinite-guard.test.ts
 NONFINITE-GUARD N=1728 healthy: at_start={"pos":0,"vel":0} after_2000={"pos":0,"vel":0} after_timing={"pos":0,"vel":0}
 NONFINITE-GUARD-COST scan=0.2120ms (n=50) chunk1000=331.68ms (n=5) overhead=0.064% of a 1000-step chunk => throughput cost factor 1.00064x
 NONFINITE-GUARD-FIRES steps_reached=1 at_start={"pos":0,"vel":0} after={"pos":120,"vel":120}
-  message: нефинитное состояние на шаге=1: нефинитных компонент позиций=120, скоростей=120 из 5184 (появилось в интервале шагов 0..1) -- расчёт разошёлся (Inf/NaN), любые дальнейшие числа этого прогона бессмысленны
+  message: non-finite state at step=1: non-finite components of positions=120, velocities=120 out of 5184 (appeared within step interval 0..1) -- the calculation diverged (Inf/NaN), any further numbers from this run are meaningless
 
  ✓ tests/soup-nonfinite-guard.test.ts (1 test) 2904ms
  Test Files  1 passed (1)
@@ -123,11 +123,11 @@ And on the predecessor's own silently-divergent composition, verbatim from §4.2
 ```
 $ nice -n 15 npx tsx scratch-ladder.ts '[{"label":"broth-0.75-norelax","box":30,"start":{"C":1860,"O":7440,"H":1860,"M":124,"W":8966},"steps":3000,"relax":false}]'
 ARM broth-0.75-norelax box=30 N=20250 rho_tot=0.75000 relax=false steps=3000 wall=1518ms
-    ok=false THREW at steps=1000: нефинитное состояние на шаге=1000: нефинитных компонент позиций=6957, скоростей=6957 из 60750 (появилось в интервале шагов 0..1000) -- расчёт разошёлся (Inf/NaN), любые дальнейшие числа этого прогона бессмысленны
+    ok=false THREW at steps=1000: non-finite state at step=1000: non-finite components of positions=6957, velocities=6957 out of 60750 (appeared within step interval 0..1000) -- the calculation diverged (Inf/NaN), any further numbers from this run are meaningless
     maxForceStart=3.4360e+3 nonFiniteForceStart=0
 ```
 
-The run that previously printed `[campaign] шаг=20000/20000 stage=monomers агрегатов=0 крупнейший=0`
+The run that previously printed `[campaign] step=20000/20000 stage=monomers aggregates=0 largest=0`
 and was only caught by an offline scan **now stops at step 1000 with the count in the message.**
 
 ### 1.5 The second silent failure, found by the new test's own invariant check
@@ -266,7 +266,7 @@ runs exactly the code it ran before this task — this is a structural statement
 `globalStep != 0`. Unedited:
 
 ```
-COLD-START-RELAX-REFUSAL relaxColdStart: система уже на шаге 1 -- минимизация разрешена ТОЛЬКО до первого шага, иначе она попадает внутрь траектории, по которой считаются измерения
+COLD-START-RELAX-REFUSAL relaxColdStart: the system is already at step 1 -- minimization is allowed ONLY before the first step, otherwise it would fall inside the trajectory that measurements are computed from
 ```
 
 **(c) Bitwise invariants, pinned by `tests/soup-cold-start-relax.test.ts`.** Unedited:
@@ -308,7 +308,7 @@ ARM pure-water-0.8-norelax box=30 N=21600 rho_tot=0.80000 relax=false steps=3000
     ok=true nonFinite={"pos":0,"vel":0} stepsDone=3000 maxForceEnd=2.5827e+2 events={"cc_bond":0,"cc_break":0,"co_bond":0,"co_break":0}
     maxForceStart=1.7154e+3 nonFiniteForceStart=0
 ARM broth-0.75-norelax box=30 N=20250 rho_tot=0.75000 relax=false steps=3000 wall=1518ms
-    ok=false THREW at steps=1000: нефинитное состояние на шаге=1000: нефинитных компонент позиций=6957, скоростей=6957 из 60750 ...
+    ok=false THREW at steps=1000: non-finite state at step=1000: non-finite components of positions=6957, velocities=6957 out of 60750 ...
 ARM broth-0.75-relax box=30 N=20250 rho_tot=0.75000 relax=true steps=3000 wall=3788ms
     ok=true nonFinite={"pos":0,"vel":0} stepsDone=3000 maxForceEnd=1.6920e+2 events={"cc_bond":114,"cc_break":0,"co_bond":73,"co_break":0}
     relax={"iterations":200,"maxDisplacementStart":0.1,"displacementBound":10.05,"maxForceBefore":3436.0205078125,"maxForceAfter":10.697349548339844,"nonFiniteBefore":0,"nonFiniteAfter":0}
@@ -322,7 +322,7 @@ ARM broth-rhoW0.8-relax box=30 N=32884 rho_tot=1.21793 relax=true steps=3000 wal
     ok=true nonFinite={"pos":0,"vel":0} stepsDone=3000 maxForceEnd=2.1314e+2 events={"cc_bond":28,"cc_break":0,"co_bond":26,"co_break":0}
     relax={...,"maxForceBefore":33965.953125,"maxForceAfter":22.885356903076172,...}
 ARM broth-rhoW0.8-norelax box=30 N=32884 rho_tot=1.21793 relax=false steps=3000 wall=2214ms
-    ok=false THREW at steps=1000: нефинитное состояние на шаге=1000: нефинитных компонент позиций=98112, скоростей=98112 из 98652 ...
+    ok=false THREW at steps=1000: non-finite state at step=1000: non-finite components of positions=98112, velocities=98112 out of 98652 ...
 ARM broth-rhoW1.0-relax box=30 N=38284 rho_tot=1.41793 relax=true steps=3000 wall=11215ms
     ok=true nonFinite={"pos":0,"vel":0} stepsDone=3000 maxForceEnd=3.5378e+2 events={"cc_bond":17,"cc_break":0,"co_bond":17,"co_break":0}
     relax={...,"maxForceBefore":49002.64453125,"maxForceAfter":52.86977767944336,...}
@@ -330,7 +330,7 @@ ARM broth-rhoW1.2-relax box=30 N=43684 rho_tot=1.61793 relax=true steps=3000 wal
     ok=true nonFinite={"pos":0,"vel":0} stepsDone=3000 maxForceEnd=4.2338e+2 events={"cc_bond":10,"cc_break":0,"co_bond":10,"co_break":0}
     relax={...,"maxForceBefore":98430.75,"maxForceAfter":97.75430297851562,...}
 ARM pure-water-1.0-norelax box=30 N=27000 rho_tot=1.00000 relax=false steps=3000 wall=1576ms
-    ok=false THREW at steps=1000: нефинитное состояние на шаге=1000: нефинитных компонент позиций=80619, скоростей=80619 из 81000 ...
+    ok=false THREW at steps=1000: non-finite state at step=1000: non-finite components of positions=80619, velocities=80619 out of 81000 ...
 ```
 
 The 20 000-step confirmations, unedited:
@@ -550,8 +550,8 @@ physics to attribute them to, since the relaxation stage is not called by any of
 
 **No tolerance was changed, no corridor widened, no assertion relaxed.** The only number that moved
 outside a stated scatter band is nothing: every moved number above is inside a published range. Two
-test-authoring bugs of my own were fixed during the task (a regex expecting `шаг=` where the message
-says `шаге=`, and one expecting `интервал` where it says `интервале`) — both in my new test, neither in
+test-authoring bugs of my own were fixed during the task (a regex expecting `step=` where the message
+says `at step=`, and one expecting `interval` where it says `step interval`) — both in my new test, neither in
 production code.
 
 `tests/soup-vesicle.test.ts` was **never** run. The full suite was never run. The dev server on :5199
@@ -573,9 +573,9 @@ immediately. Nothing to do with this task's changes.
   to 1e-4 σ, so it is a control rather than two unrelated runs. Asserts: the healthy arm reads
   `{pos:0,vel:0}` at start, after 2000 steps and after 5000 timing steps; the diverging arm starts
   FINITE (the overlap is a legal coordinate, not an injected NaN) and `step(1)` throws; the message is
-  the **finiteness** guard's and not the drift guard's (`.not.toMatch(/список Верле/)` — that
+  the **finiteness** guard's and not the drift guard's (`.not.toMatch(/Verlet list/)` — that
   distinction is the whole point, since the drift guard was running and silent in all three historical
-  cases); the message names the step (`шаге=1`), the chunk interval (`0..1`), a nonzero count for BOTH
+  cases); the message names the step (`at step=1`), the chunk interval (`0..1`), a nonzero count for BOTH
   arrays, and the total it is out of; the state really is non-finite afterwards; the run really stopped
   at step 1; and the browser logged no GPU warning. It also measures and prints the guard's cost.
 - **`tests/soup-cold-start-relax.test.ts`** (219 lines) — pins the relaxation stage's invariants and its
@@ -583,7 +583,7 @@ immediately. Nothing to do with this task's changes.
   bond graph, all event counters, census and charge unchanged; positions DID move but by no more than
   the analytic displacement bound; `max|F|` down by >100×; the refusal at `globalStep != 0` with its
   message; and the payoff pair — the same composition (box 20, water 0.8 σ⁻³, ρ_tot 1.218) throws
-  `нефинитное состояние` without the stage and runs 3000 steps with `nonFinite = 0` with it.
+  `non-finite state` without the stage and runs 3000 steps with `nonFinite = 0` with it.
 
 ---
 
@@ -644,7 +644,7 @@ immediately. Nothing to do with this task's changes.
    trajectory. Every conclusion drawn from a resumed campaign should be treated as carrying an
    unmeasured systematic until someone re-runs one.
 8. **Non-finite detection is per-chunk, so the reported step is a bracket, not the exact step.** The
-   message says so explicitly (`появилось в интервале шагов A..B`). All three historical divergences
+   message says so explicitly (`appeared within step interval A..B`). All three historical divergences
    and both new ones appeared inside the first chunk, so this has cost nothing so far.
 9. **`clay: false` in every arm here**, as in both predecessors, because `soup/cli/campaign.ts` and
    these fixtures pin it. Same direction of bias as before (clay measures −23.8 % chain growth), so it

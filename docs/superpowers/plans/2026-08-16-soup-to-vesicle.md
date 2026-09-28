@@ -1,54 +1,54 @@
-# Из бульона в везикулу: один непрерывный прогон — план реализации
+# From soup to vesicle: one continuous run, implementation plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Один прогон без швов: сцена стартует смесью простых молекул, связи образуются правилами, из них возникают амфифилы, амфифилы сами собираются в бислой и замыкаются в везикулу — и всё это проверяется воротами, включая честное «нет» там, где везикулы не возникают.
+**Goal:** One run with no seams: the scene starts as a mixture of simple molecules, bonds form by rules, amphiphiles emerge from them, the amphiphiles self-assemble into a bilayer and close into a vesicle, and all of it is checked by gates, including an honest "no" where vesicles do not appear.
 
-**Architecture:** Одна огрублённая шкала на весь прогон. Частица — либо мономер-носитель (углеродное звено, кислородная голова, водородный донор), либо каталитический центр, либо готовое звено цепи. Связи создаются и рвутся стохастическими правилами с детальным балансом, поэтому равновесие определяется разностью энергий, а не произволом. Несвязанные взаимодействия берутся из проверенной модели ступени C, поэтому собранный бислой обязан воспроизводить её измеренные площадь на липид и толщину. Замкнутость определяется заливкой снаружи — тем же детектором, что уже проверен.
+**Architecture:** One coarse-grained scale for the whole run. A particle is either a monomer carrier (a carbon unit, an oxygen head, a hydrogen donor), a catalytic center, or a finished chain unit. Bonds are created and broken by stochastic rules with detailed balance, so the equilibrium is set by the energy difference, not by arbitrary choice. Non-bonded interactions are taken from the validated stage C model, so the assembled bilayer must reproduce its measured area per lipid and thickness. Closure is determined by an outside fill, the same detector already validated.
 
-**Tech Stack:** TypeScript, WGSL (WebGPU), three.js, Vitest, puppeteer-core с системным Chrome. Переиспользуются `engine/wgsl/forces.wgsl`, `engine/wgsl/neighbor.wgsl`, `engine/src/closure.ts`, `chem/src/species.ts`, `chem/src/backmap.ts`, механика `verify/`.
+**Tech Stack:** TypeScript, WGSL (WebGPU), three.js, Vitest, puppeteer-core with the system Chrome. Reuses `engine/wgsl/forces.wgsl`, `engine/wgsl/neighbor.wgsl`, `engine/src/closure.ts`, `chem/src/species.ts`, `chem/src/backmap.ts`, and the `verify/` machinery.
 
-**Spec:** `docs/superpowers/specs/2026-08-15-protocell-genesis-design.md`, раздел 1a (поправка о непрерывном прогоне), разделы 3 и 8
+**Spec:** `docs/superpowers/specs/2026-08-15-protocell-genesis-design.md`, section 1a (amendment on the continuous run), sections 3 and 8
 
 ## Global Constraints
 
-- **Один прогон, одна шкала времени.** Ни одна величина не переносится между отдельными симуляциями; сцена от бульона до везикулы идёт непрерывно. Единственный множитель времени `κ_t` выводится числом на экран и в отчёт.
-- Несвязанные взаимодействия — параметры Cooke & Deserno 2005 из `data/params.json`, без изменений: `b_hh = b_ht = 0.95σ`, `b_tt = σ`, `w_c = 1.6σ`, `kT/ε = 1.1`, WCA с обрезкой `2^(1/6)b`, притяжение `−ε cos²`. Собранный бислой обязан попадать в измеренные коридоры: площадь на липид **1.1–1.5 σ²**, толщина **4–6 σ**.
-- Связи, образованные правилами, используют ту же FENE-связь и тот же изгибный потенциал, что проверены аналитически в ступени C. Новых потенциалов не вводится.
-- **Скорости реакций несут ранг D** — литературных константы для условий ранней Земли не существует. Любые ворота, зависящие только от них, публикуются как недоказанные. Обратные скорости связаны с прямыми детальным балансом `k_f/k_r = exp(−ΔU/kT)`, поэтому равновесие корректно при неизвестном времени.
-- **Точные инварианты:** число мономеров каждого сорта сохраняется, число связей меняется только на события образования и разрыва, суммарный заряд сохраняется. Нарушение — падение теста, не предупреждение.
-- Никаких вписанных химических констант в коде: правила и скорости живут в `data/soup.json`. Сторож из `tests/params.test.ts` расширяется на `soup/`.
-- Результаты читаются через `page.evaluate`; `--dump-dom` запрещён.
-- Длинные прогоны — в фоновом режиме инструмента с логом и ожиданием через `Monitor` в том же ходу. Один прогон на вызов. Не держать dev-сервер во время GPU-набора: замерено, что конкуренция убивает воркер vitest, а не роняет тест.
+- **One run, one time scale.** No quantity is carried between separate simulations; the scene runs continuously from soup to vesicle. The single time multiplier `κ_t` is output as a number to the screen and to the report.
+- Non-bonded interactions use the Cooke & Deserno 2005 parameters from `data/params.json`, unchanged: `b_hh = b_ht = 0.95σ`, `b_tt = σ`, `w_c = 1.6σ`, `kT/ε = 1.1`, WCA cut off at `2^(1/6)b`, attraction `−ε cos²`. The assembled bilayer must fall within the measured corridors: area per lipid **1.1–1.5 σ²**, thickness **4–6 σ**.
+- Bonds formed by rules use the same FENE bond and the same bending potential already validated analytically in stage C. No new potentials are introduced.
+- **Reaction rates carry rank D**: no literature constants exist for early-Earth conditions. Any gate that depends only on them is published as unproven. Reverse rates are tied to forward rates by detailed balance `k_f/k_r = exp(−ΔU/kT)`, so the equilibrium is correct even when time is unknown.
+- **Exact invariants:** the number of monomers of each kind is conserved, the number of bonds changes only through formation and breaking events, total charge is conserved. A violation fails the test, not a warning.
+- No chemical constants baked into code: rules and rates live in `data/soup.json`. The guard in `tests/params.test.ts` is extended to cover `soup/`.
+- Results are read via `page.evaluate`; `--dump-dom` is forbidden.
+- Long runs go in the background of the tool with a log, waited on via `Monitor` in the same turn. One run per call. Do not keep the dev server running during a GPU batch: measured that contention kills the vitest worker rather than failing the test.
 
 ---
 
-## Структура файлов
+## File structure
 
-- `data/soup.json` — сорта мономеров, правила связывания и разрыва с рангами, стартовый состав, окно параметров для фазовой карты.
-- `soup/src/rules.ts` — загрузка правил, проверка балансов, детальный баланс, вероятности на шаг.
-- `soup/src/sim.ts` — состояние прогона: частицы, связи, каталитические центры, счётчики событий, инварианты.
-- `soup/wgsl/bond.wgsl` — образование и разрыв связей по сетке соседей с атомарным захватом участников.
-- `soup/wgsl/step.wgsl` — интегратор Ланжевена поверх связей и несвязанных сил (переиспользует функции `engine/wgsl/forces.wgsl`).
-- `soup/src/amphiphile.ts` — распознавание амфифила в графе связей: цепь с полярным концом, длина, счёт по длинам.
-- `soup/src/stages.ts` — определение стадий прогона по замерам: мономеры, амфифилы, мицеллы, бислой, замкнутая везикула.
-- `viewer/soup.html`, `viewer/soup.ts` — сцена непрерывного прогона: поатомный вид через `chem/src/backmap.ts` для распознанных амфифилов, шкала стадий, счётчики, бейдж `κ_t` и рангов.
-- `verify/soup.ts` — сценарии и ворота непрерывного прогона, включая фазовую карту.
-- `tests/soup-*.test.ts` — тесты по задачам.
+- `data/soup.json`: monomer kinds, bonding and breaking rules with ranks, starting composition, parameter window for the phase map.
+- `soup/src/rules.ts`: rule loading, balance checks, detailed balance, per-step probabilities.
+- `soup/src/sim.ts`: run state: particles, bonds, catalytic centers, event counters, invariants.
+- `soup/wgsl/bond.wgsl`: bond formation and breaking over the neighbor grid with atomic capture of participants.
+- `soup/wgsl/step.wgsl`: Langevin integrator over bonded and non-bonded forces (reuses functions from `engine/wgsl/forces.wgsl`).
+- `soup/src/amphiphile.ts`: amphiphile recognition in the bond graph: a chain with a polar end, its length, and a length histogram.
+- `soup/src/stages.ts`: determination of run stages from measurements: monomers, amphiphiles, micelles, bilayer, closed vesicle.
+- `viewer/soup.html`, `viewer/soup.ts`: continuous-run scene: per-atom view via `chem/src/backmap.ts` for recognized amphiphiles, a stage scale, counters, a `κ_t` badge and rank labels.
+- `verify/soup.ts`: continuous-run scenarios and gates, including the phase map.
+- `tests/soup-*.test.ts`: tests per task.
 
 ---
 
-### Task 1: Правила связывания и инварианты
+### Task 1: Bonding rules and invariants
 
 **Files:**
 - Create: `data/soup.json`, `soup/src/rules.ts`
-- Modify: `tests/params.test.ts` (сторож на `soup/src`, `soup/wgsl`)
+- Modify: `tests/params.test.ts` (guard for `soup/src`, `soup/wgsl`)
 - Test: `tests/soup-rules.test.ts`
 
 **Interfaces:**
-- Produces: `loadSoup(): Soup` где `Soup = {monomers: Monomer[], rules: Rule[], start: Record<string, number>, sweep: Sweep}`, `Monomer = {id: string, kind: 'carbon' | 'head' | 'donor' | 'catalyst', radiusSigma: number, polar: boolean}`, `Rule = {id: string, kind: 'bond' | 'break', a: string, b: string, requiresCatalyst: boolean, energyKT: number, attemptRate: number, rank: 'A'|'B'|'C'|'D', basis: string}`; `forwardBackwardRatio(r: Rule): number` — `exp(−energyKT)`; `assertRulesConsistent(s: Soup): void` — бросает, если у правила образования нет парного разрыва, если ранг не D для скоростей синтеза, или если обоснование пустое.
+- Produces: `loadSoup(): Soup` where `Soup = {monomers: Monomer[], rules: Rule[], start: Record<string, number>, sweep: Sweep}`, `Monomer = {id: string, kind: 'carbon' | 'head' | 'donor' | 'catalyst', radiusSigma: number, polar: boolean}`, `Rule = {id: string, kind: 'bond' | 'break', a: string, b: string, requiresCatalyst: boolean, energyKT: number, attemptRate: number, rank: 'A'|'B'|'C'|'D', basis: string}`; `forwardBackwardRatio(r: Rule): number` returns `exp(−energyKT)`; `assertRulesConsistent(s: Soup): void` throws if a formation rule has no matching break rule, if the rank is not D for synthesis rates, or if the basis text is empty.
 
-- [ ] **Step 1: Написать падающие тесты**
+- [ ] **Step 1: Write failing tests**
 
 `tests/soup-rules.test.ts`:
 
@@ -56,7 +56,7 @@
 import { expect, test } from 'vitest'
 import { assertRulesConsistent, forwardBackwardRatio, loadSoup } from '../soup/src/rules'
 
-test('каждое правило образования имеет парный разрыв и детальный баланс', () => {
+test('every formation rule has a matching break rule and detailed balance', () => {
   const s = loadSoup()
   expect(() => assertRulesConsistent(s)).not.toThrow()
   for (const r of s.rules.filter((x) => x.kind === 'bond')) {
@@ -66,33 +66,33 @@ test('каждое правило образования имеет парный
   }
 })
 
-test('все скорости синтеза объявлены рангом D с обоснованием', () => {
+test('all synthesis rates are declared rank D with a basis', () => {
   for (const r of loadSoup().rules) {
     expect(r.rank).toBe('D')
     expect(r.basis.length).toBeGreaterThan(10)
   }
 })
 
-test('стартовый состав содержит только мономеры и не содержит готовых амфифилов', () => {
+test('the starting composition contains only monomers and no finished amphiphiles', () => {
   const s = loadSoup()
   const ids = new Set(s.monomers.map((m) => m.id))
   for (const k of Object.keys(s.start)) expect(ids.has(k)).toBe(true)
   expect(Object.keys(s.start).length).toBeGreaterThan(2)
 })
 
-test('несогласованный набор правил выявляется', () => {
+test('an inconsistent rule set is detected', () => {
   const s = loadSoup()
   const broken = { ...s, rules: s.rules.filter((r) => r.kind !== 'break') }
-  expect(() => assertRulesConsistent(broken)).toThrow(/разрыв/)
+  expect(() => assertRulesConsistent(broken)).toThrow(/break/)
 })
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+- [ ] **Step 2: Run and confirm the tests fail**
 
 Run: `npx vitest run tests/soup-rules.test.ts`
-Expected: FAIL — `soup/src/rules` не найден.
+Expected: FAIL, `soup/src/rules` not found.
 
-- [ ] **Step 3: Реализовать правила**
+- [ ] **Step 3: Implement the rules**
 
 `data/soup.json`:
 
@@ -108,28 +108,28 @@ Expected: FAIL — `soup/src/rules` не найден.
   "start": { "C": 6000, "O": 900, "H": 6000, "M": 200 },
   "rules": [
     { "id": "cc_bond",  "kind": "bond",  "a": "C", "b": "C", "requiresCatalyst": true,  "energyKT": 6.0, "attemptRate": 0.05, "rank": "D",
-      "basis": "оценка: рост углеродной цепи идёт только на каталитическом центре; глубина 6 kT задаёт устойчивость цепи к тепловому разрыву" },
+      "basis": "estimate: carbon chain growth occurs only at the catalytic center; a depth of 6 kT sets the chain's resistance to thermal breakage" },
     { "id": "cc_break", "kind": "break", "a": "C", "b": "C", "requiresCatalyst": false, "energyKT": 6.0, "attemptRate": 0.05, "rank": "D",
-      "basis": "парный разрыв к cc_bond, связан детальным балансом" },
+      "basis": "paired break for cc_bond, linked by detailed balance" },
     { "id": "co_bond",  "kind": "bond",  "a": "C", "b": "O", "requiresCatalyst": false, "energyKT": 8.0, "attemptRate": 0.05, "rank": "D",
-      "basis": "оценка: присоединение полярной головы к концу цепи, глубже связи C-C, поэтому голова не отваливается первой" },
+      "basis": "estimate: attachment of the polar head to the chain end, deeper than the C-C bond, so the head does not fall off first" },
     { "id": "co_break", "kind": "break", "a": "C", "b": "O", "requiresCatalyst": false, "energyKT": 8.0, "attemptRate": 0.05, "rank": "D",
-      "basis": "парный разрыв к co_bond, связан детальным балансом" }
+      "basis": "paired break for co_bond, linked by detailed balance" }
   ],
   "sweep": { "kT": [0.9, 1.1, 1.3], "carbonDensity": [0.03, 0.06, 0.09], "catalystCount": [50, 200, 800] }
 }
 ```
 
-`soup/src/rules.ts` загружает файл, проверяет парность правил, ранги и обоснования, и выводит вероятность попытки на шаг как `attemptRate·dt`, а вероятность принятия — из `energyKT` по Метрополису, чтобы прямое и обратное направления автоматически удовлетворяли детальному балансу.
+`soup/src/rules.ts` loads the file, checks the pairing of rules, the ranks, and the bases, and derives the per-step attempt probability as `attemptRate·dt`, with the acceptance probability derived from `energyKT` by the Metropolis criterion, so the forward and reverse directions automatically satisfy detailed balance.
 
-Расширить сторож в `tests/params.test.ts`: каталоги становятся `['engine/src', 'engine/wgsl', 'chem/src', 'soup/src', 'soup/wgsl']`.
+Extend the guard in `tests/params.test.ts`: the directory list becomes `['engine/src', 'engine/wgsl', 'chem/src', 'soup/src', 'soup/wgsl']`.
 
-- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+- [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `npx vitest run tests/soup-rules.test.ts tests/params.test.ts`
-Expected: PASS все пять.
+Expected: PASS, all five.
 
-- [ ] **Step 5: Коммит**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add data/soup.json soup/src/rules.ts tests/soup-rules.test.ts tests/params.test.ts
@@ -138,7 +138,7 @@ git commit -m "feat: bonding rules with detailed balance and exact invariants"
 
 ---
 
-### Task 2: Образование и разрыв связей в динамике
+### Task 2: Bond formation and breaking in the dynamics
 
 **Files:**
 - Create: `soup/wgsl/bond.wgsl`, `soup/wgsl/step.wgsl`, `soup/src/sim.ts`
@@ -146,10 +146,10 @@ git commit -m "feat: bonding rules with detailed balance and exact invariants"
 - Test: `tests/soup-bonds.test.ts`
 
 **Interfaces:**
-- Consumes: `loadSoup`, вероятности из задачи 1; `getGpu`, `readBack`, `storageBuffer`; функции потенциалов из `engine/wgsl/forces.wgsl`; сетка из `engine/wgsl/neighbor.wgsl`.
-- Produces: `createSoup(opts: {box: [number,number,number], seed: number, kT: number, start?: Record<string, number>, catalystCount?: number}): Promise<SoupSystem>`; `SoupSystem.step(n: number): Promise<void>`; `SoupSystem.particles(): Promise<Float32Array>` — по 4 float (x, y, z, сорт); `SoupSystem.bonds(): Promise<Uint32Array>` — пары индексов; `SoupSystem.events(): Promise<Record<string, number>>`; `SoupSystem.invariants(): Promise<{monomers: Record<string, number>, bonds: number, charge: number}>`.
+- Consumes: `loadSoup`, probabilities from Task 1; `getGpu`, `readBack`, `storageBuffer`; potential functions from `engine/wgsl/forces.wgsl`; the grid from `engine/wgsl/neighbor.wgsl`.
+- Produces: `createSoup(opts: {box: [number,number,number], seed: number, kT: number, start?: Record<string, number>, catalystCount?: number}): Promise<SoupSystem>`; `SoupSystem.step(n: number): Promise<void>`; `SoupSystem.particles(): Promise<Float32Array>`, 4 floats each (x, y, z, kind); `SoupSystem.bonds(): Promise<Uint32Array>`, index pairs; `SoupSystem.events(): Promise<Record<string, number>>`; `SoupSystem.invariants(): Promise<{monomers: Record<string, number>, bonds: number, charge: number}>`.
 
-- [ ] **Step 1: Написать падающие тесты**
+- [ ] **Step 1: Write failing tests**
 
 `tests/soup-bonds.test.ts`:
 
@@ -159,7 +159,7 @@ import { gpuPage, shutdownGpu } from './helpers/gpu'
 
 afterAll(shutdownGpu)
 
-test('связи образуются только на каталитическом центре там, где правило это требует', async () => {
+test('bonds form only at the catalytic center where the rule requires it', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api
@@ -175,7 +175,7 @@ test('связи образуются только на каталитическ
   expect(r.without).toBe(0)
 })
 
-test('число мономеров каждого сорта и заряд сохраняются при работающих реакциях', async () => {
+test('the count of each monomer kind and the charge are conserved while reactions run', async () => {
   const page = await gpuPage()
   const inv = await page.evaluate(async () => {
     const api = (window as any).api
@@ -190,7 +190,7 @@ test('число мономеров каждого сорта и заряд со
   expect(inv.after.bonds).toBeGreaterThan(0)
 })
 
-test('при высокой температуре связей меньше, чем при низкой — равновесие определяется энергией', async () => {
+test('at high temperature there are fewer bonds than at low temperature: equilibrium is set by energy', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api
@@ -206,25 +206,25 @@ test('при высокой температуре связей меньше, ч
 }, 1_800_000)
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+- [ ] **Step 2: Run and confirm the tests fail**
 
 Run: `npx vitest run tests/soup-bonds.test.ts`
-Expected: FAIL — `api.createSoup` не функция.
+Expected: FAIL, `api.createSoup` is not a function.
 
-- [ ] **Step 3: Реализовать динамику связей**
+- [ ] **Step 3: Implement the bond dynamics**
 
-`soup/wgsl/bond.wgsl`: по сетке соседей ищутся пары подходящих сортов на расстоянии меньше контактного радиуса. Оба участника захватываются атомарно, чтобы одна частица не получила две связи за шаг сверх допустимой валентности (углерод — не больше двух связей в цепи плюс одна голова; голова — одна связь). Попытка образования принимается по Метрополису от `energyKT`; попытка разрыва идёт по существующим связям с той же энергией, поэтому отношение прямой и обратной вероятностей равно `exp(−ΔU/kT)` численно, а не по декларации.
+`soup/wgsl/bond.wgsl`: pairs of matching kinds within the contact radius are found over the neighbor grid. Both participants are captured atomically so that a particle does not gain two bonds in one step beyond its allowed valence (carbon: no more than two chain bonds plus one head; head: one bond). A formation attempt is accepted by the Metropolis criterion from `energyKT`; a breaking attempt runs over existing bonds with the same energy, so the ratio of forward to reverse probability equals `exp(−ΔU/kT)` numerically, not merely by declaration.
 
-`soup/wgsl/step.wgsl`: шаг Ланжевена, где силы складываются из несвязанных взаимодействий (функции из `engine/wgsl/forces.wgsl`, радиусы по сортам, притяжение только между неполярными концами) и связанных FENE плюс изгиб для троек вдоль цепи. Полярные головы не участвуют в притяжении хвостов — именно эта асимметрия делает продукт амфифилом.
+`soup/wgsl/step.wgsl`: a Langevin step where forces are the sum of non-bonded interactions (functions from `engine/wgsl/forces.wgsl`, radii by kind, attraction only between non-polar ends) and bonded FENE plus bending for triples along the chain. Polar heads do not participate in tail attraction: it is exactly this asymmetry that makes the product an amphiphile.
 
-`soup/src/sim.ts` держит буферы частиц, связей, валентностей, центров, счётчиков; реализует перечисленные методы; проверяет валентность как инвариант при каждом чтении связей.
+`soup/src/sim.ts` holds the buffers for particles, bonds, valences, centers, and counters; implements the listed methods; checks valence as an invariant on every read of the bonds.
 
-- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+- [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `npx vitest run tests/soup-bonds.test.ts`
-Expected: PASS все три. Если связи образуются без катализатора — правило `requiresCatalyst` не дошло до шейдера; если число мономеров изменилось — частица потеряна при захвате, проверить откат при неудачном атомарном обмене.
+Expected: PASS, all three. If bonds form without a catalyst, the `requiresCatalyst` rule did not reach the shader; if the monomer count changed, a particle was lost during capture, check the rollback on a failed atomic exchange.
 
-- [ ] **Step 5: Коммит**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add soup/wgsl/bond.wgsl soup/wgsl/step.wgsl soup/src/sim.ts engine/src/index.ts tests/soup-bonds.test.ts
@@ -233,7 +233,7 @@ git commit -m "feat: bond formation and breaking in dynamics, catalyst-gated"
 
 ---
 
-### Task 3: Распознавание амфифила и стадий
+### Task 3: Amphiphile and stage recognition
 
 **Files:**
 - Create: `soup/src/amphiphile.ts`, `soup/src/stages.ts`
@@ -242,9 +242,9 @@ git commit -m "feat: bond formation and breaking in dynamics, catalyst-gated"
 
 **Interfaces:**
 - Consumes: `SoupSystem.particles`, `SoupSystem.bonds`.
-- Produces: `findAmphiphiles(particles: Float32Array, bonds: Uint32Array, monomers: Monomer[]): Amphiphile[]` где `Amphiphile = {headIndex: number, chain: number[], length: number}` — цепь из углеродов с ровно одной полярной головой на конце; `amphiphileHistogram(a: Amphiphile[]): Record<number, number>`; `detectStage(sys: SoupSystem): Promise<{stage: 'monomers'|'amphiphiles'|'micelles'|'bilayer'|'vesicle', evidence: Record<string, number>}>` — стадия определяется замерами: доля углерода в амфифилах (поле `amphiphileFraction`), размер крупнейшего агрегата, число пиков в профиле плотности голов, объём непролитой полости (поле `enclosedVolume`). Фасад в `engine/src/index.ts`: `stageOf(sys: SoupSystem)` — то же самое, опубликованное как `window.api.stageOf` для тестов и сцены.
+- Produces: `findAmphiphiles(particles: Float32Array, bonds: Uint32Array, monomers: Monomer[]): Amphiphile[]` where `Amphiphile = {headIndex: number, chain: number[], length: number}`, a chain of carbons with exactly one polar head at the end; `amphiphileHistogram(a: Amphiphile[]): Record<number, number>`; `detectStage(sys: SoupSystem): Promise<{stage: 'monomers'|'amphiphiles'|'micelles'|'bilayer'|'vesicle', evidence: Record<string, number>}>`, the stage is determined from measurements: the fraction of carbon in amphiphiles (field `amphiphileFraction`), the size of the largest aggregate, the number of peaks in the head density profile, the volume of the unfilled cavity (field `enclosedVolume`). A facade in `engine/src/index.ts`: `stageOf(sys: SoupSystem)`, the same thing, published as `window.api.stageOf` for tests and the scene.
 
-- [ ] **Step 1: Написать падающие тесты**
+- [ ] **Step 1: Write failing tests**
 
 `tests/soup-amphiphile.test.ts`:
 
@@ -255,7 +255,7 @@ import { loadSoup } from '../soup/src/rules'
 
 const P = (xs: number[][]) => new Float32Array(xs.flat())
 
-test('цепь с одной полярной головой распознаётся как амфифил', () => {
+test('a chain with one polar head is recognized as an amphiphile', () => {
   const parts = P([[0,0,0,1],[1,0,0,0],[2,0,0,0],[3,0,0,0]])
   const bonds = new Uint32Array([0,1, 1,2, 2,3])
   const a = findAmphiphiles(parts, bonds, loadSoup().monomers)
@@ -263,7 +263,7 @@ test('цепь с одной полярной головой распознаё�
   expect(a[0].length).toBe(3)
 })
 
-test('цепь без головы и цепь с двумя головами амфифилами не считаются', () => {
+test('a chain with no head and a chain with two heads are not counted as amphiphiles', () => {
   const m = loadSoup().monomers
   const noHead = findAmphiphiles(P([[0,0,0,0],[1,0,0,0],[2,0,0,0]]), new Uint32Array([0,1, 1,2]), m)
   expect(noHead.length).toBe(0)
@@ -271,7 +271,7 @@ test('цепь без головы и цепь с двумя головами а
   expect(twoHeads.length).toBe(0)
 })
 
-test('гистограмма длин считает цепи по числу углеродов', () => {
+test('the length histogram counts chains by number of carbons', () => {
   const m = loadSoup().monomers
   const parts = P([[0,0,0,1],[1,0,0,0],[2,0,0,0], [10,0,0,1],[11,0,0,0]])
   const bonds = new Uint32Array([0,1, 1,2, 3,4])
@@ -279,21 +279,21 @@ test('гистограмма длин считает цепи по числу у
 })
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+- [ ] **Step 2: Run and confirm the tests fail**
 
 Run: `npx vitest run tests/soup-amphiphile.test.ts`
-Expected: FAIL — `soup/src/amphiphile` не найден.
+Expected: FAIL, `soup/src/amphiphile` not found.
 
-- [ ] **Step 3: Реализовать распознавание**
+- [ ] **Step 3: Implement the recognition**
 
-`soup/src/amphiphile.ts` обходит граф связей союз-поиском, для каждой компоненты проверяет, что она — простая цепь (все степени не больше двух), содержит ровно одну полярную частицу и что эта частица на конце; длина считается числом неполярных звеньев. `soup/src/stages.ts` вызывает `findAmphiphiles`, `largestClusterFraction` из `engine/src/aggregate.ts`, `bilayerPeaks` из `engine/src/metrics.ts` и `enclosedVolumeCpu` из фасада, и по этим четырём замерам возвращает стадию с числами-доказательствами.
+`soup/src/amphiphile.ts` walks the bond graph with union-find, and for each component checks that it is a simple chain (all degrees at most two), contains exactly one polar particle, and that this particle is at an end; length is counted as the number of non-polar units. `soup/src/stages.ts` calls `findAmphiphiles`, `largestClusterFraction` from `engine/src/aggregate.ts`, `bilayerPeaks` from `engine/src/metrics.ts`, and `enclosedVolumeCpu` from the facade, and from these four measurements returns a stage with the supporting numbers.
 
-- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+- [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `npx vitest run tests/soup-amphiphile.test.ts`
-Expected: PASS все три.
+Expected: PASS, all three.
 
-- [ ] **Step 5: Коммит**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add soup/src/amphiphile.ts soup/src/stages.ts engine/src/index.ts tests/soup-amphiphile.test.ts
@@ -302,7 +302,7 @@ git commit -m "feat: amphiphile recognition and stage detection from measurement
 
 ---
 
-### Task 4: Непрерывный прогон до везикулы
+### Task 4: Continuous run to the vesicle
 
 **Files:**
 - Modify: `soup/src/sim.ts`, `engine/src/index.ts`
@@ -311,7 +311,7 @@ git commit -m "feat: amphiphile recognition and stage detection from measurement
 **Interfaces:**
 - Produces: `SoupSystem.runUntil(stage: string, opts: {maxSteps: number, sampleEvery: number}): Promise<{reached: boolean, steps: number, trace: {steps: number, stage: string, evidence: Record<string, number>}[]}>`.
 
-- [ ] **Step 1: Написать падающий тест**
+- [ ] **Step 1: Write a failing test**
 
 `tests/soup-vesicle.test.ts`:
 
@@ -321,7 +321,7 @@ import { gpuPage, shutdownGpu } from './helpers/gpu'
 
 afterAll(shutdownGpu)
 
-test('из бульона без готовых амфифилов возникает замкнутая везикула', async () => {
+test('a closed vesicle emerges from soup with no ready-made amphiphiles', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api
@@ -338,19 +338,19 @@ test('из бульона без готовых амфифилов возник�
 }, 3_600_000)
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тест падает**
+- [ ] **Step 2: Run and confirm the test fails**
 
 Run: `npx vitest run tests/soup-vesicle.test.ts`
-Expected: FAIL — `runUntil` отсутствует.
+Expected: FAIL, `runUntil` is missing.
 
-- [ ] **Step 3: Реализовать прогон и добиться прохождения**
+- [ ] **Step 3: Implement the run and make it pass**
 
-`runUntil` шагает пачками по `sampleEvery`, после каждой считает стадию и пишет в трассу, останавливается при достижении целевой стадии или при исчерпании `maxSteps`. Если везикула не возникает — **не подкручивать притяжение и не ослаблять порог**: сначала посмотреть трассу и решить по числам, чего не хватает (углерода на амфифилы, центров на скорость синтеза, времени на замыкание), затем менять состав или число шагов в `data/soup.json` и в тесте, документируя выбор. Если и это не помогает, доложить BLOCKED с полной трассой.
+`runUntil` steps in batches of `sampleEvery`, computes the stage after each batch and writes it to the trace, and stops when the target stage is reached or `maxSteps` is exhausted. If the vesicle does not appear, **do not tweak the attraction and do not weaken the threshold**: first look at the trace and decide from the numbers what is missing (carbon for amphiphiles, centers for the synthesis rate, time for closure), then change the composition or the step count in `data/soup.json` and in the test, documenting the choice. If that still does not help, report BLOCKED with the full trace.
 
 Run: `npx vitest run tests/soup-vesicle.test.ts`
 Expected: PASS.
 
-- [ ] **Step 4: Коммит**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add soup/src/sim.ts engine/src/index.ts tests/soup-vesicle.test.ts
@@ -359,17 +359,17 @@ git commit -m "feat: continuous run from soup to closed vesicle"
 
 ---
 
-### Task 5: Сцена непрерывного прогона
+### Task 5: The continuous-run scene
 
 **Files:**
 - Create: `viewer/soup.html`, `viewer/soup.ts`
 - Test: `tests/soup-viewer.test.ts`
 
 **Interfaces:**
-- Consumes: `createSoup`, `runUntil`, `findAmphiphiles`, `backmapLipid` из `chem/src/backmap.ts`, `data/atoms.json`.
-- Produces: страница `/viewer/soup.html`, публикующая `window.soup = {frames: number, steps: number, stage: string, amphiphiles: number, largestCluster: number, enclosedVolume: number, kappaT: number, badge: string}`.
+- Consumes: `createSoup`, `runUntil`, `findAmphiphiles`, `backmapLipid` from `chem/src/backmap.ts`, `data/atoms.json`.
+- Produces: page `/viewer/soup.html`, publishing `window.soup = {frames: number, steps: number, stage: string, amphiphiles: number, largestCluster: number, enclosedVolume: number, kappaT: number, badge: string}`.
 
-- [ ] **Step 1: Написать падающий тест**
+- [ ] **Step 1: Write a failing test**
 
 `tests/soup-viewer.test.ts`:
 
@@ -379,35 +379,35 @@ import { gpuPage, shutdownGpu } from './helpers/gpu'
 
 afterAll(shutdownGpu)
 
-test('сцена бульона идёт, показывает стадию и подписывает ранги', async () => {
+test('the soup scene runs, shows the stage, and labels the ranks', async () => {
   const page = await gpuPage()
   await page.goto(new URL('/viewer/soup.html', page.url()).href, { waitUntil: 'load' })
   await page.waitForFunction('window.soup && window.soup.frames > 5 && window.soup.steps > 0')
   const s = await page.evaluate(() => ({ ...(window as any).soup }))
   expect(['monomers', 'amphiphiles', 'micelles', 'bilayer', 'vesicle']).toContain(s.stage)
   expect(s.badge).toContain('κ_t')
-  expect(s.badge.toLowerCase()).toContain('ранг d')
+  expect(s.badge.toLowerCase()).toContain('rank d')
   expect(typeof s.enclosedVolume).toBe('number')
   const shot = await page.screenshot({ encoding: 'binary' })
   expect(shot.length).toBeGreaterThan(5000)
 })
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тест падает**
+- [ ] **Step 2: Run and confirm the test fails**
 
 Run: `npx vitest run tests/soup-viewer.test.ts`
-Expected: FAIL — страница отсутствует.
+Expected: FAIL, the page is missing.
 
-- [ ] **Step 3: Реализовать сцену**
+- [ ] **Step 3: Implement the scene**
 
-Мономеры рисуются шарами по сортам и радиусам; распознанные амфифилы разворачиваются поатомно через `backmapLipid` для тех, что попали в срез, остальные — упрощённо; связи — цилиндрами. Сверху идёт шкала стадий с подсветкой текущей и числами-доказательствами: доля углерода в амфифилах, размер крупнейшего агрегата, число пиков плотности голов, объём полости. Бейдж говорит: множитель времени `κ_t` числом, скорости реакций ранга D, атомная детализация амфифилов — реконструкция по справочной геометрии, а сборка идёт проверенным потенциалом.
+Monomers are drawn as spheres by kind and radius; recognized amphiphiles are expanded per atom via `backmapLipid` for those caught in the slice, the rest simplified; bonds as cylinders. At the top runs a stage scale highlighting the current stage with the supporting numbers: the fraction of carbon in amphiphiles, the size of the largest aggregate, the number of head-density peaks, the cavity volume. The badge states: the time multiplier `κ_t` as a number, reaction rates of rank D, that the atomic detail of amphiphiles is a reconstruction from reference geometry, while the assembly uses the validated potential.
 
-- [ ] **Step 4: Запустить тест и убедиться, что он проходит**
+- [ ] **Step 4: Run the test and confirm it passes**
 
 Run: `npx vitest run tests/soup-viewer.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Коммит**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add viewer/soup.html viewer/soup.ts tests/soup-viewer.test.ts
@@ -416,7 +416,7 @@ git commit -m "feat: continuous soup-to-vesicle scene with stage evidence on scr
 
 ---
 
-### Task 6: Проверка гипотезы фазовой картой
+### Task 6: Testing the hypothesis with a phase map
 
 **Files:**
 - Create: `verify/soup.ts`
@@ -424,9 +424,9 @@ git commit -m "feat: continuous soup-to-vesicle scene with stage evidence on scr
 - Test: `tests/soup-gates.test.ts`
 
 **Interfaces:**
-- Produces: ворота `soup-to-vesicle`, `soup-invariants`, `soup-bilayer-corridors`, `soup-phase-window` в `data/literature.json`; `sweepPhaseMap(): Promise<{kT: number, carbonDensity: number, catalystCount: number, stage: string, enclosedVolume: number}[]>` в `verify/soup.ts`.
+- Produces: gates `soup-to-vesicle`, `soup-invariants`, `soup-bilayer-corridors`, `soup-phase-window` in `data/literature.json`; `sweepPhaseMap(): Promise<{kT: number, carbonDensity: number, catalystCount: number, stage: string, enclosedVolume: number}[]>` in `verify/soup.ts`.
 
-- [ ] **Step 1: Написать падающие тесты**
+- [ ] **Step 1: Write failing tests**
 
 `tests/soup-gates.test.ts`:
 
@@ -435,25 +435,25 @@ import { expect, test } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { evaluateGates } from '../verify/gates'
 
-test('ворота непрерывного прогона объявлены', () => {
+test('the continuous-run gates are declared', () => {
   const ids = JSON.parse(readFileSync('data/literature.json', 'utf8')).gates.map((g: any) => g.id)
   for (const id of ['soup-to-vesicle', 'soup-invariants', 'soup-bilayer-corridors', 'soup-phase-window']) {
     expect(ids).toContain(id)
   }
 })
 
-test('инварианты бульона проходят только при точном нуле дрейфа', () => {
+test('the soup invariants gate passes only at exactly zero drift', () => {
   expect(evaluateGates({ soupInvariantDrift: 0 }).find((g) => g.id === 'soup-invariants')!.verdict).toBe('passed')
   expect(evaluateGates({ soupInvariantDrift: 1 }).find((g) => g.id === 'soup-invariants')!.verdict).toBe('failed')
 })
 
-test('ворота пути до везикулы имеют ранг D и выходят недоказанными', () => {
+test('the vesicle-path gate has rank D and comes out unproven', () => {
   const r = evaluateGates({ soupReachedVesicle: 1 })
   expect(r.find((g) => g.id === 'soup-to-vesicle')!.rank).toBe('D')
   expect(r.find((g) => g.id === 'soup-to-vesicle')!.verdict).toBe('unproven')
 })
 
-test('коридоры собранного бислоя те же, что у проверенной модели', () => {
+test('the corridors of the assembled bilayer match the validated model', () => {
   const lit = JSON.parse(readFileSync('data/literature.json', 'utf8'))
   const g = lit.gates.find((x: any) => x.id === 'soup-bilayer-corridors')
   expect(g.target).toEqual({ min: 1.1, max: 1.5 })
@@ -461,28 +461,28 @@ test('коридоры собранного бислоя те же, что у п
 })
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+- [ ] **Step 2: Run and confirm the tests fail**
 
 Run: `npx vitest run tests/soup-gates.test.ts`
-Expected: FAIL — записи ворот отсутствуют.
+Expected: FAIL, gate entries are missing.
 
-- [ ] **Step 3: Реализовать ворота и фазовую карту**
+- [ ] **Step 3: Implement the gates and the phase map**
 
-Записи в `data/literature.json`: `soup-to-vesicle` (метрика `soupReachedVesicle`, ранг **D**, источник — гипотеза первичного образования везикул, условия — скорости ранга D, поэтому ворота недоказаны по построению); `soup-invariants` (метрика `soupInvariantDrift`, цель `max: 0`, ранг A, точный инвариант); `soup-bilayer-corridors` (метрика `soupAreaPerLipid`, цель `1.1–1.5`, ранг A, тот же источник Cooke & Deserno 2005 — собранный из бульона бислой обязан попасть в тот же коридор, и это настоящая проверка, что правила дали настоящий амфифил); `soup-phase-window` (метрика `soupVesicleFraction` — доля точек сетки, где возникла везикула, ранг D, содержание проверки гипотезы).
+Entries in `data/literature.json`: `soup-to-vesicle` (metric `soupReachedVesicle`, rank **D**, source: the primordial vesicle-formation hypothesis, conditions: rank D rates, so the gate is unproven by construction); `soup-invariants` (metric `soupInvariantDrift`, target `max: 0`, rank A, exact invariant); `soup-bilayer-corridors` (metric `soupAreaPerLipid`, target `1.1–1.5`, rank A, the same source, Cooke & Deserno 2005; the bilayer assembled from soup must fall in the same corridor, and this is a real check that the rules produced a real amphiphile); `soup-phase-window` (metric `soupVesicleFraction`, the fraction of grid points where a vesicle appeared, rank D, the substance of the hypothesis test).
 
-`verify/soup.ts` гоняет прогон до везикулы, считает инварианты, измеряет площадь на липид собранного бислоя и прогоняет сетку параметров из `data/soup.json`, отдавая карту точек со стадиями. `verify/report.ts` печатает карту таблицей: где везикула возникла, где остановилась на бислое, где на мицеллах, где вещество осталось мономерами — и подпись, что «нет» в части карты является результатом, а не сбоем.
+`verify/soup.ts` runs to the vesicle, computes the invariants, measures the area per lipid of the assembled bilayer, and sweeps the parameter grid from `data/soup.json`, returning a map of points with their stages. `verify/report.ts` prints the map as a table: where the vesicle appeared, where it stopped at the bilayer, where at micelles, where the material stayed as monomers, with a note that a "no" in part of the map is a result, not a failure.
 
-- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+- [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `npx vitest run tests/soup-gates.test.ts`
-Expected: PASS все четыре.
+Expected: PASS, all four.
 
-- [ ] **Step 5: Прогнать экзамен целиком**
+- [ ] **Step 5: Run the full exam**
 
 Run: `npm run verify`
-Expected: в отчёте появились ворота непрерывного прогона и таблица фазовой карты. Отдать пользователю полный путь к отчёту.
+Expected: the continuous-run gates and the phase-map table appear in the report. Hand the user the full path to the report.
 
-- [ ] **Step 6: Коммит**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add verify/soup.ts data/literature.json verify/run.ts verify/report.ts tests/soup-gates.test.ts
@@ -491,9 +491,9 @@ git commit -m "feat: hypothesis test by phase map over temperature, density and 
 
 ---
 
-### Task 7: Строгость химии — Флори и Ван-Гофф
+### Task 7: Chemistry rigor: Flory and van't Hoff
 
-Эти два теста и есть ответ на требование «непрерывный прогон, но научно достоверный»: они не зависят ни от одной неизвестной константы скорости, потому что проверяют равновесие и его температурную зависимость, а не время.
+These two tests are the answer to the requirement "a continuous run, but scientifically sound": they depend on no unknown rate constant, because they check equilibrium and its temperature dependence, not time.
 
 **Files:**
 - Create: `soup/src/equilibrium.ts`
@@ -501,9 +501,9 @@ git commit -m "feat: hypothesis test by phase map over temperature, density and 
 
 **Interfaces:**
 - Consumes: `loadSoup`, `SoupSystem`, `findAmphiphiles`, `amphiphileHistogram`.
-- Produces: `floryPrediction(energyKT: number, monomerVolumeFraction: number, maxLength: number): Record<number, number>` — равновесная геометрическая доля цепей каждой длины из константы равновесия `K = exp(energyKT)` и объёмной доли; `bondFraction(sys: SoupSystem): Promise<number>` — доля реализованных связей от максимально возможных; `vanHoffSlope(points: {kT: number, bondFraction: number}[]): {slope: number, r2: number}` — наклон `ln[p/(1−p)]` против `1/kT`.
+- Produces: `floryPrediction(energyKT: number, monomerVolumeFraction: number, maxLength: number): Record<number, number>`, the equilibrium geometric fraction of chains of each length from the equilibrium constant `K = exp(energyKT)` and the volume fraction; `bondFraction(sys: SoupSystem): Promise<number>`, the fraction of realized bonds out of the maximum possible; `vanHoffSlope(points: {kT: number, bondFraction: number}[]): {slope: number, r2: number}`, the slope of `ln[p/(1−p)]` against `1/kT`.
 
-- [ ] **Step 1: Написать падающие тесты**
+- [ ] **Step 1: Write failing tests**
 
 `tests/soup-equilibrium.test.ts`:
 
@@ -514,14 +514,14 @@ import { floryPrediction, vanHoffSlope } from '../soup/src/equilibrium'
 
 afterAll(shutdownGpu)
 
-test('предсказание Флори нормировано и убывает геометрически', () => {
+test('the Flory prediction is normalized and decreases geometrically', () => {
   const p = floryPrediction(2.0, 0.05, 30)
   const vals = Object.values(p)
   expect(vals.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 6)
   for (let n = 2; n <= 10; n++) expect(p[n] / p[n - 1]).toBeCloseTo(p[3] / p[2], 3)
 })
 
-test('оценка наклона Ван-Гоффа восстанавливает заложенную энергию на синтетике', () => {
+test('the van\'t Hoff slope estimator recovers the built-in energy on synthetic data', () => {
   const e = 6.0
   const pts = [0.8, 1.0, 1.2, 1.5, 2.0].map((kT) => {
     const K = Math.exp(e / kT) * 0.02
@@ -532,7 +532,7 @@ test('оценка наклона Ван-Гоффа восстанавливае
   expect(f.r2).toBeGreaterThan(0.99)
 })
 
-test('измеренное распределение длин совпадает с Флори без подгонки', async () => {
+test('the measured length distribution matches Flory with no fitting', async () => {
   const page = await gpuPage()
   const r = await page.evaluate(async () => {
     const api = (window as any).api
@@ -548,7 +548,7 @@ test('измеренное распределение длин совпадае�
   }
 }, 1_800_000)
 
-test('доля связей против обратной температуры даёт заложенную энергию', async () => {
+test('bond fraction against inverse temperature gives back the built-in energy', async () => {
   const page = await gpuPage()
   const pts = await page.evaluate(async () => {
     const api = (window as any).api
@@ -567,23 +567,23 @@ test('доля связей против обратной температуры
 }, 3_600_000)
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+- [ ] **Step 2: Run and confirm the tests fail**
 
 Run: `npx vitest run tests/soup-equilibrium.test.ts`
-Expected: FAIL — `soup/src/equilibrium` не найден.
+Expected: FAIL, `soup/src/equilibrium` not found.
 
-- [ ] **Step 3: Реализовать**
+- [ ] **Step 3: Implement**
 
-`floryPrediction` строит `p_n = (1−x)·x^(n−1)` где `x` — вероятность продолжения, выведенная из константы равновесия и объёмной доли мономера, и нормирует на `maxLength`. `bondFraction` делит число связей на максимально возможное при данной валентности. `vanHoffSlope` делает линейную регрессию `ln[p/(1−p)]` против `1/kT` и возвращает наклон с коэффициентом детерминации. Фасады `histogramOf`, `floryOf`, `bondFractionOf` публикуются в `engine/src/index.ts`.
+`floryPrediction` builds `p_n = (1−x)·x^(n−1)` where `x` is the continuation probability derived from the equilibrium constant and the monomer volume fraction, and normalizes over `maxLength`. `bondFraction` divides the number of bonds by the maximum possible given the valence. `vanHoffSlope` performs a linear regression of `ln[p/(1−p)]` against `1/kT` and returns the slope with the coefficient of determination. The facades `histogramOf`, `floryOf`, `bondFractionOf` are published in `engine/src/index.ts`.
 
-Если измеренное распределение систематически шире предсказанного, это НЕ повод менять допуск: сначала проверить, что прогон дошёл до равновесия (доля связей перестала расти) и что валентность в шейдере совпадает с той, из которой считается предсказание.
+If the measured distribution is systematically wider than predicted, this is NOT a reason to change the tolerance: first check that the run reached equilibrium (the bond fraction stopped growing) and that the valence in the shader matches the one used to compute the prediction.
 
-- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+- [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `npx vitest run tests/soup-equilibrium.test.ts`
-Expected: PASS все четыре. Наклон Ван-Гоффа, отличающийся от 6 kT в разы, означает, что принятие по Метрополису применяется не к обеим сторонам.
+Expected: PASS, all four. A van't Hoff slope that differs from 6 kT by a large factor means the Metropolis acceptance is not being applied to both directions.
 
-- [ ] **Step 5: Коммит**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add soup/src/equilibrium.ts engine/src/index.ts tests/soup-equilibrium.test.ts
@@ -592,7 +592,7 @@ git commit -m "feat: Flory distribution and van't Hoff slope as rate-free rigor 
 
 ---
 
-### Task 8: Строгость сборки — закон порога агрегации
+### Task 8: Assembly rigor: the aggregation-threshold law
 
 **Files:**
 - Create: `soup/src/cac.ts`
@@ -600,9 +600,9 @@ git commit -m "feat: Flory distribution and van't Hoff slope as rate-free rigor 
 - Test: `tests/soup-cac.test.ts`
 
 **Interfaces:**
-- Produces: `criticalAggregationConcentration(sys: SoupSystem, chainLength: number): Promise<number>` — концентрация свободных амфифилов, при которой появляется первый устойчивый агрегат; `cacSlope(points: {n: number, cac: number}[]): {slope: number, r2: number}` — наклон `log10 CAC` против длины цепи.
+- Produces: `criticalAggregationConcentration(sys: SoupSystem, chainLength: number): Promise<number>`, the concentration of free amphiphiles at which the first stable aggregate appears; `cacSlope(points: {n: number, cac: number}[]): {slope: number, r2: number}`, the slope of `log10 CAC` against chain length.
 
-- [ ] **Step 1: Написать падающий тест**
+- [ ] **Step 1: Write a failing test**
 
 `tests/soup-cac.test.ts`:
 
@@ -613,12 +613,12 @@ import { cacSlope } from '../soup/src/cac'
 
 afterAll(shutdownGpu)
 
-test('оценка наклона восстанавливает измеренные точки октаноата и деканоата', () => {
+test('the slope estimator recovers the measured octanoate and decanoate points', () => {
   const f = cacSlope([{ n: 8, cac: 300 }, { n: 10, cac: 86 }])
   expect(f.slope).toBeCloseTo(-(Math.log10(300 / 86) / 2), 3)
 })
 
-test('порог агрегации падает с длиной цепи с наклоном около измеренного', async () => {
+test('the aggregation threshold drops with chain length at roughly the measured slope', async () => {
   const page = await gpuPage()
   const pts = await page.evaluate(async () => {
     const api = (window as any).api
@@ -633,23 +633,23 @@ test('порог агрегации падает с длиной цепи с н�
 }, 3_600_000)
 ```
 
-- [ ] **Step 2: Запустить и убедиться, что тесты падают**
+- [ ] **Step 2: Run and confirm the tests fail**
 
 Run: `npx vitest run tests/soup-cac.test.ts`
-Expected: FAIL — `soup/src/cac` не найден.
+Expected: FAIL, `soup/src/cac` not found.
 
-- [ ] **Step 3: Реализовать**
+- [ ] **Step 3: Implement**
 
-`cacFor(n)` собирает систему из готовых амфифилов длины `n` (это допустимо: здесь проверяется закон сборки, а не синтез), поднимает концентрацию ступенями и фиксирует концентрацию первого устойчивого агрегата, устойчивость — по доле крупнейшего кластера, удержавшейся заданное число шагов. `cacSlope` делает регрессию `log10 CAC` против `n`.
+`cacFor(n)` assembles a system of ready-made amphiphiles of length `n` (this is acceptable: here the assembly law is being checked, not the synthesis), raises the concentration in steps, and records the concentration at which the first stable aggregate appears, stability judged by the fraction of the largest cluster holding for a given number of steps. `cacSlope` performs a regression of `log10 CAC` against `n`.
 
-Добавить в `data/literature.json` ворота `cac-slope`: метрика `cacSlopeAbs`, коридор `min: 0.15, max: 0.45`, ранг **A**, источник — измеренные CMC октаноата натрия 300 мМ и деканоата 86 мМ, что даёт 0.27 на метиленовую группу; условия — приведённые единицы модели, поэтому сверяется наклон, а не абсолютная концентрация.
+Add gate `cac-slope` to `data/literature.json`: metric `cacSlopeAbs`, corridor `min: 0.15, max: 0.45`, rank **A**, source: the measured CMC of sodium octanoate (300 mM) and decanoate (86 mM), which gives 0.27 per methylene group; conditions: reduced model units, so the slope is compared, not the absolute concentration.
 
-- [ ] **Step 4: Запустить тесты и убедиться, что они проходят**
+- [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `npx vitest run tests/soup-cac.test.ts`
-Expected: PASS оба.
+Expected: PASS, both.
 
-- [ ] **Step 5: Коммит**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add soup/src/cac.ts data/literature.json verify/soup.ts tests/soup-cac.test.ts
@@ -658,6 +658,6 @@ git commit -m "feat: aggregation threshold law checked against measured CMC slop
 
 ---
 
-## Что план сознательно не делает
+## What this plan deliberately does not do
 
-Не привязывает время к секундам: `κ_t` остаётся единственным множителем, и абсолютные скорости не заявляются. Не считает квантовые барьеры и не повышает ранг скоростей выше D — это отдельные слои `thermo/` и `qm/`. Не строит полноатомную динамику: атомная детализация в кадре остаётся реконструкцией поверх огрублённых координат, и так подписана на экране.
+It does not tie time to seconds: `κ_t` remains the sole multiplier, and no absolute rates are claimed. It does not account for quantum barriers and does not raise the rate rank above D; that belongs to the separate `thermo/` and `qm/` layers. It does not build full-atom dynamics: the atomic detail on screen remains a reconstruction over the coarse-grained coordinates, and is labeled as such on screen.

@@ -170,7 +170,7 @@ STALE-FORCE {"n":20880,"box":[15,15,15],"maxPreFresh":195.05258178710938,"maxPos
  ✓ tests/soup-stale-force.test.ts (2 tests) 8937ms
 
 $ git stash push -m "staleforce-fix-probe" -- soup/src/soup-box-scale.ts
-$ nice -n 15 npx vitest run tests/soup-stale-force.test.ts --no-file-parallelism -t "изменение бокса"
+$ nice -n 15 npx vitest run tests/soup-stale-force.test.ts --no-file-parallelism -t "box change"
 STALE-FORCE {"n":20880,"box":[15,15,15],"maxPreFresh":204.99313354492188,"maxPostFresh":518.7139892578125,"preResidentVsFresh":0,"postResidentVsFresh":313.7208557128906,"postResidentVsPreFresh":0}
   × box change must leave F(x_n) for the NEW geometry
     → expected 313.7208557128906 to be less than 5.187139892578125
@@ -235,7 +235,7 @@ recorded per checkpoint and asserted after the artifact is written so a violatio
 rather than destroying it. Across **28 checkpoints of 4 lineages**:
 
 ```
-RUN-AUDIT-TETHER нарушений=0
+RUN-AUDIT-TETHER violations=0
 final decisive checkpoint: {"live":224,"longest":1.1046,"rInf":1.5,"overRInf":0}
 ```
 
@@ -539,9 +539,9 @@ on trust — the fix was stashed and the test re-run, three times each side:
 
 ```
 $ nice -n 15 npx vitest run tests/soup-grid-resize.test.ts    # WITH the fix
-измеренный дрейф 33973244.2808   /  5297475.5409  /  5781.5508
+measured drift 33973244.2808   /  5297475.5409  /  5781.5508
 $ git stash push -- soup/src/soup-box-scale.ts                # WITHOUT the fix
-измеренный дрейф 437.7922        /  15889.3232    /  176622.7122
+measured drift 437.7922        /  15889.3232    /  176622.7122
 $ git stash pop
 ```
 
@@ -564,7 +564,7 @@ Only the commands whose output is a *measurement* are reproduced in full above (
 ```
 nice -n 15 npx vitest run tests/soup-stale-force.test.ts --no-file-parallelism
 git stash push -m "staleforce-fix-probe" -- soup/src/soup-box-scale.ts
-  nice -n 15 npx vitest run tests/soup-stale-force.test.ts --no-file-parallelism -t "изменение бокса"
+  nice -n 15 npx vitest run tests/soup-stale-force.test.ts --no-file-parallelism -t "box change"
 git stash pop
 
 nice -n 15 npx tsx soup/cli/campaign.ts --label evapFIX19 --box 30 \

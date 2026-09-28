@@ -58,7 +58,7 @@ instead of editing the file's `start`). `tests/soup-vesicle.test.ts` **never run
 **2026-08-20T11:49:51.254Z**, commit `5b5937c` (dirty: true — this task's own diff, which is what the
 stamp is for).
 
-| ворота | значение | коридор | ранг | вердикт | откуда |
+| gate | value | corridor | rank | verdict | source |
 |---|---|---|---|---|---|
 | `area-per-lipid` | **1.200976** σ² [1.1871, 1.2204] | 1.1–1.5 | A | **passed** | this run |
 | `bilayer-thickness` | **4.492472** σ | 4–6 | A | **passed** | this run |
@@ -80,7 +80,7 @@ inferred:
   report, so the metric is deliberately OMITTED from the metrics record rather than smuggled through
   as NaN. Not a budget problem.
 - `chain-length-asf` — **rank D, and the reason is in the gate's own `conditions`**: the spec states
-  gate 2's criterion as «расхождение гистограмм» with no numeric corridor, and no independent
+  gate 2's criterion as "histogram divergence" with no numeric corridor, and no independent
   literature corridor exists for α of THIS system. Inventing a tolerance here would be fitting the
   gate to the result. The value and both α estimates are published anyway (α_ev 0.7513, α_rec 0.7732,
   r² 0.928 — they agree to **2.9 %**, and the shape is geometric, which is the ASF signature).
@@ -105,13 +105,13 @@ statistics → the two historical rank-D rows.
   object as its solvent-free namesake's, §1.5), but the number is produced in a medium whose pair
   depths are RATIOS taken from `martini_v2.1.itp` and not calibrated on this tree, with
   `epsilonScale = 1.0` at rank D. `hydrophobic-asymmetry-report.md` ranks that table C itself.
-- `vesicle-closure-water` — **rank B (посчитано)**. Published as a RATIO because the threshold is
+- `vesicle-closure-water` — **rank B (computed)**. Published as a RATIO because the threshold is
   recomputed per snapshot from the live bulk water density (measured 317.1–320.9 beads across the
   campaign), so no fixed number for it can honestly live in a literature file. The floor of 1 is the
   definition, not a tolerance.
 - `aggregate-percolation` — **rank B**. Target `{max: 0}`: a finite object wraps zero axes BY
   DEFINITION. No constant is introduced; the connectivity cutoff is the project's own.
-- `vesicle-verdict` — **rank A (измерено)**: the project's own vesicle recogniser, on every checkpoint.
+- `vesicle-verdict` — **rank A (measured)**: the project's own vesicle recogniser, on every checkpoint.
 - `chain-length-asf`, `mean-tail-length` — **rank D**, see §1.1.
 
 ### 1.3 How the campaign rows were re-measured rather than quoted
@@ -128,7 +128,7 @@ $ CONTINUOUS_RUN_CHECKPOINTS="data/checkpoints/zfB54/zfB54-step41400.json data/c
   nice -n 15 npx vitest run tests/continuous-run-audit.test.ts tests/percolation-check.test.ts tests/gates.test.ts --no-file-parallelism
 
 RUN-AUDIT artifact written: verify/out/gates-campaign-trace.json (5 checkpoints)
-RUN-AUDIT-TETHER нарушений=0
+RUN-AUDIT-TETHER violations=0
  ✓ tests/continuous-run-audit.test.ts (1 test) 3484ms
 PERC {"file":"...zfB54-step41400.json","step":41400,"box":54,"aggregates":2,"amphiphilesInLargest":2211,"particlesInLargest":11842,"wrapsX":true,"wrapsY":true,"wrapsZ":true,"wrappingAxes":3,"slabsTouchedOfTotal":[19,19,19,19]}
 PERC {"file":"...zfB54-step113400.json","step":113400,"box":54,"aggregates":2,"amphiphilesInLargest":2112,"particlesInLargest":13851,"wrapsX":true,"wrapsY":true,"wrapsZ":true,"wrappingAxes":3,"slabsTouchedOfTotal":[19,19,19,19]}
@@ -282,13 +282,13 @@ solvent** — doubling C/H/M must not double the water and walk the run into the
 unstable. The preview says so:
 
 ```
-частиц: 3938 (C:200 O:50 H:200 M:20 W:3277 K:191) · сетка 5×5×5=125 · ρ_раств 0.800 (жидкость 0.8, из бокса) · ρ_полная 0.961 σ⁻³
-частиц: 25904 (C:1500 O:500 H:1500 M:100 W:21600 K:704) · сетка 10×10×10=1000 · ρ_раств 0.800 (жидкость 0.8, из бокса) · ρ_полная 0.959 σ⁻³
+particles: 3938 (C:200 O:50 H:200 M:20 W:3277 K:191) · grid 5×5×5=125 · rho_solvent 0.800 (liquid 0.8, from box) · rho_total 0.961 σ⁻³
+particles: 25904 (C:1500 O:500 H:1500 M:100 W:21600 K:704) · grid 10×10×10=1000 · rho_solvent 0.800 (liquid 0.8, from box) · rho_total 0.959 σ⁻³
 ```
 
 **Neither preset was re-sized for cost, because measurement said neither needed it**: `tiny` runs at
 **2155–2158 steps/s** at 3938 particles, i.e. inside the 2086–2302 steps/s the page's own comments
-already record for the old ~13 100-particle preset. `default` at 25 904 carries the word **ДОРОГО** in
+already record for the old ~13 100-particle preset. `default` at 25 904 carries the word **expensive** in
 its label. `STEP_BATCH = 250` at 2155 steps/s is 0.12 s per tick, far inside the 15 s watchdog.
 
 ### 3.2 The cold-start minimisation the page never ran
@@ -300,8 +300,8 @@ start throwing at step 1000 with 29 199/29 232 non-finite components without it.
 calls it and prints what it did:
 
 ```
-[старт] бокс=16×16×16 цель=vesicle предел_шагов=20000 глина=да (в опубликованных замерах НЕТ)
-[минимизация] итераций=200 max|F| 3.626e+4 -> 1.392e+1 граница_смещения=10.050σ нефинитных 0/0
+[start] box=16×16×16 target=vesicle step_limit=20000 clay=yes (NOT in the published measurements)
+[minimization] iterations=200 max|F| 3.626e+4 -> 1.392e+1 displacement_bound=10.050σ non-finite 0/0
 ```
 
 ### 3.3 The layout bug that silently ate the START click — found by measurement, fixed at the class level
@@ -351,8 +351,8 @@ RUN-UI CLICKTARGET [{"id":"start-btn","hitId":"start-btn"},{"id":"pause-btn","hi
 ### 3.4 The honesty notes
 
 The summary line was only about the time axis. It now reads
-«**ЧТО ЭТА МОДЕЛЬ НЕ УМЕЕТ: замкнутой везикулы не получено; нет электростатики; соли и pH не
-представимы; шаги — приведённые τ, не секунды. ⓘ подробнее — весь список с числами.**» and the full
+"**What this model cannot do: no closed vesicle was obtained; no electrostatics; salt and pH are not
+representable; steps are reduced τ, not seconds. ⓘ more, the full list with numbers.**" and the full
 text carries six numbered items: (1) the project's verdict with the campaign's own numbers (2077–2211
 amphiphiles, encapsulated water 0 against 317.1–320.9, `closed = false`, 1 head shell instead of 2,
 3 of 3 wrapping axes, supply and size retired at 2.10×/2.08×); (2) no electrostatics at all, and the
@@ -369,16 +369,16 @@ measured-vs-estimated paragraph, kept verbatim including κ_t.
 
 The per-aggregate cards printed `cavityVolume` — the VACUUM-cavity detector, which by
 `soup/src/water-closure.ts`'s own header reads a water-filled interior as empty exactly as it reads a
-true vacuum — and never the observable the verdict rests on. Two rows added: **инкапс. вода / порог**
-and **замкнут**, rendering all three honest states distinctly (`не измерялось` when no water indices
-were supplied, `центр не надёжен` when the detector REFUSES because the aggregate's periodic centre
+true vacuum, and never the observable the verdict rests on. Two rows added: **encaps. water / threshold**
+and **closed**, rendering all three honest states distinctly (`not measured` when no water indices
+were supplied, `centre untrusted` when the detector REFUSES because the aggregate's periodic centre
 cannot be trusted, and `count / threshold` when measured). Verified on a real run — this is the
 readout of the page's own 20 000-step run, at the moment it stopped:
 
 ```
-#1, амф. 1 · плоскостность λ0/λ2 0.000 · в-плоск. λ1/λ2 0.008 · слоёв голов (радиал.) н/д ·
-слоёв голов (поперечн.) 0 · полость, σ³ 0.000 · инкапс. вода / порог  центр не надёжен ·
-замкнут  н/д (центр не надёжен)
+#1, amph. 1 · flatness λ0/λ2 0.000 · in-plane λ1/λ2 0.008 · head shells (radial) n/a ·
+head shells (transverse) 0 · cavity, σ³ 0.000 · encaps. water / threshold  centre untrusted ·
+closed  n/a (centre untrusted)
 ```
 
 ### 3.6 The clay platelet
@@ -396,13 +396,13 @@ and the screenshot shows it as a matte grey-olive slab, not a sphere and not a s
 genuinely wrong is different and worse: **the platelet was in every run this page could start and in
 NO measurement this project published** — every arm of all eight campaigns ran `clay: false`
 (`final-campaign-report.md` §12). So it now has its own labelled control,
-«Пластина глины (K) — в опубликованных замерах её НЕТ», wired into `createSoup`'s `clay` option, into
+"Clay platelet (K), NOT in the published measurements", wired into `createSoup`'s `clay` option, into
 the preview, into the run's own trace line, and locked during a run like every other input. The
 preview agrees with what will be built, both ways:
 
 ```
-CLAY checked=false :: частиц: 3747 (C:200 O:50 H:200 M:20 W:3277 K:0)   · ρ_полная 0.915 σ⁻³
-CLAY checked=true  :: частиц: 3938 (C:200 O:50 H:200 M:20 W:3277 K:191) · ρ_полная 0.961 σ⁻³
+CLAY checked=false :: particles: 3747 (C:200 O:50 H:200 M:20 W:3277 K:0)   · rho_total 0.915 σ⁻³
+CLAY checked=true  :: particles: 3938 (C:200 O:50 H:200 M:20 W:3277 K:191) · rho_total 0.961 σ⁻³
 ```
 
 `instanceCounts()` is read AFTER a frame has been drawn, deliberately: an earlier version of the
@@ -414,12 +414,12 @@ on screen** — the counts report what the last `draw()` wrote. That is recorded
 The page's own default preset, its own step cap, started by clicking its own button in headless Chrome:
 
 ```
-[старт] бокс=16×16×16 цель=vesicle предел_шагов=20000 глина=да (в опубликованных замерах НЕТ)
-[минимизация] итераций=200 max|F| 3.626e+4 -> 1.392e+1 граница_смещения=10.050σ нефинитных 0/0
-шаг=250   стадия=monomers амф=0.0000 агр=0.0000 пики=н/д объём=0.0000 полостей=0
-шаг=13000 стадия=monomers амф=0.0150 агр=1.0000 пики=н/д объём=0.0000 полостей=0
-шаг=19750 стадия=monomers амф=0.0150 агр=1.0000 пики=н/д объём=0.0000 полостей=0
-[остановлено] предел шагов достигнут
+[start] box=16×16×16 target=vesicle step_limit=20000 clay=yes (NOT in the published measurements)
+[minimization] iterations=200 max|F| 3.626e+4 -> 1.392e+1 displacement_bound=10.050σ non-finite 0/0
+step=250   stage=monomers amph=0.0000 agg=0.0000 peaks=n/a volume=0.0000 cavities=0
+step=13000 stage=monomers amph=0.0150 agg=1.0000 peaks=n/a volume=0.0000 cavities=0
+step=19750 stage=monomers amph=0.0150 agg=1.0000 peaks=n/a volume=0.0000 cavities=0
+[stopped] step limit reached
 
 state=stopped steps=20000 sps=2155.17 error=null trace=27 frames=249 nonBackground=1
 SCREENSHOT bytes=175632   WALL 9581 ms
@@ -439,7 +439,7 @@ of actual content.
 | `tests/run-ui.test.ts` | **8 passed** (all 8, as required) | 29.7 s. Two assertions ADDED (§3.3 click target, §3.6 instance counts), none relaxed. Test count unchanged at 8. |
 | `tests/gates.test.ts` | **8 passed** (was 5) | 3 new tests, §1.5. Nothing widened. |
 | `tests/water-bilayer-area-move.test.ts` | **1 passed** | 199.8 s; verdict `passed`; now also writes its artifact |
-| `tests/continuous-run-audit.test.ts` | **1 passed** | 5 checkpoints at N = 191 778, `RUN-AUDIT-TETHER нарушений=0` |
+| `tests/continuous-run-audit.test.ts` | **1 passed** | 5 checkpoints at N = 191 778, `RUN-AUDIT-TETHER violations=0` |
 | `tests/percolation-check.test.ts` | **1 passed** | 5 checkpoints incl. 2 must-say-no controls |
 | `tests/params.test.ts` | **3 passed** | the literal scanner: **no rank-A constant appears anywhere new**. `LIQUID_SOLVENT_DENSITY = 0.8` lives in `viewer/`, outside the scanned dirs (`engine/src`, `engine/wgsl`, `chem/src`, `soup/src`, `soup/wgsl`) — and it is a page-level derivation of a `data/soup.json`-documented measurement, not a physics constant |
 | `tests/soup-rules.test.ts` | **4 passed** | `data/soup.json` schema unchanged |
@@ -501,7 +501,7 @@ Known-flaky, deliberately not run and not chased (all three proven pre-existing 
 3. **`mean-tail-length` = 3.490 against a 2–3 window is published as `unproven` on a rank-D
    technicality, and it would be a FAILURE if the mapping carried an independent corridor.** The
    document and the gate's own `conditions` both say so in as many words, but the table's verdict
-   column says «недоказано», and a reader who skims only that column will read this as neutral when it
+   column says "unproven", and a reader who skims only that column will read this as neutral when it
    is not.
 4. **The campaign rows rest on 5 re-audited checkpoints, not 20.** Every number reproduced the
    predecessor's to the digit, the tether and invariant assertions all ran, and the closure gate takes
@@ -527,7 +527,7 @@ Known-flaky, deliberately not run and not chased (all three proven pre-existing 
    own label and its neighbour grid previews cleanly at 10×10×10, and the guard that refuses an
    impossible selection is unchanged — but the only preset this task actually ran on the page is
    `tiny`. If 25 904 particles behaves differently at cold start on a busier machine, nobody has
-   measured it, and the honest thing is that the label says ДОРОГО rather than that the number is
+   measured it, and the honest thing is that the label says expensive rather than that the number is
    proven safe.
 9. **The clay control ships default-ON, matching `data/soup.json`, which means the page still starts
    runs in a configuration no published measurement used.** I chose to keep the file's own composition
@@ -549,7 +549,7 @@ Known-flaky, deliberately not run and not chased (all three proven pre-existing 
   missing artifact into an `unproven` reason.
 - MODIFIED: `data/literature.json` (7 gates added, 5 unchanged and reordered), `verify/gates.ts`
   (`provenance`/`note` + `GateContext`), `verify/run.ts` (wires the campaign inputs, publishes a
-  `campaign` block), `verify/report.ts` (new «откуда число» column).
+  `campaign` block), `verify/report.ts` (new "number source" column).
 - MODIFIED, the page: `viewer/run-types.ts` (`LIQUID_SOLVENT_DENSITY`, `liquidSolventCount`, both
   presets, `instanceCounts` hook), `viewer/run-control-panel.ts` (solvent derived from the box, cold-
   start minimisation, clay control, preview), `viewer/run-readout.ts` (honesty note, encapsulated-water
